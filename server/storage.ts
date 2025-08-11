@@ -452,7 +452,7 @@ export class DatabaseStorage implements IStorage {
       where: groupIds ? inArray(deliveries.groupId, groupIds) : undefined,
     });
     
-    return results.map(result => ({
+    return results.map((result: any) => ({
       ...result,
       order: result.order || undefined,
     }));

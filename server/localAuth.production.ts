@@ -107,7 +107,7 @@ async function createDefaultAdminUser() {
           await storage.updateUser(existingAdmin.id, { password: newHashedPassword });
           console.log('✅ Admin password migrated to new format');
         } catch (error) {
-          console.log('⚠️ Could not migrate password, will try multiple formats:', error.message);
+          console.log('⚠️ Could not migrate password, will try multiple formats:', (error as Error).message);
         }
       }
     }

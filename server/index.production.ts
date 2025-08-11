@@ -1,4 +1,4 @@
-import express, { type Request, Response, NextFunction } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -40,7 +40,7 @@ app.use((req, res, next) => {
 // Simple production routes
 async function registerProductionRoutes(app: Express): Promise<Server> {
   // Health check endpoint
-  app.get('/api/health', (req, res) => {
+  app.get('/api/health', (req: Request, res: Response) => {
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -53,7 +53,7 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
   setupLocalAuth(app);
   
   // Basic API routes for production
-  app.get('/api/groups', requireAuth, async (req, res) => {
+  app.get('/api/groups', requireAuth, async (req: Request, res: Response) => {
     try {
       const groups = await storage.getGroups();
       res.json(groups);
@@ -63,7 +63,7 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/suppliers', requireAuth, async (req, res) => {
+  app.get('/api/suppliers', requireAuth, async (req: Request, res: Response) => {
     try {
       const suppliers = await storage.getSuppliers();
       res.json(suppliers);
@@ -73,7 +73,7 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/orders', requireAuth, async (req, res) => {
+  app.get('/api/orders', requireAuth, async (req: Request, res: Response) => {
     try {
       const orders = await storage.getOrders();
       res.json(orders);
@@ -84,7 +84,7 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
   });
 
   // Weather API for compatibility
-  app.get('/api/weather', async (req, res) => {
+  app.get('/api/weather', async (req: Request, res: Response) => {
     try {
       const weatherData = {
         today: {

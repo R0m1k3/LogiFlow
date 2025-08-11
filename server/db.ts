@@ -32,7 +32,7 @@ if (isProduction && dbUrl && (dbUrl.includes('logiflow-db') || dbUrl.includes('l
   
   // Test connection
   try {
-    await pool.connect().then(client => {
+    await pool.connect().then((client: any) => {
       console.log('✅ PostgreSQL connection test successful');
       client.release();
     });
