@@ -864,12 +864,12 @@ export class DatabaseStorage implements IStorage {
     }
 
     return {
-      ordersCount: orderStats?.count || 0,
-      deliveriesCount: deliveryStats?.count || 0,
-      pendingOrdersCount: orderStats?.pendingCount || 0,
+      ordersCount: Number(orderStats?.count || 0),
+      deliveriesCount: Number(deliveryStats?.count || 0),
+      pendingOrdersCount: Number(orderStats?.pendingCount || 0),
       averageDeliveryTime: Math.round(averageDeliveryTime * 10) / 10,
-      totalPalettes: (orderStats?.totalPalettes || 0) + (deliveryStats?.totalPalettes || 0),
-      totalPackages: (orderStats?.totalPackages || 0) + (deliveryStats?.totalPackages || 0),
+      totalPalettes: Number((orderStats?.totalPalettes || 0)) + Number((deliveryStats?.totalPalettes || 0)),
+      totalPackages: Number((orderStats?.totalPackages || 0)) + Number((deliveryStats?.totalPackages || 0)),
     };
   }
 

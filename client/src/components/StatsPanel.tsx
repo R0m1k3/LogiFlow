@@ -63,26 +63,26 @@ export default function StatsPanel({ currentDate = new Date() }: StatsPanelProps
           <div className="text-center">
             <div className="text-2xl font-bold text-primary flex items-center justify-center">
               <Package className="w-5 h-5 mr-1" />
-              {stats?.ordersCount || 0}
+              {Number(stats?.ordersCount) || 0}
             </div>
             <div className="text-xs text-gray-600">Commandes</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-secondary flex items-center justify-center">
               <Truck className="w-5 h-5 mr-1" />
-              {stats?.deliveriesCount || 0}
+              {Number(stats?.deliveriesCount) || 0}
             </div>
             <div className="text-xs text-gray-600">Livraisons</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-accent">
-              {stats?.totalPalettes || 0}
+              {Number(stats?.totalPalettes) || 0}
             </div>
             <div className="text-xs text-gray-600">Palettes</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-delivered">
-              {stats?.totalPackages || 0}
+              {Number(stats?.totalPackages) || 0}
             </div>
             <div className="text-xs text-gray-600">Colis</div>
           </div>
