@@ -1,0 +1,21 @@
+{
+  "name": "LogiFlow - Gestion Commandes & Livraisons",
+  "short_name": "LogiFlow",
+  "description": "Plateforme de gestion des commandes et livraisons pour La Foir'Fouille",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563EB",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "32x32",
+      "type": "image/x-icon"
+    }
+  ]
+}
