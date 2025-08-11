@@ -148,16 +148,47 @@ export default function Calendar() {
     setIsSyncing(true);
     try {
       console.log('🔄 Starting manual sync of order-delivery status...');
-      const response = await apiRequest({
-        url: '/api/sync-order-delivery-status',
-        method: 'POST'
-      });
+      
+      // Solution temporaire : récupérer les données et faire la sync côté client
+      const ordersResponse = await fetch('/api/orders', { credentials: 'include' });
+      const allOrders = await ordersResponse.json();
+      
+      console.log('📊 Orders loaded for sync:', allOrders.length);
+      
+      let problematicOrders = 0;
+      let fixedOrders = 0;
+      
+      // Parcourir les commandes et identifier celles à corriger
+      for (const order of allOrders) {
+        if (order.deliveries && order.deliveries.length > 0) {
+          const hasDeliveredDeliveries = order.deliveries.some(d => d.status === 'delivered');
+          
+          if (hasDeliveredDeliveries && order.status !== 'delivered') {
+            problematicOrders++;
+            console.log(`🔍 Found problematic order: #CMD-${order.id} (status: ${order.status}) with delivered deliveries`);
+            
+            try {
+              // Corriger la commande via l'API PUT existante
+              await apiRequest({
+                url: `/api/orders/${order.id}`,
+                method: 'PUT',
+                data: { status: 'delivered' }
+              });
+              
+              fixedOrders++;
+              console.log(`✅ Fixed order #CMD-${order.id} status to 'delivered'`);
+            } catch (error) {
+              console.error(`❌ Failed to fix order #CMD-${order.id}:`, error);
+            }
+          }
+        }
+      }
 
-      console.log('🔄 Sync result:', response);
+      console.log('🔄 Sync completed:', { problematicOrders, fixedOrders });
       
       toast({
         title: "Synchronisation terminée",
-        description: `${response.diagnostics.ordersFixed} commande(s) corrigée(s) sur ${response.diagnostics.problematicOrdersFound} problématique(s)`,
+        description: `${fixedOrders} commande(s) corrigée(s) sur ${problematicOrders} problématique(s)`,
       });
 
       // Rafraîchir les données du calendrier
