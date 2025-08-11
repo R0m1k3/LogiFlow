@@ -149,38 +149,53 @@ export default function Calendar() {
     try {
       console.log('🔄 Starting manual sync of order-delivery status...');
       
-      // Solution temporaire : récupérer TOUTES les données et faire la sync côté client
+      // Solution temporaire : récupérer TOUTES les données sans filtres de dates
+      console.log('📡 Fetching ALL orders (no date filter)...');
       const ordersResponse = await fetch('/api/orders', { credentials: 'include' });
-      const allOrders = await ordersResponse.json();
+      const filteredOrders = await ordersResponse.json();
       
       // Récupérer aussi toutes les livraisons pour avoir une vue complète
+      console.log('📡 Fetching ALL deliveries (no date filter)...');
       const deliveriesResponse = await fetch('/api/deliveries', { credentials: 'include' });
       const allDeliveries = await deliveriesResponse.json();
       
+      // Enrichir les commandes avec leurs livraisons pour avoir les bonnes relations
+      const enrichedOrders = filteredOrders.map(order => {
+        const orderDeliveries = allDeliveries.filter(delivery => delivery.orderId === order.id);
+        return {
+          ...order,
+          deliveries: orderDeliveries
+        };
+      });
+      
       console.log('📊 Data loaded for sync:', {
-        orders: allOrders.length,
-        deliveries: allDeliveries.length,
+        filteredOrders: filteredOrders.length,
+        enrichedOrders: enrichedOrders.length,
+        allDeliveries: allDeliveries.length,
         deliveredDeliveries: allDeliveries.filter(d => d.status === 'delivered').length
       });
       
       // Chercher spécifiquement CMD-55
-      const cmd55 = allOrders.find(o => o.id === 55);
-      if (cmd55) {
-        console.log('🎯 CMD-55 Details:', {
-          id: cmd55.id,
-          status: cmd55.status,
-          deliveries: cmd55.deliveries?.length || 0,
-          deliveryDetails: cmd55.deliveries || []
-        });
-      } else {
-        console.log('❌ CMD-55 not found in current orders');
-      }
+      const cmd55 = enrichedOrders.find(o => o.id === 55);
+      const cmd55Deliveries = allDeliveries.filter(d => d.orderId === 55);
+      
+      console.log('🎯 CMD-55 Analysis:', {
+        foundInOrders: !!cmd55,
+        cmd55Status: cmd55?.status || 'NOT_FOUND',
+        cmd55Deliveries: cmd55Deliveries.length,
+        deliveryStatuses: cmd55Deliveries.map(d => ({ 
+          id: d.id, 
+          status: d.status, 
+          deliveredDate: d.deliveredDate,
+          scheduledDate: d.scheduledDate 
+        }))
+      });
       
       let problematicOrders = 0;
       let fixedOrders = 0;
       
-      // Parcourir les commandes et identifier celles à corriger
-      for (const order of allOrders) {
+      // Parcourir les commandes enrichies et identifier celles à corriger
+      for (const order of enrichedOrders) {
         console.log(`🔍 Analyzing order #CMD-${order.id}:`, {
           status: order.status,
           deliveries: order.deliveries?.length || 0,
