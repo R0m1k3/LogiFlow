@@ -178,6 +178,17 @@ export default function CalendarGrid({
   const getPublicitiesForDate = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     
+    console.log('🔍 CalendarGrid getPublicitiesForDate:', {
+      date: dateStr,
+      totalPublicities: publicities.length,
+      selectedStoreId,
+      userGroups: userGroups.length
+    });
+    
+    if (publicities.length > 0) {
+      console.log('📄 Sample publicity structure:', publicities[0]);
+    }
+    
     return publicities.filter(pub => {
       // Check if the date is within the publicity period
       const pubStart = pub.startDate;
@@ -194,14 +205,22 @@ export default function CalendarGrid({
 
       // If a specific store is selected, check if that store participates
       if (selectedStoreId) {
-        return pub.participatingGroups?.some((pg: any) => pg.groupId === selectedStoreId);
+        const matches = pub.participations?.some((pg: any) => pg.groupId === selectedStoreId);
+        if (matches) {
+          console.log('🎯 Publicity matches selected store:', { pubNumber: pub.pubNumber, selectedStoreId });
+        }
+        return matches;
       }
 
       // If no specific store selected but user has assigned stores, 
       // show publicities where any of user's stores participate
       if (userGroups && userGroups.length > 0) {
         const userGroupIds = userGroups.map((ug: any) => ug.groupId);
-        return pub.participatingGroups?.some((pg: any) => userGroupIds.includes(pg.groupId));
+        const matches = pub.participations?.some((pg: any) => userGroupIds.includes(pg.groupId));
+        if (matches) {
+          console.log('👥 Publicity matches user groups:', { pubNumber: pub.pubNumber, userGroupIds });
+        }
+        return matches;
       }
 
       return true;
@@ -358,7 +377,7 @@ export default function CalendarGrid({
                     <div
                       key={`${pub.id}-${idx}`}
                       className="bg-purple-100 text-purple-800 text-xs px-1.5 py-0.5 rounded-sm border border-purple-200 font-medium shadow-sm cursor-help"
-                      title={`Pub ${pub.pubNumber}: ${pub.designation}${pub.participatingGroups ? ` - Magasins: ${pub.participatingGroups.map((pg: any) => pg.group?.name).join(', ')}` : ''}`}
+                      title={`Pub ${pub.pubNumber}: ${pub.designation}${pub.participations ? ` - Magasins: ${pub.participations.map((pg: any) => pg.group?.name).join(', ')}` : ''}`}
                     >
                       {pub.pubNumber}
                     </div>

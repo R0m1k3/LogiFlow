@@ -875,6 +875,8 @@ export class DatabaseStorage implements IStorage {
 
   // Publicity operations
   async getPublicities(year?: number, groupIds?: number[]): Promise<PublicityWithRelations[]> {
+    console.log('🔍 getPublicities called with:', { year, groupIds });
+    
     const query = db.select({
       id: publicities.id,
       pubNumber: publicities.pubNumber,
@@ -903,6 +905,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     const results = await query;
+    console.log('📢 Raw publicities found:', results.length);
     
     // Récupérer les participations séparément
     const publicityIds = results.map((pub: any) => pub.id);
@@ -918,9 +921,11 @@ export class DatabaseStorage implements IStorage {
     .from(publicityParticipations)
     .innerJoin(groups, eq(publicityParticipations.groupId, groups.id))
     .where(inArray(publicityParticipations.publicityId, publicityIds)) : [];
+    
+    console.log('🏪 Participations found:', participations.length);
 
     // Associer les participations aux publicités
-    return results.map((pub: any) => ({
+    const finalResult = results.map((pub: any) => ({
       ...pub,
       participations: participations
         .filter((p: any) => p.publicityId === pub.id)
@@ -930,7 +935,18 @@ export class DatabaseStorage implements IStorage {
           group: p.group,
           createdAt: new Date()
         }))
-    })) as PublicityWithRelations[];
+    }));
+    
+    console.log('✅ Final publicities with participations:', finalResult.length);
+    if (finalResult.length > 0) {
+      console.log('📄 Sample publicity:', {
+        id: finalResult[0].id,
+        pubNumber: finalResult[0].pubNumber,
+        participations: finalResult[0].participations.map((p: any) => ({ groupId: p.groupId, groupName: p.group?.name }))
+      });
+    }
+    
+    return finalResult as PublicityWithRelations[];
   }
 
   async getPublicity(id: number): Promise<PublicityWithRelations | undefined> {
@@ -2108,7 +2124,7 @@ class MemStorage implements IStorage {
   async createSavTicketHistory(): Promise<any> { return {}; }
   async updateSavTicketHistory(): Promise<any> { return {}; }
   async deleteSavTicketHistory(): Promise<void> {}
-  async getPublicities(): Promise<any[]> { return []; }
+
   async getPublicity(): Promise<any> { return undefined; }
   async createPublicity(): Promise<any> { return {}; }
   async updatePublicity(): Promise<any> { return {}; }
