@@ -356,8 +356,18 @@ export class DatabaseStorage implements IStorage {
   async deleteUser(id: string): Promise<void> {
     // Use a transaction to ensure atomicity
     await db.transaction(async (tx: typeof db) => {
-      // Transfer ownership of all records created by this user to admin_dev
-      const adminUserId = "admin_dev";
+      // Find an existing admin user to transfer ownership to
+      const adminUser = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, "admin"))
+        .limit(1);
+      
+      if (adminUser.length === 0) {
+        throw new Error("Cannot delete user: No admin user found to transfer ownership to");
+      }
+      
+      const adminUserId = adminUser[0].id;
       
       // Update customer orders
       await tx

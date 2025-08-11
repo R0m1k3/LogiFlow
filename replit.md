@@ -76,3 +76,17 @@ Preferred communication style: Simple, everyday language.
 
 ### Other Integrations
 - **NocoDB Integration**: Configurable for invoice verification and data synchronization.
+
+## Recent Changes
+
+### August 11, 2025 - User Deletion Fix
+- **Issue**: Foreign key constraint errors when deleting users who created customer orders or other records
+- **Root Cause**: User records were referenced by multiple tables (customer_orders, deliveries, DLC products, etc.)
+- **Solution Implemented**:
+  - Enhanced deleteUser method with database transaction for atomicity
+  - Dynamic admin user lookup instead of hardcoded fallback user
+  - Ownership transfer of all user-created records to existing admin before deletion
+  - Comprehensive handling of all foreign key relationships
+  - Graceful error handling when no admin user exists
+- **Tables Handled**: customer_orders, orders, deliveries, publicities, dlcProducts, tasks, nocodbConfig, userGroups, userRoles
+- **Result**: Safe user deletion while preserving business data integrity
