@@ -27,7 +27,7 @@ export default function Calendar() {
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [showCreateDelivery, setShowCreateDelivery] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
+
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -141,120 +141,7 @@ export default function Calendar() {
     setShowCreateDelivery(true);
   };
 
-  // Fonction pour synchroniser les statuts commandes/livraisons
-  const handleSyncOrderDeliveryStatus = async () => {
-    if (user?.role !== 'admin') return;
-    
-    setIsSyncing(true);
-    try {
-      console.log('🔄 Starting manual sync of order-delivery status...');
-      
-      // Solution temporaire : récupérer TOUTES les données sans filtres de dates
-      console.log('📡 Fetching ALL orders (no date filter)...');
-      const ordersResponse = await fetch('/api/orders', { credentials: 'include' });
-      const filteredOrders = await ordersResponse.json();
-      
-      // Récupérer aussi toutes les livraisons pour avoir une vue complète
-      console.log('📡 Fetching ALL deliveries (no date filter)...');
-      const deliveriesResponse = await fetch('/api/deliveries', { credentials: 'include' });
-      const allDeliveries = await deliveriesResponse.json();
-      
-      // Enrichir les commandes avec leurs livraisons pour avoir les bonnes relations
-      const enrichedOrders = filteredOrders.map((order: any) => {
-        const orderDeliveries = allDeliveries.filter((delivery: any) => delivery.orderId === order.id);
-        return {
-          ...order,
-          deliveries: orderDeliveries
-        };
-      });
-      
-      console.log('📊 Data loaded for sync:', {
-        filteredOrders: filteredOrders.length,
-        enrichedOrders: enrichedOrders.length,
-        allDeliveries: allDeliveries.length,
-        deliveredDeliveries: allDeliveries.filter((d: any) => d.status === 'delivered').length
-      });
-      
-      // Chercher spécifiquement CMD-55
-      const cmd55 = enrichedOrders.find((o: any) => o.id === 55);
-      const cmd55Deliveries = allDeliveries.filter((d: any) => d.orderId === 55);
-      
-      console.log('🎯 CMD-55 Analysis:', {
-        foundInOrders: !!cmd55,
-        cmd55Status: cmd55?.status || 'NOT_FOUND',
-        cmd55Deliveries: cmd55Deliveries.length,
-        deliveryStatuses: cmd55Deliveries.map((d: any) => ({ 
-          id: d.id, 
-          status: d.status, 
-          deliveredDate: d.deliveredDate,
-          scheduledDate: d.scheduledDate 
-        }))
-      });
-      
-      let problematicOrders = 0;
-      let fixedOrders = 0;
-      
-      // Parcourir les commandes enrichies et identifier celles à corriger
-      for (const order of enrichedOrders) {
-        console.log(`🔍 Analyzing order #CMD-${order.id}:`, {
-          status: order.status,
-          deliveries: order.deliveries?.length || 0,
-          deliveryStatuses: order.deliveries?.map((d: any) => ({ id: d.id, status: d.status, deliveredDate: d.deliveredDate })) || []
-        });
-        
-        if (order.deliveries && order.deliveries.length > 0) {
-          const hasDeliveredDeliveries = order.deliveries.some((d: any) => d.status === 'delivered');
-          
-          if (hasDeliveredDeliveries && order.status !== 'delivered') {
-            problematicOrders++;
-            console.log(`🔍 Found problematic order: #CMD-${order.id} (status: ${order.status}) with delivered deliveries:`, 
-              order.deliveries.filter((d: any) => d.status === 'delivered').map((d: any) => `#LIV-${d.id}`)
-            );
-            
-            try {
-              // Corriger la commande via fetch direct
-              const response = await fetch(`/api/orders/${order.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ status: 'delivered' })
-              });
-              
-              if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-              }
-              
-              fixedOrders++;
-              console.log(`✅ Fixed order #CMD-${order.id} status to 'delivered'`);
-            } catch (error) {
-              console.error(`❌ Failed to fix order #CMD-${order.id}:`, error);
-            }
-          }
-        }
-      }
 
-      console.log('🔄 Sync completed:', { problematicOrders, fixedOrders });
-      
-      toast({
-        title: "Synchronisation terminée",
-        description: `${fixedOrders} commande(s) corrigée(s) sur ${problematicOrders} problématique(s)`,
-      });
-
-      // Rafraîchir les données du calendrier
-      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      
-    } catch (error) {
-      console.error('❌ Sync failed:', error);
-      toast({
-        title: "Erreur de synchronisation",
-        description: "Impossible de synchroniser les statuts. Vérifiez la console.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const isLoading = loadingOrders || loadingDeliveries;
 
@@ -316,18 +203,7 @@ export default function Calendar() {
             </Button>
           </div>
           <div className="flex items-center space-x-2">
-            {user?.role === 'admin' && (
-              <Button
-                onClick={handleSyncOrderDeliveryStatus}
-                disabled={isSyncing}
-                variant="outline"
-                size="sm"
-                className="text-blue-600 border-blue-600 hover:bg-blue-50"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'Sync...' : 'Sync Status'}
-              </Button>
-            )}
+
             <Button
               onClick={() => setShowQuickCreate(true)}
               className="bg-accent hover:bg-orange-600 text-white"
