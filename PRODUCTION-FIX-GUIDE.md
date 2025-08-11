@@ -51,11 +51,32 @@ Si l'interface affiche "Aucun utilisateur trouvé" :
 - `debug-usergroups-production.sql` : Problèmes d'association utilisateur-groupe
 - `production-users-debug.sql` : Problème de récupération des utilisateurs
 
+### Problème Création d'Utilisateur
+Si la création d'utilisateur échoue :
+
+1. **Test Manuel** : Utilisez `test-create-user-production.js`
+   ```bash
+   PRODUCTION_HOST=votre-domaine.com SESSION_COOKIE="connect.sid=..." node test-create-user-production.js
+   ```
+
+2. **Vérification Logs** : Cherchez ces messages d'erreur :
+   - `❌ Password hashing failed`
+   - `❌ Storage createUser error`
+   - Database connection errors
+
 ### Logs de Débogage Disponibles
+**Récupération Utilisateurs :**
 - `🔍 GET /api/users - Fetching users with simplified approach`
 - `📊 Found X base users`
 - `❌ Error getting groups for user [username]:`
 - `🔐 API /api/users - Returning: {length: X, totalGroups: Y}`
+
+**Création Utilisateur :**
+- `🔍 POST /api/users - Creating new user`
+- `📥 Request body: [données]`
+- `🔒 Hashing password...`
+- `🔍 Storage createUser called with: [username]`
+- `✅ Storage createUser successful: [username]`
 
 ## Déploiement
 

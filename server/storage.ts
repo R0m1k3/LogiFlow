@@ -296,15 +296,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...userData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
-    return user;
+    console.log('🔍 Storage createUser called with:', userData.username);
+    try {
+      const [user] = await db
+        .insert(users)
+        .values({
+          ...userData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      console.log('✅ Storage createUser successful:', user.username);
+      return user;
+    } catch (error) {
+      console.error('❌ Storage createUser error:', error);
+      console.error('❌ Storage error code:', error.code);
+      console.error('❌ Storage error constraint:', error.constraint);
+      throw error;
+    }
   }
 
   async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {

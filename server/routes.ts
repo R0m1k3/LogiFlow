@@ -907,9 +907,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/users', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('🔍 POST /api/users - Creating new user');
+      console.log('📥 Request body:', JSON.stringify(req.body, null, 2));
+      
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       const currentUser = await storage.getUserWithGroups(userId);
       if (!currentUser || currentUser.role !== 'admin') {
+        console.log('❌ Access denied - user not admin');
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -924,23 +928,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: z.enum(['admin', 'directeur', 'manager', 'employee']).optional(),
       });
 
+      console.log('🔍 Parsing user data...');
       const userData = createUserSchema.parse(req.body);
+      console.log('✅ User data parsed successfully');
       
-      // Hash password if provided (for local auth)
+      // Hash password with improved error handling
+      let hashedPassword = userData.password;
       if (userData.password) {
-        userData.password = await hashPasswordSimple(userData.password);
+        try {
+          console.log('🔒 Hashing password...');
+          hashedPassword = await hashPasswordSimple(userData.password);
+          console.log('✅ Password hashed successfully');
+        } catch (hashError) {
+          console.error('❌ Password hashing failed:', hashError);
+          return res.status(500).json({ message: "Failed to secure password" });
+        }
       }
       
-      const newUser = await storage.createUser({
-        id: userData.id || `manual_${Date.now()}`, // Generate manual ID for created users
-        ...userData,
-      });
+      // Generate unique ID
+      const newUserId = userData.id || `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log('🔍 Generated user ID:', newUserId);
+      
+      const userToCreate = {
+        id: newUserId,
+        username: userData.username,
+        email: userData.email || '',
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
+        password: hashedPassword,
+        role: userData.role || 'employee',
+      };
+      
+      console.log('🔍 Creating user in database...');
+      const newUser = await storage.createUser(userToCreate);
+      console.log('✅ User created successfully:', newUser.username);
 
       res.json(newUser);
     } catch (error) {
-      console.error("Error creating user:", error);
+      console.error("❌ Error creating user:", error);
+      console.error("❌ Error type:", error.constructor.name);
+      console.error("❌ Error code:", error.code);
+      console.error("❌ Error constraint:", error.constraint);
+      console.error("❌ Error stack:", error.stack);
       
       if (error instanceof z.ZodError) {
+        console.log('❌ Validation error:', error.errors);
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });
       }
       
@@ -956,6 +988,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: "Un utilisateur avec cette adresse email existe déjà." 
           });
         }
+      }
+      
+      // Handle connection errors
+      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+        return res.status(503).json({ message: "Database connection error" });
       }
       
       res.status(500).json({ message: "Failed to create user" });
