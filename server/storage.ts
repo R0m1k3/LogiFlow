@@ -689,8 +689,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async assignUserToGroup(userGroup: InsertUserGroup): Promise<UserGroup> {
-    const [newUserGroup] = await db.insert(userGroups).values(userGroup).returning();
-    return newUserGroup;
+    try {
+      // Try with full schema first (development)
+      const [newUserGroup] = await db.insert(userGroups).values(userGroup).returning();
+      return newUserGroup;
+    } catch (error: any) {
+      // If created_at column doesn't exist (production), insert without it
+      if (error?.code === '42703' && error?.message?.includes('created_at')) {
+        console.log('⚠️ Production mode: user_groups table missing created_at column, inserting without it');
+        const userGroupWithoutCreatedAt = {
+          userId: userGroup.userId,
+          groupId: userGroup.groupId
+        };
+        const [newUserGroup] = await db.insert(userGroups).values(userGroupWithoutCreatedAt).returning();
+        return { ...newUserGroup, createdAt: null };
+      }
+      throw error;
+    }
   }
 
   async removeUserFromGroup(userId: string, groupId: number): Promise<void> {
