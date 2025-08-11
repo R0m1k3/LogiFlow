@@ -690,6 +690,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const data = insertDeliverySchema.partial().parse(req.body);
       const updatedDelivery = await storage.updateDelivery(id, data);
+      
+      // SYNCHRONISATION AUTOMATIQUE : Si livraison devient "delivered", marquer la commande associée comme "delivered"
+      if (data.status === 'delivered' && updatedDelivery.orderId) {
+        try {
+          console.log(`🔄 Auto-sync: Delivery #${id} marked as delivered, updating order #${updatedDelivery.orderId}`);
+          await storage.updateOrder(updatedDelivery.orderId, { status: 'delivered' });
+          console.log(`✅ Auto-sync: Order #${updatedDelivery.orderId} automatically marked as delivered`);
+        } catch (error) {
+          console.error(`❌ Auto-sync failed for order #${updatedDelivery.orderId}:`, error);
+        }
+      }
+      
       res.json(updatedDelivery);
     } catch (error) {
       console.error("Error updating delivery:", error);
@@ -828,6 +840,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       await storage.validateDelivery(id, blData);
+      
+      // SYNCHRONISATION AUTOMATIQUE : Quand validation, marquer la commande associée comme "delivered"
+      if (delivery.orderId) {
+        try {
+          console.log(`🔄 Auto-sync: Delivery #${id} validated, updating order #${delivery.orderId} to delivered`);
+          await storage.updateOrder(delivery.orderId, { status: 'delivered' });
+          console.log(`✅ Auto-sync: Order #${delivery.orderId} automatically marked as delivered`);
+        } catch (error) {
+          console.error(`❌ Auto-sync failed for order #${delivery.orderId}:`, error);
+        }
+      }
+      
       res.json({ message: "Delivery validated successfully" });
     } catch (error) {
       console.error("Error validating delivery:", error);
