@@ -937,16 +937,29 @@ export class DatabaseStorage implements IStorage {
         }))
     }));
     
-    console.log('✅ Final publicities with participations:', finalResult.length);
-    if (finalResult.length > 0) {
-      console.log('📄 Sample publicity:', {
-        id: finalResult[0].id,
-        pubNumber: finalResult[0].pubNumber,
-        participations: finalResult[0].participations.map((p: any) => ({ groupId: p.groupId, groupName: p.group?.name }))
+    // Filter by groupIds if provided (for specific store selection or non-admin users)
+    let filteredResult = finalResult;
+    if (groupIds && groupIds.length > 0) {
+      filteredResult = finalResult.filter(pub => 
+        pub.participations.some((p: any) => groupIds.includes(p.groupId))
+      );
+      console.log('🎯 Filtered publicities by groupIds:', { 
+        original: finalResult.length, 
+        filtered: filteredResult.length, 
+        groupIds 
       });
     }
     
-    return finalResult as PublicityWithRelations[];
+    console.log('✅ Final publicities with participations:', filteredResult.length);
+    if (filteredResult.length > 0) {
+      console.log('📄 Sample publicity:', {
+        id: filteredResult[0].id,
+        pubNumber: filteredResult[0].pubNumber,
+        participations: filteredResult[0].participations.map((p: any) => ({ groupId: p.groupId, groupName: p.group?.name }))
+      });
+    }
+    
+    return filteredResult as PublicityWithRelations[];
   }
 
   async getPublicity(id: number): Promise<PublicityWithRelations | undefined> {
@@ -1994,6 +2007,8 @@ class MemStorage implements IStorage {
   private orders = new Map<number, Order>();
   private deliveries = new Map<number, Delivery>();
   private tasks = new Map<number, Task>();
+  private publicities = new Map<number, any>();
+  private publicityParticipations = new Array<any>();
 
   constructor() {
     // Create default admin user for development
@@ -2013,7 +2028,53 @@ class MemStorage implements IStorage {
     };
     this.users.set('admin_dev', adminUser);
     this.users.set('admin', adminUser); // Also set by username for easy lookup
+    
+    // Add test groups
+    const testGroups = [
+      { id: 1, name: 'Magasin A', color: '#FF5733', createdAt: new Date(), updatedAt: new Date() },
+      { id: 2, name: 'Magasin B', color: '#33FF57', createdAt: new Date(), updatedAt: new Date() },
+      { id: 3, name: 'Magasin C', color: '#3357FF', createdAt: new Date(), updatedAt: new Date() }
+    ];
+    testGroups.forEach(group => this.groups.set(group.id, group as Group));
+    
+    // Add test publicities
+    const currentYear = new Date().getFullYear();
+    const testPublicities = [
+      {
+        id: 1,
+        pubNumber: 'PUB001',
+        designation: 'Promotion Été 2025',
+        startDate: '2025-08-01',
+        endDate: '2025-08-31',
+        year: currentYear,
+        createdBy: 'admin_dev',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: 2,
+        pubNumber: 'PUB002',
+        designation: 'Back to School',
+        startDate: '2025-08-15',
+        endDate: '2025-09-15',
+        year: currentYear,
+        createdBy: 'admin_dev',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
+    testPublicities.forEach(pub => this.publicities.set(pub.id, pub));
+    
+    // Add test publicity participations
+    this.publicityParticipations.push(
+      { publicityId: 1, groupId: 1, createdAt: new Date() },
+      { publicityId: 1, groupId: 2, createdAt: new Date() },
+      { publicityId: 2, groupId: 2, createdAt: new Date() },
+      { publicityId: 2, groupId: 3, createdAt: new Date() }
+    );
+    
     console.log('✅ MemStorage initialized with admin user (admin/admin)');
+    console.log('📢 Test publicities and groups added for development');
   }
 
   // User methods
@@ -2076,7 +2137,9 @@ class MemStorage implements IStorage {
   }
 
   // Stub implementations for other required methods
-  async getGroups(): Promise<Group[]> { return []; }
+  async getGroups(): Promise<Group[]> { 
+    return Array.from(this.groups.values());
+  }
   async getGroup(id: number): Promise<Group | undefined> { return undefined; }
   async createGroup(group: InsertGroup): Promise<Group> { return {} as Group; }
   async updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group> { return {} as Group; }
@@ -2111,7 +2174,20 @@ class MemStorage implements IStorage {
   async getTasksByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<any[]> { return []; }
   async getOrderStats(): Promise<any> { return {}; }
   async getDeliveryStats(): Promise<any> { return {}; }
-  async getPublicitiesWithParticipations(year?: number): Promise<any[]> { return []; }
+  async getPublicitiesWithParticipations(year?: number): Promise<any[]> { 
+    const allPubs = Array.from(this.publicities.values());
+    const filtered = year ? allPubs.filter(pub => pub.year === year) : allPubs;
+    
+    return filtered.map(pub => ({
+      ...pub,
+      participations: this.publicityParticipations
+        .filter(pp => pp.publicityId === pub.id)
+        .map(pp => ({
+          ...pp,
+          group: this.groups.get(pp.groupId)
+        }))
+    }));
+  }
   async setPublicityParticipations(publicityId: number, groupIds: number[]): Promise<void> {}
   
   // Add placeholder methods for all other IStorage interface methods
@@ -2124,6 +2200,45 @@ class MemStorage implements IStorage {
   async createSavTicketHistory(): Promise<any> { return {}; }
   async updateSavTicketHistory(): Promise<any> { return {}; }
   async deleteSavTicketHistory(): Promise<void> {}
+
+  // Publicity methods - properly implemented for MemStorage
+  async getPublicities(year?: number, groupIds?: number[]): Promise<any[]> {
+    console.log('🔍 MemStorage getPublicities called with:', { year, groupIds });
+    
+    let allPubs = Array.from(this.publicities.values());
+    
+    // Filter by year if provided
+    if (year) {
+      allPubs = allPubs.filter(pub => pub.year === year);
+    }
+    
+    // Add participations to each publicity
+    const pubsWithParticipations = allPubs.map(pub => ({
+      ...pub,
+      participations: this.publicityParticipations
+        .filter(pp => pp.publicityId === pub.id)
+        .map(pp => ({
+          ...pp,
+          group: this.groups.get(pp.groupId)
+        }))
+    }));
+    
+    // Filter by groupIds if provided (for non-admin users or specific store selection)
+    if (groupIds && groupIds.length > 0) {
+      const filtered = pubsWithParticipations.filter(pub => 
+        pub.participations.some((p: any) => groupIds.includes(p.groupId))
+      );
+      console.log('📢 Filtered publicities by groups:', { 
+        total: pubsWithParticipations.length, 
+        filtered: filtered.length, 
+        groupIds 
+      });
+      return filtered;
+    }
+    
+    console.log('📢 Returning all publicities:', pubsWithParticipations.length);
+    return pubsWithParticipations;
+  }
 
   async getPublicity(): Promise<any> { return undefined; }
   async createPublicity(): Promise<any> { return {}; }
