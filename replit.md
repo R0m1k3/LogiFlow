@@ -79,14 +79,25 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### August 11, 2025 - User Deletion Fix
+### August 11, 2025 - User Management Improvements
+
+#### User Deletion Fix
 - **Issue**: Foreign key constraint errors when deleting users who created customer orders or other records
 - **Root Cause**: User records were referenced by multiple tables (customer_orders, deliveries, DLC products, etc.)
 - **Solution Implemented**:
   - Enhanced deleteUser method with database transaction for atomicity
   - Prioritized lookup for `admin_local` (default admin) with fallback to any admin user
   - Ownership transfer of all user-created records to existing admin before deletion
-  - Comprehensive handling of all foreign key relationships
+  - Comprehensive handling of all foreign key relationships including role assignments
   - Graceful error handling when no admin user exists
-- **Tables Handled**: customer_orders, orders, deliveries, publicities, dlcProducts, tasks, nocodbConfig, userGroups, userRoles
+- **Tables Handled**: customer_orders, orders, deliveries, publicities, dlcProducts, tasks, nocodbConfig, userGroups, userRoles (both userId and assignedBy)
 - **Result**: Safe user deletion while preserving business data integrity
+
+#### User Name Fields Optional in Production
+- **Issue**: Inconsistent validation between user creation and editing forms for name fields
+- **Root Cause**: Edit form required firstName/lastName while creation form had them as optional
+- **Solution Implemented**:
+  - Removed required validation from edit form firstName/lastName fields
+  - Updated placeholders to indicate "(optionnel)" for consistency
+  - Maintained database schema where name fields are already optional
+- **Result**: Name fields now consistently optional across all user management interfaces

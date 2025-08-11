@@ -886,23 +886,21 @@ export default function UsersPage() {
             <form onSubmit={handleSubmitEdit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="edit-firstName">Prénom *</Label>
+                  <Label htmlFor="edit-firstName">Prénom</Label>
                   <Input
                     id="edit-firstName"
                     value={editForm.firstName}
                     onChange={(e) => setEditForm({...editForm, firstName: e.target.value})}
-                    placeholder="Prénom"
-                    required
+                    placeholder="Prénom (optionnel)"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-lastName">Nom *</Label>
+                  <Label htmlFor="edit-lastName">Nom</Label>
                   <Input
                     id="edit-lastName"
                     value={editForm.lastName}
                     onChange={(e) => setEditForm({...editForm, lastName: e.target.value})}
-                    placeholder="Nom"
-                    required
+                    placeholder="Nom (optionnel)"
                   />
                 </div>
               </div>
