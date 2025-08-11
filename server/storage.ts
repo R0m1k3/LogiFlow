@@ -2029,6 +2029,16 @@ class MemStorage implements IStorage {
   async removeUserFromGroup(): Promise<void> {}
   async getMonthlyStats(): Promise<any> { return {}; }
   async getNocodbConfigs(): Promise<any[]> { return []; }
+  async getNocodbConfig(): Promise<any> { return null; }
+  async createNocodbConfig(): Promise<any> { return {}; }
+  async updateNocodbConfig(): Promise<any> { return {}; }
+  async deleteNocodbConfig(): Promise<void> {}
+  async getPermissionsByCategory(): Promise<any[]> { return []; }
+  async getUserEffectivePermissions(): Promise<any[]> { return []; }
+  async userHasPermission(): Promise<boolean> { return false; }
+  async userHasRole(): Promise<boolean> { return false; }
+  async getDlcStats(): Promise<any> { return {}; }
+  async validateDlcProduct(): Promise<void> {}
 }
 
 // Use MemStorage in development, DatabaseStorage in production

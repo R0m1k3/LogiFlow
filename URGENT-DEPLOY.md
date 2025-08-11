@@ -29,4 +29,5 @@ node debug-deliveries-production.js https://logiflow.ffnancy.fr
 - ✅ Module Commandes clients : Données visibles
 - ✅ Plus d'erreurs 404 dans les logs
 
+**BUNDLE VERSION** : 199.1kb - Toutes routes + corrections TypeScript incluses  
 **TEMPS ESTIMÉ** : 2-3 minutes de déploiement
