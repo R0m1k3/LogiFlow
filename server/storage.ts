@@ -420,10 +420,16 @@ export class DatabaseStorage implements IStorage {
         .set({ createdBy: adminUserId })
         .where(eq(nocodbConfig.createdBy, id));
       
+      // Update role assignments made BY this user (assignedBy field)
+      await tx
+        .update(userRoles)
+        .set({ assignedBy: adminUserId })
+        .where(eq(userRoles.assignedBy, id));
+      
       // Delete user-group assignments
       await tx.delete(userGroups).where(eq(userGroups.userId, id));
       
-      // Delete user-role assignments
+      // Delete user-role assignments TO this user
       await tx.delete(userRoles).where(eq(userRoles.userId, id));
       
       // Finally delete the user

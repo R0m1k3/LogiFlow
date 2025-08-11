@@ -1,0 +1,108 @@
+GET /api/users 200 in 33ms
+
+Error deleting user: error: update or delete on table "users" violates foreign key constraint "user_roles_assigned_by_fkey" on table "user_roles"
+
+    at /app/node_modules/pg/lib/client.js:545:17
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/dist/index.js:1108:11
+
+    at async NodePgSession.transaction (file:///app/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+
+    at async DatabaseStorage.deleteUser (file:///app/dist/index.js:1090:9)
+
+    at async file:///app/dist/index.js:4094:7 {
+
+  length: 299,
+
+  severity: 'ERROR',
+
+  code: '23503',
+
+  detail: 'Key (id)=(system) is still referenced from table "user_roles".',
+
+  hint: undefined,
+
+  position: undefined,
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: 'public',
+
+  table: 'user_roles',
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: 'user_roles_assigned_by_fkey',
+
+  file: 'ri_triggers.c',
+
+  line: '2609',
+
+  routine: 'ri_ReportViolation'
+
+}
+
+DELETE /api/users/system 500 in 29ms
+
+HEAD /api/health 200 in 1ms
+
+Error deleting user: error: update or delete on table "users" violates foreign key constraint "user_roles_assigned_by_fkey" on table "user_roles"
+
+    at /app/node_modules/pg/lib/client.js:545:17
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/dist/index.js:1108:11
+
+    at async NodePgSession.transaction (file:///app/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+
+    at async DatabaseStorage.deleteUser (file:///app/dist/index.js:1090:9)
+
+    at async file:///app/dist/index.js:4094:7 {
+
+  length: 299,
+
+  severity: 'ERROR',
+
+  code: '23503',
+
+  detail: 'Key (id)=(system) is still referenced from table "user_roles".',
+
+  hint: undefined,
+
+  position: undefined,
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: 'public',
+
+  table: 'user_roles',
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: 'user_roles_assigned_by_fkey',
+
+  file: 'ri_triggers.c',
+
+  line: '2609',
+
+  routine: 'ri_ReportViolation'
+
+}
+
+DELETE /api/users/system 500 in 19ms
+
