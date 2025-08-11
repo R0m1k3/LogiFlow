@@ -1,130 +1,185 @@
-# Correction des Erreurs 502 - Production
+# Correction Erreur Production - "Une erreur s'est produite"
 
 ## Problème Identifié
-- Erreurs 502 (Bad Gateway) lors des appels API `/api/deliveries` et `/api/orders`
-- CMD-55 n'apparaît pas en gris dans le calendrier
-- Erreurs TypeScript dans le code du calendrier
+Votre serveur de production affiche une page d'erreur générique au lieu de l'application LogiFlow.
 
-## Solutions
+## Diagnostic Immédiat
 
-### 1. Vérification du Serveur Backend
-
-Vérifiez que votre serveur Node.js fonctionne :
-
+### 1. Vérifiez les Logs du Serveur
 ```bash
-# Vérifier le processus
-ps aux | grep node
+# Si vous utilisez PM2
+pm2 logs your-app-name --lines 50
 
-# Vérifier les logs du serveur
-tail -f /path/to/your/server/logs
+# Si vous utilisez systemctl
+sudo journalctl -u your-service-name -f --lines=50
 
-# Vérifier si le port est écouté
-netstat -tlnp | grep :YOUR_PORT
+# Si vous utilisez Docker
+docker-compose logs -f --tail=50
 ```
 
-### 2. Redémarrage du Serveur
-
+### 2. Vérifiez le Statut de l'Application
 ```bash
-# Via PM2
+# PM2
+pm2 status
+pm2 info your-app-name
+
+# systemctl
+sudo systemctl status your-service-name
+
+# Docker
+docker-compose ps
+```
+
+## Solutions par Ordre de Priorité
+
+### Solution 1 : Redémarrage Simple
+```bash
+# PM2
 pm2 restart your-app-name
-pm2 logs your-app-name
 
-# Via systemctl
-sudo systemctl restart your-node-service
-sudo systemctl status your-node-service
+# systemctl
+sudo systemctl restart your-service-name
 
-# Via Docker
+# Docker
 docker-compose restart
-docker-compose logs -f
 ```
 
-### 3. Vérification de la Configuration Proxy/Nginx
-
-Si vous utilisez un proxy inverse (Nginx), vérifiez la configuration :
-
-```nginx
-location /api/ {
-    proxy_pass http://localhost:YOUR_NODE_PORT/api/;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_cache_bypass $http_upgrade;
-    proxy_read_timeout 86400;
-}
-```
-
-### 4. Correction SQL Directe pour CMD-55
-
-Pendant que vous résolvez les erreurs 502, corrigez CMD-55 directement :
-
-```sql
--- Connexion à votre base
-psql -h your-host -U your-user -d your-database
-
--- Correction CMD-55
-UPDATE orders 
-SET status = 'delivered'
-WHERE id = 55 
-  AND status != 'delivered'
-  AND EXISTS (
-    SELECT 1 FROM deliveries d 
-    WHERE d."orderId" = 55 
-    AND d.status = 'delivered'
-  );
-
--- Vérifier le résultat
-SELECT o.id, o.status, COUNT(d.id) as deliveries, 
-       COUNT(CASE WHEN d.status = 'delivered' THEN 1 END) as delivered_deliveries
-FROM orders o
-LEFT JOIN deliveries d ON o.id = d."orderId"
-WHERE o.id = 55
-GROUP BY o.id, o.status;
-```
-
-### 5. Test des API manuellement
-
+### Solution 2 : Vérification des Ports
 ```bash
-# Tester l'API orders
-curl -X GET "http://your-server.com/api/orders" \
-  -H "Cookie: your-session-cookie"
+# Vérifiez quel processus utilise le port (généralement 5000 ou 3000)
+sudo netstat -tulpn | grep :5000
+sudo lsof -i :5000
 
-# Tester l'API deliveries  
-curl -X GET "http://your-server.com/api/deliveries" \
-  -H "Cookie: your-session-cookie"
+# Si un autre processus occupe le port, le tuer
+sudo kill -9 <PID>
 ```
 
-## Actions Prioritaires
-
-1. **Immédiat** : Exécuter la correction SQL pour CMD-55
-2. **Urgent** : Redémarrer votre serveur Node.js
-3. **Important** : Vérifier les logs pour identifier la cause des 502
-
-## Diagnostic des Logs
-
-Recherchez dans vos logs :
-
+### Solution 3 : Reconstruction Complete
 ```bash
-# Erreurs Node.js
-grep -i "error\|crash\|exception" /path/to/logs
+# Sauvegarder les modifications récentes
+cp -r client/src client/src.current
 
-# Erreurs de base de données
-grep -i "database\|postgres\|connection" /path/to/logs
+# Reconstruction complète
+npm install
+npm run build
 
-# Erreurs de mémoire
-grep -i "memory\|heap" /path/to/logs
+# Redémarrage
+pm2 restart your-app-name --update-env
 ```
 
-## Résultat Attendu
+### Solution 4 : Vérification des Variables d'Environnement
+```bash
+# Vérifiez que les variables essentielles sont définies
+echo $NODE_ENV
+echo $DATABASE_URL
+echo $PORT
 
-Après correction :
-- Les API `/api/orders` et `/api/deliveries` répondent sans erreur 502
-- CMD-55 apparaît en gris dans le calendrier
-- Le bouton "Sync Status" fonctionne correctement
+# Si manquantes, les redéfinir
+export NODE_ENV=production
+export PORT=5000
+# etc...
+```
 
----
+### Solution 5 : Vérification de la Base de Données
+```bash
+# Test de connexion PostgreSQL
+psql $DATABASE_URL -c "SELECT 1;"
 
-**Note** : La correction SQL de CMD-55 peut être appliquée immédiatement, indépendamment de la résolution des erreurs 502.
+# Si la connexion échoue, vérifiez les credentials
+```
+
+## Scripts de Diagnostic Automatique
+
+### Script de Santé Générale
+```bash
+#!/bin/bash
+echo "=== DIAGNOSTIC PRODUCTION ==="
+echo "Date: $(date)"
+echo ""
+
+echo "1. Status PM2:"
+pm2 status
+
+echo ""
+echo "2. Processes sur port 5000:"
+sudo lsof -i :5000
+
+echo ""
+echo "3. Logs récents (10 dernières lignes):"
+pm2 logs your-app-name --lines 10 --nostream
+
+echo ""
+echo "4. Espace disque:"
+df -h
+
+echo ""
+echo "5. Mémoire:"
+free -h
+
+echo ""
+echo "6. Variables d'environnement critiques:"
+echo "NODE_ENV: $NODE_ENV"
+echo "PORT: $PORT"
+echo "DATABASE_URL: ${DATABASE_URL:0:20}..." # Masque les credentials
+```
+
+Sauvegardez ce script sous `production-health-check.sh` et exécutez-le :
+```bash
+chmod +x production-health-check.sh
+./production-health-check.sh
+```
+
+## Correction Spécifique selon l'Erreur
+
+### Si l'erreur est "EADDRINUSE" (Port occupé)
+```bash
+sudo lsof -i :5000
+sudo kill -9 <PID_du_processus>
+pm2 restart your-app-name
+```
+
+### Si l'erreur est "Database connection failed"
+```bash
+# Testez la connexion DB
+psql $DATABASE_URL -c "\dt"
+
+# Redémarrez les services de DB si nécessaire
+sudo systemctl restart postgresql
+```
+
+### Si l'erreur est "Module not found"
+```bash
+# Réinstallation complète
+rm -rf node_modules package-lock.json
+npm install
+npm run build
+pm2 restart your-app-name
+```
+
+## Prévention Future
+
+### 1. Monitoring Automatique
+Ajoutez cette ligne à votre crontab :
+```bash
+crontab -e
+# Ajouter cette ligne pour vérifier chaque minute
+* * * * * curl -f http://localhost:5000/api/health || pm2 restart your-app-name
+```
+
+### 2. Sauvegarde Automatique
+```bash
+# Script de sauvegarde quotidienne
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+tar -czf /backup/logiflow_$DATE.tar.gz /path/to/your/app
+find /backup -name "logiflow_*.tar.gz" -mtime +7 -delete
+```
+
+## Actions Immédiates Recommandées
+
+1. **Exécutez** le script de diagnostic ci-dessus
+2. **Copiez-collez** les résultats pour analyse
+3. **Tentez** un redémarrage simple en premier
+4. **Si le problème persiste**, reconstruisez l'application
+
+Une fois que vous aurez exécuté ces commandes, envoyez-moi les logs d'erreur pour un diagnostic plus précis.
