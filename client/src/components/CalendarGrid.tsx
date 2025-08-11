@@ -198,9 +198,13 @@ export default function CalendarGrid({
         return false;
       }
 
-      // If no store is selected and user has no assigned groups, show all publicities
+      // If no store is selected and user has no assigned groups, show only publicities with participations
       if (!selectedStoreId && (!userGroups || userGroups.length === 0)) {
-        return true;
+        const hasParticipations = pub.participations && pub.participations.length > 0;
+        if (hasParticipations) {
+          console.log('📋 Publicity has participations (no store selected):', { pubNumber: pub.pubNumber, participationCount: pub.participations.length });
+        }
+        return hasParticipations;
       }
 
       // If a specific store is selected, check if that store participates
@@ -223,7 +227,12 @@ export default function CalendarGrid({
         return matches;
       }
 
-      return true;
+      // Default case: only show publicities with participations
+      const hasParticipations = pub.participations && pub.participations.length > 0;
+      if (hasParticipations) {
+        console.log('📋 Publicity has participations (default case):', { pubNumber: pub.pubNumber, participationCount: pub.participations.length });
+      }
+      return hasParticipations;
     });
   };
 
