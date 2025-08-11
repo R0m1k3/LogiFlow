@@ -6,6 +6,23 @@ import { requireModulePermission, requireAdmin } from "./permissions";
 
 console.log('🔍 Using development storage and authentication');
 
+// Function to get the correct hashPassword function based on environment
+async function getHashPassword() {
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      const prodAuth = await import("./localAuth.production.js");
+      return prodAuth.hashPassword;
+    } catch (error) {
+      console.error('❌ Failed to import production auth, falling back to dev auth:', error);
+      const devAuth = await import("./localAuth");
+      return devAuth.hashPassword;
+    }
+  } else {
+    const devAuth = await import("./localAuth");
+    return devAuth.hashPassword;
+  }
+}
+
 
 // Alias pour compatibilité
 const isAuthenticated = requireAuth;
@@ -887,9 +904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Hash password if provided (for local auth)
       if (userData.password) {
-        // Import from the correct auth module based on environment
-        const authModule = process.env.NODE_ENV === 'production' ? "./localAuth.production.js" : "./localAuth";
-        const { hashPassword } = await import(authModule);
+        const hashPassword = await getHashPassword();
         userData.password = await hashPassword(userData.password);
       }
       
@@ -945,9 +960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Hash password if provided
       if (userData.password) {
-        // Import from the correct auth module based on environment
-        const authModule = process.env.NODE_ENV === 'production' ? "./localAuth.production.js" : "./localAuth";
-        const { hashPassword } = await import(authModule);
+        const hashPassword = await getHashPassword();
         userData.password = await hashPassword(userData.password);
         // Mark password as changed
         (userData as any).passwordChanged = true;

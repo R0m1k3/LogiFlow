@@ -1,0 +1,140 @@
+HEAD /api/health 200 in 1ms
+
+Error updating user: Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/app/dist/localAuth.production.js' imported from /app/dist/index.js
+
+    at finalizeResolution (node:internal/modules/esm/resolve:283:11)
+
+    at moduleResolve (node:internal/modules/esm/resolve:952:10)
+
+    at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:642:12)
+
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:591:25)
+
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:574:38)
+
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:236:38)
+
+    at ModuleLoader.import (node:internal/modules/esm/loader:539:34)
+
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31)
+
+    at importModuleDynamicallyCallback (node:internal/modules/esm/utils:260:12) {
+
+  code: 'ERR_MODULE_NOT_FOUND',
+
+  url: 'file:///app/dist/localAuth.production.js'
+
+}
+
+PUT /api/users/admin_local 500 in 14ms
+
+HEAD /api/health 200 in 1ms
+
+Error assigning user to group: error: column "created_at" of relation "user_groups" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.assignUserToGroup (file:///app/dist/index.js:1225:32)
+
+    at async file:///app/dist/index.js:3842:25 {
+
+  length: 134,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '51',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_target.c',
+
+  line: '1075',
+
+  routine: 'checkInsertTargets'
+
+}
+
+POST /api/users/admin_local/groups 500 in 55ms
+
+Error assigning user to group: error: column "created_at" of relation "user_groups" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.assignUserToGroup (file:///app/dist/index.js:1225:32)
+
+    at async file:///app/dist/index.js:3842:25 {
+
+  length: 134,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '51',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_target.c',
+
+  line: '1075',
+
+  routine: 'checkInsertTargets'
+
+}
+
+POST /api/users/admin_local/groups 500 in 27ms
+
+HEAD /api/health 200 in 2ms
+
+
+      
+      
+    
