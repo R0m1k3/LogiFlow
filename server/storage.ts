@@ -1965,4 +1965,4 @@ class MemStorage implements IStorage {
 // Use MemStorage in development, DatabaseStorage in production
 const isProduction = process.env.NODE_ENV === 'production' && process.env.DATABASE_URL;
 export const storage = isProduction ? new DatabaseStorage() : new MemStorage();
-console.log(isProduction ? '🐳 Using PostgreSQL storage' : '🔧 Using in-memory storage for development');
+console.log(isProduction ? '🐳 PRODUCTION: Using PostgreSQL storage' : '🔧 DEV: Using in-memory storage');

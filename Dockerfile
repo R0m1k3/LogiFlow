@@ -89,6 +89,7 @@ USER nextjs
 
 # Expose port
 EXPOSE 3000
+ENV PORT=3000
 
 # Install wget for health check
 USER root

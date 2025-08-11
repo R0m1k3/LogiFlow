@@ -1,0 +1,193 @@
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
+import type { Express } from "express";
+import session from "express-session";
+import { storage } from "./storage.js";
+import connectPg from "connect-pg-simple";
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
+
+const scryptAsync = promisify(scrypt);
+
+console.log('🐳 PRODUCTION: Local auth configured with PostgreSQL sessions');
+
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+async function comparePasswords(supplied: string, stored: string) {
+  console.log('🔐 Production password comparison');
+  
+  if (!stored || !stored.includes('.')) {
+    console.error('❌ Invalid password format');
+    return false;
+  }
+  
+  const [hashed, salt] = stored.split(".");
+  if (!hashed || !salt) {
+    console.error('❌ Missing hash or salt');
+    return false;
+  }
+  
+  try {
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    const result = timingSafeEqual(hashedBuf, suppliedBuf);
+    console.log('🔐 Password comparison result:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Error comparing passwords:', error);
+    return false;
+  }
+}
+
+async function createDefaultAdminUser() {
+  try {
+    const existingAdmin = await storage.getUserByUsername('admin');
+    if (!existingAdmin) {
+      const hashedPassword = await hashPassword('admin');
+      await storage.createUser({
+        id: 'admin_prod',
+        username: 'admin',
+        email: 'admin@logiflow.com',
+        firstName: 'Administrateur',
+        lastName: 'Production',
+        password: hashedPassword,
+        role: 'admin',
+        passwordChanged: false,
+      });
+      console.log('✅ Production admin user created: admin/admin');
+    } else {
+      console.log('✅ Production admin user already exists');
+    }
+  } catch (error) {
+    console.error('Error managing admin user:', error);
+  }
+}
+
+export function setupLocalAuth(app: Express) {
+  // Create admin user on startup
+  createDefaultAdminUser();
+  
+  const PostgresSessionStore = connectPg(session);
+  const sessionStore = new PostgresSessionStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: true,
+    tableName: 'session',
+  });
+
+  const sessionSettings: session.SessionOptions = {
+    secret: process.env.SESSION_SECRET || 'production-fallback-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    store: sessionStore,
+    cookie: {
+      httpOnly: true,
+      secure: false, // Set to true with HTTPS proxy
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  };
+
+  app.set("trust proxy", 1);
+  app.use(session(sessionSettings));
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  passport.use(
+    new LocalStrategy(
+      {
+        usernameField: 'username',
+        passwordField: 'password',
+      },
+      async (username, password, done) => {
+        try {
+          const user = await storage.getUserByUsername(username);
+          if (!user || !user.password) {
+            return done(null, false, { message: 'Invalid credentials' });
+          }
+
+          const isValidPassword = await comparePasswords(password, user.password);
+          if (!isValidPassword) {
+            return done(null, false, { message: 'Invalid credentials' });
+          }
+
+          return done(null, user);
+        } catch (error) {
+          return done(error);
+        }
+      }
+    )
+  );
+
+  passport.serializeUser((user, done) => done(null, user.id));
+  passport.deserializeUser(async (id: string, done) => {
+    try {
+      const user = await storage.getUserWithGroups(id);
+      done(null, user);
+    } catch (error) {
+      done(error);
+    }
+  });
+
+  // Login route
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(400).json({ message: info?.message || "Invalid credentials" });
+      }
+      
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.json({ 
+          id: user.id, 
+          username: user.username, 
+          email: user.email, 
+          firstName: user.firstName, 
+          lastName: user.lastName, 
+          role: user.role,
+          passwordChanged: user.passwordChanged 
+        });
+      });
+    })(req, res, next);
+  });
+
+  // Logout route
+  app.post("/api/logout", (req: any, res: any, next: any) => {
+    req.logout((err: any) => {
+      if (err) return next(err);
+      res.json({ message: "Logout successful" });
+    });
+  });
+
+  // Get current user
+  app.get("/api/user", (req: any, res) => {
+    if (req.isAuthenticated && req.isAuthenticated()) {
+      res.json({
+        id: req.user.id,
+        username: req.user.username,
+        email: req.user.email,
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
+        role: req.user.role,
+        passwordChanged: req.user.passwordChanged
+      });
+    } else {
+      res.status(401).json({ message: "Not authenticated" });
+    }
+  });
+
+  // Check default credentials endpoint
+  app.get("/api/default-credentials-check", (req, res) => {
+    res.json({ hasDefaultCredentials: true });
+  });
+}
+
+export function requireAuth(req: any, res: any, next: any) {
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Authentication required" });
+}
