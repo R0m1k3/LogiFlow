@@ -105,6 +105,38 @@ export default function Calendar() {
     },
   });
 
+  // Fetch publicities for the current year
+  const { data: publicities = [], isLoading: loadingPublicities } = useQuery({
+    queryKey: ['/api/publicities', currentDate.getFullYear(), selectedStoreId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.append('year', currentDate.getFullYear().toString());
+      if (selectedStoreId && user?.role === 'admin') {
+        params.append('storeId', selectedStoreId.toString());
+      }
+      
+      const url = `/api/publicities?${params.toString()}`;
+      console.log('📅 Calendar fetching publicities:', {
+        url,
+        selectedStoreId,
+        userRole: user?.role,
+        year: currentDate.getFullYear()
+      });
+      
+      const response = await fetch(url, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch publicities');
+      }
+      
+      const data = await response.json();
+      console.log('📅 Calendar publicities received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
   const navigateMonth = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
     if (direction === 'prev') {
@@ -143,7 +175,7 @@ export default function Calendar() {
 
 
 
-  const isLoading = loadingOrders || loadingDeliveries;
+  const isLoading = loadingOrders || loadingDeliveries || loadingPublicities;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -226,6 +258,9 @@ export default function Calendar() {
             currentDate={currentDate}
             orders={orders}
             deliveries={deliveries}
+            publicities={publicities}
+            selectedStoreId={selectedStoreId}
+            userGroups={user?.userGroups || []}
             onDateClick={handleDateClick}
             onItemClick={handleItemClick}
           />

@@ -11,6 +11,9 @@ interface CalendarGridProps {
   currentDate: Date;
   orders: OrderWithRelations[];
   deliveries: DeliveryWithRelations[];
+  publicities: any[];
+  selectedStoreId: number | null;
+  userGroups: any[];
   onDateClick: (date: Date) => void;
   onItemClick: (item: any, type: 'order' | 'delivery') => void;
 }
@@ -162,11 +165,48 @@ export default function CalendarGrid({
   currentDate,
   orders,
   deliveries,
+  publicities,
+  selectedStoreId,
+  userGroups,
   onDateClick,
   onItemClick,
 }: CalendarGridProps) {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
+
+  // Helper function to filter publicities based on user's assigned stores
+  const getPublicitiesForDate = (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    
+    return publicities.filter(pub => {
+      // Check if the date is within the publicity period
+      const pubStart = pub.startDate;
+      const pubEnd = pub.endDate;
+      
+      if (dateStr < pubStart || dateStr > pubEnd) {
+        return false;
+      }
+
+      // If no store is selected and user has no assigned groups, show all publicities
+      if (!selectedStoreId && (!userGroups || userGroups.length === 0)) {
+        return true;
+      }
+
+      // If a specific store is selected, check if that store participates
+      if (selectedStoreId) {
+        return pub.participatingGroups?.some((pg: any) => pg.groupId === selectedStoreId);
+      }
+
+      // If no specific store selected but user has assigned stores, 
+      // show publicities where any of user's stores participate
+      if (userGroups && userGroups.length > 0) {
+        const userGroupIds = userGroups.map((ug: any) => ug.groupId);
+        return pub.participatingGroups?.some((pg: any) => userGroupIds.includes(pg.groupId));
+      }
+
+      return true;
+    });
+  };
 
   // Get all days in the month
   const monthDays = eachDayOfInterval({
@@ -280,6 +320,7 @@ export default function CalendarGrid({
           const isCurrentMonth = isSameMonth(date, currentDate);
           const isTodayDate = isToday(date);
           const { orders: dayOrders, deliveries: dayDeliveries } = getItemsForDate(date);
+          const dayPublicities = getPublicitiesForDate(date);
           
           return (
             <div
@@ -310,9 +351,45 @@ export default function CalendarGrid({
                 />
               </div>
               
+              {/* Publicities in top-right corner */}
+              {dayPublicities.length > 0 && (
+                <div className="absolute top-1 right-1 flex flex-col items-end gap-1">
+                  {dayPublicities.slice(0, 3).map((pub, idx) => (
+                    <div
+                      key={`${pub.id}-${idx}`}
+                      className="bg-purple-100 text-purple-800 text-xs px-1.5 py-0.5 rounded-sm border border-purple-200 font-medium shadow-sm cursor-help"
+                      title={`Pub ${pub.pubNumber}: ${pub.designation}${pub.participatingGroups ? ` - Magasins: ${pub.participatingGroups.map((pg: any) => pg.group?.name).join(', ')}` : ''}`}
+                    >
+                      {pub.pubNumber}
+                    </div>
+                  ))}
+                  {dayPublicities.length > 3 && (
+                    <div className="bg-purple-200 text-purple-700 text-xs px-1.5 py-0.5 rounded-sm border border-purple-300 font-medium">
+                      +{dayPublicities.length - 3}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Quick Create Button */}
-              {isCurrentMonth && (
+              {isCurrentMonth && dayPublicities.length === 0 && (
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    size="sm"
+                    className="w-6 h-6 bg-accent text-white rounded-full p-0 hover:bg-orange-600"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDateClick(date);
+                    }}
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+              
+              {/* Quick Create Button when publicities are present */}
+              {isCurrentMonth && dayPublicities.length > 0 && (
+                <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
                     size="sm"
                     className="w-6 h-6 bg-accent text-white rounded-full p-0 hover:bg-orange-600"
