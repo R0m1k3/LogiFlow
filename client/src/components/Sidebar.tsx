@@ -13,7 +13,6 @@ import {
   LogOut,
   FileText,
   Megaphone,
-  Shield,
   Database,
   ShoppingCart,
   Clock,
@@ -132,12 +131,6 @@ export default function Sidebar() {
       path: "/users", 
       label: "Utilisateurs", 
       icon: UserCog, 
-      roles: ["admin"] 
-    },
-    { 
-      path: "/roles", 
-      label: "Gestion des Rôles", 
-      icon: Shield, 
       roles: ["admin"] 
     },
     { 
