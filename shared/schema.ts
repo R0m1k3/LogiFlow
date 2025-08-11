@@ -136,40 +136,7 @@ export const publicityParticipations = pgTable("publicity_participations", {
   pk: primaryKey({ columns: [table.publicityId, table.groupId] })
 }));
 
-// Roles - Dynamic role management
-export const roles = pgTable("roles", {
-  id: serial("id").primaryKey(),
-  name: varchar("name").notNull().unique(),
-  displayName: varchar("display_name").notNull(),
-  description: text("description"),
-  color: varchar("color").default("#6b7280"), // Couleur d'affichage
-  isSystem: boolean("is_system").default(false), // Rôles système non supprimables
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
 
-// Permissions - Available permissions in the system
-export const permissions = pgTable("permissions", {
-  id: serial("id").primaryKey(),
-  name: varchar("name").notNull().unique(),
-  displayName: varchar("display_name").notNull(),
-  description: text("description"),
-  category: varchar("category").notNull(), // dashboard, orders, deliveries, users, etc.
-  action: varchar("action").notNull(), // read, create, update, delete, validate
-  resource: varchar("resource").notNull(), // orders, deliveries, users, etc.
-  isSystem: boolean("is_system").default(true), // Permissions système
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Role Permissions - Many to many relationship
-export const rolePermissions = pgTable("role_permissions", {
-  roleId: integer("role_id").notNull(),
-  permissionId: integer("permission_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.roleId, table.permissionId] })
-}));
 
 // NocoDB configuration globale (une seule instance NocoDB partagée)
 export const nocodbConfig = pgTable("nocodb_config", {
@@ -221,15 +188,7 @@ export const customerOrders = pgTable("customer_orders", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// User Roles - Many to many relationship (supports multiple roles per user)
-export const userRoles = pgTable("user_roles", {
-  userId: varchar("user_id").notNull(),
-  roleId: integer("role_id").notNull(),
-  assignedBy: varchar("assigned_by").notNull(), // Who assigned this role
-  assignedAt: timestamp("assigned_at").defaultNow(),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.userId, table.roleId] })
-}));
+
 
 // DLC Products (Date Limite de Consommation)
 export const dlcProducts = pgTable("dlc_products", {
@@ -273,7 +232,6 @@ export const tasks = pgTable("tasks", {
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   userGroups: many(userGroups),
-  userRoles: many(userRoles),
   createdOrders: many(orders),
   createdDeliveries: many(deliveries),
   createdPublicities: many(publicities),
@@ -368,36 +326,7 @@ export const publicityParticipationsRelations = relations(publicityParticipation
   }),
 }));
 
-export const rolesRelations = relations(roles, ({ many }) => ({
-  userRoles: many(userRoles),
-  rolePermissions: many(rolePermissions),
-}));
 
-export const userRolesRelations = relations(userRoles, ({ one }) => ({
-  user: one(users, {
-    fields: [userRoles.userId],
-    references: [users.id],
-  }),
-  role: one(roles, {
-    fields: [userRoles.roleId],
-    references: [roles.id],
-  }),
-}));
-
-export const permissionsRelations = relations(permissions, ({ many }) => ({
-  rolePermissions: many(rolePermissions),
-}));
-
-export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
-  role: one(roles, {
-    fields: [rolePermissions.roleId],
-    references: [roles.id],
-  }),
-  permission: one(permissions, {
-    fields: [rolePermissions.permissionId],
-    references: [permissions.id],
-  }),
-}));
 
 export const customerOrdersRelations = relations(customerOrders, ({ one }) => ({
   group: one(groups, {
@@ -502,24 +431,7 @@ export const insertPublicityParticipationSchema = createInsertSchema(publicityPa
   createdAt: true,
 });
 
-export const insertRoleSchema = createInsertSchema(roles).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
-export const insertPermissionSchema = createInsertSchema(permissions).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({
-  createdAt: true,
-});
-
-export const insertUserRoleSchema = createInsertSchema(userRoles).omit({
-  assignedAt: true,
-});
 
 export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
   id: true,
@@ -606,31 +518,6 @@ export type PublicityWithRelations = Publicity & {
   participations: (PublicityParticipation & { group: Group })[];
 };
 
-export type Role = typeof roles.$inferSelect;
-export type InsertRole = z.infer<typeof insertRoleSchema>;
-
-export type Permission = typeof permissions.$inferSelect;
-export type InsertPermission = z.infer<typeof insertPermissionSchema>;
-
-export type RolePermission = typeof rolePermissions.$inferSelect;
-export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
-
-export type UserRole = typeof userRoles.$inferSelect;
-export type InsertUserRole = z.infer<typeof insertUserRoleSchema>;
-
-export type RoleWithPermissions = Role & {
-  rolePermissions: (RolePermission & { permission: Permission })[];
-};
-
-export type UserWithRoles = User & {
-  userRoles: (UserRole & { role: Role })[];
-};
-
-export type PermissionWithActions = Permission & {
-  action: string;
-  resource: string;
-};
-
 export type NocodbConfig = typeof nocodbConfig.$inferSelect;
 export type InsertNocodbConfig = z.infer<typeof insertNocodbConfigSchema>;
 
@@ -641,11 +528,6 @@ export type CustomerOrderWithRelations = CustomerOrder & {
   group: Group;
   creator: User;
   supplier: Supplier;
-};
-
-export type UserWithRole = User & {
-  dynamicRole?: Role | null;
-  userGroups: (UserGroup & { group: Group })[];
 };
 
 export type DlcProduct = typeof dlcProducts.$inferSelect;

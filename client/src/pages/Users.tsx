@@ -12,6 +12,7 @@ import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { getRoleTailwindClasses, getRoleDisplayName } from "@/lib/roleUtils";
+import { usePermissions } from "@/lib/permissions";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { 
   Search, 

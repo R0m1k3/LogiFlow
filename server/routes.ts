@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupLocalAuth, requireAuth } from "./localAuth";
+import { requireModulePermission, requireAdmin } from "./permissions";
 
 console.log('🔍 Using development storage and authentication');
 
@@ -19,9 +20,6 @@ import {
   insertCustomerOrderSchema,
   insertDlcProductSchema,
   insertDlcProductFrontendSchema,
-  insertRoleSchema,
-  insertPermissionSchema,
-  insertUserRoleSchema,
   insertTaskSchema
 } from "@shared/schema";
 import { z } from "zod";
@@ -853,9 +851,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      // Get all users with roles and groups for admin
-      const usersWithRoles = await storage.getUsersWithRolesAndGroups();
-      const safeUsers = Array.isArray(usersWithRoles) ? usersWithRoles : [];
+      // Get all users with groups for admin
+      const allUsers = await storage.getUsers();
+      const safeUsers = Array.isArray(allUsers) ? allUsers : [];
       
       console.log('🔐 API /api/users - Returning:', { isArray: Array.isArray(safeUsers), length: safeUsers.length });
       res.json(safeUsers);
@@ -1340,129 +1338,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
-  // Role Management API Routes
   
   // Get all roles
-  app.get('/api/roles', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Access denied" });
-      }
-
-      const roles = await storage.getRoles();
-      res.json(Array.isArray(roles) ? roles : []);
-    } catch (error) {
-      console.error("Error fetching roles:", error);
-      res.status(500).json([]);
-    }
-  });
 
   // Get all permissions
-  app.get('/api/permissions', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      console.log(`🔍 ${isProduction ? 'PRODUCTION' : 'DEV'} Permissions API - User ID:`, userId);
-      
-      const user = await storage.getUserWithGroups(userId);
-      console.log(`👤 ${isProduction ? 'PRODUCTION' : 'DEV'} Permissions API - User found:`, user ? user.role : 'NOT FOUND');
-      
-      if (!user || user.role !== 'admin') {
-        console.log(`❌ ${isProduction ? 'PRODUCTION' : 'DEV'} Permissions API - Access denied, user role:`, user?.role);
-        return res.status(403).json({ message: "Accès refusé - droits administrateur requis" });
-      }
-
-      console.log(`🔍 ${isProduction ? 'PRODUCTION' : 'DEV'} Fetching all permissions...`);
-      const permissions = await storage.getPermissions();
-      console.log(`📝 ${isProduction ? 'PRODUCTION' : 'DEV'} Permissions fetched:`, permissions.length, "items");
-      console.log(`🏷️ ${isProduction ? 'PRODUCTION' : 'DEV'} Categories found:`, [...new Set(permissions.map(p => p.category))]);
-      console.log(`🔧 ${isProduction ? 'PRODUCTION' : 'DEV'} DLC permissions:`, permissions.filter(p => p.category === 'gestion_dlc').map(p => p.name));
-      
-      // 🎯 VÉRIFICATION SPÉCIFIQUE PERMISSIONS TÂCHES
-      const taskPermissions = permissions.filter(p => p.category === 'gestion_taches');
-      console.log(`📋 ${isProduction ? 'PRODUCTION' : 'DEV'} Task permissions found:`, taskPermissions.length);
-      if (taskPermissions.length > 0) {
-        console.log(`📋 ${isProduction ? 'PRODUCTION' : 'DEV'} Task permissions details:`);
-        taskPermissions.forEach(p => {
-          console.log(`  - ID: ${p.id}, Name: ${p.name}, DisplayName: "${p.displayName}", Category: ${p.category}`);
-        });
-      } else {
-        console.log(`❌ ${isProduction ? 'PRODUCTION' : 'DEV'} NO TASK PERMISSIONS FOUND - This explains the frontend issue!`);
-      }
-      
-      res.json(Array.isArray(permissions) ? permissions : []);
-    } catch (error) {
-      console.error("❌ Error fetching permissions:", error);
-      res.status(500).json([]);
-    }
-  });
 
   // Get permissions for a specific role
-  app.get('/api/roles/:id/permissions', isAuthenticated, async (req: any, res) => {
-    console.log("🚀 ROLE PERMISSIONS ROUTE CALLED - Starting");
-    try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      console.log("🔍 ROLE PERMISSIONS - User ID:", userId);
-      
-      const user = await storage.getUserWithGroups(userId);
-      console.log("👤 ROLE PERMISSIONS - User found:", user ? `${user.role} (${user.username})` : 'NOT FOUND');
-      
-      if (!user || user.role !== 'admin') {
-        console.log("❌ ROLE PERMISSIONS - Access denied, user role:", user?.role);
-        return res.status(403).json({ message: "Access denied" });
-      }
-
-      const roleId = parseInt(req.params.id);
-      console.log("🔍 ROLE PERMISSIONS - Fetching for role ID:", roleId);
-      console.log("🔍 ROLE PERMISSIONS - Storage type:", storage.constructor.name);
-      
-      const rolePermissions = await storage.getRolePermissions(roleId);
-      console.log("📝 ROLE PERMISSIONS - Fetched:", rolePermissions?.length || 0, "items");
-      
-      if (rolePermissions && rolePermissions.length > 0) {
-        console.log("🏷️ ROLE PERMISSIONS - Sample:", rolePermissions.slice(0, 2));
-        console.log("🔍 ROLE PERMISSIONS - Full structure sample:", JSON.stringify(rolePermissions[0], null, 2));
-        
-        // Debug spécifique pour les tâches
-        const taskPermissions = rolePermissions.filter(rp => rp.permission && rp.permission.category === 'gestion_taches');
-        console.log("🎯 ROLE PERMISSIONS - Task permissions:", taskPermissions.length);
-        taskPermissions.forEach(tp => {
-          console.log(`  - Task permission: ${tp.permission.name} (${tp.permission.displayName})`);
-        });
-      } else {
-        console.log("⚠️ ROLE PERMISSIONS - No permissions found for role", roleId);
-      }
-      
-      res.json(rolePermissions || []);
-    } catch (error) {
-      console.error("❌ ROLE PERMISSIONS - Error:", error);
-      res.status(500).json({ message: "Failed to fetch role permissions" });
-    }
-  });
 
   // Set permissions for a role
-  app.post('/api/roles/:id/permissions', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Access denied" });
-      }
-
-      const roleId = parseInt(req.params.id);
-      const { permissionIds } = req.body;
-
-      if (!Array.isArray(permissionIds)) {
-        return res.status(400).json({ message: "permissionIds must be an array" });
-      }
-
-      await storage.setRolePermissions(roleId, permissionIds);
-      console.log(`✅ Permissions updated for role ${roleId}:`, permissionIds);
-      res.json({ message: "Permissions updated successfully" });
-    } catch (error) {
-      console.error("Error setting role permissions:", error);
-      res.status(500).json({ message: "Failed to update permissions" });
-    }
-  });
 
   // Set roles for a user  
   app.post('/api/users/:userId/roles', isAuthenticated, async (req: any, res) => {
@@ -1672,208 +1555,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== ROLE MANAGEMENT ROUTES =====
 
   // Roles routes
-  app.get('/api/roles', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-
-      const roles = await storage.getRoles();
-      res.json(roles);
-    } catch (error) {
-      console.error("Error fetching roles:", error);
-      res.status(500).json({ message: "Failed to fetch roles" });
-    }
-  });
-
-  app.get('/api/roles/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-
-      const id = parseInt(req.params.id);
-      const role = await storage.getRoleWithPermissions(id);
-      if (!role) {
-        return res.status(404).json({ message: "Role not found" });
-      }
-      res.json(role);
-    } catch (error) {
-      console.error("Error fetching role:", error);
-      res.status(500).json({ message: "Failed to fetch role" });
-    }
-  });
-
-  app.post('/api/roles', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-
-      const data = insertRoleSchema.parse(req.body);
-      const role = await storage.createRole(data);
-      res.json(role);
-    } catch (error) {
-      console.error("Error creating role:", error);
-      res.status(500).json({ message: "Failed to create role" });
-    }
-  });
-
-  app.put('/api/roles/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-
-      const id = parseInt(req.params.id);
-      const data = insertRoleSchema.partial().parse(req.body);
-      const role = await storage.updateRole(id, data);
-      res.json(role);
-    } catch (error) {
-      console.error("Error updating role:", error);
-      res.status(500).json({ message: "Failed to update role" });
-    }
-  });
-
-  app.delete('/api/roles/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-
-      const id = parseInt(req.params.id);
-      
-      // Check if role is system role
-      const role = await storage.getRole(id);
-      if (role?.isSystem) {
-        return res.status(400).json({ message: "Cannot delete system role" });
-      }
-
-      await storage.deleteRole(id);
-      res.json({ message: "Role deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting role:", error);
-      res.status(500).json({ message: "Failed to delete role" });
-    }
-  });
 
 
 
-  app.get('/api/permissions/category/:category', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
 
-      const category = req.params.category;
-      const permissions = await storage.getPermissionsByCategory(category);
-      res.json(permissions);
-    } catch (error) {
-      console.error("Error fetching permissions by category:", error);
-      res.status(500).json({ message: "Failed to fetch permissions" });
-    }
-  });
 
-  app.post('/api/permissions', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
 
-      const data = insertPermissionSchema.parse(req.body);
-      const permission = await storage.createPermission(data);
-      res.json(permission);
-    } catch (error) {
-      console.error("Error creating permission:", error);
-      res.status(500).json({ message: "Failed to create permission" });
-    }
-  });
 
-  app.put('/api/permissions/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
 
-      const id = parseInt(req.params.id);
-      const data = insertPermissionSchema.partial().parse(req.body);
-      const permission = await storage.updatePermission(id, data);
-      res.json(permission);
-    } catch (error) {
-      console.error("Error updating permission:", error);
-      res.status(500).json({ message: "Failed to update permission" });
-    }
-  });
 
-  app.delete('/api/permissions/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
 
-      const id = parseInt(req.params.id);
-      
-      // Check if permission is system permission
-      const permission = await storage.getPermission(id);
-      if (permission?.isSystem) {
-        return res.status(400).json({ message: "Cannot delete system permission" });
-      }
-
-      await storage.deletePermission(id);
-      res.json({ message: "Permission deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting permission:", error);
-      res.status(500).json({ message: "Failed to delete permission" });
-    }
-  });
 
   // Role-Permission association routes
-  app.get('/api/roles/:roleId/permissions', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
 
-      const roleId = parseInt(req.params.roleId);
-      const rolePermissions = await storage.getRolePermissions(roleId);
-      res.json(rolePermissions);
-    } catch (error) {
-      console.error("Error fetching role permissions:", error);
-      res.status(500).json({ message: "Failed to fetch role permissions" });
-    }
-  });
-
-  app.put('/api/roles/:roleId/permissions', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-
-      const roleId = parseInt(req.params.roleId);
-      const { permissionIds } = req.body;
-      
-      if (!Array.isArray(permissionIds)) {
-        return res.status(400).json({ message: "permissionIds must be an array" });
-      }
-
-      await storage.setRolePermissions(roleId, permissionIds);
-      res.json({ message: "Role permissions updated successfully" });
-    } catch (error) {
-      console.error("Error setting role permissions:", error);
-      res.status(500).json({ message: "Failed to set role permissions" });
-    }
-  });
 
   // User-Role association routes
   app.get('/api/users/:userId/roles', isAuthenticated, async (req: any, res) => {
@@ -2442,23 +2136,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Debug endpoint to check permissions without auth (temporary)
-  app.get('/api/debug/permissions-status', async (req: any, res) => {
-    try {
-      const permissions = await storage.getPermissions();
-      const taskPermissions = permissions.filter(p => p.category === 'gestion_taches');
-      const samplePermissions = permissions.slice(0, 5);
-      
-      res.json({
-        total: permissions.length,
-        taskPermissions: taskPermissions,
-        samplePermissions: samplePermissions,
-        categories: [...new Set(permissions.map(p => p.category))].sort(),
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
 
   // Debug endpoint to check current user auth status
   app.get('/api/debug/auth-status', isAuthenticated, async (req: any, res) => {
@@ -2486,34 +2163,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Debug endpoint to check task permissions specifically
-  app.get('/api/debug/task-permissions', isAuthenticated, async (req: any, res) => {
-    try {
-      console.log('🔍 DEV TASK PERMISSIONS DEBUG');
-      
-      const permissions = await storage.getPermissions();
-      const taskPermissions = permissions.filter(p => p.category === 'gestion_taches');
-      
-      console.log('📋 DEV Task permissions found:', taskPermissions.length);
-      taskPermissions.forEach(p => {
-        console.log(`  - ID: ${p.id}, Name: ${p.name}, DisplayName: "${p.displayName}", Category: ${p.category}`);
-      });
-      
-      res.json({
-        environment: 'development',
-        storage: taskPermissions,
-        allCategories: [...new Set(permissions.map(p => p.category))].sort(),
-        summary: {
-          total_permissions: permissions.length,
-          task_permissions_count: taskPermissions.length,
-          has_gestion_taches: taskPermissions.length > 0,
-          timestamp: new Date().toISOString()
-        }
-      });
-    } catch (error) {
-      console.error('❌ Task permissions debug error:', error);
-      res.status(500).json({ message: "Debug failed", error: error.message });
-    }
-  });
 
   // Test CRITIQUE - Comparaison des storages pour permissions tâches
   app.get('/api/debug/compare-storages', isAuthenticated, async (req: any, res) => {
@@ -2521,12 +2170,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('🔍 CRITICAL TEST - Comparing dev vs prod storage for task permissions');
       
       // Test développement
-      const devPermissions = await devStorage.getPermissions();
       const devTaskPerms = devPermissions.filter(p => p.category === 'gestion_taches');
       console.log('📋 DEV storage - Task permissions:', devTaskPerms.length);
       
       // Test production
-      const prodPermissions = await prodStorage.getPermissions();
       const prodTaskPerms = prodPermissions.filter(p => p.category === 'gestion_taches');
       console.log('📋 PROD storage - Task permissions:', prodTaskPerms.length);
       
@@ -2553,181 +2200,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ENDPOINT TEMPORAIRE - Test production storage avec gestion d'erreur détaillée
-  app.get('/api/debug/test-production-permissions', isAuthenticated, async (req: any, res) => {
-    console.log('🚨 STARTING PRODUCTION STORAGE TEST');
-    
-    try {
-      // Test basique de connexion d'abord
-      console.log('🔍 Testing production storage connection...');
-      
-      if (!prodStorage) {
-        throw new Error('Production storage is not available');
-      }
-      
-      console.log('🔍 Production storage object exists, testing getPermissions...');
-      const productionPermissions = await prodStorage.getPermissions();
-      console.log('✅ Production storage getPermissions() succeeded:', productionPermissions.length, 'permissions');
-      
-      const taskPermissions = productionPermissions.filter(p => p.category === 'gestion_taches');
-      console.log('🏭 PRODUCTION STORAGE - Task permissions found:', taskPermissions.length);
-      
-      if (taskPermissions.length > 0) {
-        console.log('📋 Production task permissions details:');
-        taskPermissions.forEach(p => {
-          console.log(`  - ID: ${p.id}, Name: ${p.name}, DisplayName: "${p.displayName}", Category: ${p.category}`);
-        });
-      } else {
-        console.log('❌ NO TASK PERMISSIONS found in production storage!');
-      }
-      
-      res.json({
-        success: true,
-        environment: 'forced_production_storage',
-        total_permissions: productionPermissions.length,
-        task_permissions_count: taskPermissions.length,
-        task_permissions: taskPermissions,
-        all_categories: [...new Set(productionPermissions.map(p => p.category))].sort(),
-        has_gestion_taches: taskPermissions.length > 0,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('❌ CRITICAL ERROR in production storage test:', error);
-      console.error('❌ Error type:', typeof error);
-      console.error('❌ Error message:', error?.message);
-      console.error('❌ Error stack:', error?.stack);
-      
-      res.status(500).json({ 
-        success: false,
-        message: "Production storage test failed", 
-        error: error?.message || 'Unknown error',
-        errorType: typeof error,
-        timestamp: new Date().toISOString()
-      });
-    }
-  });
 
 
 
   // Debug/Fix endpoint for production permission issues
-  app.post('/api/debug/fix-production-permissions', isAuthenticated, async (req: any, res) => {
-    try {
-      console.log('🔧 FIXING PRODUCTION PERMISSIONS...');
-      
-      // Only allow admin users to run fixes
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      const user = await storage.getUserWithGroups(userId);
-      if (user?.role !== 'admin') {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
-      const fixes = [];
-      
-      // 1. Fix missing display names for permissions 
-      console.log('📝 Fixing permission display names...');
-      const permissions = await storage.getPermissions();
-      let fixedDisplayNames = 0;
-      
-      for (const permission of permissions) {
-        if (!permission.displayName || permission.displayName === permission.name) {
-          // Create proper French display names based on name patterns
-          let displayName = permission.name;
-          
-          // Pattern-based translations
-          if (permission.name.includes('_read')) displayName = displayName.replace('_read', ' - Voir');
-          if (permission.name.includes('_create')) displayName = displayName.replace('_create', ' - Créer');
-          if (permission.name.includes('_update')) displayName = displayName.replace('_update', ' - Modifier');
-          if (permission.name.includes('_delete')) displayName = displayName.replace('_delete', ' - Supprimer');
-          if (permission.name.includes('_validate')) displayName = displayName.replace('_validate', ' - Valider');
-          if (permission.name.includes('_print')) displayName = displayName.replace('_print', ' - Imprimer');
-          if (permission.name.includes('_assign')) displayName = displayName.replace('_assign', ' - Assigner');
-          if (permission.name.includes('_notify')) displayName = displayName.replace('_notify', ' - Notifier');
-          if (permission.name.includes('_stats')) displayName = displayName.replace('_stats', ' - Statistiques');
-          
-          // Resource-based translations
-          displayName = displayName
-            .replace('dashboard', 'tableau de bord')
-            .replace('groups', 'magasins')
-            .replace('suppliers', 'fournisseurs')
-            .replace('orders', 'commandes')
-            .replace('deliveries', 'livraisons')
-            .replace('publicities', 'publicités')
-            .replace('customer_orders', 'commandes clients')
-            .replace('tasks', 'tâches')
-            .replace('users', 'utilisateurs')
-            .replace('roles', 'rôles')
-            .replace('permissions', 'permissions')
-            .replace('dlc', 'produits DLC')
-            .replace('calendar', 'calendrier')
-            .replace('reconciliation', 'rapprochement')
-            .replace('bl_reconciliation', 'rapprochement BL')
-            .replace('nocodb_config', 'config NocoDB')
-            .replace('system', 'système');
-          
-          // Capitalize first letter
-          displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-          
-          try {
-            await storage.updatePermission(permission.id, {
-              ...permission,
-              displayName: displayName
-            });
-            fixedDisplayNames++;
-          } catch (updateError) {
-            console.error(`Error updating permission ${permission.id}:`, updateError);
-          }
-        }
-      }
-      
-      fixes.push(`Fixed ${fixedDisplayNames} permission display names`);
-      
-      // 2. Ensure missing task permissions exist
-      console.log('🎯 Checking task management permissions...');
-      const taskPermissions = [
-        { category: "gestion_taches", name: "tasks_read", displayName: "Voir tâches", description: "Accès en lecture aux tâches", action: "read", resource: "tasks" },
-        { category: "gestion_taches", name: "tasks_create", displayName: "Créer tâches", description: "Création de nouvelles tâches", action: "create", resource: "tasks" },
-        { category: "gestion_taches", name: "tasks_update", displayName: "Modifier tâches", description: "Modification des tâches existantes", action: "update", resource: "tasks" },
-        { category: "gestion_taches", name: "tasks_delete", displayName: "Supprimer tâches", description: "Suppression de tâches", action: "delete", resource: "tasks" },
-        { category: "gestion_taches", name: "tasks_assign", displayName: "Assigner tâches", description: "Attribution de tâches aux utilisateurs", action: "assign", resource: "tasks" }
-      ];
-      
-      let createdTaskPermissions = 0;
-      for (const taskPerm of taskPermissions) {
-        const existing = permissions.find(p => p.name === taskPerm.name);
-        if (!existing) {
-          try {
-            await storage.createPermission({
-              ...taskPerm,
-              isSystem: true
-            });
-            createdTaskPermissions++;
-          } catch (createError) {
-            console.error(`Error creating task permission ${taskPerm.name}:`, createError);
-          }
-        }
-      }
-      
-      if (createdTaskPermissions > 0) {
-        fixes.push(`Created ${createdTaskPermissions} missing task permissions`);
-      }
-      
-      console.log('✅ Production permissions fix completed');
-      
-      res.json({
-        success: true,
-        message: 'Production permission fixes applied successfully',
-        fixes: fixes,
-        timestamp: new Date().toISOString()
-      });
-      
-    } catch (error) {
-      console.error('❌ Error fixing production permissions:', error);
-      res.status(500).json({ 
-        success: false,
-        message: 'Failed to fix production permissions', 
-        error: error.message 
-      });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;

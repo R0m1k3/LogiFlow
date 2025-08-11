@@ -79,6 +79,25 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### August 11, 2025 - Permissions System Overhaul & User Management Improvements
+
+#### Hardcoded Permissions System Implementation
+- **Migration from Database to Code**: Replaced flexible database-driven permissions with hardcoded permission system for better performance and control
+- **New Architecture**: 
+  - Created `client/src/lib/permissions.ts` and `shared/permissions.ts` with role-based module permissions
+  - Implemented server-side middleware `server/permissions.ts` for route protection
+  - Removed database tables: `roles`, `permissions`, `rolePermissions`, `userRoles`
+  - Cleaned up storage interface and routes from old permission system
+- **Permission Matrix by Module**:
+  - **Dashboard**: All roles can view
+  - **Calendar/Orders/Deliveries**: Admin/Directeur full access, Manager all except delete, Employee view only
+  - **Reconciliation**: Admin full access, Directeur all except delete, Manager/Employee no access
+  - **Publicity**: Admin full access, others view only
+  - **Customer Orders**: Admin/Directeur full access, Manager all except delete, Employee view + create
+  - **DLC**: Admin/Directeur full access, Manager all except delete, Employee create + view
+  - **Tasks**: Admin/Directeur full access, Manager view + validate, Employee view only
+- **Benefits**: Improved performance, simplified maintenance, no database queries for permission checks
+
 ### August 11, 2025 - User Management Improvements
 
 #### User Deletion Fix

@@ -7,10 +7,6 @@ import {
   userGroups,
   publicities,
   publicityParticipations,
-  roles,
-  permissions,
-  rolePermissions,
-  userRoles,
   customerOrders,
   dlcProducts,
   tasks,
@@ -34,16 +30,6 @@ import {
   type PublicityParticipation,
   type InsertPublicityParticipation,
   type PublicityWithRelations,
-  type Role,
-  type InsertRole,
-  type Permission,
-  type InsertPermission,
-  type RolePermission,
-  type InsertRolePermission,
-  type UserRole,
-  type InsertUserRole,
-  type RoleWithPermissions,
-  type UserWithRoles,
   nocodbConfig,
   type NocodbConfig,
   type InsertNocodbConfig,
@@ -69,8 +55,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   getUserWithGroups(id: string): Promise<UserWithGroups | undefined>;
   getUsers(): Promise<User[]>;
-  getUsersWithRoles(): Promise<UserWithRoles[]>;
-  getUsersWithRolesAndGroups(): Promise<(UserWithRoles & { userGroups: any[] })[]>;
+
   createUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, user: Partial<UpsertUser>): Promise<User>;
   deleteUser(id: string): Promise<void>;
@@ -156,39 +141,8 @@ export interface IStorage {
   validateDlcProduct(id: number, validatedBy: string): Promise<DlcProductFrontend>;
   getDlcStats(groupIds?: number[]): Promise<{ active: number; expiringSoon: number; expired: number; }>;
 
-  // Role management operations
-  getRoles(): Promise<Role[]>;
-  getRole(id: number): Promise<Role | undefined>;
-  createRole(role: InsertRole): Promise<Role>;
-  updateRole(id: number, role: Partial<InsertRole>): Promise<Role>;
-  deleteRole(id: number): Promise<void>;
-  getRoleWithPermissions(id: number): Promise<RoleWithPermissions | undefined>;
 
-  // Permission management operations
-  getPermissions(): Promise<Permission[]>;
-  getPermission(id: number): Promise<Permission | undefined>;
-  createPermission(permission: InsertPermission): Promise<Permission>;
-  updatePermission(id: number, permission: Partial<InsertPermission>): Promise<Permission>;
-  deletePermission(id: number): Promise<void>;
-  getPermissionsByCategory(category: string): Promise<Permission[]>;
 
-  // Role-Permission association operations
-  getRolePermissions(roleId: number): Promise<RolePermission[]>;
-  setRolePermissions(roleId: number, permissionIds: number[]): Promise<void>;
-  addPermissionToRole(roleId: number, permissionId: number): Promise<RolePermission>;
-  removePermissionFromRole(roleId: number, permissionId: number): Promise<void>;
-
-  // User-Role association operations
-  getUserRoles(userId: string): Promise<UserRole[]>;
-  setUserRoles(userId: string, roleIds: number[], assignedBy: string): Promise<void>;
-  addRoleToUser(userId: string, roleId: number, assignedBy: string): Promise<UserRole>;
-  removeRoleFromUser(userId: string, roleId: number): Promise<void>;
-  getUserWithRoles(userId: string): Promise<UserWithRoles | undefined>;
-
-  // Permission checking operations
-  userHasPermission(userId: string, permissionName: string): Promise<boolean>;
-  userHasRole(userId: string, roleName: string): Promise<boolean>;
-  getUserEffectivePermissions(userId: string): Promise<Permission[]>;
 
   // Task operations
   getTasks(groupIds?: number[]): Promise<any[]>;
