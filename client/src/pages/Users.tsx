@@ -917,14 +917,13 @@ export default function UsersPage() {
               </div>
 
               <div>
-                <Label htmlFor="edit-email">Email *</Label>
+                <Label htmlFor="edit-email">Email</Label>
                 <Input
                   id="edit-email"
                   type="email"
                   value={editForm.email}
                   onChange={(e) => setEditForm({...editForm, email: e.target.value})}
-                  placeholder="email@exemple.com"
-                  required
+                  placeholder="email@exemple.com (optionnel)"
                 />
               </div>
 

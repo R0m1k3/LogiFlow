@@ -937,7 +937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: z.enum(['admin', 'manager', 'employee']).optional(),
         firstName: z.string().optional(),
         lastName: z.string().optional(),
-        email: z.string().email().optional(),
+        email: z.union([z.string().email(), z.literal("")]).optional(),
         password: z.string().optional(),
       });
 
