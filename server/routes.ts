@@ -880,14 +880,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: z.string().optional(),
         lastName: z.string().optional(),
         password: z.string().min(1, "Le mot de passe est obligatoire"),
-        role: z.enum(['admin', 'manager', 'employee']).optional(),
+        role: z.enum(['admin', 'directeur', 'manager', 'employee']).optional(),
       });
 
       const userData = createUserSchema.parse(req.body);
       
       // Hash password if provided (for local auth)
       if (userData.password) {
-        const { hashPassword } = await import("./localAuth");
+        // Import from the correct auth module based on environment
+        const authModule = process.env.NODE_ENV === 'production' ? "./localAuth.production" : "./localAuth";
+        const { hashPassword } = await import(authModule);
         userData.password = await hashPassword(userData.password);
       }
       
@@ -932,7 +934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Schema utilisateur SANS champs obligatoires pour résoudre le problème de production
       const updateUserSchema = z.object({
         username: z.string().optional(),
-        role: z.enum(['admin', 'manager', 'employee']).optional(),
+        role: z.enum(['admin', 'directeur', 'manager', 'employee']).optional(),
         firstName: z.union([z.string(), z.literal("")]).optional(),
         lastName: z.union([z.string(), z.literal("")]).optional(),
         email: z.union([z.string().email(), z.literal("")]).optional(),
@@ -943,7 +945,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Hash password if provided
       if (userData.password) {
-        const { hashPassword } = await import("./localAuth");
+        // Import from the correct auth module based on environment
+        const authModule = process.env.NODE_ENV === 'production' ? "./localAuth.production" : "./localAuth";
+        const { hashPassword } = await import(authModule);
         userData.password = await hashPassword(userData.password);
         // Mark password as changed
         (userData as any).passwordChanged = true;
