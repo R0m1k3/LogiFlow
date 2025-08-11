@@ -45,7 +45,9 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       environment: 'production',
-      database: 'connected'
+      database: 'connected',
+      port: process.env.PORT || 3000,
+      publicPath: join(__dirname, 'public')
     });
   });
   
@@ -180,12 +182,29 @@ console.log('🐳 Serving static files from:', publicPath);
 app.use('/assets', express.static(join(publicPath, 'assets')));
 app.use('/', express.static(publicPath));
 
+// Add explicit root route handler
+app.get('/', (req, res) => {
+  console.log('🏠 ROOT: Serving index.html for root request');
+  res.sendFile(join(publicPath, 'index.html'), (err) => {
+    if (err) {
+      console.error('❌ ROOT: Error serving index.html:', err);
+      res.status(500).send('Error loading application');
+    }
+  });
+});
+
 // SPA fallback - serve index.html for all non-API routes
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) {
     return next();
   }
-  res.sendFile(join(publicPath, 'index.html'));
+  console.log(`📄 SPA: Serving index.html for ${req.path}`);
+  res.sendFile(join(publicPath, 'index.html'), (err) => {
+    if (err) {
+      console.error(`❌ SPA: Error serving index.html for ${req.path}:`, err);
+      res.status(500).send('Error loading application');
+    }
+  });
 });
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
