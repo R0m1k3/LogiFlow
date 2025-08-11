@@ -14,6 +14,8 @@
 3. L'API `/api/user` doit fonctionner après connexion
 
 ## Corrections incluses
-- getUserWithGroups() utilise maintenant des requêtes jointes manuelles
+- getUserWithGroups() utilise maintenant des requêtes SQL manuelles (plus de référence à userGroups.createdAt)
 - Système d'authentification robuste avec support multi-format
 - Endpoint d'urgence pour reset admin si nécessaire
+- Routage amélioré pour la page principale (fix 502)
+- Version compilée: $(date)

@@ -1,0 +1,175 @@
+
+      
+🔗 Database initialization: {
+
+  NODE_ENV: 'production',
+
+  isProduction: true,
+
+  hasDbUrl: true,
+
+  dbHost: 'logiflow-db'
+
+}
+
+🐳 PRODUCTION: Using standard PostgreSQL
+
+✅ PostgreSQL connection test successful
+
+🐳 PRODUCTION: Using PostgreSQL storage
+
+🐳 PRODUCTION: Local auth configured with PostgreSQL sessions
+
+🐳 PRODUCTION: Starting LogiFlow application
+
+🐳 Environment: { NODE_ENV: 'production', DATABASE_URL: 'Present', PORT: '3000' }
+
+🐳 Serving static files from: /app/dist/public
+
+🐳 PRODUCTION: LogiFlow serving on port 3000
+
+✅ Production admin user found: { id: 'admin_local', username: 'admin', passwordFormat: 'present' }
+
+🔐 Production password comparison { suppliedLength: 5, storedFormat: '21ff482668...' }
+
+✅ Password matched with hash.salt format
+
+✅ Admin password works with current system
+
+Server error: {
+
+  status: 500,
+
+  message: 'column user_groups.created_at does not exist',
+
+  error: error: column user_groups.created_at does not exist
+
+      at /app/node_modules/pg-pool/index.js:45:11
+
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+      at async DatabaseStorage.getUserWithGroups (file:///app/dist/index.js:1364:28)
+
+      at async file:///app/dist/index.js:3051:20 {
+
+    length: 120,
+
+    severity: 'ERROR',
+
+    code: '42703',
+
+    detail: undefined,
+
+    hint: undefined,
+
+    position: '59',
+
+    internalPosition: undefined,
+
+    internalQuery: undefined,
+
+    where: undefined,
+
+    schema: undefined,
+
+    table: undefined,
+
+    column: undefined,
+
+    dataType: undefined,
+
+    constraint: undefined,
+
+    file: 'parse_relation.c',
+
+    line: '3665',
+
+    routine: 'errorMissingColumn'
+
+  }
+
+}
+
+error: column user_groups.created_at does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.getUserWithGroups (file:///app/dist/index.js:1364:28)
+
+    at async file:///app/dist/index.js:3051:20
+
+HEAD /api/health 200 in 3ms
+
+Server error: {
+
+  status: 500,
+
+  message: 'column user_groups.created_at does not exist',
+
+  error: error: column user_groups.created_at does not exist
+
+      at /app/node_modules/pg-pool/index.js:45:11
+
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+      at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+      at async DatabaseStorage.getUserWithGroups (file:///app/dist/index.js:1364:28)
+
+      at async file:///app/dist/index.js:3051:20 {
+
+    length: 120,
+
+    severity: 'ERROR',
+
+    code: '42703',
+
+    detail: undefined,
+
+    hint: undefined,
+
+    position: '59',
+
+    internalPosition: undefined,
+
+    internalQuery: undefined,
+
+    where: undefined,
+
+    schema: undefined,
+
+    table: undefined,
+
+    column: undefined,
+
+    dataType: undefined,
+
+    constraint: undefined,
+
+    file: 'parse_relation.c',
+
+    line: '3665',
+
+    routine: 'errorMissingColumn'
+
+  }
+
+}
+
+error: column user_groups.created_at does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.getUserWithGroups (file:///app/dist/index.js:1364:28)
+
+    at async file:///app/dist/index.js:3051:20

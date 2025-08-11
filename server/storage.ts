@@ -237,32 +237,55 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUser(id);
     if (!user) return undefined;
 
-    // Get user's groups through manual join
-    const userGroupsData = await db
-      .select({
-        userId: userGroups.userId,
-        groupId: userGroups.groupId,
-        createdAt: userGroups.createdAt,
-        group: {
-          id: groups.id,
-          name: groups.name,
-          color: groups.color,
-          nocodbConfigId: groups.nocodbConfigId,
-          nocodbTableId: groups.nocodbTableId,
-          nocodbTableName: groups.nocodbTableName,
-          invoiceColumnName: groups.invoiceColumnName,
-          createdAt: groups.createdAt,
-          updatedAt: groups.updatedAt,
-        }
-      })
-      .from(userGroups)
-      .innerJoin(groups, eq(userGroups.groupId, groups.id))
-      .where(eq(userGroups.userId, id));
+    // Fixed: Use manual SQL to avoid userGroups.createdAt column that doesn't exist
+    try {
+      const result = await db.execute(sql`
+        SELECT 
+          ug.user_id,
+          ug.group_id,
+          g.id as group_id_ref,
+          g.name as group_name,
+          g.color as group_color,
+          g.nocodb_config_id,
+          g.nocodb_table_id,
+          g.nocodb_table_name,
+          g.invoice_column_name,
+          g.created_at as group_created_at,
+          g.updated_at as group_updated_at
+        FROM user_groups ug
+        INNER JOIN groups g ON ug.group_id = g.id
+        WHERE ug.user_id = ${id}
+      `);
 
-    return {
-      ...user,
-      userGroups: userGroupsData
-    };
+      const userGroupsData = result.rows.map((row: any) => ({
+        userId: row.user_id,
+        groupId: row.group_id,
+        createdAt: null, // Avoid the problematic column
+        group: {
+          id: row.group_id_ref,
+          name: row.group_name,
+          color: row.group_color,
+          nocodbConfigId: row.nocodb_config_id,
+          nocodbTableId: row.nocodb_table_id,
+          nocodbTableName: row.nocodb_table_name,
+          invoiceColumnName: row.invoice_column_name,
+          createdAt: row.group_created_at,
+          updatedAt: row.group_updated_at,
+        }
+      }));
+
+      return {
+        ...user,
+        userGroups: userGroupsData,
+      };
+    } catch (error) {
+      console.error('❌ getUserWithGroups error:', error);
+      // Fallback: return user with empty groups
+      return {
+        ...user,
+        userGroups: [],
+      };
+    }
   }
 
   async getUsers(): Promise<User[]> {
