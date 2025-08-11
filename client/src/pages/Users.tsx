@@ -147,7 +147,10 @@ export default function UsersPage() {
       // Nettoyer les données côté frontend avant envoi
       const cleanedUpdates = {};
       for (const [key, value] of Object.entries(data.updates)) {
-        if (value !== undefined && value !== null && value !== '') {
+        // For name fields (firstName, lastName, email), allow empty strings to clear the fields
+        if (key === 'firstName' || key === 'lastName' || key === 'email') {
+          cleanedUpdates[key] = value || '';
+        } else if (value !== undefined && value !== null && value !== '') {
           cleanedUpdates[key] = value;
         }
       }

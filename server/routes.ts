@@ -935,8 +935,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateUserSchema = z.object({
         username: z.string().optional(),
         role: z.enum(['admin', 'manager', 'employee']).optional(),
-        firstName: z.string().optional(),
-        lastName: z.string().optional(),
+        firstName: z.union([z.string(), z.literal("")]).optional(),
+        lastName: z.union([z.string(), z.literal("")]).optional(),
         email: z.union([z.string().email(), z.literal("")]).optional(),
         password: z.string().optional(),
       });
