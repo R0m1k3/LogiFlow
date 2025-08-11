@@ -64,6 +64,8 @@ export default function CalendarGrid({
   const handleValidateOrder = async (orderId: number, event: React.MouseEvent) => {
     event.stopPropagation();
     
+    console.log('🔥 DEBUG: Validation clicked for order', orderId, 'User role:', user?.role);
+    
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
@@ -72,8 +74,12 @@ export default function CalendarGrid({
         body: JSON.stringify({ status: 'delivered' })
       });
       
+      console.log('🔥 DEBUG: Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`Erreur ${response.status}: ${await response.text()}`);
+        const errorText = await response.text();
+        console.error('🔥 DEBUG: Response error:', errorText);
+        throw new Error(`Erreur ${response.status}: ${errorText}`);
       }
       
       toast({
@@ -86,7 +92,7 @@ export default function CalendarGrid({
         onOrderValidated();
       }
     } catch (error) {
-      console.error('Erreur lors de la validation:', error);
+      console.error('🔥 DEBUG: Validation error:', error);
       toast({
         title: "Erreur",
         description: "Impossible de valider la commande.",
@@ -227,17 +233,31 @@ export default function CalendarGrid({
                           {order.supplier.name}
                         </span>
                         <div className="flex items-center ml-1 flex-shrink-0">
-                          {/* Bouton de validation pour les admins si la commande n'est pas delivered */}
+                          {/* DEBUG: Affichage info utilisateur sur première commande */}
+                          {order.id === orders[0]?.id && (
+                            <div className="text-[8px] text-red-500 absolute -top-4 -left-2 bg-white px-1 rounded z-10">
+                              User: {user?.role || 'null'} | Status: {order.status}
+                            </div>
+                          )}
+                          
+                          {/* Bouton de validation pour les admins - VERSION VISIBLE POUR DEBUG */}
                           {user?.role === 'admin' && order.status !== 'delivered' && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-5 w-5 p-0 hover:bg-white/20 opacity-0 group-hover/order:opacity-100 transition-opacity mr-1"
+                              className="h-5 w-5 p-0 bg-red-500 hover:bg-red-600 mr-1"
                               onClick={(e) => handleValidateOrder(order.id, e)}
                               title="Valider la commande"
                             >
-                              <CheckCircle className="w-3 h-3 text-green-200" />
+                              <CheckCircle className="w-3 h-3 text-white" />
                             </Button>
+                          )}
+                          
+                          {/* Bouton de test TOUJOURS VISIBLE */}
+                          {order.status !== 'delivered' && (
+                            <div className="text-[8px] bg-yellow-300 text-black px-1 rounded mr-1">
+                              V
+                            </div>
                           )}
                           
                           {order.status === 'planned' && (
