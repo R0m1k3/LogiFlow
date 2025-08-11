@@ -522,6 +522,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route pour diagnostiquer et synchroniser les statuts commandes/livraisons
+  app.post('/api/sync-order-delivery-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      console.log('🔄 Starting order-delivery status synchronization...');
+
+      // Diagnostic: Trouver les commandes avec livraisons livrées mais pas en statut "delivered"
+      const orders = await storage.getOrders();
+      const problematicOrders = [];
+      const fixedOrders = [];
+
+      for (const order of orders) {
+        if (order.deliveries && order.deliveries.length > 0) {
+          const hasDeliveredDeliveries = order.deliveries.some(d => d.status === 'delivered');
+          
+          if (hasDeliveredDeliveries && order.status !== 'delivered') {
+            console.log(`🔍 Found problematic order: #CMD-${order.id} (status: ${order.status}) with delivered deliveries`);
+            problematicOrders.push({
+              orderId: order.id,
+              currentStatus: order.status,
+              deliveredDeliveries: order.deliveries.filter(d => d.status === 'delivered').length,
+              totalDeliveries: order.deliveries.length
+            });
+
+            // Fixer automatiquement
+            try {
+              await storage.updateOrder(order.id, { status: 'delivered' });
+              console.log(`✅ Fixed order #CMD-${order.id} status to 'delivered'`);
+              fixedOrders.push(order.id);
+            } catch (error) {
+              console.error(`❌ Failed to fix order #CMD-${order.id}:`, error);
+            }
+          }
+        }
+      }
+
+      console.log('🔄 Synchronization completed');
+      
+      res.json({
+        message: "Synchronization completed",
+        diagnostics: {
+          problematicOrdersFound: problematicOrders.length,
+          ordersFixed: fixedOrders.length,
+          problematicOrders,
+          fixedOrders
+        }
+      });
+
+    } catch (error) {
+      console.error("❌ Error in sync operation:", error);
+      res.status(500).json({ message: "Failed to synchronize statuses", error: error.message });
+    }
+  });
+
   // Deliveries routes
   app.get('/api/deliveries', isAuthenticated, async (req: any, res) => {
     try {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CalendarGrid from "@/components/CalendarGrid";
 import QuickCreateMenu from "@/components/modals/QuickCreateMenu";
@@ -11,6 +11,7 @@ import StatsPanel from "@/components/StatsPanel";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/components/Layout";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -18,6 +19,7 @@ export default function Calendar() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date()); // Current date
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -25,6 +27,7 @@ export default function Calendar() {
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [showCreateDelivery, setShowCreateDelivery] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -138,6 +141,41 @@ export default function Calendar() {
     setShowCreateDelivery(true);
   };
 
+  // Fonction pour synchroniser les statuts commandes/livraisons
+  const handleSyncOrderDeliveryStatus = async () => {
+    if (user?.role !== 'admin') return;
+    
+    setIsSyncing(true);
+    try {
+      console.log('🔄 Starting manual sync of order-delivery status...');
+      const response = await apiRequest({
+        url: '/api/sync-order-delivery-status',
+        method: 'POST'
+      });
+
+      console.log('🔄 Sync result:', response);
+      
+      toast({
+        title: "Synchronisation terminée",
+        description: `${response.diagnostics.ordersFixed} commande(s) corrigée(s) sur ${response.diagnostics.problematicOrdersFound} problématique(s)`,
+      });
+
+      // Rafraîchir les données du calendrier
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+      
+    } catch (error) {
+      console.error('❌ Sync failed:', error);
+      toast({
+        title: "Erreur de synchronisation",
+        description: "Impossible de synchroniser les statuts. Vérifiez la console.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const isLoading = loadingOrders || loadingDeliveries;
 
   return (
@@ -197,13 +235,27 @@ export default function Calendar() {
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
-          <Button
-            onClick={() => setShowQuickCreate(true)}
-            className="bg-accent hover:bg-orange-600 text-white"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nouveau
-          </Button>
+          <div className="flex items-center space-x-2">
+            {user?.role === 'admin' && (
+              <Button
+                onClick={handleSyncOrderDeliveryStatus}
+                disabled={isSyncing}
+                variant="outline"
+                size="sm"
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? 'Sync...' : 'Sync Status'}
+              </Button>
+            )}
+            <Button
+              onClick={() => setShowQuickCreate(true)}
+              className="bg-accent hover:bg-orange-600 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nouveau
+            </Button>
+          </div>
         </div>
       </div>
 
