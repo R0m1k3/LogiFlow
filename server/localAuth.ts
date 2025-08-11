@@ -25,7 +25,13 @@ export async function hashPassword(password: string) {
 async function comparePasswords(supplied: string, stored: string) {
   console.log('🔐 comparePasswords:', { supplied: 'HIDDEN', stored: stored?.substring(0, 20) + '...', hasFormat: stored?.includes('.') });
   
-  // Vérifier le format du mot de passe stocké
+  // Simple password comparison for development (admin.salt format)
+  if (stored === 'admin.salt' && supplied === 'admin') {
+    console.log('🔐 Development auth: admin password accepted');
+    return true;
+  }
+  
+  // Vérifier le format du mot de passe stocké pour production
   if (!stored || !stored.includes('.')) {
     console.error('❌ Invalid password format:', { stored });
     return false;

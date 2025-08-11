@@ -1803,4 +1803,166 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// Simple in-memory storage for development
+class MemStorage implements IStorage {
+  private users = new Map<string, User>();
+  private groups = new Map<number, Group>();
+  private suppliers = new Map<number, Supplier>();
+  private orders = new Map<number, Order>();
+  private deliveries = new Map<number, Delivery>();
+  private tasks = new Map<number, Task>();
+
+  constructor() {
+    // Create default admin user for development
+    const adminUser: User = {
+      id: 'admin_dev',
+      username: 'admin',
+      email: 'admin@dev.local',
+      firstName: 'Admin',
+      lastName: 'User',
+      password: 'admin.salt', // Simple format for development
+      role: 'admin',
+      passwordChanged: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.users.set('admin_dev', adminUser);
+    this.users.set('admin', adminUser); // Also set by username for easy lookup
+    console.log('✅ MemStorage initialized with admin user (admin/admin)');
+  }
+
+  // User methods
+  async getUser(id: string): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    for (const user of this.users.values()) {
+      if (user.email === email) return user;
+    }
+    return undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    for (const user of this.users.values()) {
+      if (user.username === username) return user;
+    }
+    return undefined;
+  }
+
+  async upsertUser(user: UpsertUser): Promise<User> {
+    const newUser = { ...user, createdAt: new Date(), updatedAt: new Date() } as User;
+    this.users.set(user.id, newUser);
+    return newUser;
+  }
+
+  async getUserWithGroups(id: string): Promise<UserWithGroups | undefined> {
+    const user = await this.getUser(id);
+    if (!user) return undefined;
+    return { ...user, userGroups: [] };
+  }
+
+  async getUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async getUsersWithRoles(): Promise<UserWithRoles[]> {
+    return Array.from(this.users.values()).map(user => ({ ...user, userRoles: [] }));
+  }
+
+  async getUsersWithRolesAndGroups(): Promise<(UserWithRoles & { userGroups: any[] })[]> {
+    return Array.from(this.users.values()).map(user => ({ ...user, userRoles: [], userGroups: [] }));
+  }
+
+  async createUser(user: UpsertUser): Promise<User> {
+    return this.upsertUser(user);
+  }
+
+  async updateUser(id: string, user: Partial<UpsertUser>): Promise<User> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) throw new Error('User not found');
+    const updatedUser = { ...existingUser, ...user, updatedAt: new Date() };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    this.users.delete(id);
+  }
+
+  // Stub implementations for other required methods
+  async getGroups(): Promise<Group[]> { return []; }
+  async getGroup(id: number): Promise<Group | undefined> { return undefined; }
+  async createGroup(group: InsertGroup): Promise<Group> { return {} as Group; }
+  async updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group> { return {} as Group; }
+  async deleteGroup(id: number): Promise<void> {}
+  async getSuppliers(): Promise<Supplier[]> { return []; }
+  async createSupplier(supplier: InsertSupplier): Promise<Supplier> { return {} as Supplier; }
+  async updateSupplier(id: number, supplier: Partial<InsertSupplier>): Promise<Supplier> { return {} as Supplier; }
+  async deleteSupplier(id: number): Promise<void> {}
+  async getOrders(groupIds?: number[]): Promise<OrderWithRelations[]> { return []; }
+  async getOrdersByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<OrderWithRelations[]> { return []; }
+  async createOrder(order: InsertOrder): Promise<Order> { return {} as Order; }
+  async updateOrder(id: number, order: Partial<InsertOrder>): Promise<Order> { return {} as Order; }
+  async deleteOrder(id: number): Promise<void> {}
+  async getDeliveries(groupIds?: number[]): Promise<DeliveryWithRelations[]> { return []; }
+  async getDeliveriesByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<DeliveryWithRelations[]> { return []; }
+  async createDelivery(delivery: InsertDelivery): Promise<Delivery> { return {} as Delivery; }
+  async updateDelivery(id: number, delivery: Partial<InsertDelivery>): Promise<Delivery> { return {} as Delivery; }
+  async deleteDelivery(id: number): Promise<void> {}
+  
+  // Add placeholder methods for all other IStorage interface methods
+  async getSavTickets(): Promise<any[]> { return []; }
+  async getSavTicket(): Promise<any> { return undefined; }
+  async createSavTicket(): Promise<any> { return {}; }
+  async updateSavTicket(): Promise<any> { return {}; }
+  async deleteSavTicket(): Promise<void> {}
+  async getSavTicketHistory(): Promise<any[]> { return []; }
+  async createSavTicketHistory(): Promise<any> { return {}; }
+  async updateSavTicketHistory(): Promise<any> { return {}; }
+  async deleteSavTicketHistory(): Promise<void> {}
+  async getPublicities(): Promise<any[]> { return []; }
+  async getPublicity(): Promise<any> { return undefined; }
+  async createPublicity(): Promise<any> { return {}; }
+  async updatePublicity(): Promise<any> { return {}; }
+  async deletePublicity(): Promise<void> {}
+  async getPublicityParticipations(): Promise<any[]> { return []; }
+  async createPublicityParticipation(): Promise<any> { return {}; }
+  async deletePublicityParticipation(): Promise<void> {}
+  async getCustomerOrders(): Promise<any[]> { return []; }
+  async getCustomerOrder(): Promise<any> { return undefined; }
+  async createCustomerOrder(): Promise<any> { return {}; }
+  async updateCustomerOrder(): Promise<any> { return {}; }
+  async deleteCustomerOrder(): Promise<void> {}
+  async getDlcProducts(): Promise<any[]> { return []; }
+  async getDlcProduct(): Promise<any> { return undefined; }
+  async createDlcProduct(): Promise<any> { return {}; }
+  async updateDlcProduct(): Promise<any> { return {}; }
+  async deleteDlcProduct(): Promise<void> {}
+  async getTasks(): Promise<Task[]> { return Array.from(this.tasks.values()); }
+  async getTask(): Promise<any> { return undefined; }
+  async createTask(): Promise<any> { return {}; }
+  async updateTask(): Promise<any> { return {}; }
+  async deleteTask(): Promise<void> {}
+  async completeTask(): Promise<void> {}
+  async getRoles(): Promise<any[]> { return []; }
+  async getRole(): Promise<any> { return undefined; }
+  async createRole(): Promise<any> { return {}; }
+  async updateRole(): Promise<any> { return {}; }
+  async deleteRole(): Promise<void> {}
+  async getPermissions(): Promise<any[]> { return []; }
+  async getPermission(): Promise<any> { return undefined; }
+  async createPermission(): Promise<any> { return {}; }
+  async updatePermission(): Promise<any> { return {}; }
+  async deletePermission(): Promise<void> {}
+  async getRolePermissions(): Promise<any[]> { return []; }
+  async setRolePermissions(): Promise<void> {}
+  async getUserRoles(): Promise<any[]> { return []; }
+  async setUserRoles(): Promise<void> {}
+  async getUserPermissions(): Promise<any[]> { return []; }
+}
+
+// Use MemStorage in development, DatabaseStorage in production
+const isProduction = process.env.NODE_ENV === 'production' && process.env.DATABASE_URL;
+export const storage = isProduction ? new DatabaseStorage() : new MemStorage();
+console.log(isProduction ? '🐳 Using PostgreSQL storage' : '🔧 Using in-memory storage for development');
