@@ -807,13 +807,19 @@ export class DatabaseStorage implements IStorage {
           lte(deliveries.scheduledDate, endDate)
         );
 
-    // Get counts and totals
+    // Get counts and totals - only count palettes/packages from orders with delivered deliveries
     const [orderStats] = await db
       .select({
         count: sql<number>`count(*)`,
         pendingCount: sql<number>`count(*) filter (where status = 'pending')`,
-        totalPalettes: sql<number>`sum(case when unit = 'palettes' then quantity else 0 end)`,
-        totalPackages: sql<number>`sum(case when unit = 'colis' then quantity else 0 end)`,
+        totalPalettes: sql<number>`sum(case when unit = 'palettes' and exists(
+          select 1 from deliveries d 
+          where d.order_id = orders.id and d.status = 'delivered'
+        ) then quantity else 0 end)`,
+        totalPackages: sql<number>`sum(case when unit = 'colis' and exists(
+          select 1 from deliveries d 
+          where d.order_id = orders.id and d.status = 'delivered'
+        ) then quantity else 0 end)`,
       })
       .from(orders)
       .where(orderWhere);
@@ -821,8 +827,8 @@ export class DatabaseStorage implements IStorage {
     const [deliveryStats] = await db
       .select({
         count: sql<number>`count(*)`,
-        totalPalettes: sql<number>`sum(case when unit = 'palettes' then quantity else 0 end)`,
-        totalPackages: sql<number>`sum(case when unit = 'colis' then quantity else 0 end)`,
+        totalPalettes: sql<number>`sum(case when unit = 'palettes' and status = 'delivered' then quantity else 0 end)`,
+        totalPackages: sql<number>`sum(case when unit = 'colis' and status = 'delivered' then quantity else 0 end)`,
       })
       .from(deliveries)
       .where(deliveryWhere);
