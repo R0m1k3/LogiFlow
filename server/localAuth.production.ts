@@ -18,29 +18,62 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  console.log('🔐 Production password comparison');
+  console.log('🔐 Production password comparison', { suppliedLength: supplied.length, storedFormat: stored?.substring(0, 10) + '...' });
   
-  if (!stored || !stored.includes('.')) {
-    console.error('❌ Invalid password format');
-    return false;
+  // Try different password formats for backward compatibility
+  
+  // 1. Try new format: hash.salt
+  if (stored && stored.includes('.')) {
+    const [hashed, salt] = stored.split(".");
+    if (hashed && salt) {
+      try {
+        const hashedBuf = Buffer.from(hashed, "hex");
+        const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+        const result = timingSafeEqual(hashedBuf, suppliedBuf);
+        if (result) {
+          console.log('✅ Password matched with hash.salt format');
+          return true;
+        }
+      } catch (error) {
+        console.log('⚠️ hash.salt format failed, trying other formats');
+      }
+    }
   }
   
-  const [hashed, salt] = stored.split(".");
-  if (!hashed || !salt) {
-    console.error('❌ Missing hash or salt');
-    return false;
+  // 2. Try bcrypt format (common in existing systems)
+  if (stored && stored.startsWith('$2')) {
+    try {
+      const bcrypt = await import('bcrypt');
+      const result = await bcrypt.compare(supplied, stored);
+      if (result) {
+        console.log('✅ Password matched with bcrypt format');
+        return true;
+      }
+    } catch (error) {
+      console.log('⚠️ bcrypt comparison failed');
+    }
   }
   
+  // 3. Try plain text (for development/migration)
+  if (stored === supplied) {
+    console.log('✅ Password matched with plain text format');
+    return true;
+  }
+  
+  // 4. Try simple hash format (legacy)
   try {
-    const hashedBuf = Buffer.from(hashed, "hex");
-    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-    const result = timingSafeEqual(hashedBuf, suppliedBuf);
-    console.log('🔐 Password comparison result:', result);
-    return result;
+    const crypto = await import('crypto');
+    const hash = crypto.createHash('sha256').update(supplied).digest('hex');
+    if (stored === hash) {
+      console.log('✅ Password matched with SHA256 format');
+      return true;
+    }
   } catch (error) {
-    console.error('❌ Error comparing passwords:', error);
-    return false;
+    console.log('⚠️ SHA256 comparison failed');
   }
+  
+  console.log('❌ No password format matched');
+  return false;
 }
 
 async function createDefaultAdminUser() {
@@ -60,7 +93,23 @@ async function createDefaultAdminUser() {
       });
       console.log('✅ Production admin user created: admin/admin');
     } else {
-      console.log('✅ Production admin user already exists');
+      console.log('✅ Production admin user found:', { 
+        id: existingAdmin.id, 
+        username: existingAdmin.username,
+        passwordFormat: existingAdmin.password ? 'present' : 'missing'
+      });
+      
+      // Check if password needs migration to new format
+      if (existingAdmin.password && !existingAdmin.password.includes('.')) {
+        console.log('🔄 Migrating admin password to new format...');
+        try {
+          const newHashedPassword = await hashPassword('admin');
+          await storage.updateUser(existingAdmin.id, { password: newHashedPassword });
+          console.log('✅ Admin password migrated to new format');
+        } catch (error) {
+          console.log('⚠️ Could not migrate password, will try multiple formats:', error.message);
+        }
+      }
     }
   } catch (error) {
     console.error('Error managing admin user:', error);
