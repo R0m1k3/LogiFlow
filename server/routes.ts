@@ -862,20 +862,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      console.log('🔍 GET /api/users - Fetching users with roles and groups');
-      // Get all users with groups for admin
-      const allUsers = await storage.getUsersWithRolesAndGroups();
-      const safeUsers = Array.isArray(allUsers) ? allUsers : [];
+      console.log('🔍 GET /api/users - Fetching users with simplified approach');
+      
+      // Get all basic users first
+      const baseUsers = await storage.getUsers();
+      console.log(`📊 Found ${baseUsers.length} base users`);
+      
+      // Add userGroups and userRoles to each user individually with error handling
+      const usersWithData = await Promise.all(
+        baseUsers.map(async (baseUser) => {
+          try {
+            const userWithGroups = await storage.getUserWithGroups(baseUser.id);
+            return {
+              ...baseUser,
+              userGroups: userWithGroups?.userGroups || [],
+              userRoles: [] // Keep roles simple for now since we're using hardcoded permissions
+            };
+          } catch (error) {
+            console.error(`❌ Error getting groups for user ${baseUser.username}:`, error);
+            // Return user with empty groups if there's an error
+            return {
+              ...baseUser,
+              userGroups: [],
+              userRoles: []
+            };
+          }
+        })
+      );
       
       console.log('🔐 API /api/users - Returning:', { 
-        isArray: Array.isArray(safeUsers), 
-        length: safeUsers.length,
-        firstUserGroups: safeUsers.length > 0 ? safeUsers[0].userGroups?.length || 0 : 0
+        isArray: Array.isArray(usersWithData), 
+        length: usersWithData.length,
+        totalGroups: usersWithData.reduce((sum, u) => sum + (u.userGroups?.length || 0), 0)
       });
       
-      res.json(safeUsers);
+      res.json(usersWithData);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("❌ Critical error fetching users:", error);
+      console.error("❌ Error stack:", error.stack);
       // En cas d'erreur, retourner un array vide pour éviter React Error #310
       res.status(500).json([]);
     }

@@ -34,18 +34,28 @@ ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
 ## Débogage Production
 
-### Script de Diagnostic SQL
-Utilisez le script `debug-usergroups-production.sql` pour :
-- Vérifier la structure de la table user_groups
-- Examiner les données existantes
-- Identifier les problèmes d'association utilisateur-groupe
+### Problème "Aucun utilisateur trouvé"
+Si l'interface affiche "Aucun utilisateur trouvé" :
 
-### Logs de Débogage
-Les logs suivants sont maintenant disponibles :
-- `🔍 getUserWithGroups called for user: [id]`
-- `🔍 Querying user_groups for user: [id]`
-- `🔍 Found X group assignments for user [id]`
-- `⚠️ Production mode: user_groups table missing created_at column, using raw SQL`
+1. **Vérification Base de Données** : Utilisez `production-users-debug.sql`
+   ```bash
+   psql $DATABASE_URL -f production-users-debug.sql
+   ```
+
+2. **Vérification API** : Testez l'endpoint directement
+   ```bash
+   curl -H "Cookie: [votre-cookie-session]" https://votre-domaine.com/api/users
+   ```
+
+### Script de Diagnostic SQL
+- `debug-usergroups-production.sql` : Problèmes d'association utilisateur-groupe
+- `production-users-debug.sql` : Problème de récupération des utilisateurs
+
+### Logs de Débogage Disponibles
+- `🔍 GET /api/users - Fetching users with simplified approach`
+- `📊 Found X base users`
+- `❌ Error getting groups for user [username]:`
+- `🔐 API /api/users - Returning: {length: X, totalGroups: Y}`
 
 ## Déploiement
 
