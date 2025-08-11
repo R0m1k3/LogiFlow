@@ -81,6 +81,9 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=build --chown=nextjs:nodejs /app/dist ./dist
 COPY --from=build --chown=nextjs:nodejs /app/shared ./shared
 
+# Create symlink for public files to be accessible from dist
+RUN ln -sf /app/dist/public /app/dist/public
+
 # Create uploads directory with proper permissions
 RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads
 

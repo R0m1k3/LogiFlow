@@ -1,10 +1,13 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { setupVite, serveStatic } from "./vite.js";
-
-// Production routes - simplified for Docker deployment
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
 import { setupLocalAuth, requireAuth } from "./localAuth.production.js";
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Get directory paths
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 console.log('🐳 PRODUCTION: Starting LogiFlow application');
 
@@ -124,8 +127,20 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   throw err;
 });
 
-// Production setup - serve static files
-serveStatic(app);
+// Serve static files directly in production (no Vite)
+const publicPath = join(__dirname, 'public');
+console.log('🐳 Serving static files from:', publicPath);
+
+app.use('/assets', express.static(join(publicPath, 'assets')));
+app.use('/', express.static(publicPath));
+
+// SPA fallback - serve index.html for all non-API routes
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  res.sendFile(join(publicPath, 'index.html'));
+});
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 server.listen(port, "0.0.0.0", () => {
