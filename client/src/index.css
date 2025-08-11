@@ -1,0 +1,255 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(120, 61%, 34%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --accent: hsl(35, 100%, 47%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+  
+  /* Custom La Foir'Fouille colors */
+  --surface: hsl(0, 0%, 98%);
+  --delivered: hsl(0, 0%, 46%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(120, 61%, 34%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --accent: hsl(35, 100%, 47%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+  
+  --surface: hsl(240, 10%, 8%);
+  --delivered: hsl(0, 0%, 46%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-surface text-foreground;
+  }
+}
+
+@layer utilities {
+  .bg-surface {
+    background-color: var(--surface);
+  }
+  
+  .bg-primary {
+    background-color: var(--primary);
+  }
+  
+  .bg-secondary {
+    background-color: var(--secondary);
+  }
+  
+  .bg-accent {
+    background-color: var(--accent);
+  }
+  
+  .bg-delivered {
+    background-color: var(--delivered);
+  }
+  
+  .text-primary {
+    color: var(--primary);
+  }
+  
+  .text-secondary {
+    color: var(--secondary);
+  }
+  
+  .text-accent {
+    color: var(--accent);
+  }
+  
+  .text-delivered {
+    color: var(--delivered);
+  }
+  
+  .border-primary {
+    border-color: var(--primary);
+  }
+  
+  .border-secondary {
+    border-color: var(--secondary);
+  }
+  
+  .border-accent {
+    border-color: var(--accent);
+  }
+  
+  .hover\:bg-primary:hover {
+    background-color: var(--primary);
+  }
+  
+  .hover\:bg-secondary:hover {
+    background-color: var(--secondary);
+  }
+  
+  .hover\:bg-accent:hover {
+    background-color: var(--accent);
+  }
+}
+
+/* Supprimer le contour orange de la date du jour dans le calendrier */
+button[aria-selected="true"][aria-current="date"],
+button[aria-current="date"],
+.rdp-day_today,
+.rdp-day_selected,
+[data-today="true"] {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  ring: 0 !important;
+  --tw-ring-shadow: none !important;
+  --tw-ring-offset-shadow: none !important;
+}
+
+button[aria-selected="true"][aria-current="date"]:focus,
+button[aria-current="date"]:focus,
+.rdp-day_today:focus,
+.rdp-day_selected:focus,
+[data-today="true"]:focus {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  ring: 0 !important;
+  --tw-ring-shadow: none !important;
+  --tw-ring-offset-shadow: none !important;
+}
+
+/* Cibler spécifiquement le calendrier dans Tasks */
+.rounded-md.border button[aria-current="date"],
+.rounded-md.border button[data-today],
+.rounded-md.border .rdp-day_today {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  ring: 0 !important;
+}
+
+/* Suppression spécifique du contour orange sur la date du jour */
+.rdp button,
+.rdp-day,
+.rdp-day_today,
+.rdp-day_selected {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Cibler spécifiquement les pseudo-éléments qui créent le contour orange */
+.rdp-day_today::before,
+.rdp-day_today::after,
+.rdp-day_selected::before,
+.rdp-day_selected::after {
+  display: none !important;
+}
+
+/* Suppression de la bordure orange Tailwind */
+.bg-blue-600 {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-shadow: none !important;
+}
+
+/* Cibler toutes les variantes possibles du contour orange */
+button[aria-current="date"],
+button[data-today="true"],
+.rdp-day[aria-current="date"],
+.rdp-day_today,
+.rdp-button[aria-current="date"] {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-width: 0px !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-offset-width: 0px !important;
+}
+
+/* Force suppression avec sélecteurs très spécifiques */
+.rounded-md button[aria-current="date"],
+.rounded-md .rdp-day_today,
+[role="gridcell"] button[aria-current="date"] {
+  border-color: transparent !important;
+  outline-color: transparent !important;
+}
+
+/* Force suppression contour sur focus */
+.rdp-day_today:focus-visible,
+.rdp-day_today:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: none !important;
+}
+
+/* REMPLACEMENT COULEUR ORANGE PAR BLEU POUR SÉLECTION */
+*:focus-visible {
+  outline: 2px solid #2563eb !important; /* Bleu au lieu d'orange */
+  outline-offset: 2px !important;
+}
+
+/* Couleur de sélection bleue pour le calendrier */
+button[aria-current="date"]:focus,
+button[aria-current="date"]:focus-visible,
+.rdp-day:focus,
+.rdp-day:focus-visible {
+  outline: 2px solid #2563eb !important; /* Bleu comme la date du jour */
+  outline-offset: 2px !important;
+  border: none !important;
+}
+
+/* Variables CSS pour forcer le bleu sur tous les focus */
+:root {
+  --focus-color: #2563eb !important; /* Bleu */
+}
+
+/* Override focus sur tous les éléments pour utiliser le bleu */
+* {
+  --tw-ring-color: #2563eb !important;
+}
+
+/* Focus bleu spécifique pour les boutons du calendrier */
+.rdp button:focus-visible {
+  outline: 2px solid #2563eb !important;
+  outline-offset: 2px !important;
+}
