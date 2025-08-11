@@ -233,17 +233,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserWithGroups(id: string): Promise<UserWithGroups | undefined> {
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, id),
-      with: {
-        userGroups: {
-          with: {
-            group: true,
-          },
-        },
-      },
-    });
-    return user;
+    // Get the user first
+    const user = await this.getUser(id);
+    if (!user) return undefined;
+
+    // Get user's groups through manual join
+    const userGroupsData = await db
+      .select({
+        userId: userGroups.userId,
+        groupId: userGroups.groupId,
+        createdAt: userGroups.createdAt,
+        group: {
+          id: groups.id,
+          name: groups.name,
+          color: groups.color,
+          nocodbConfigId: groups.nocodbConfigId,
+          nocodbTableId: groups.nocodbTableId,
+          nocodbTableName: groups.nocodbTableName,
+          invoiceColumnName: groups.invoiceColumnName,
+          createdAt: groups.createdAt,
+          updatedAt: groups.updatedAt,
+        }
+      })
+      .from(userGroups)
+      .innerJoin(groups, eq(userGroups.groupId, groups.id))
+      .where(eq(userGroups.userId, id));
+
+    return {
+      ...user,
+      userGroups: userGroupsData
+    };
   }
 
   async getUsers(): Promise<User[]> {
@@ -481,7 +500,7 @@ export class DatabaseStorage implements IStorage {
       orderBy: [desc(deliveries.createdAt)],
     });
     
-    return results.map(result => ({
+    return results.map((result: any) => ({
       ...result,
       order: result.order || undefined,
     }));
@@ -686,7 +705,7 @@ export class DatabaseStorage implements IStorage {
 
     let averageDeliveryTime = 0;
     if (deliveredOrders.length > 0) {
-      const totalDelayDays = deliveredOrders.reduce((sum, order) => {
+      const totalDelayDays = deliveredOrders.reduce((sum: any, order: any) => {
         if (order.deliveredDate && order.plannedDate) {
           const planned = new Date(order.plannedDate);
           const delivered = new Date(order.deliveredDate);
@@ -741,7 +760,7 @@ export class DatabaseStorage implements IStorage {
     const results = await query;
     
     // Récupérer les participations séparément
-    const publicityIds = results.map(pub => pub.id);
+    const publicityIds = results.map((pub: any) => pub.id);
     const participations = publicityIds.length > 0 ? await db.select({
       publicityId: publicityParticipations.publicityId,
       groupId: publicityParticipations.groupId,
@@ -756,11 +775,11 @@ export class DatabaseStorage implements IStorage {
     .where(inArray(publicityParticipations.publicityId, publicityIds)) : [];
 
     // Associer les participations aux publicités
-    return results.map(pub => ({
+    return results.map((pub: any) => ({
       ...pub,
       participations: participations
-        .filter(p => p.publicityId === pub.id)
-        .map(p => ({ 
+        .filter((p: any) => p.publicityId === pub.id)
+        .map((p: any) => ({ 
           publicityId: p.publicityId, 
           groupId: p.groupId, 
           group: p.group,
@@ -811,7 +830,7 @@ export class DatabaseStorage implements IStorage {
 
     return {
       ...publicity[0],
-      participations: participations.map(p => ({ 
+      participations: participations.map((p: any) => ({ 
         publicityId: p.publicityId, 
         groupId: p.groupId, 
         group: p.group,
@@ -1437,7 +1456,7 @@ export class DatabaseStorage implements IStorage {
 
     return {
       ...role,
-      rolePermissions: rolePerms.map(rp => ({
+      rolePermissions: rolePerms.map((rp: any) => ({
         roleId: rp.id,
         permissionId: rp.permissionId,
         createdAt: rp.createdAt,
@@ -1458,19 +1477,19 @@ export class DatabaseStorage implements IStorage {
     }
     
     // Log des catégories trouvées
-    const categories = [...new Set(result.map(p => p.category))];
+    const categories = [...new Set(result.map((p: any) => p.category))];
     console.log('🏷️ DEV getPermissions() - Categories found:', categories);
     
     // Log spécifique pour les permissions tâches
-    const taskPerms = result.filter(p => p.category === 'gestion_taches');
+    const taskPerms = result.filter((p: any) => p.category === 'gestion_taches');
     console.log('📋 DEV getPermissions() - Task permissions found:', taskPerms.length);
     if (taskPerms.length > 0) {
-      taskPerms.forEach(p => {
+      taskPerms.forEach((p: any) => {
         console.log(`  - ID: ${p.id}, Name: ${p.name}, DisplayName: "${p.displayName}", Category: ${p.category}`);
       });
     } else {
       console.log('❌ DEV getPermissions() - NO TASK PERMISSIONS FOUND - This explains the issue!');
-      console.log('🔍 DEV getPermissions() - Sample permissions:', result.slice(0, 3).map(p => ({ id: p.id, name: p.name, category: p.category })));
+      console.log('🔍 DEV getPermissions() - Sample permissions:', result.slice(0, 3).map((p: any) => ({ id: p.id, name: p.name, category: p.category })));
     }
     
     console.log('✅ DEV getPermissions() - Returning', result.length, 'permissions');
@@ -1739,15 +1758,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTasksByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<any[]> {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
     const whereCondition = groupIds 
       ? and(
-          gte(tasks.dueDate, startDate),
-          lte(tasks.dueDate, endDate),
+          gte(tasks.dueDate, start),
+          lte(tasks.dueDate, end),
           inArray(tasks.groupId, groupIds)
         )
       : and(
-          gte(tasks.dueDate, startDate),
-          lte(tasks.dueDate, endDate)
+          gte(tasks.dueDate, start),
+          lte(tasks.dueDate, end)
         );
 
     return await db.query.tasks.findMany({
@@ -1818,8 +1840,10 @@ class MemStorage implements IStorage {
       id: 'admin_dev',
       username: 'admin',
       email: 'admin@dev.local',
+      name: 'Admin User',
       firstName: 'Admin',
       lastName: 'User',
+      profileImageUrl: null,
       password: 'admin.salt', // Simple format for development
       role: 'admin',
       passwordChanged: true,
@@ -1910,6 +1934,24 @@ class MemStorage implements IStorage {
   async createDelivery(delivery: InsertDelivery): Promise<Delivery> { return {} as Delivery; }
   async updateDelivery(id: number, delivery: Partial<InsertDelivery>): Promise<Delivery> { return {} as Delivery; }
   async deleteDelivery(id: number): Promise<void> {}
+  
+  // Add missing required methods for IStorage interface
+  async getOrder(id: number): Promise<OrderWithRelations | undefined> { return undefined; }
+  async getDelivery(id: number): Promise<DeliveryWithRelations | undefined> { return undefined; }
+  async validateDelivery(id: number, deliveryData: any): Promise<void> {}
+  async getUserGroups(userId: string): Promise<any[]> { return []; }
+  async getUserRoles(userId: string): Promise<any[]> { return []; }
+  async getUserWithRoles(userId: string): Promise<UserWithRoles | undefined> { 
+    const user = await this.getUser(userId);
+    return user ? { ...user, userRoles: [] } : undefined;
+  }
+  async getRoleWithPermissions(roleId: number): Promise<any> { return undefined; }
+  async getUserPermissions(userId: string): Promise<any[]> { return []; }
+  async getTasksByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<any[]> { return []; }
+  async getOrderStats(): Promise<any> { return {}; }
+  async getDeliveryStats(): Promise<any> { return {}; }
+  async getPublicitiesWithParticipations(year?: number): Promise<any[]> { return []; }
+  async setPublicityParticipations(publicityId: number, groupIds: number[]): Promise<void> {}
   
   // Add placeholder methods for all other IStorage interface methods
   async getSavTickets(): Promise<any[]> { return []; }
