@@ -150,3 +150,16 @@ Preferred communication style: Simple, everyday language.
   - Created `fix-duplicate-empty-email.sql` script to clean existing database records
   - Improved error handling and logging for better production debugging
 - **Result**: Users can now be created and edited with optional email fields without constraint violations
+
+#### Calendar Order-Delivery Synchronization Fix
+- **Issue**: Orders linked to delivered deliveries were not showing proper status and dates in calendar view
+- **Root Cause**: Three interconnected problems:
+  1. OrderDetailModal was displaying non-existent `plannedDate` instead of `scheduledDate`/`deliveredDate`
+  2. Order status was not automatically updated when delivery status changed via updateDelivery method
+  3. Delivered deliveries had missing `deliveredDate` field causing "Date non disponible" display
+- **Solution Implemented**:
+  - Enhanced OrderDetailModal to display correct dates: `deliveredDate` for delivered items, `scheduledDate` for planned ones
+  - Added automatic order status synchronization in `updateDelivery` method when delivery marked as delivered
+  - Created `fix-delivery-order-sync.sql` script to correct existing production data inconsistencies
+  - Improved Calendar date initialization to show current month instead of hardcoded July 2025
+- **Result**: Calendar now properly displays delivery dates and automatically synchronizes order statuses when deliveries are completed

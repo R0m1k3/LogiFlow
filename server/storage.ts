@@ -640,11 +640,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateDelivery(id: number, delivery: Partial<InsertDelivery>): Promise<Delivery> {
+    const currentDelivery = await this.getDelivery(id);
+    if (!currentDelivery) throw new Error("Delivery not found");
+
     const [updatedDelivery] = await db
       .update(deliveries)
       .set({ ...delivery, updatedAt: new Date() })
       .where(eq(deliveries.id, id))
       .returning();
+
+    // Si la livraison est marquée comme livrée et qu'elle est liée à une commande
+    if (delivery.status === 'delivered' && currentDelivery.orderId) {
+      console.log('🔄 Delivery marked as delivered, updating linked order status');
+      await db
+        .update(orders)
+        .set({ 
+          status: 'delivered',
+          updatedAt: new Date()
+        })
+        .where(eq(orders.id, currentDelivery.orderId));
+    }
+    
     return updatedDelivery;
   }
 

@@ -68,6 +68,26 @@ Cette erreur survient lors de la **création** ou **édition** d'utilisateur qua
 
 2. Redéployez l'application (le code a été corrigé pour utiliser `NULL` au lieu de `""` dans les routes de création ET d'édition)
 
+### Problème Synchronisation Commandes/Livraisons dans le Calendrier
+
+#### Symptômes observés :
+- Les livraisons marquées "Livré" affichent "Date non disponible"
+- Les commandes liées à des livraisons livrées ne passent pas en statut "delivered"
+- Problème d'affichage des dates dans le modal de détails de commande
+
+#### Corrections apportées :
+1. **Affichage des dates corrigé** : Le modal affiche maintenant la date de livraison réelle (`deliveredDate`) pour les livraisons livrées
+2. **Synchronisation automatique des statuts** : Les commandes sont automatiquement marquées "delivered" quand leurs livraisons associées sont livrées
+3. **Script de correction des données** : `fix-delivery-order-sync.sql` pour corriger les données existantes
+
+**Solution complète** :
+1. Exécutez le script de synchronisation :
+   ```bash
+   psql $DATABASE_URL -f fix-delivery-order-sync.sql
+   ```
+
+2. Redéployez l'application avec les corrections
+
 #### Tests de Création
 1. **Test Manuel** : Utilisez `test-create-user-production.js`
    ```bash

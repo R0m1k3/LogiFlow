@@ -292,7 +292,12 @@ export default function OrderDetailModal({
                       <div>
                         <p className="font-medium text-gray-900">#LIV-{delivery.id}</p>
                         <p className="text-sm text-gray-600">
-                          {safeFormat(delivery.plannedDate, 'dd MMMM yyyy')}
+                          {delivery.status === 'delivered' && delivery.deliveredDate
+                            ? `Livré le ${safeFormat(delivery.deliveredDate, 'dd MMMM yyyy')}`
+                            : delivery.scheduledDate
+                            ? `Prévu le ${safeFormat(delivery.scheduledDate, 'dd MMMM yyyy')}`
+                            : 'Date non disponible'
+                          }
                         </p>
                       </div>
                     </div>
