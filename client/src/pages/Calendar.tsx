@@ -228,6 +228,11 @@ export default function Calendar() {
             deliveries={deliveries}
             onDateClick={handleDateClick}
             onItemClick={handleItemClick}
+            user={user}
+            onOrderValidated={() => {
+              queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+            }}
           />
         )}
       </div>

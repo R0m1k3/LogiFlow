@@ -1,8 +1,9 @@
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
 import { safeDate } from "@/lib/dateUtils";
-import { Plus, Check } from "lucide-react";
+import { Plus, Check, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import type { OrderWithRelations, DeliveryWithRelations } from "@shared/schema";
 
 interface CalendarGridProps {
@@ -11,6 +12,8 @@ interface CalendarGridProps {
   deliveries: DeliveryWithRelations[];
   onDateClick: (date: Date) => void;
   onItemClick: (item: any, type: 'order' | 'delivery') => void;
+  user?: { role: string } | null;
+  onOrderValidated?: () => void;
 }
 
 export default function CalendarGrid({
@@ -19,7 +22,10 @@ export default function CalendarGrid({
   deliveries,
   onDateClick,
   onItemClick,
+  user,
+  onOrderValidated,
 }: CalendarGridProps) {
+  const { toast } = useToast();
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
 
@@ -54,6 +60,41 @@ export default function CalendarGrid({
 
   const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
+  // Fonction pour valider une commande
+  const handleValidateOrder = async (orderId: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'delivered' })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${await response.text()}`);
+      }
+      
+      toast({
+        title: "Commande validée",
+        description: `La commande CMD-${orderId} a été marquée comme livrée.`,
+      });
+      
+      // Rafraîchir les données
+      if (onOrderValidated) {
+        onOrderValidated();
+      }
+    } catch (error) {
+      console.error('Erreur lors de la validation:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de valider la commande.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getItemsForDate = (date: Date) => {
     // Debug: Log des commandes reçues (seulement une fois)
     if (orders.length > 0 && date.getDate() === 1) {
@@ -77,7 +118,7 @@ export default function CalendarGrid({
       }
       
       // Essayer plusieurs champs de date possibles
-      const orderDate = safeDate(order.plannedDate || order.orderDate || order.createdAt);
+      const orderDate = safeDate(order.plannedDate || order.createdAt);
       const matches = orderDate && isSameDay(orderDate, date);
       
       if (matches) {
@@ -100,7 +141,7 @@ export default function CalendarGrid({
       }
       
       // Essayer plusieurs champs de date possibles
-      const deliveryDate = safeDate(delivery.scheduledDate || delivery.deliveryDate || delivery.createdAt);
+      const deliveryDate = safeDate(delivery.scheduledDate || delivery.deliveredDate || delivery.createdAt);
       const matches = deliveryDate && isSameDay(deliveryDate, date);
       
       if (matches) {
@@ -176,7 +217,7 @@ export default function CalendarGrid({
                     return (
                       <div
                         key={`order-${order.id}`}
-                        className={`text-xs px-2 py-1 flex items-center justify-between cursor-pointer ${colorClass}`}
+                        className={`text-xs px-2 py-1 flex items-center justify-between cursor-pointer group/order ${colorClass}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           onItemClick(order, 'order');
@@ -186,6 +227,19 @@ export default function CalendarGrid({
                           {order.supplier.name}
                         </span>
                         <div className="flex items-center ml-1 flex-shrink-0">
+                          {/* Bouton de validation pour les admins si la commande n'est pas delivered */}
+                          {user?.role === 'admin' && order.status !== 'delivered' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 w-5 p-0 hover:bg-white/20 opacity-0 group-hover/order:opacity-100 transition-opacity mr-1"
+                              onClick={(e) => handleValidateOrder(order.id, e)}
+                              title="Valider la commande"
+                            >
+                              <CheckCircle className="w-3 h-3 text-green-200" />
+                            </Button>
+                          )}
+                          
                           {order.status === 'planned' && (
                             <span className="w-2 h-2 bg-yellow-300 mr-1" title="Commande planifiée (liée à une livraison)" />
                           )}
