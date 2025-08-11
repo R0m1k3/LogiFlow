@@ -888,7 +888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password if provided (for local auth)
       if (userData.password) {
         // Import from the correct auth module based on environment
-        const authModule = process.env.NODE_ENV === 'production' ? "./localAuth.production" : "./localAuth";
+        const authModule = process.env.NODE_ENV === 'production' ? "./localAuth.production.js" : "./localAuth";
         const { hashPassword } = await import(authModule);
         userData.password = await hashPassword(userData.password);
       }
@@ -946,7 +946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password if provided
       if (userData.password) {
         // Import from the correct auth module based on environment
-        const authModule = process.env.NODE_ENV === 'production' ? "./localAuth.production" : "./localAuth";
+        const authModule = process.env.NODE_ENV === 'production' ? "./localAuth.production.js" : "./localAuth";
         const { hashPassword } = await import(authModule);
         userData.password = await hashPassword(userData.password);
         // Mark password as changed

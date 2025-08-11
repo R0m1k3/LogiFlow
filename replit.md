@@ -134,3 +134,9 @@ Preferred communication style: Simple, everyday language.
 - **Issue**: Email field was marked as required in edit form but optional in create form
 - **Solution**: Removed `required` attribute and asterisk from email field in edit form
 - **Result**: Email field now consistently optional in both create and edit forms
+
+#### Production Password Hashing Fix
+- **Issue**: Admin password changes failed in production with ERR_MODULE_NOT_FOUND for localAuth.production
+- **Root Cause**: Dynamic imports in production needed `.js` extension for compiled files
+- **Solution**: Updated import paths to use `./localAuth.production.js` for production environment
+- **Result**: Password hashing now works correctly in production for user updates
