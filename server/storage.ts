@@ -1963,6 +1963,9 @@ class MemStorage implements IStorage {
 }
 
 // Use MemStorage in development, DatabaseStorage in production
-const isProduction = process.env.NODE_ENV === 'production' && process.env.DATABASE_URL;
-export const storage = isProduction ? new DatabaseStorage() : new MemStorage();
-console.log(isProduction ? '🐳 PRODUCTION: Using PostgreSQL storage' : '🔧 DEV: Using in-memory storage');
+const isProduction = process.env.NODE_ENV === 'production';
+const dbUrl = process.env.DATABASE_URL;
+const isProductionDocker = isProduction && dbUrl && (dbUrl.includes('logiflow-db') || dbUrl.includes('localhost'));
+
+export const storage = isProductionDocker ? new DatabaseStorage() : new MemStorage();
+console.log(isProductionDocker ? '🐳 PRODUCTION: Using PostgreSQL storage' : '🔧 DEV: Using in-memory storage');

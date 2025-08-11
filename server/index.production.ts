@@ -1,9 +1,11 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage.js";
-import { setupLocalAuth, requireAuth } from "./localAuth.production.js";
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+
+// Database will be configured in storage.js
+import { storage } from "./storage.js";
+import { setupLocalAuth, requireAuth } from "./localAuth.production.js";
 
 // Get directory paths
 const __filename = fileURLToPath(import.meta.url);
