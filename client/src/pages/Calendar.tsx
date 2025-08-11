@@ -182,13 +182,16 @@ export default function Calendar() {
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200 p-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Calendrier des Commandes & Livraisons
-            </h2>
-            <p className="text-gray-600">
-              {format(currentDate, 'MMMM yyyy', { locale: fr })}
-            </p>
+          <div className="flex items-center">
+            <Calendar className="w-8 h-8 text-blue-600 mr-3" />
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Calendrier des Commandes & Livraisons
+              </h2>
+              <p className="text-gray-600">
+                {format(currentDate, 'MMMM yyyy', { locale: fr })}
+              </p>
+            </div>
           </div>
           <div className="flex items-center space-x-4">
             {/* Legend */}
