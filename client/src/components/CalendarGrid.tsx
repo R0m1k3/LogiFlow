@@ -1,8 +1,10 @@
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
 import { safeDate } from "@/lib/dateUtils";
-import { Plus, Check } from "lucide-react";
+import { Plus, Check, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useState } from "react";
 import type { OrderWithRelations, DeliveryWithRelations } from "@shared/schema";
 
 interface CalendarGridProps {
@@ -11,6 +13,149 @@ interface CalendarGridProps {
   deliveries: DeliveryWithRelations[];
   onDateClick: (date: Date) => void;
   onItemClick: (item: any, type: 'order' | 'delivery') => void;
+}
+
+// Composant pour afficher un élément (commande ou livraison)
+function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 'delivery', onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
+  const formatQuantity = (quantity: number, unit: string) => {
+    return `${quantity}${unit === 'palettes' ? 'P' : 'C'}`;
+  };
+
+  if (type === 'order') {
+    const colorClass = item.status === 'delivered' 
+      ? 'bg-delivered text-white' 
+      : item.status === 'planned'
+      ? 'bg-orange-500 text-white border-2 border-orange-300'
+      : 'bg-primary text-white';
+    
+    return (
+      <div
+        className={`text-xs px-2 py-1 flex items-center justify-between cursor-pointer group/order ${colorClass}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onItemClick(item, 'order');
+        }}
+      >
+        <span className="truncate">
+          {item.supplier.name}
+        </span>
+        <div className="flex items-center ml-1 flex-shrink-0">
+          {item.status === 'planned' && (
+            <span className="w-2 h-2 bg-yellow-300 mr-1" title="Commande planifiée (liée à une livraison)" />
+          )}
+          {item.status === 'delivered' && (
+            <Check className="w-3 h-3" />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Livraison
+  return (
+    <div
+      className={`text-xs px-2 py-1 flex items-center justify-between cursor-pointer ${
+        item.status === 'delivered' 
+          ? 'bg-delivered text-white' 
+          : item.status === 'pending'
+          ? 'bg-yellow-500 text-white border-2 border-yellow-300'
+          : 'bg-secondary text-white'
+      }`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onItemClick(item, 'delivery');
+      }}
+    >
+      <span className="truncate">
+        {item.supplier.name} - {formatQuantity(item.quantity, item.unit)}
+      </span>
+      <div className="flex items-center ml-1 flex-shrink-0">
+        {item.status === 'pending' && (
+          <span className="w-2 h-2 bg-orange-300 mr-1" title="En attente de validation" />
+        )}
+        {item.status === 'delivered' && (
+          <Check className="w-3 h-3" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Composant pour gérer l'overflow avec popover
+function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrders: any[], dayDeliveries: any[], onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const MAX_VISIBLE_ITEMS = 2;
+  const totalItems = dayOrders.length + dayDeliveries.length;
+  
+  if (totalItems === 0) return null;
+
+  // Combiner tous les éléments avec leur type
+  const allItems = [
+    ...dayOrders.map(order => ({ ...order, itemType: 'order' as const })),
+    ...dayDeliveries.map(delivery => ({ ...delivery, itemType: 'delivery' as const }))
+  ];
+
+  const visibleItems = allItems.slice(0, MAX_VISIBLE_ITEMS);
+  const hiddenCount = Math.max(0, totalItems - MAX_VISIBLE_ITEMS);
+
+  return (
+    <div className="mt-1 space-y-1">
+      {/* Éléments visibles */}
+      {visibleItems.map((item, index) => (
+        <CalendarItem
+          key={`${item.itemType}-${item.id}`}
+          item={item}
+          type={item.itemType}
+          onItemClick={onItemClick}
+        />
+      ))}
+
+      {/* Badge "+X autres" avec popover */}
+      {hiddenCount > 0 && (
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-6 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 border-gray-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(!isOpen);
+              }}
+            >
+              <MoreHorizontal className="w-3 h-3 mr-1" />
+              +{hiddenCount} autres
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-80 p-3"
+            align="start"
+            side="right"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm text-gray-900">
+                Tous les éléments ({totalItems})
+              </h4>
+              <div className="space-y-1 max-h-60 overflow-y-auto">
+                {allItems.map((item) => (
+                  <CalendarItem
+                    key={`popup-${item.itemType}-${item.id}`}
+                    item={item}
+                    type={item.itemType}
+                    onItemClick={(clickedItem, type) => {
+                      onItemClick(clickedItem, type);
+                      setIsOpen(false);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
+  );
 }
 
 export default function CalendarGrid({
@@ -118,10 +263,6 @@ export default function CalendarGrid({
     return { orders: dayOrders, deliveries: dayDeliveries };
   };
 
-  const formatQuantity = (quantity: number, unit: string) => {
-    return `${quantity}${unit === 'palettes' ? 'P' : 'C'}`;
-  };
-
   return (
     <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
       {/* Calendar Header */}
@@ -161,72 +302,12 @@ export default function CalendarGrid({
                   {format(date, 'd')}
                 </span>
                 
-                {/* Orders and Deliveries */}
-                <div className="mt-1 space-y-1">
-                  {dayOrders.map((order) => {
-                    // Vérifier si la commande a une livraison liée (peu importe le statut)
-                    const hasLinkedDelivery = order.deliveries && order.deliveries.length > 0;
-                    
-                    const colorClass = order.status === 'delivered' 
-                      ? 'bg-delivered text-white' 
-                      : order.status === 'planned'
-                      ? 'bg-orange-500 text-white border-2 border-orange-300'
-                      : 'bg-primary text-white';
-                    
-                    return (
-                      <div
-                        key={`order-${order.id}`}
-                        className={`text-xs px-2 py-1 flex items-center justify-between cursor-pointer group/order ${colorClass}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onItemClick(order, 'order');
-                        }}
-                      >
-                        <span className="truncate">
-                          {order.supplier.name}
-                        </span>
-                        <div className="flex items-center ml-1 flex-shrink-0">
-                          
-                          {order.status === 'planned' && (
-                            <span className="w-2 h-2 bg-yellow-300 mr-1" title="Commande planifiée (liée à une livraison)" />
-                          )}
-                          {order.status === 'delivered' && (
-                            <Check className="w-3 h-3" />
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {dayDeliveries.map((delivery) => (
-                    <div
-                      key={`delivery-${delivery.id}`}
-                      className={`text-xs px-2 py-1 flex items-center justify-between cursor-pointer ${
-                        delivery.status === 'delivered' 
-                          ? 'bg-delivered text-white' 
-                          : delivery.status === 'pending'
-                          ? 'bg-yellow-500 text-white border-2 border-yellow-300'
-                          : 'bg-secondary text-white'
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onItemClick(delivery, 'delivery');
-                      }}
-                    >
-                      <span className="truncate">
-                        {delivery.supplier.name} - {formatQuantity(delivery.quantity, delivery.unit)}
-                      </span>
-                      <div className="flex items-center ml-1 flex-shrink-0">
-                        {delivery.status === 'pending' && (
-                          <span className="w-2 h-2 bg-orange-300 mr-1" title="En attente de validation" />
-                        )}
-                        {delivery.status === 'delivered' && (
-                          <Check className="w-3 h-3" />
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {/* Orders and Deliveries avec système d'overflow */}
+                <DayItemsContainer
+                  dayOrders={dayOrders}
+                  dayDeliveries={dayDeliveries}
+                  onItemClick={onItemClick}
+                />
               </div>
               
               {/* Quick Create Button */}
