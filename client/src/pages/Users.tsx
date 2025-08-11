@@ -51,7 +51,7 @@ export default function UsersPage() {
     lastName: "",
     email: "",
     password: "",
-    role: "employee" as const,
+    role: "employee" as "admin" | "manager" | "employee" | "directeur",
   });
   
   // Form states for creating user
@@ -61,7 +61,7 @@ export default function UsersPage() {
     lastName: "",
     username: "",
     password: "",
-    role: "employee" as const,
+    role: "employee" as "admin" | "manager" | "employee" | "directeur",
   });
 
   const USE_LOCAL_AUTH = import.meta.env.VITE_USE_LOCAL_AUTH === 'true' || import.meta.env.MODE === 'development';
@@ -76,10 +76,7 @@ export default function UsersPage() {
     enabled: user?.role === 'admin',
   });
 
-  const { data: roles = [] } = useQuery({
-    queryKey: ['/api/roles'],
-    enabled: user?.role === 'admin',
-  });
+
 
   // Protection React Error #310 - Vérification Array pour users et groups
   console.log('👥 Users page data:', { 
@@ -90,28 +87,13 @@ export default function UsersPage() {
     groupsType: typeof groups 
   });
   
-  // 🔍 Debug des couleurs de rôles
-  if (Array.isArray(users) && users.length > 0) {
-    console.log('🎨 Users roles colors debug:', users.map(u => ({
-      username: u.username,
-      oldRole: u.role,
-      userRoles: u.userRoles?.map(ur => ({
-        roleId: ur.roleId,
-        roleName: ur.role?.name,
-        roleColor: ur.role?.color
-      })) || 'NO_USER_ROLES',
-      roles: u.roles?.map(r => ({ name: r.name, color: r.color })) || 'NO_ROLES'
-    })));
-  }
-  
-  // Protection: s'assurer que users, groups et roles sont des arrays
+  // Protection: s'assurer que users et groups sont des arrays
   const safeUsers = Array.isArray(users) ? users : [];
   const safeGroups = Array.isArray(groups) ? groups : [];
-  const safeRoles = Array.isArray(roles) ? roles : [];
 
   const updateUserRoleMutation = useMutation({
-    mutationFn: async (data: { userId: string; roleId: number }) => {
-      await apiRequest(`/api/users/${data.userId}/roles`, "POST", { roleIds: [data.roleId] });
+    mutationFn: async (data: { userId: string; role: string }) => {
+      await apiRequest(`/api/users/${data.userId}`, "PUT", { role: data.role });
     },
     onSuccess: () => {
       toast({
@@ -119,7 +101,7 @@ export default function UsersPage() {
         description: "Rôle utilisateur mis à jour avec succès",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/roles'] });
+      
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -146,7 +128,7 @@ export default function UsersPage() {
       console.log('🔄 Frontend updateUser mutation:', data);
       
       // Nettoyer les données côté frontend avant envoi
-      const cleanedUpdates = {};
+      const cleanedUpdates: any = {};
       for (const [key, value] of Object.entries(data.updates)) {
         // For name fields (firstName, lastName, email), allow empty strings to clear the fields
         if (key === 'firstName' || key === 'lastName' || key === 'email') {
@@ -270,7 +252,7 @@ export default function UsersPage() {
       });
       // Invalidation complète du cache
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/roles'] });
+      
       queryClient.invalidateQueries({ queryKey: ['/api/groups'] });
     },
     onError: (error: any) => {
@@ -315,7 +297,7 @@ export default function UsersPage() {
       });
       // Invalidation complète du cache
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/roles'] });
+      
       queryClient.invalidateQueries({ queryKey: ['/api/groups'] });
     },
     onError: (error: any) => {
@@ -527,22 +509,11 @@ export default function UsersPage() {
       return;
     }
 
-    // Trouver l'ID du rôle basé sur le nom
-    const role = safeRoles.find(r => r.name === newRoleName);
-    if (!role) {
-      toast({
-        title: "Erreur",
-        description: "Rôle non trouvé",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Préparer la confirmation et ouvrir le modal
     setPendingRoleChange({
       userId,
       newRoleName,
-      newRoleDisplay: role.displayName || role.name
+      newRoleDisplay: newRoleName
     });
     setShowRoleConfirmModal(true);
   }
@@ -550,10 +521,10 @@ export default function UsersPage() {
   const confirmRoleChange = () => {
     if (!pendingRoleChange) return;
     
-    const role = safeRoles.find(r => r.name === pendingRoleChange.newRoleName);
-    if (role) {
-      updateUserRoleMutation.mutate({ userId: pendingRoleChange.userId, roleId: role.id });
-    }
+    updateUserRoleMutation.mutate({ 
+      userId: pendingRoleChange.userId, 
+      role: pendingRoleChange.newRoleName 
+    });
     
     setShowRoleConfirmModal(false);
     setPendingRoleChange(null);
@@ -748,50 +719,8 @@ export default function UsersPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            {/* 🔧 SYSTÈME DE RÔLES CORRIGÉ - Utilise les vraies couleurs de la DB */}
-                            {Array.isArray(userData.userRoles) && userData.userRoles.length > 0 ? (
-                              userData.userRoles.map((userRole, index) => (
-                                <div key={userRole.roleId || index} className="flex items-center mr-2">
-                                  <div 
-                                    className="w-3 h-3 rounded-full mr-2 border-2 border-white shadow-sm"
-                                    style={{ backgroundColor: userRole.role?.color || '#6b7280' }}
-                                  />
-                                  <Badge 
-                                    style={{ 
-                                      backgroundColor: userRole.role?.color || '#6b7280',
-                                      color: 'white'
-                                    }}
-                                    className="text-xs font-medium"
-                                  >
-                                    {userRole.role?.displayName || userRole.role?.name || 'Rôle inconnu'}
-                                  </Badge>
-                                </div>
-                              ))
-                            ) : Array.isArray(userData.roles) && userData.roles.length > 0 ? (
-                              userData.roles.map((role, index) => (
-                                <div key={role.id || index} className="flex items-center mr-2">
-                                  <div 
-                                    className="w-3 h-3 rounded-full mr-2 border-2 border-white shadow-sm"
-                                    style={{ backgroundColor: role.color || '#6b7280' }}
-                                  />
-                                  <Badge 
-                                    style={{ 
-                                      backgroundColor: role.color || '#6b7280',
-                                      color: 'white'
-                                    }}
-                                    className="text-xs font-medium"
-                                  >
-                                    {role.displayName || role.name}
-                                  </Badge>
-                                </div>
-                              ))
-                            ) : (
-                              // Fallback final si aucune donnée de rôle n'est disponible
-                              <div className="flex items-center">
-                                {getRoleIcon(userData.role)}
-                                <span className="ml-2">{getRoleBadge(userData.role)}</span>
-                              </div>
-                            )}
+                            {getRoleIcon(userData.role)}
+                            <span className="ml-2">{getRoleBadge(userData.role)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -822,7 +751,7 @@ export default function UsersPage() {
                             {/* Sélecteur de rôle rapide */}
                             {userData.id !== user?.id && (
                               <Select
-                                value={userData.userRoles?.[0]?.role?.name || userData.role || ''}
+                                value={userData.role || ''}
                                 onValueChange={(newRole) => handleRoleChange(userData.id, newRole)}
                                 disabled={updateUserRoleMutation.isPending}
                               >
@@ -830,17 +759,10 @@ export default function UsersPage() {
                                   <SelectValue placeholder="Rôle" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {safeRoles.map((role) => (
-                                    <SelectItem key={role.id} value={role.name}>
-                                      <div className="flex items-center">
-                                        <div 
-                                          className="w-2 h-2 rounded-full mr-2"
-                                          style={{ backgroundColor: role.color }}
-                                        />
-                                        {role.displayName || role.name}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="admin">Administrateur</SelectItem>
+                                  <SelectItem value="directeur">Directeur</SelectItem>
+                                  <SelectItem value="manager">Manager</SelectItem>
+                                  <SelectItem value="employee">Employé</SelectItem>
                                 </SelectContent>
                               </Select>
                             )}
