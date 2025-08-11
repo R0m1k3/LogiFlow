@@ -52,8 +52,19 @@ Si l'interface affiche "Aucun utilisateur trouvé" :
 - `production-users-debug.sql` : Problème de récupération des utilisateurs
 
 ### Problème Création d'Utilisateur
-Si la création d'utilisateur échoue :
 
+#### Erreur "duplicate key value violates unique constraint users_email_key"
+Cette erreur survient quand plusieurs utilisateurs ont un email vide (`""`) car PostgreSQL traite les chaînes vides comme des valeurs uniques.
+
+**Solution** :
+1. Exécutez le script de correction :
+   ```bash
+   psql $DATABASE_URL -f fix-duplicate-empty-email.sql
+   ```
+
+2. Redéployez l'application (le code a été corrigé pour utiliser `NULL` au lieu de `""`)
+
+#### Tests de Création
 1. **Test Manuel** : Utilisez `test-create-user-production.js`
    ```bash
    PRODUCTION_HOST=votre-domaine.com SESSION_COOKIE="connect.sid=..." node test-create-user-production.js
@@ -62,7 +73,7 @@ Si la création d'utilisateur échoue :
 2. **Vérification Logs** : Cherchez ces messages d'erreur :
    - `❌ Password hashing failed`
    - `❌ Storage createUser error`
-   - Database connection errors
+   - `duplicate key value violates unique constraint`
 
 ### Logs de Débogage Disponibles
 **Récupération Utilisateurs :**

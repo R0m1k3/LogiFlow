@@ -921,7 +921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createUserSchema = z.object({
         id: z.string().optional(),
         username: z.string().min(1, "L'identifiant est obligatoire"),
-        email: z.union([z.string().email(), z.literal("")]).optional(),
+        email: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
         firstName: z.string().optional(),
         lastName: z.string().optional(),
         password: z.string().min(1, "Le mot de passe est obligatoire"),
@@ -952,7 +952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userToCreate = {
         id: newUserId,
         username: userData.username,
-        email: userData.email || '',
+        email: userData.email && userData.email.trim() !== '' ? userData.email : null, // Use NULL instead of empty string
         firstName: userData.firstName || '',
         lastName: userData.lastName || '',
         password: hashedPassword,
