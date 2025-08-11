@@ -1001,8 +1001,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('🔍 PUT /api/users/:id - Updating user:', req.params.id);
+      console.log('📥 Update data:', JSON.stringify(req.body, null, 2));
+      
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user || user.role !== 'admin') {
+        console.log('❌ Access denied - user not admin');
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -1010,26 +1014,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updateUserSchema = z.object({
         username: z.string().optional(),
         role: z.enum(['admin', 'directeur', 'manager', 'employee']).optional(),
-        firstName: z.union([z.string(), z.literal("")]).optional(),
-        lastName: z.union([z.string(), z.literal("")]).optional(),
-        email: z.union([z.string().email(), z.literal("")]).optional(),
+        firstName: z.union([z.string(), z.literal(""), z.null()]).optional(),
+        lastName: z.union([z.string(), z.literal(""), z.null()]).optional(),
+        email: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
         password: z.string().optional(),
       });
 
+      console.log('🔍 Parsing update data...');
       const userData = updateUserSchema.parse(req.body);
+      console.log('✅ Update data parsed successfully');
       
-      // Hash password if provided
-      if (userData.password) {
-        userData.password = await hashPasswordSimple(userData.password);
-        // Mark password as changed
-        (userData as any).passwordChanged = true;
+      // Clean up the data - handle empty emails properly
+      const cleanUserData: any = { ...userData };
+      
+      // Handle email field - convert empty string to null
+      if (cleanUserData.email !== undefined) {
+        cleanUserData.email = cleanUserData.email && cleanUserData.email.trim() !== '' ? cleanUserData.email : null;
+        console.log('🔍 Email field processed:', cleanUserData.email === null ? 'NULL' : cleanUserData.email);
       }
       
-      const updatedUser = await storage.updateUser(req.params.id, userData);
+      // Hash password if provided
+      if (cleanUserData.password) {
+        try {
+          console.log('🔒 Hashing password...');
+          cleanUserData.password = await hashPasswordSimple(cleanUserData.password);
+          cleanUserData.passwordChanged = true;
+          console.log('✅ Password hashed successfully');
+        } catch (hashError) {
+          console.error('❌ Password hashing failed:', hashError);
+          return res.status(500).json({ message: "Failed to secure password" });
+        }
+      }
+      
+      console.log('🔍 Updating user in database...');
+      const updatedUser = await storage.updateUser(req.params.id, cleanUserData);
+      console.log('✅ User updated successfully:', updatedUser.username);
 
       res.json(updatedUser);
     } catch (error: any) {
-      console.error("Error updating user:", error);
+      console.error("❌ Error updating user:", error);
+      console.error("❌ Error type:", error.constructor.name);
+      console.error("❌ Error code:", error.code);
+      console.error("❌ Error constraint:", error.constraint);
+      console.error("❌ Error stack:", error.stack);
       
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });

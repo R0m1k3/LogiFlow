@@ -140,3 +140,13 @@ Preferred communication style: Simple, everyday language.
 - **Root Cause**: Dynamic imports in production needed `.js` extension for compiled files
 - **Solution**: Updated import paths to use `./localAuth.production.js` for production environment
 - **Result**: Password hashing now works correctly in production for user updates
+
+#### Email Constraint Fix for User Management
+- **Issue**: Both user creation and editing failed with "duplicate key value violates unique constraint users_email_key" error
+- **Root Cause**: PostgreSQL treats empty strings (`""`) as unique values, but multiple users with empty emails violated uniqueness constraint
+- **Solution Implemented**:
+  - Updated both POST `/api/users` (creation) and PUT `/api/users/:id` (editing) routes to convert empty emails to `NULL`
+  - Enhanced validation schemas to accept `null` values for email fields
+  - Created `fix-duplicate-empty-email.sql` script to clean existing database records
+  - Improved error handling and logging for better production debugging
+- **Result**: Users can now be created and edited with optional email fields without constraint violations

@@ -54,7 +54,11 @@ Si l'interface affiche "Aucun utilisateur trouvé" :
 ### Problème Création d'Utilisateur
 
 #### Erreur "duplicate key value violates unique constraint users_email_key"
-Cette erreur survient quand plusieurs utilisateurs ont un email vide (`""`) car PostgreSQL traite les chaînes vides comme des valeurs uniques.
+Cette erreur survient lors de la **création** ou **édition** d'utilisateur quand plusieurs utilisateurs ont un email vide (`""`) car PostgreSQL traite les chaînes vides comme des valeurs uniques.
+
+**Symptômes** :
+- Création d'utilisateur échoue avec erreur `Key (email)=() already exists`
+- Édition d'utilisateur échoue avec la même erreur lors de la sauvegarde
 
 **Solution** :
 1. Exécutez le script de correction :
@@ -62,7 +66,7 @@ Cette erreur survient quand plusieurs utilisateurs ont un email vide (`""`) car 
    psql $DATABASE_URL -f fix-duplicate-empty-email.sql
    ```
 
-2. Redéployez l'application (le code a été corrigé pour utiliser `NULL` au lieu de `""`)
+2. Redéployez l'application (le code a été corrigé pour utiliser `NULL` au lieu de `""` dans les routes de création ET d'édition)
 
 #### Tests de Création
 1. **Test Manuel** : Utilisez `test-create-user-production.js`

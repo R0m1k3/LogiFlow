@@ -317,15 +317,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {
-    const [user] = await db
-      .update(users)
-      .set({
-        ...userData,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, id))
-      .returning();
-    return user;
+    console.log('🔍 Storage updateUser called for:', id);
+    console.log('🔍 Update data:', userData);
+    try {
+      const [user] = await db
+        .update(users)
+        .set({
+          ...userData,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, id))
+        .returning();
+      console.log('✅ Storage updateUser successful:', user.username);
+      return user;
+    } catch (error) {
+      console.error('❌ Storage updateUser error:', error);
+      console.error('❌ Storage error code:', error.code);
+      console.error('❌ Storage error constraint:', error.constraint);
+      throw error;
+    }
   }
 
   async deleteUser(id: string): Promise<void> {
