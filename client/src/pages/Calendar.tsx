@@ -267,7 +267,7 @@ export default function Calendar() {
       )}
 
       {/* Stats Panel */}
-      <StatsPanel />
+      <StatsPanel currentDate={currentDate} />
     </div>
   );
 }

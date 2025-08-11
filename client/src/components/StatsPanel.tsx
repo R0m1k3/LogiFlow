@@ -4,10 +4,13 @@ import { TrendingUp, Package, Truck, Clock } from "lucide-react";
 import { useStore } from "./Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 
-export default function StatsPanel() {
+interface StatsPanelProps {
+  currentDate?: Date;
+}
+
+export default function StatsPanel({ currentDate = new Date() }: StatsPanelProps) {
   const { selectedStoreId } = useStore();
   const { user } = useAuthUnified();
-  const currentDate = new Date();
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
 
@@ -16,6 +19,17 @@ export default function StatsPanel() {
 
   const { data: stats, isLoading } = useQuery({
     queryKey: [statsUrl, selectedStoreId], // Include selectedStoreId in key to force refetch
+    queryFn: async () => {
+      const response = await fetch(statsUrl, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
+      }
+      
+      return response.json();
+    },
   });
 
   if (isLoading) {
