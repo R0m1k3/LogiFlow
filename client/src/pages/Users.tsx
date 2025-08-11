@@ -446,7 +446,7 @@ export default function UsersPage() {
       });
       
       setShowCreateModal(false);
-      setNewUser({ email: "", firstName: "", lastName: "", password: "", role: "employee" });
+      setNewUser({ email: "", firstName: "", lastName: "", username: "", password: "", role: "employee" });
       setUserGroups([]);
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
     } catch (error) {

@@ -419,6 +419,18 @@ export class DatabaseStorage implements IStorage {
         .update(nocodbConfig)
         .set({ createdBy: adminUserId })
         .where(eq(nocodbConfig.createdBy, id));
+        
+      // Update database backups if the table exists (production feature)
+      try {
+        await tx.execute(sql`
+          UPDATE database_backups 
+          SET created_by = ${adminUserId} 
+          WHERE created_by = ${id}
+        `);
+      } catch (error) {
+        // Table might not exist in development, ignore the error
+        console.log('Note: database_backups table not found or accessible');
+      }
       
       // Update role assignments made BY this user (assignedBy field)
       await tx

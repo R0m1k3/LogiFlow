@@ -90,7 +90,7 @@ Preferred communication style: Simple, everyday language.
   - Ownership transfer of all user-created records to existing admin before deletion
   - Comprehensive handling of all foreign key relationships including role assignments
   - Graceful error handling when no admin user exists
-- **Tables Handled**: customer_orders, orders, deliveries, publicities, dlcProducts, tasks, nocodbConfig, userGroups, userRoles (both userId and assignedBy)
+- **Tables Handled**: customer_orders, orders, deliveries, publicities, dlcProducts, tasks, nocodbConfig, userGroups, userRoles (both userId and assignedBy), database_backups
 - **Result**: Safe user deletion while preserving business data integrity
 
 #### User Name Fields Optional in Production

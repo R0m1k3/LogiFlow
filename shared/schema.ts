@@ -460,6 +460,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
   role: true,
   passwordChanged: true,
+}).extend({
+  email: z.union([z.string().email(), z.literal("")]).optional(),
 });
 
 export const insertGroupSchema = createInsertSchema(groups).omit({

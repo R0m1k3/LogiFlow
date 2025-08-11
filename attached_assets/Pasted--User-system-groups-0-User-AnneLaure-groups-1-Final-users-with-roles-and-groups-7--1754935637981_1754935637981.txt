@@ -1,0 +1,133 @@
+📊 User system groups: 0
+
+📊 User AnneLaure groups: 1
+
+🔍 Final users with roles and groups: 7
+
+🔐 API /api/users - Returning: { isArray: true, length: 7 }
+
+GET /api/users 200 in 80ms
+
+Error deleting user: error: update or delete on table "users" violates foreign key constraint "database_backups_created_by_fkey" on table "database_backups"
+
+    at /app/node_modules/pg/lib/client.js:545:17
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/dist/index.js:1109:11
+
+    at async NodePgSession.transaction (file:///app/node_modules/drizzle-orm/node-postgres/session.js:142:22)
+
+    at async DatabaseStorage.deleteUser (file:///app/dist/index.js:1090:9)
+
+    at async file:///app/dist/index.js:4095:7 {
+
+  length: 327,
+
+  severity: 'ERROR',
+
+  code: '23503',
+
+  detail: 'Key (id)=(system) is still referenced from table "database_backups".',
+
+  hint: undefined,
+
+  position: undefined,
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: 'public',
+
+  table: 'database_backups',
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: 'database_backups_created_by_fkey',
+
+  file: 'ri_triggers.c',
+
+  line: '2609',
+
+  routine: 'ri_ReportViolation'
+
+}
+
+DELETE /api/users/system 500 in 28ms
+
+HEAD /api/health 200 in 1ms
+
+Error creating user: ZodError: [
+
+  {
+
+    "validation": "email",
+
+    "code": "invalid_string",
+
+    "message": "Invalid email",
+
+    "path": [
+
+      "email"
+
+    ]
+
+  }
+
+]
+
+    at get error [as error] (file:///app/node_modules/zod/v3/types.js:39:31)
+
+    at ZodObject.parse (file:///app/node_modules/zod/v3/types.js:114:22)
+
+    at file:///app/dist/index.js:3988:41
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+
+  issues: [
+
+    {
+
+      validation: 'email',
+
+      code: 'invalid_string',
+
+      message: 'Invalid email',
+
+      path: [Array]
+
+    }
+
+  ],
+
+  addIssue: [Function (anonymous)],
+
+  addIssues: [Function (anonymous)],
+
+  errors: [
+
+    {
+
+      validation: 'email',
+
+      code: 'invalid_string',
+
+      message: 'Invalid email',
+
+      path: [Array]
+
+    }
+
+  ]
+
+}
+
+POST /api/users 400 in 26ms
+
+HEAD /api/health 200 in 1ms

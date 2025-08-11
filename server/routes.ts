@@ -877,10 +877,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Schema création utilisateur SANS champs obligatoires pour résoudre le problème de production
       const createUserSchema = z.object({
         id: z.string().optional(),
-        email: z.string().email().optional(),
+        username: z.string().min(1, "L'identifiant est obligatoire"),
+        email: z.union([z.string().email(), z.literal("")]).optional(),
         firstName: z.string().optional(),
         lastName: z.string().optional(),
-        password: z.string().optional(),
+        password: z.string().min(1, "Le mot de passe est obligatoire"),
         role: z.enum(['admin', 'manager', 'employee']).optional(),
       });
 
