@@ -1,9 +1,7 @@
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
 import { safeDate } from "@/lib/dateUtils";
-import { Plus, Check, CheckCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { Plus, Check } from "lucide-react";
 import type { OrderWithRelations, DeliveryWithRelations } from "@shared/schema";
 
 interface CalendarGridProps {
@@ -12,8 +10,6 @@ interface CalendarGridProps {
   deliveries: DeliveryWithRelations[];
   onDateClick: (date: Date) => void;
   onItemClick: (item: any, type: 'order' | 'delivery') => void;
-  user?: { role: string } | null;
-  onOrderValidated?: () => void;
 }
 
 export default function CalendarGrid({
@@ -22,10 +18,7 @@ export default function CalendarGrid({
   deliveries,
   onDateClick,
   onItemClick,
-  user,
-  onOrderValidated,
 }: CalendarGridProps) {
-  const { toast } = useToast();
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
 
@@ -59,47 +52,6 @@ export default function CalendarGrid({
   }
 
   const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-
-  // Fonction pour valider une commande
-  const handleValidateOrder = async (orderId: number, event: React.MouseEvent) => {
-    event.stopPropagation();
-    
-    console.log('🔥 DEBUG: Validation clicked for order', orderId, 'User role:', user?.role);
-    
-    try {
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status: 'delivered' })
-      });
-      
-      console.log('🔥 DEBUG: Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('🔥 DEBUG: Response error:', errorText);
-        throw new Error(`Erreur ${response.status}: ${errorText}`);
-      }
-      
-      toast({
-        title: "Commande validée",
-        description: `La commande CMD-${orderId} a été marquée comme livrée.`,
-      });
-      
-      // Rafraîchir les données
-      if (onOrderValidated) {
-        onOrderValidated();
-      }
-    } catch (error) {
-      console.error('🔥 DEBUG: Validation error:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de valider la commande.",
-        variant: "destructive"
-      });
-    }
-  };
 
   const getItemsForDate = (date: Date) => {
     // Debug: Log des commandes reçues (seulement une fois)
@@ -233,32 +185,6 @@ export default function CalendarGrid({
                           {order.supplier.name}
                         </span>
                         <div className="flex items-center ml-1 flex-shrink-0">
-                          {/* DEBUG: Affichage info utilisateur sur première commande */}
-                          {order.id === orders[0]?.id && (
-                            <div className="text-[8px] text-red-500 absolute -top-4 -left-2 bg-white px-1 rounded z-10">
-                              User: {user?.role || 'null'} | Status: {order.status}
-                            </div>
-                          )}
-                          
-                          {/* Bouton de validation pour les admins - VERSION VISIBLE POUR DEBUG */}
-                          {user?.role === 'admin' && order.status !== 'delivered' && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-5 w-5 p-0 bg-red-500 hover:bg-red-600 mr-1"
-                              onClick={(e) => handleValidateOrder(order.id, e)}
-                              title="Valider la commande"
-                            >
-                              <CheckCircle className="w-3 h-3 text-white" />
-                            </Button>
-                          )}
-                          
-                          {/* Bouton de test TOUJOURS VISIBLE */}
-                          {order.status !== 'delivered' && (
-                            <div className="text-[8px] bg-yellow-300 text-black px-1 rounded mr-1">
-                              V
-                            </div>
-                          )}
                           
                           {order.status === 'planned' && (
                             <span className="w-2 h-2 bg-yellow-300 mr-1" title="Commande planifiée (liée à une livraison)" />

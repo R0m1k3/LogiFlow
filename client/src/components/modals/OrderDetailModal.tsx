@@ -11,7 +11,7 @@ import { safeFormat } from "@/lib/dateUtils";
 import EditOrderModal from "./EditOrderModal";
 import EditDeliveryModal from "./EditDeliveryModal";
 import ValidateDeliveryModal from "./ValidateDeliveryModal";
-import { Package, Truck, Edit, Trash2, Check, X } from "lucide-react";
+import { Package, Truck, Edit, Trash2, Check, X, CheckCircle } from "lucide-react";
 
 interface OrderDetailModalProps {
   isOpen: boolean;
@@ -32,6 +32,39 @@ export default function OrderDetailModal({
 
   const isOrder = item?.type === 'order';
   const isDelivery = item?.type === 'delivery';
+
+  const validateOrderMutation = useMutation({
+    mutationFn: async (orderId: number) => {
+      await apiRequest(`/api/orders/${orderId}`, "PUT", { status: 'delivered' });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Succès",
+        description: "Commande validée avec succès",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+      onClose();
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Non autorisé",
+          description: "Vous êtes déconnecté. Reconnexion...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Erreur",
+        description: "Impossible de valider la commande",
+        variant: "destructive",
+      });
+    },
+  });
 
   const validateDeliveryMutation = useMutation({
     mutationFn: async (data: { id: number; blNumber: string; blAmount: number }) => {
@@ -354,6 +387,18 @@ export default function OrderDetailModal({
                 Modifier
               </Button>
             )}
+            {/* Bouton de validation pour les commandes (admin seulement) */}
+            {isOrder && user?.role === 'admin' && item?.status !== 'delivered' && (
+              <Button
+                onClick={() => validateOrderMutation.mutate(item.id)}
+                disabled={validateOrderMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                {validateOrderMutation.isPending ? 'Validation...' : 'Valider Commande'}
+              </Button>
+            )}
+            
             {canValidate && (
               <Button
                 onClick={handleValidateDelivery}
