@@ -6,7 +6,19 @@
 - ✅ Code corrigé et compilé avec succès
 
 ## Action requise
-**REDÉPLOYER l'application** pour utiliser la nouvelle version compilée qui contient les corrections.
+**REDÉPLOYER l'application MAINTENANT** pour résoudre le problème des livraisons vides.
+
+**Commandes de déploiement :**
+```bash
+# Sur votre serveur de production
+docker-compose up --build -d
+```
+
+**Vérification post-déploiement :**
+```bash
+# Tester que les données remontent
+curl -u admin:admin https://logiflow.ffnancy.fr/api/deliveries
+```
 
 ## Vérifications post-déploiement
 1. Connexion admin/admin doit fonctionner
