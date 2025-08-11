@@ -2,6 +2,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameM
 import { fr } from "date-fns/locale";
 import { safeDate } from "@/lib/dateUtils";
 import { Plus, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { OrderWithRelations, DeliveryWithRelations } from "@shared/schema";
 
 interface CalendarGridProps {
