@@ -25,7 +25,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
     const colorClass = item.status === 'delivered' 
       ? 'bg-delivered text-white' 
       : item.status === 'planned'
-      ? 'bg-orange-500 text-white border-2 border-orange-300'
+      ? 'bg-yellow-200 text-gray-800 border-2 border-yellow-300'
       : 'bg-primary text-white';
     
     return (
@@ -41,7 +41,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
         </span>
         <div className="flex items-center ml-1 flex-shrink-0">
           {item.status === 'planned' && (
-            <span className="w-2 h-2 bg-yellow-300 mr-1" title="Commande planifiée (liée à une livraison)" />
+            <span className="w-2 h-2 bg-yellow-600 mr-1" title="Commande planifiée (liée à une livraison)" />
           )}
           {item.status === 'delivered' && (
             <Check className="w-3 h-3" />
