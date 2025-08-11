@@ -149,23 +149,52 @@ export default function Calendar() {
     try {
       console.log('🔄 Starting manual sync of order-delivery status...');
       
-      // Solution temporaire : récupérer les données et faire la sync côté client
+      // Solution temporaire : récupérer TOUTES les données et faire la sync côté client
       const ordersResponse = await fetch('/api/orders', { credentials: 'include' });
       const allOrders = await ordersResponse.json();
       
-      console.log('📊 Orders loaded for sync:', allOrders.length);
+      // Récupérer aussi toutes les livraisons pour avoir une vue complète
+      const deliveriesResponse = await fetch('/api/deliveries', { credentials: 'include' });
+      const allDeliveries = await deliveriesResponse.json();
+      
+      console.log('📊 Data loaded for sync:', {
+        orders: allOrders.length,
+        deliveries: allDeliveries.length,
+        deliveredDeliveries: allDeliveries.filter(d => d.status === 'delivered').length
+      });
+      
+      // Chercher spécifiquement CMD-55
+      const cmd55 = allOrders.find(o => o.id === 55);
+      if (cmd55) {
+        console.log('🎯 CMD-55 Details:', {
+          id: cmd55.id,
+          status: cmd55.status,
+          deliveries: cmd55.deliveries?.length || 0,
+          deliveryDetails: cmd55.deliveries || []
+        });
+      } else {
+        console.log('❌ CMD-55 not found in current orders');
+      }
       
       let problematicOrders = 0;
       let fixedOrders = 0;
       
       // Parcourir les commandes et identifier celles à corriger
       for (const order of allOrders) {
+        console.log(`🔍 Analyzing order #CMD-${order.id}:`, {
+          status: order.status,
+          deliveries: order.deliveries?.length || 0,
+          deliveryStatuses: order.deliveries?.map(d => ({ id: d.id, status: d.status, deliveredDate: d.deliveredDate })) || []
+        });
+        
         if (order.deliveries && order.deliveries.length > 0) {
           const hasDeliveredDeliveries = order.deliveries.some(d => d.status === 'delivered');
           
           if (hasDeliveredDeliveries && order.status !== 'delivered') {
             problematicOrders++;
-            console.log(`🔍 Found problematic order: #CMD-${order.id} (status: ${order.status}) with delivered deliveries`);
+            console.log(`🔍 Found problematic order: #CMD-${order.id} (status: ${order.status}) with delivered deliveries:`, 
+              order.deliveries.filter(d => d.status === 'delivered').map(d => `#LIV-${d.id}`)
+            );
             
             try {
               // Corriger la commande via l'API PUT existante
