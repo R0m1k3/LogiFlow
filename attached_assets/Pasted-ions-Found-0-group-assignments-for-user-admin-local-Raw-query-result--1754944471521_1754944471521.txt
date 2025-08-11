@@ -1,0 +1,208 @@
+ions
+ 
+ 
+ 
+      
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+Deliveries API called with: {
+
+  startDate: '2025-08-01',
+
+  endDate: '2025-08-31',
+
+  storeId: undefined,
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering deliveries with groupIds: undefined
+
+Fetching deliveries by date range: 2025-08-01 to 2025-08-31
+
+🔍 getUserWithGroups called for user: admin_local
+
+GET /api/user 304 in 67ms
+
+GET /api/stats/monthly 304 in 57ms
+
+Deliveries returned: 40 items
+
+GET /api/deliveries 304 in 64ms
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+GET /api/user 304 in 5ms
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+Orders API called with: {
+
+  startDate: '2025-08-01',
+
+  endDate: '2025-08-31',
+
+  storeId: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering with groupIds: undefined
+
+Fetching orders by date range: 2025-08-01 to 2025-08-31
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+GET /api/user 304 in 13ms
+
+Orders returned: 15 items
+
+GET /api/orders 304 in 111ms
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+GET /api/user 304 in 7ms
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+GET /api/groups 304 in 10ms
+
+HEAD /api/health 200 in 1ms
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+📄 SPA: Serving index.html for /[object%20Object]
+
+
+      
+      
