@@ -171,6 +171,14 @@ export default function CalendarGrid({
   onDateClick,
   onItemClick,
 }: CalendarGridProps) {
+  console.log('🗓️ CalendarGrid rendered with:', {
+    currentDate: currentDate?.toISOString(),
+    ordersCount: orders?.length || 0,
+    deliveriesCount: deliveries?.length || 0,
+    publicitiesCount: publicities?.length || 0,
+    selectedStoreId,
+    userGroupsCount: userGroups?.length || 0
+  });
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
 
@@ -178,21 +186,34 @@ export default function CalendarGrid({
   const getPublicitiesForDate = (date: Date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     
+    // Protection contre les données invalides qui causent des plantages en production
+    if (!publicities || !Array.isArray(publicities)) {
+      console.warn('⚠️ Invalid publicities data:', publicities);
+      return [];
+    }
+    
     console.log('🔍 CalendarGrid getPublicitiesForDate:', {
       date: dateStr,
       totalPublicities: publicities.length,
       selectedStoreId,
-      userGroups: userGroups.length
+      userGroups: userGroups?.length || 0
     });
     
-    if (publicities.length > 0) {
-      console.log('📄 Sample publicity structure:', publicities[0]);
-    }
-    
-    return publicities.filter(pub => {
+    try {
+      return publicities.filter(pub => {
+        // Vérifications de sécurité pour éviter les plantages
+        if (!pub || typeof pub !== 'object') {
+          console.warn('⚠️ Invalid publicity object:', pub);
+          return false;
+        }
       // Check if the date is within the publicity period
       const pubStart = pub.startDate;
       const pubEnd = pub.endDate;
+      
+      if (!pubStart || !pubEnd) {
+        console.warn('⚠️ Publicity missing dates:', { pubNumber: pub.pubNumber, startDate: pubStart, endDate: pubEnd });
+        return false;
+      }
       
       if (dateStr < pubStart || dateStr > pubEnd) {
         return false;
@@ -200,7 +221,7 @@ export default function CalendarGrid({
 
       // If no store is selected and user has no assigned groups, show only publicities with participations
       if (!selectedStoreId && (!userGroups || userGroups.length === 0)) {
-        const hasParticipations = pub.participations && pub.participations.length > 0;
+        const hasParticipations = pub.participations && Array.isArray(pub.participations) && pub.participations.length > 0;
         if (hasParticipations) {
           console.log('📋 Publicity has participations (no store selected):', { pubNumber: pub.pubNumber, participationCount: pub.participations.length });
         }
@@ -209,7 +230,8 @@ export default function CalendarGrid({
 
       // If a specific store is selected, check if that store participates
       if (selectedStoreId) {
-        const matches = pub.participations?.some((pg: any) => pg.groupId === selectedStoreId);
+        const matches = pub.participations && Array.isArray(pub.participations) && 
+                       pub.participations.some((pg: any) => pg?.groupId === selectedStoreId);
         if (matches) {
           console.log('🎯 Publicity matches selected store:', { pubNumber: pub.pubNumber, selectedStoreId });
         }
@@ -218,9 +240,10 @@ export default function CalendarGrid({
 
       // If no specific store selected but user has assigned stores, 
       // show publicities where any of user's stores participate
-      if (userGroups && userGroups.length > 0) {
-        const userGroupIds = userGroups.map((ug: any) => ug.groupId);
-        const matches = pub.participations?.some((pg: any) => userGroupIds.includes(pg.groupId));
+      if (userGroups && Array.isArray(userGroups) && userGroups.length > 0) {
+        const userGroupIds = userGroups.map((ug: any) => ug?.groupId).filter(id => id !== undefined);
+        const matches = pub.participations && Array.isArray(pub.participations) &&
+                       pub.participations.some((pg: any) => pg?.groupId && userGroupIds.includes(pg.groupId));
         if (matches) {
           console.log('👥 Publicity matches user groups:', { pubNumber: pub.pubNumber, userGroupIds });
         }
@@ -228,12 +251,16 @@ export default function CalendarGrid({
       }
 
       // Default case: only show publicities with participations
-      const hasParticipations = pub.participations && pub.participations.length > 0;
+      const hasParticipations = pub.participations && Array.isArray(pub.participations) && pub.participations.length > 0;
       if (hasParticipations) {
         console.log('📋 Publicity has participations (default case):', { pubNumber: pub.pubNumber, participationCount: pub.participations.length });
       }
       return hasParticipations;
-    });
+      });
+    } catch (error) {
+      console.error('❌ Error filtering publicities:', error);
+      return [];
+    }
   };
 
   // Get all days in the month

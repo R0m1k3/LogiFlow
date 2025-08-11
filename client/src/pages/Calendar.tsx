@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CalendarGrid from "@/components/CalendarGrid";
 import QuickCreateMenu from "@/components/modals/QuickCreateMenu";
@@ -65,6 +65,12 @@ export default function Calendar() {
       
       const data = await response.json();
       console.log('📅 Calendar orders received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      
+      // Protection contre les données invalides en production
+      if (!Array.isArray(data)) {
+        console.warn('⚠️ Orders data is not an array, returning empty array');
+        return [];
+      }
       return data;
     },
   });
@@ -101,6 +107,12 @@ export default function Calendar() {
       
       const data = await response.json();
       console.log('📅 Calendar deliveries received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      
+      // Protection contre les données invalides en production
+      if (!Array.isArray(data)) {
+        console.warn('⚠️ Deliveries data is not an array, returning empty array');
+        return [];
+      }
       return data;
     },
   });
@@ -183,7 +195,7 @@ export default function Calendar() {
       <div className="bg-white shadow-sm border-b border-gray-200 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <Calendar className="w-8 h-8 text-blue-600 mr-3" />
+            <CalendarIcon className="w-8 h-8 text-blue-600 mr-3" />
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
                 Calendrier des Commandes & Livraisons
@@ -259,9 +271,9 @@ export default function Calendar() {
         ) : (
           <CalendarGrid
             currentDate={currentDate}
-            orders={orders}
-            deliveries={deliveries}
-            publicities={publicities}
+            orders={orders || []}
+            deliveries={deliveries || []}
+            publicities={publicities || []}
             selectedStoreId={selectedStoreId}
             userGroups={user?.userGroups || []}
             onDateClick={handleDateClick}

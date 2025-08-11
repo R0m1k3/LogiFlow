@@ -131,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(group);
     } catch (error) {
       console.error('❌ Failed to create group:', {
-        error: error.message,
+        error: (error as Error).message,
         stack: error.stack,
         body: req.body,
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
@@ -256,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(supplier);
     } catch (error) {
       console.error('❌ Failed to create supplier:', {
-        error: error.message,
+        error: (error as Error).message,
         stack: error.stack,
         body: req.body,
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
@@ -438,7 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(order);
     } catch (error) {
       console.error("❌ Error creating order:", {
-        error: error.message,
+        error: (error as Error).message,
         stack: error.stack,
         body: req.body,
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
@@ -576,7 +576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("❌ Error in sync operation:", error);
-      res.status(500).json({ message: "Failed to synchronize statuses", error: error.message });
+      res.status(500).json({ message: "Failed to synchronize statuses", error: (error as Error).message });
     }
   });
 
@@ -981,7 +981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(usersWithData);
     } catch (error) {
       console.error("❌ Critical error fetching users:", error);
-      console.error("❌ Error stack:", error.stack);
+      console.error("❌ Error stack:", (error as any).stack);
       // En cas d'erreur, retourner un array vide pour éviter React Error #310
       res.status(500).json([]);
     }
@@ -1048,10 +1048,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(newUser);
     } catch (error) {
       console.error("❌ Error creating user:", error);
-      console.error("❌ Error type:", error.constructor.name);
-      console.error("❌ Error code:", error.code);
-      console.error("❌ Error constraint:", error.constraint);
-      console.error("❌ Error stack:", error.stack);
+      console.error("❌ Error type:", (error as any).constructor?.name);
+      console.error("❌ Error code:", (error as any).code);
+      console.error("❌ Error constraint:", (error as any).constraint);
+      console.error("❌ Error stack:", (error as any).stack);
       
       if (error instanceof z.ZodError) {
         console.log('❌ Validation error:', error.errors);
@@ -1059,13 +1059,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Handle specific database constraint errors
-      if (error.code === '23505') {
-        if (error.constraint === 'users_username_key') {
+      if ((error as any).code === '23505') {
+        if ((error as any).constraint === 'users_username_key') {
           return res.status(409).json({ 
             message: "Un utilisateur avec ce nom d'utilisateur existe déjà. Veuillez choisir un autre nom d'utilisateur." 
           });
         }
-        if (error.constraint === 'users_email_key') {
+        if ((error as any).constraint === 'users_email_key') {
           return res.status(409).json({ 
             message: "Un utilisateur avec cette adresse email existe déjà." 
           });
@@ -1073,7 +1073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Handle connection errors
-      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      if ((error as any).code === 'ECONNREFUSED' || (error as any).code === 'ENOTFOUND') {
         return res.status(503).json({ message: "Database connection error" });
       }
       
@@ -1135,23 +1135,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedUser);
     } catch (error: any) {
       console.error("❌ Error updating user:", error);
-      console.error("❌ Error type:", error.constructor.name);
-      console.error("❌ Error code:", error.code);
-      console.error("❌ Error constraint:", error.constraint);
-      console.error("❌ Error stack:", error.stack);
+      console.error("❌ Error type:", (error as any).constructor?.name);
+      console.error("❌ Error code:", (error as any).code);
+      console.error("❌ Error constraint:", (error as any).constraint);
+      console.error("❌ Error stack:", (error as any).stack);
       
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });
       }
       
       // Handle specific database constraint errors
-      if (error.code === '23505') {
-        if (error.constraint === 'users_username_key') {
+      if ((error as any).code === '23505') {
+        if ((error as any).constraint === 'users_username_key') {
           return res.status(409).json({ 
             message: "Un utilisateur avec ce nom d'utilisateur existe déjà. Veuillez choisir un autre nom d'utilisateur." 
           });
         }
-        if (error.constraint === 'users_email_key') {
+        if ((error as any).constraint === 'users_email_key') {
           return res.status(409).json({ 
             message: "Un utilisateur avec cette adresse email existe déjà. Veuillez utiliser une autre adresse email ou laisser le champ vide." 
           });
@@ -1254,7 +1254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(publicities);
     } catch (error) {
       console.error("Error fetching publicities:", error);
-      res.status(500).json({ message: "Failed to fetch publicities" });
+      res.status(500).json({ message: "Failed to fetch publicities", error: (error as Error).message });
     }
   });
 
@@ -1275,7 +1275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check access permissions
       if (user.role !== 'admin') {
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
-        const hasAccess = publicity.participations.some(p => userGroupIds.includes(p.groupId));
+        const hasAccess = publicity.participations.some((p: any) => userGroupIds.includes(p.groupId));
         
         if (!hasAccess) {
           return res.status(403).json({ message: "Access denied" });
@@ -2286,7 +2286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedTask);
     } catch (error) {
       console.error("❌ Error completing task:", error);
-      res.status(500).json({ message: "Failed to complete task", error: error.message });
+      res.status(500).json({ message: "Failed to complete task", error: (error as Error).message });
     }
   });
 
@@ -2343,44 +2343,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: (error as Error).message });
     }
   });
 
   // Debug endpoint to check task permissions specifically
 
-  // Test CRITIQUE - Comparaison des storages pour permissions tâches
-  app.get('/api/debug/compare-storages', isAuthenticated, async (req: any, res) => {
+  // Debug endpoint for permissions status
+  app.get('/api/debug/permissions-status', isAuthenticated, async (req: any, res) => {
     try {
-      console.log('🔍 CRITICAL TEST - Comparing dev vs prod storage for task permissions');
-      
-      // Test développement
-      const devTaskPerms = devPermissions.filter(p => p.category === 'gestion_taches');
-      console.log('📋 DEV storage - Task permissions:', devTaskPerms.length);
-      
-      // Test production
-      const prodTaskPerms = prodPermissions.filter(p => p.category === 'gestion_taches');
-      console.log('📋 PROD storage - Task permissions:', prodTaskPerms.length);
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUserWithGroups(userId);
       
       res.json({
-        development: {
-          total: devPermissions.length,
-          task_permissions: devTaskPerms.length,
-          categories: [...new Set(devPermissions.map(p => p.category))].sort(),
-          task_details: devTaskPerms
-        },
-        production: {
-          total: prodPermissions.length,
-          task_permissions: prodTaskPerms.length,
-          categories: [...new Set(prodPermissions.map(p => p.category))].sort(),
-          task_details: prodTaskPerms
-        },
-        database_verified: true,
+        user: user ? {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          groupCount: user.userGroups.length
+        } : null,
+        permissionSystemType: 'hardcoded',
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error('❌ Storage comparison error:', error);
-      res.status(500).json({ error: error.message });
+      console.error('❌ Permissions status error:', error);
+      res.status(500).json({ error: (error as Error).message });
     }
   });
 
