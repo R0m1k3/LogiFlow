@@ -1,15 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage as devStorage } from "./storage";
-import { storage as prodStorage } from "./storage.production";
+import { storage } from "./storage";
 import { setupLocalAuth, requireAuth } from "./localAuth";
 
-// Use appropriate storage based on environment  
-console.log('🔍 DIAGNOSTIC - NODE_ENV:', process.env.NODE_ENV);
-console.log('🔍 DIAGNOSTIC - STORAGE_MODE:', process.env.STORAGE_MODE);
-const isProduction = true; // FORCED PRODUCTION MODE FOR DEBUGGING
-const storage = isProduction ? prodStorage : devStorage;
-console.log('🔍 DIAGNOSTIC - Using storage:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
+console.log('🔍 Using development storage and authentication');
 
 
 // Alias pour compatibilité

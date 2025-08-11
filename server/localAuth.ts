@@ -86,26 +86,20 @@ export function setupLocalAuth(app: Express) {
   // Create admin user on startup
   createDefaultAdminUser();
   
-  const PostgresSessionStore = connectPg(session);
-  const sessionStore = new PostgresSessionStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: false,
-    tableName: 'session',
-  });
+  console.log('🔧 Using memory session store for development');
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'fallback-secret-key',
     resave: false,
     saveUninitialized: false,
-    store: sessionStore,
+    // Using default memory store (no database needed)
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false, // Keep false for development
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   };
 
-  app.set("trust proxy", 1);
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
@@ -153,7 +147,7 @@ export function setupLocalAuth(app: Express) {
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) return next(err);
       if (!user) {
-        return res.status(401).json({ message: info?.message || "Authentification échouée" });
+        return res.status(400).json({ message: info?.message || "Invalid credentials" });
       }
       
       req.login(user, (err) => {
