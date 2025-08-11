@@ -84,7 +84,7 @@ Preferred communication style: Simple, everyday language.
 - **Root Cause**: User records were referenced by multiple tables (customer_orders, deliveries, DLC products, etc.)
 - **Solution Implemented**:
   - Enhanced deleteUser method with database transaction for atomicity
-  - Dynamic admin user lookup instead of hardcoded fallback user
+  - Prioritized lookup for `admin_local` (default admin) with fallback to any admin user
   - Ownership transfer of all user-created records to existing admin before deletion
   - Comprehensive handling of all foreign key relationships
   - Graceful error handling when no admin user exists
