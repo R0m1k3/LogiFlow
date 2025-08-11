@@ -1,0 +1,206 @@
+
+
+User-related
+
+
+Environment-related
+
+Registries
+
+Logs
+
+Notifications
+
+Settings
+
+New version available 2.27.9
+DismissSee what's new
+Community Edition
+2.27.6 LTS
+Containers>logiflow-logiflow-1>Logs
+Container logs
+
+
+admin
+Log viewer settings
+Auto-refresh logs
+Wrap lines
+Display timestamps
+Fetch
+All logs
+Search
+Filter...
+Lines
+100
+Actions
+ 
+ 
+ 
+      
+🔗 Database initialization: {
+
+  NODE_ENV: 'production',
+
+  isProduction: true,
+
+  hasDbUrl: true,
+
+  dbHost: 'logiflow-db'
+
+}
+
+🐳 PRODUCTION: Using standard PostgreSQL
+
+✅ PostgreSQL connection test successful
+
+🐳 PRODUCTION: Using PostgreSQL storage
+
+🐳 PRODUCTION: Local auth configured with PostgreSQL sessions
+
+🐳 PRODUCTION: Starting LogiFlow application
+
+🐳 Environment: { NODE_ENV: 'production', DATABASE_URL: 'Present', PORT: '3000' }
+
+🔍 Using development storage and authentication
+
+🔧 Using memory session store for development
+
+🐳 Serving static files from: /app/dist/public
+
+Warning: connect.session() MemoryStore is not
+
+designed for a production environment, as it will leak
+
+memory, and will not scale past a single process.
+
+🐳 PRODUCTION: LogiFlow serving on port 3000
+
+✅ Production admin user found: { id: 'admin_local', username: 'admin', passwordFormat: 'present' }
+
+🔐 Production password comparison { suppliedLength: 5, storedFormat: '63d2ce518b...' }
+
+✅ Password matched with hash.salt format
+
+✅ Admin password works with current system
+
+HEAD /api/health 200 in 5ms
+
+📄 SPA: Serving index.html for /users
+
+GET /api/user 304 in 8ms
+
+GET /api/user 304 in 5ms
+
+GET /api/user 304 in 6ms
+
+GET /api/user 304 in 6ms
+
+GET /api/groups 304 in 16ms
+
+GET /api/roles 304 in 33ms
+
+🔍 getUsersWithRolesAndGroups called
+
+📊 Base users found: 7
+
+🔍 Processing user: admin
+
+🔍 Processing user: ff292
+
+🔍 Processing user: Rudolph
+
+🔍 Processing user: ff579
+
+🔍 Processing user: ff579m
+
+🔍 Processing user: Nicolas
+
+🔍 Processing user: AnneLaure
+
+📊 getUserWithRoles(_1754936203292): { userRoleDataLength: 0 }
+
+📊 getUserWithRoles(admin_local): { userRoleDataLength: 1 }
+
+📊 User ff292 groups: 0
+
+📊 User admin groups: 0
+
+📊 getUserWithRoles(_1753340243216): { userRoleDataLength: 0 }
+
+📊 getUserWithRoles(directionfrouard_1753264272043): { userRoleDataLength: 0 }
+
+📊 getUserWithRoles(_1753266881822): { userRoleDataLength: 0 }
+
+📊 getUserWithRoles(_1753266816257): { userRoleDataLength: 0 }
+
+📊 User Rudolph groups: 1
+
+📊 getUserWithRoles(_1753266851515): { userRoleDataLength: 0 }
+
+📊 User AnneLaure groups: 1
+
+📊 User ff579 groups: 1
+
+📊 User Nicolas groups: 1
+
+📊 User ff579m groups: 1
+
+🔍 Final users with roles and groups: 7
+
+🔐 API /api/users - Returning: { isArray: true, length: 7 }
+
+GET /api/users 304 in 126ms
+
+PUT /api/users/_1754936203292 200 in 15ms
+
+🔍 getUsersWithRolesAndGroups called
+
+📊 Base users found: 7
+
+🔍 Processing user: admin
+
+🔍 Processing user: ff292
+
+🔍 Processing user: Rudolph
+
+🔍 Processing user: ff579
+
+🔍 Processing user: ff579m
+
+🔍 Processing user: Nicolas
+
+🔍 Processing user: AnneLaure
+
+📊 getUserWithRoles(admin_local): { userRoleDataLength: 1 }
+
+📊 getUserWithRoles(_1754936203292): { userRoleDataLength: 0 }
+
+📊 getUserWithRoles(_1753266851515): { userRoleDataLength: 0 }
+
+📊 getUserWithRoles(_1753266881822): { userRoleDataLength: 0 }
+
+📊 getUserWithRoles(directionfrouard_1753264272043): { userRoleDataLength: 0 }
+
+📊 getUserWithRoles(_1753266816257): { userRoleDataLength: 0 }
+
+📊 User admin groups: 0
+
+📊 User ff292 groups: 0
+
+📊 getUserWithRoles(_1753340243216): { userRoleDataLength: 0 }
+
+📊 User Rudolph groups: 1
+
+📊 User Nicolas groups: 1
+
+📊 User ff579m groups: 1
+
+📊 User ff579 groups: 1
+
+📊 User AnneLaure groups: 1
+
+🔍 Final users with roles and groups: 7
+
+🔐 API /api/users - Returning: { isArray: true, length: 7 }
+
+GET /api/users 200 in 40ms

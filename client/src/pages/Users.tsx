@@ -455,9 +455,16 @@ export default function UsersPage() {
   };
 
   const handleEditUser = (userData: UserWithGroups) => {
-    // Convert the single 'name' field to firstName/lastName
-    const [firstName = '', ...lastNameParts] = (userData.name || '').split(' ');
-    const lastName = lastNameParts.join(' ');
+    // Priority: use firstName/lastName if available, fallback to splitting 'name' field
+    let firstName = userData.firstName || '';
+    let lastName = userData.lastName || '';
+    
+    // If no firstName/lastName but we have a 'name' field, try to split it
+    if (!firstName && !lastName && userData.name) {
+      const [firstPart = '', ...lastNameParts] = userData.name.split(' ');
+      firstName = firstPart;
+      lastName = lastNameParts.join(' ');
+    }
     
     const userWithNames = {
       ...userData,

@@ -101,3 +101,17 @@ Preferred communication style: Simple, everyday language.
   - Updated placeholders to indicate "(optionnel)" for consistency
   - Maintained database schema where name fields are already optional
 - **Result**: Name fields now consistently optional across all user management interfaces
+
+#### User Edit Form Initialization Fix
+- **Issue**: Prénom/nom fields in edit form were not editable because they were initialized from wrong data source
+- **Root Cause**: handleEditUser was only using the `name` field instead of `firstName`/`lastName` fields from database
+- **Solution Implemented**:
+  - Modified handleEditUser to prioritize `firstName`/`lastName` fields from database
+  - Added fallback to split `name` field if firstName/lastName are empty  
+  - Fixed edit form initialization to use actual database values
+- **Result**: Edit form now properly loads existing firstName/lastName values and allows editing
+
+#### Email Field Consistency in Edit Form
+- **Issue**: Email field was marked as required in edit form but optional in create form
+- **Solution**: Removed `required` attribute and asterisk from email field in edit form
+- **Result**: Email field now consistently optional in both create and edit forms
