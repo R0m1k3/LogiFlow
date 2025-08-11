@@ -26,8 +26,9 @@ curl -u admin:admin https://logiflow.ffnancy.fr/api/deliveries
 3. L'API `/api/user` doit fonctionner après connexion
 
 ## Corrections incluses
-- getUserWithGroups() utilise maintenant des requêtes SQL manuelles (plus de référence à userGroups.createdAt)
-- Système d'authentification robuste avec support multi-format
-- Endpoint d'urgence pour reset admin si nécessaire
-- Routage amélioré pour la page principale (fix 502)
-- Version compilée: $(date)
+- ✅ **Routes manquantes ajoutées** : /api/users, /api/roles, /api/deliveries maintenant disponibles en production
+- ✅ getUserWithGroups() utilise des requêtes SQL manuelles (plus d'erreur userGroups.created_at) 
+- ✅ Système d'authentification robuste avec support multi-format
+- ✅ Endpoint d'urgence pour reset admin si nécessaire
+- ✅ Routage amélioré pour la page principale (fix 502)
+- ✅ Taille bundle: 198.5kb (vs 85kb) - toutes les routes incluses

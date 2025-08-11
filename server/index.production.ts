@@ -98,7 +98,11 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
   // Setup authentication
   setupLocalAuth(app);
   
-  // Basic API routes for production
+  // Import and register all routes from routes.ts instead of having limited routes
+  const { registerRoutes } = await import('./routes.js');
+  await registerRoutes(app);
+  
+  // Additional health check route for Docker compatibility
   app.get('/api/groups', requireAuth, async (req: Request, res: Response) => {
     try {
       const groups = await storage.getGroups();
