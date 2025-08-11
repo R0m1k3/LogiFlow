@@ -160,8 +160,8 @@ export default function Calendar() {
       const allDeliveries = await deliveriesResponse.json();
       
       // Enrichir les commandes avec leurs livraisons pour avoir les bonnes relations
-      const enrichedOrders = filteredOrders.map(order => {
-        const orderDeliveries = allDeliveries.filter(delivery => delivery.orderId === order.id);
+      const enrichedOrders = filteredOrders.map((order: any) => {
+        const orderDeliveries = allDeliveries.filter((delivery: any) => delivery.orderId === order.id);
         return {
           ...order,
           deliveries: orderDeliveries
@@ -172,18 +172,18 @@ export default function Calendar() {
         filteredOrders: filteredOrders.length,
         enrichedOrders: enrichedOrders.length,
         allDeliveries: allDeliveries.length,
-        deliveredDeliveries: allDeliveries.filter(d => d.status === 'delivered').length
+        deliveredDeliveries: allDeliveries.filter((d: any) => d.status === 'delivered').length
       });
       
       // Chercher spécifiquement CMD-55
-      const cmd55 = enrichedOrders.find(o => o.id === 55);
-      const cmd55Deliveries = allDeliveries.filter(d => d.orderId === 55);
+      const cmd55 = enrichedOrders.find((o: any) => o.id === 55);
+      const cmd55Deliveries = allDeliveries.filter((d: any) => d.orderId === 55);
       
       console.log('🎯 CMD-55 Analysis:', {
         foundInOrders: !!cmd55,
         cmd55Status: cmd55?.status || 'NOT_FOUND',
         cmd55Deliveries: cmd55Deliveries.length,
-        deliveryStatuses: cmd55Deliveries.map(d => ({ 
+        deliveryStatuses: cmd55Deliveries.map((d: any) => ({ 
           id: d.id, 
           status: d.status, 
           deliveredDate: d.deliveredDate,
@@ -199,25 +199,30 @@ export default function Calendar() {
         console.log(`🔍 Analyzing order #CMD-${order.id}:`, {
           status: order.status,
           deliveries: order.deliveries?.length || 0,
-          deliveryStatuses: order.deliveries?.map(d => ({ id: d.id, status: d.status, deliveredDate: d.deliveredDate })) || []
+          deliveryStatuses: order.deliveries?.map((d: any) => ({ id: d.id, status: d.status, deliveredDate: d.deliveredDate })) || []
         });
         
         if (order.deliveries && order.deliveries.length > 0) {
-          const hasDeliveredDeliveries = order.deliveries.some(d => d.status === 'delivered');
+          const hasDeliveredDeliveries = order.deliveries.some((d: any) => d.status === 'delivered');
           
           if (hasDeliveredDeliveries && order.status !== 'delivered') {
             problematicOrders++;
             console.log(`🔍 Found problematic order: #CMD-${order.id} (status: ${order.status}) with delivered deliveries:`, 
-              order.deliveries.filter(d => d.status === 'delivered').map(d => `#LIV-${d.id}`)
+              order.deliveries.filter((d: any) => d.status === 'delivered').map((d: any) => `#LIV-${d.id}`)
             );
             
             try {
-              // Corriger la commande via l'API PUT existante
-              await apiRequest({
-                url: `/api/orders/${order.id}`,
+              // Corriger la commande via fetch direct
+              const response = await fetch(`/api/orders/${order.id}`, {
                 method: 'PUT',
-                data: { status: 'delivered' }
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ status: 'delivered' })
               });
+              
+              if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+              }
               
               fixedOrders++;
               console.log(`✅ Fixed order #CMD-${order.id} status to 'delivered'`);
