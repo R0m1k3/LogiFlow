@@ -1999,9 +1999,13 @@ class MemStorage implements IStorage {
   async deletePermission(): Promise<void> {}
   async getRolePermissions(): Promise<any[]> { return []; }
   async setRolePermissions(): Promise<void> {}
-  async getUserRoles(): Promise<any[]> { return []; }
   async setUserRoles(): Promise<void> {}
-  async getUserPermissions(): Promise<any[]> { return []; }
+  async assignUserToGroup(userGroup: { groupId: number; userId: string; }): Promise<{ createdAt: Date | null; groupId: number; userId: string; }> {
+    return { ...userGroup, createdAt: new Date() };
+  }
+  async removeUserFromGroup(): Promise<void> {}
+  async getMonthlyStats(): Promise<any> { return {}; }
+  async getNocodbConfigs(): Promise<any[]> { return []; }
 }
 
 // Use MemStorage in development, DatabaseStorage in production
