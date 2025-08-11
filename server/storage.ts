@@ -694,15 +694,23 @@ export class DatabaseStorage implements IStorage {
       const [newUserGroup] = await db.insert(userGroups).values(userGroup).returning();
       return newUserGroup;
     } catch (error: any) {
-      // If created_at column doesn't exist (production), insert without it
+      // If created_at column doesn't exist (production), use raw SQL
       if (error?.code === '42703' && error?.message?.includes('created_at')) {
-        console.log('⚠️ Production mode: user_groups table missing created_at column, inserting without it');
-        const userGroupWithoutCreatedAt = {
+        console.log('⚠️ Production mode: user_groups table missing created_at column, using raw SQL');
+        
+        // Use raw SQL to insert without created_at column
+        await db.execute(sql`
+          INSERT INTO user_groups (user_id, group_id) 
+          VALUES (${userGroup.userId}, ${userGroup.groupId})
+          ON CONFLICT DO NOTHING
+        `);
+        
+        // Return a UserGroup object with null created_at
+        return {
           userId: userGroup.userId,
-          groupId: userGroup.groupId
+          groupId: userGroup.groupId,
+          createdAt: null
         };
-        const [newUserGroup] = await db.insert(userGroups).values(userGroupWithoutCreatedAt).returning();
-        return { ...newUserGroup, createdAt: null };
       }
       throw error;
     }
