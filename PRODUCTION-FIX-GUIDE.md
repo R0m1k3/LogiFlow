@@ -32,6 +32,21 @@ ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 1. **Changement de Mot de Passe** : Testez via l'interface utilisateur
 2. **Attribution de Groupes** : Testez l'assignment d'utilisateurs aux groupes
 
+## Débogage Production
+
+### Script de Diagnostic SQL
+Utilisez le script `debug-usergroups-production.sql` pour :
+- Vérifier la structure de la table user_groups
+- Examiner les données existantes
+- Identifier les problèmes d'association utilisateur-groupe
+
+### Logs de Débogage
+Les logs suivants sont maintenant disponibles :
+- `🔍 getUserWithGroups called for user: [id]`
+- `🔍 Querying user_groups for user: [id]`
+- `🔍 Found X group assignments for user [id]`
+- `⚠️ Production mode: user_groups table missing created_at column, using raw SQL`
+
 ## Déploiement
 
 1. Redéployez votre application avec les dernières modifications

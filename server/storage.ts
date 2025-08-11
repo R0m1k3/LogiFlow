@@ -187,12 +187,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserWithGroups(id: string): Promise<UserWithGroups | undefined> {
+    console.log(`🔍 getUserWithGroups called for user: ${id}`);
+    
     // Get the user first
     const user = await this.getUser(id);
-    if (!user) return undefined;
+    if (!user) {
+      console.log(`❌ User ${id} not found`);
+      return undefined;
+    }
 
     // Fixed: Use manual SQL to avoid userGroups.createdAt column that doesn't exist
     try {
+      console.log(`🔍 Querying user_groups for user: ${id}`);
       const result = await db.execute(sql`
         SELECT 
           ug.user_id,
@@ -211,6 +217,9 @@ export class DatabaseStorage implements IStorage {
         WHERE ug.user_id = ${id}
       `);
 
+      console.log(`🔍 Found ${result.rows.length} group assignments for user ${id}`);
+      console.log(`🔍 Raw query result:`, result.rows);
+
       const userGroupsData = result.rows.map((row: any) => ({
         userId: row.user_id,
         groupId: row.group_id,
@@ -228,12 +237,15 @@ export class DatabaseStorage implements IStorage {
         }
       }));
 
+      console.log(`✅ Processed ${userGroupsData.length} groups for user ${id}`);
+
       return {
         ...user,
         userGroups: userGroupsData,
       };
     } catch (error) {
       console.error('❌ getUserWithGroups error:', error);
+      console.error('❌ Error details:', error?.code, error?.message);
       // Fallback: return user with empty groups
       return {
         ...user,
