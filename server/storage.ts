@@ -354,7 +354,62 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<void> {
-    await db.delete(users).where(eq(users.id, id));
+    // Use a transaction to ensure atomicity
+    await db.transaction(async (tx: typeof db) => {
+      // Transfer ownership of all records created by this user to admin_dev
+      const adminUserId = "admin_dev";
+      
+      // Update customer orders
+      await tx
+        .update(customerOrders)
+        .set({ createdBy: adminUserId })
+        .where(eq(customerOrders.createdBy, id));
+      
+      // Update orders
+      await tx
+        .update(orders)
+        .set({ createdBy: adminUserId })
+        .where(eq(orders.createdBy, id));
+        
+      // Update deliveries
+      await tx
+        .update(deliveries)
+        .set({ createdBy: adminUserId })
+        .where(eq(deliveries.createdBy, id));
+        
+      // Update publicities
+      await tx
+        .update(publicities)
+        .set({ createdBy: adminUserId })
+        .where(eq(publicities.createdBy, id));
+        
+      // Update DLC products
+      await tx
+        .update(dlcProducts)
+        .set({ createdBy: adminUserId })
+        .where(eq(dlcProducts.createdBy, id));
+        
+      // Update tasks
+      await tx
+        .update(tasks)
+        .set({ createdBy: adminUserId })
+        .where(eq(tasks.createdBy, id));
+        
+      // Update NocoDB configs
+      await tx
+        .update(nocodbConfig)
+        .set({ createdBy: adminUserId })
+        .where(eq(nocodbConfig.createdBy, id));
+      
+      // Delete user-group assignments
+      await tx.delete(userGroups).where(eq(userGroups.userId, id));
+      
+      // Delete user-role assignments
+      await tx.delete(userRoles).where(eq(userRoles.userId, id));
+      
+      // Finally delete the user
+      await tx.delete(users).where(eq(users.id, id));
+    });
   }
 
   // Group operations
@@ -2038,7 +2093,39 @@ class MemStorage implements IStorage {
   async userHasPermission(): Promise<boolean> { return false; }
   async userHasRole(): Promise<boolean> { return false; }
   async getDlcStats(): Promise<any> { return {}; }
-  async validateDlcProduct(): Promise<void> {}
+  async validateDlcProduct(id: number, validatedBy: string): Promise<DlcProductFrontend> {
+    // MemStorage stub implementation - return a basic DlcProductFrontend object
+    return {
+      id,
+      productName: "Sample Product",
+      gencode: "1234567890123",
+      supplierId: 1,
+      groupId: 1,
+      dlcDate: new Date("2025-12-31"),
+      dateType: "dlc",
+      quantity: 1,
+      unit: "unité",
+      location: "Magasin",
+      alertThreshold: 15,
+      status: "valides",
+      notes: null,
+      createdBy: validatedBy,
+      validatedBy,
+      validatedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as DlcProductFrontend;
+  }
+  
+  // Missing interface methods - stub implementations for MemStorage
+  async addPermissionToRole(roleId: number, permissionId: number): Promise<{ createdAt: Date | null; roleId: number; permissionId: number; }> {
+    return { roleId, permissionId, createdAt: new Date() };
+  }
+  async removePermissionFromRole(): Promise<void> {}
+  async addRoleToUser(userId: string, roleId: number, assignedBy: string): Promise<{ userId: string; roleId: number; assignedBy: string; assignedAt: Date | null; }> {
+    return { userId, roleId, assignedBy, assignedAt: new Date() };
+  }
+  async removeRoleFromUser(): Promise<void> {}
 }
 
 // Use MemStorage in development, DatabaseStorage in production
