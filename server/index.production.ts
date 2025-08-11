@@ -49,6 +49,50 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
     });
   });
   
+  // Emergency admin reset endpoint (production only)
+  app.post('/api/emergency-admin-reset', async (req: Request, res: Response) => {
+    try {
+      const { secret } = req.body;
+      
+      // Require emergency secret (can be set via environment variable)
+      const emergencySecret = process.env.EMERGENCY_SECRET || 'logiflow-admin-reset-2025';
+      if (secret !== emergencySecret) {
+        return res.status(403).json({ error: 'Invalid emergency secret' });
+      }
+      
+      console.log('🚨 EMERGENCY: Admin password reset requested');
+      
+      // Find existing admin
+      const existingAdmin = await storage.getUserByUsername('admin');
+      if (existingAdmin) {
+        // Generate new password hash
+        const crypto = await import('crypto');
+        const scrypt = await import('util').then(util => util.promisify(crypto.scrypt));
+        const salt = crypto.randomBytes(16).toString("hex");
+        const buf = (await scrypt('admin', salt, 64)) as Buffer;
+        const newPassword = `${buf.toString("hex")}.${salt}`;
+        
+        // Update admin password
+        await storage.updateUser(existingAdmin.id, { 
+          password: newPassword,
+          passwordChanged: false 
+        });
+        
+        console.log('✅ EMERGENCY: Admin password reset to admin/admin');
+        return res.json({ 
+          success: true, 
+          message: 'Admin password reset to admin/admin',
+          adminId: existingAdmin.id 
+        });
+      } else {
+        return res.status(404).json({ error: 'Admin user not found' });
+      }
+    } catch (error) {
+      console.error('❌ EMERGENCY: Admin reset failed:', error);
+      return res.status(500).json({ error: 'Reset failed', details: (error as Error).message });
+    }
+  });
+  
   // Setup authentication
   setupLocalAuth(app);
   

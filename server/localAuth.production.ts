@@ -78,6 +78,17 @@ async function comparePasswords(supplied: string, stored: string) {
 
 async function createDefaultAdminUser() {
   try {
+    // Check for force reset flag
+    const forceReset = process.env.FORCE_ADMIN_RESET === 'true';
+    if (forceReset) {
+      console.log('🔄 FORCE_ADMIN_RESET detected, deleting existing admin user...');
+      const existingAdmin = await storage.getUserByUsername('admin');
+      if (existingAdmin) {
+        await storage.deleteUser(existingAdmin.id);
+        console.log('✅ Existing admin user deleted');
+      }
+    }
+    
     const existingAdmin = await storage.getUserByUsername('admin');
     if (!existingAdmin) {
       const hashedPassword = await hashPassword('admin');
@@ -99,15 +110,23 @@ async function createDefaultAdminUser() {
         passwordFormat: existingAdmin.password ? 'present' : 'missing'
       });
       
-      // Check if password needs migration to new format
-      if (existingAdmin.password && !existingAdmin.password.includes('.')) {
-        console.log('🔄 Migrating admin password to new format...');
-        try {
-          const newHashedPassword = await hashPassword('admin');
-          await storage.updateUser(existingAdmin.id, { password: newHashedPassword });
-          console.log('✅ Admin password migrated to new format');
-        } catch (error) {
-          console.log('⚠️ Could not migrate password, will try multiple formats:', (error as Error).message);
+      // Test if current password works with 'admin'
+      if (existingAdmin.password) {
+        const testLogin = await comparePasswords('admin', existingAdmin.password);
+        if (!testLogin) {
+          console.log('🔄 Admin password incompatible with current system, forcing reset...');
+          try {
+            const newHashedPassword = await hashPassword('admin');
+            await storage.updateUser(existingAdmin.id, { 
+              password: newHashedPassword,
+              passwordChanged: false 
+            });
+            console.log('✅ Admin password force-reset to: admin/admin');
+          } catch (error) {
+            console.error('❌ Failed to reset admin password:', (error as Error).message);
+          }
+        } else {
+          console.log('✅ Admin password works with current system');
         }
       }
     }
