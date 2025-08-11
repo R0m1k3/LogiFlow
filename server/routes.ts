@@ -954,11 +954,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedUser = await storage.updateUser(req.params.id, userData);
 
       res.json(updatedUser);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating user:", error);
+      
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });
       }
+      
+      // Handle specific database constraint errors
+      if (error.code === '23505') {
+        if (error.constraint === 'users_username_key') {
+          return res.status(409).json({ 
+            message: "Un utilisateur avec ce nom d'utilisateur existe déjà. Veuillez choisir un autre nom d'utilisateur." 
+          });
+        }
+        if (error.constraint === 'users_email_key') {
+          return res.status(409).json({ 
+            message: "Un utilisateur avec cette adresse email existe déjà. Veuillez utiliser une autre adresse email ou laisser le champ vide." 
+          });
+        }
+      }
+      
       res.status(500).json({ message: "Failed to update user" });
     }
   });
