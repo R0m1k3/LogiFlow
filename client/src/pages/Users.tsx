@@ -716,13 +716,19 @@ export default function UsersPage() {
                                 />
                               ) : (
                                 <span className="text-white font-medium">
-                                  {getInitials(userData.name?.split(' ')[0] || '', userData.name?.split(' ').slice(1).join(' ') || '')}
+                                  {getInitials(
+                                    userData.firstName || userData.name?.split(' ')[0] || '', 
+                                    userData.lastName || userData.name?.split(' ').slice(1).join(' ') || ''
+                                  )}
                                 </span>
                               )}
                             </div>
                             <div>
                               <div className="text-sm font-medium text-gray-900 flex items-center">
-                                {userData.name || 'Nom non renseigné'}
+                                {(userData.firstName && userData.lastName) 
+                                  ? `${userData.firstName} ${userData.lastName}`.trim()
+                                  : (userData.firstName || userData.lastName || userData.name || 'Nom non renseigné')
+                                }
                                 {userData.id === user?.id && (
                                   <Badge variant="outline" className="ml-2 text-xs">Vous</Badge>
                                 )}
