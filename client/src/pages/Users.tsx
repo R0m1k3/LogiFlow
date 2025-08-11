@@ -35,7 +35,7 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showGroupModal, setShowGroupModal] = useState(false);
+  // Removed showGroupModal - now integrated in edit form
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithGroups | null>(null);
   const [userGroups, setUserGroups] = useState<number[]>([]);
@@ -465,15 +465,26 @@ export default function UsersPage() {
       lastName: lastName,
       email: userData.email || "",
       password: "",
-      role: userData.role as "admin" | "manager" | "employee",
+      role: userData.role as "admin" | "manager" | "employee" | "directeur",
     });
     setShowEditModal(true);
   };
 
-  const handleGroupManager = (userData: UserWithGroups) => {
-    setSelectedUser(userData);
-    setUserGroups(userData.userGroups.map(ug => ug.groupId));
-    setShowGroupModal(true);
+
+
+  // Function to handle group assignment in edit form
+  const handleToggleGroupInEdit = async (groupId: number, isCurrentlyAssigned: boolean) => {
+    if (!selectedUser) return;
+    
+    try {
+      if (isCurrentlyAssigned) {
+        await removeGroupMutation.mutateAsync({ userId: selectedUser.id, groupId });
+      } else {
+        await assignGroupMutation.mutateAsync({ userId: selectedUser.id, groupId });
+      }
+    } catch (error) {
+      // Error handling is done in mutations
+    }
   };
 
   const handleSubmitEdit = (e: React.FormEvent) => {
@@ -485,7 +496,7 @@ export default function UsersPage() {
       firstName: editForm.firstName,
       lastName: editForm.lastName,
       email: editForm.email,
-      // Rôle géré uniquement dans Administration > Gestion des Rôles
+      role: editForm.role,
     };
 
     // Only include password if it's not empty
@@ -775,16 +786,7 @@ export default function UsersPage() {
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleGroupManager(userData)}
-                              title="Gérer les magasins/groupes"
-                              className="text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 hover:bg-green-50"
-                            >
-                              <UserCog className="w-4 h-4 mr-1" />
-                              <span className="text-xs">Groupes</span>
-                            </Button>
+
                             <Button
                               variant="outline"
                               size="sm"
@@ -880,14 +882,55 @@ export default function UsersPage() {
                 </p>
               </div>
 
-              {/* Gestion des rôles déplacée dans Administration > Gestion des Rôles */}
+              {/* Sélection du rôle */}
               <div>
-                <Label>Rôle actuel</Label>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium">{selectedUser?.role || 'N/A'}</span>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Pour modifier le rôle, utilisez Administration → Gestion des Rôles
-                  </p>
+                <Label>Rôle</Label>
+                <Select
+                  value={editForm.role}
+                  onValueChange={(role: any) => setEditForm({...editForm, role})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un rôle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrateur</SelectItem>
+                    <SelectItem value="directeur">Directeur</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="employee">Employé</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Gestion des groupes/magasins */}
+              <div>
+                <Label>Magasins/Groupes</Label>
+                <div className="space-y-2 mt-2 max-h-32 overflow-y-auto">
+                  {safeGroups.map((group) => {
+                    const isAssigned = selectedUser?.userGroups?.some(ug => ug.groupId === group.id) || false;
+                    return (
+                      <div key={group.id} className="flex items-center justify-between p-2 border rounded">
+                        <div className="flex items-center space-x-2">
+                          <div 
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: group.color }}
+                          />
+                          <span className="text-sm">{group.name}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleGroupInEdit(group.id, isAssigned)}
+                          className={isAssigned ? "bg-green-50 text-green-700 border-green-200" : ""}
+                        >
+                          {isAssigned ? "Retirer" : "Assigner"}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {safeGroups.length === 0 && (
+                    <p className="text-sm text-gray-500">Aucun groupe disponible</p>
+                  )}
                 </div>
               </div>
 
@@ -915,68 +958,7 @@ export default function UsersPage() {
         </Dialog>
       )}
 
-      {/* Group Management Modal */}
-      {showGroupModal && selectedUser && (
-        <Dialog open={showGroupModal} onOpenChange={() => {
-          setShowGroupModal(false);
-          setSelectedUser(null);
-          setUserGroups([]);
-        }}>
-          <DialogContent className="sm:max-w-lg" aria-describedby="group-modal-description">
-            <DialogHeader>
-              <DialogTitle className="text-lg font-semibold">
-                Gérer les Magasins/Groupes - {selectedUser.name || `${selectedUser.firstName} ${selectedUser.lastName}`}
-              </DialogTitle>
-              <p id="group-modal-description" className="text-sm text-gray-600 mt-1">
-                Assigner ou retirer cet utilisateur des magasins/groupes
-              </p>
-            </DialogHeader>
-            
-            <div className="space-y-4">
-              <div>
-                <Label>Groupes disponibles</Label>
-                <div className="space-y-2 mt-2">
-                  {groups.map((group) => {
-                    const isAssigned = selectedUser.userGroups.some(ug => ug.groupId === group.id);
-                    return (
-                      <div key={group.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div 
-                            className="w-4 h-4 rounded-full"
-                            style={{ backgroundColor: group.color }}
-                          />
-                          <span className="text-sm font-medium">{group.name}</span>
-                        </div>
-                        <Button
-                          variant={isAssigned ? "destructive" : "outline"}
-                          size="sm"
-                          onClick={() => handleToggleGroup(selectedUser.id, group.id, isAssigned)}
-                          disabled={assignGroupMutation.isPending || removeGroupMutation.isPending}
-                        >
-                          {isAssigned ? 'Retirer' : 'Assigner'}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
 
-              <div className="flex items-center space-x-3 pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowGroupModal(false);
-                    setSelectedUser(null);
-                    setUserGroups([]);
-                  }}
-                >
-                  Fermer
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
 
       {/* Create User Modal */}
       {showCreateModal && (
