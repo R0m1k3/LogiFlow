@@ -18,7 +18,7 @@ export default function Calendar() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
   const queryClient = useQueryClient();
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 6, 1)); // July 2025
+  const [currentDate, setCurrentDate] = useState(new Date()); // Current date
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
