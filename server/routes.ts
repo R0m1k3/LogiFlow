@@ -6,21 +6,15 @@ import { requireModulePermission, requireAdmin } from "./permissions";
 
 console.log('🔍 Using development storage and authentication');
 
-// Function to get the correct hashPassword function based on environment
-async function getHashPassword() {
-  if (process.env.NODE_ENV === 'production') {
-    try {
-      const prodAuth = await import("./localAuth.production.js");
-      return prodAuth.hashPassword;
-    } catch (error) {
-      console.error('❌ Failed to import production auth, falling back to dev auth:', error);
-      const devAuth = await import("./localAuth");
-      return devAuth.hashPassword;
-    }
-  } else {
-    const devAuth = await import("./localAuth");
-    return devAuth.hashPassword;
-  }
+// Simple hash password function using crypto
+async function hashPasswordSimple(password: string) {
+  const crypto = await import('crypto');
+  const { promisify } = await import('util');
+  const scryptAsync = promisify(crypto.scrypt);
+  
+  const salt = crypto.randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
 }
 
 
@@ -904,8 +898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Hash password if provided (for local auth)
       if (userData.password) {
-        const hashPassword = await getHashPassword();
-        userData.password = await hashPassword(userData.password);
+        userData.password = await hashPasswordSimple(userData.password);
       }
       
       const newUser = await storage.createUser({
@@ -960,8 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Hash password if provided
       if (userData.password) {
-        const hashPassword = await getHashPassword();
-        userData.password = await hashPassword(userData.password);
+        userData.password = await hashPasswordSimple(userData.password);
         // Mark password as changed
         (userData as any).passwordChanged = true;
       }
