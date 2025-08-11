@@ -30,7 +30,7 @@ export const sessions = pgTable(
 // User storage table - supports both Replit Auth and local auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
-  username: varchar("username").unique(), // For simple login
+  username: varchar("username").unique().notNull(), // For simple login
   email: varchar("email").unique(),
   name: varchar("name"), // Single name field for compatibility
   firstName: varchar("first_name"),
