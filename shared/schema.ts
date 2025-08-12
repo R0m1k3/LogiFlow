@@ -74,7 +74,10 @@ export const suppliers = pgTable("suppliers", {
   name: varchar("name").notNull(),
   contact: varchar("contact"),
   phone: varchar("phone"),
+  email: varchar("email"),
+  address: text("address"),
   hasDlc: boolean("has_dlc").default(false), // Coche DLC pour la gestion DLC
+  automaticReconciliation: boolean("automatic_reconciliation").default(false), // Rapprochement automatique BL/Factures
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -469,6 +472,70 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
 }).extend({
   dueDate: z.coerce.date().optional().nullable(), // Convertit automatiquement les chaînes en Date
 });
+
+// Types
+export type User = typeof users.$inferSelect;
+export type UpsertUser = z.infer<typeof insertUserSchema>;
+export type Group = typeof groups.$inferSelect;
+export type InsertGroup = z.infer<typeof insertGroupSchema>;
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type Order = typeof orders.$inferSelect;
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type Delivery = typeof deliveries.$inferSelect;
+export type InsertDelivery = z.infer<typeof insertDeliverySchema>;
+export type UserGroup = typeof userGroups.$inferSelect;
+export type InsertUserGroup = z.infer<typeof insertUserGroupSchema>;
+export type Publicity = typeof publicities.$inferSelect;
+export type InsertPublicity = z.infer<typeof insertPublicitySchema>;
+export type PublicityParticipation = typeof publicityParticipations.$inferSelect;
+export type InsertPublicityParticipation = z.infer<typeof insertPublicityParticipationSchema>;
+export type NocodbConfig = typeof nocodbConfig.$inferSelect;
+export type InsertNocodbConfig = z.infer<typeof insertNocodbConfigSchema>;
+export type CustomerOrder = typeof customerOrders.$inferSelect;
+export type InsertCustomerOrder = z.infer<typeof insertCustomerOrderSchema>;
+export type DlcProduct = typeof dlcProducts.$inferSelect;
+export type InsertDlcProduct = z.infer<typeof insertDlcProductSchema>;
+export type DlcProductFrontend = Omit<DlcProduct, 'expiryDate'> & { dlcDate: Date };
+export type InsertDlcProductFrontend = z.infer<typeof insertDlcProductFrontendSchema>;
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+
+// Complex types with relations
+export type UserWithGroups = User & {
+  groups: Group[];
+};
+
+export type OrderWithRelations = Order & {
+  supplier: Supplier;
+  group: Group;
+  creator: User;
+};
+
+export type DeliveryWithRelations = Delivery & {
+  supplier: Supplier;
+  group: Group;
+  creator: User;
+  order?: Order;
+};
+
+export type PublicityWithRelations = Publicity & {
+  creator: User;
+  participations: (PublicityParticipation & { group: Group })[];
+};
+
+export type CustomerOrderWithRelations = CustomerOrder & {
+  supplier: Supplier;
+  group: Group;
+  creator: User;
+};
+
+export type DlcProductWithRelations = DlcProduct & {
+  supplier: Supplier;
+  group: Group;
+  creator: User;
+  validator?: User;
+};
 
 // Types
 export type UpsertUser = z.infer<typeof insertUserSchema>;
