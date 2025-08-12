@@ -247,10 +247,10 @@ export default function Deliveries() {
     }
   };
 
-  const canCreate = true; // All users can create deliveries
-  const canEdit = user?.role === 'admin' || user?.role === 'manager';
-  const canDelete = user?.role === 'admin' || user?.role === 'manager';
-  const canValidate = user?.role === 'admin' || user?.role === 'directeur' || user?.role === 'manager';
+  const canCreate = permissions.canCreate('deliveries');
+  const canEdit = permissions.canEdit('deliveries');
+  const canDelete = permissions.canDelete('deliveries');
+  const canValidate = permissions.canValidate('deliveries');
 
   return (
     <div className="p-6 space-y-6">

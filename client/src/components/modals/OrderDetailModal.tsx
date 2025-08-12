@@ -172,8 +172,8 @@ export default function OrderDetailModal({
     setShowEditModal(true);
   };
 
-  const canEdit = user?.role === 'admin' || user?.role === 'manager';
-  const canDelete = user?.role === 'admin' || user?.role === 'manager';
+  const canEdit = permissions.canEdit(isOrder ? 'orders' : 'deliveries');
+  const canDelete = permissions.canDelete(isOrder ? 'orders' : 'deliveries');
   const canValidate = (user?.role === 'admin' || user?.role === 'directeur' || user?.role === 'manager') && 
                      isDelivery && item.status !== 'delivered';
 
