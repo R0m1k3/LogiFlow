@@ -2219,11 +2219,13 @@ RÉSUMÉ DU SCAN
       if (status) filters.status = status;
       if (supplierId) filters.supplierId = parseInt(supplierId);
 
-      console.log('DLC Products API called with:', {
+      console.log('🔍 DLC Products API called with:', {
         userId,
         userRole: user.role,
+        userGroups: user.userGroups?.map(ug => ({groupId: ug.group.id, groupName: ug.group.name})),
         groupIds: user.role === 'admin' && !req.query.storeId ? 'all' : groupIds,
-        filters
+        filters,
+        queryStoreId: req.query.storeId
       });
 
       const dlcProducts = await storage.getDlcProducts(
@@ -2231,7 +2233,10 @@ RÉSUMÉ DU SCAN
         filters
       );
       
-      console.log('DLC Products returned:', dlcProducts.length, 'items');
+      console.log('📋 DLC Products returned:', dlcProducts.length, 'items');
+      if (dlcProducts.length > 0) {
+        console.log('📋 Sample DLC products groupIds:', dlcProducts.slice(0, 3).map(p => ({id: p.id, name: p.productName, groupId: p.groupId})));
+      }
       res.json(dlcProducts);
     } catch (error) {
       console.error("Error fetching DLC products:", error);
@@ -2307,7 +2312,12 @@ RÉSUMÉ DU SCAN
       }
 
       // REMOVED: All role restrictions - tous les rôles peuvent créer des DLC
-      console.log("Creating DLC product - no role restrictions:", { userId, userRole: user.role, groupId: req.body.groupId });
+      console.log("🔍 Creating DLC product - no role restrictions:", { 
+        userId, 
+        userRole: user.role, 
+        requestGroupId: req.body.groupId,
+        userGroups: user.userGroups?.map(ug => ({groupId: ug.group.id, groupName: ug.group.name}))
+      });
 
       const validatedData = insertDlcProductFrontendSchema.parse({
         ...req.body,
@@ -2315,7 +2325,12 @@ RÉSUMÉ DU SCAN
       });
 
       const dlcProduct = await storage.createDlcProduct(validatedData);
-      console.log('✅ DLC Product created successfully:', dlcProduct.id);
+      console.log('✅ DLC Product created successfully:', {
+        id: dlcProduct.id,
+        productName: dlcProduct.productName,
+        groupId: dlcProduct.groupId,
+        createdBy: dlcProduct.createdBy
+      });
       
       res.status(201).json(dlcProduct);
     } catch (error) {
