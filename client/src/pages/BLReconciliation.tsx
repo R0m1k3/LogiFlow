@@ -78,27 +78,6 @@ export default function BLReconciliation() {
     enabled: !!user
   });
 
-  // Debug : afficher les données récupérées
-  console.log('🔍 BL Reconciliation Debug:', {
-    totalDeliveries: deliveriesWithBL.length,
-    totalSuppliers: suppliers.length,
-    selectedStoreId,
-    userRole: user?.role,
-    deliveries: deliveriesWithBL.map(d => ({
-      id: d.id,
-      supplier: d.supplier?.name,
-      supplierId: d.supplierId,
-      status: d.status,
-      blNumber: d.blNumber,
-      reconciled: d.reconciled
-    })),
-    suppliers: suppliers.map(s => ({
-      id: s.id,
-      name: s.name,
-      isAutoReconciliation: s.isAutoReconciliation
-    }))
-  });
-
   // Séparer les livraisons par mode de rapprochement
   const manualReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
     const supplier = suppliers.find(s => s.id === delivery.supplierId);
@@ -348,13 +327,7 @@ export default function BLReconciliation() {
             </div>
           ) : (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Edit className="w-5 h-5" />
-                  Rapprochements Manuels
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 {/* Pagination du haut */}
                 <Pagination
                   currentPage={manualCurrentPage}
@@ -389,7 +362,7 @@ export default function BLReconciliation() {
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Montant Fact.
                           </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Écart
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -420,7 +393,11 @@ export default function BLReconciliation() {
                               </div>
                             </td>
                             <td className="px-3 py-2 text-sm">
-                              <div className="text-gray-900">
+                              <div className={`${
+                                delivery.reconciled !== true 
+                                  ? 'font-bold text-gray-900' 
+                                  : 'text-gray-900'
+                              }`}>
                                 {delivery.blNumber || (
                                   <span className="text-gray-400 italic text-xs">Non renseigné</span>
                                 )}
@@ -454,7 +431,7 @@ export default function BLReconciliation() {
                                 }
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-sm">
+                            <td className="px-3 py-2 text-sm text-right">
                               {(() => {
                                 const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
                                 const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
