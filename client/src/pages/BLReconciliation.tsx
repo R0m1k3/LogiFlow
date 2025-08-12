@@ -78,6 +78,27 @@ export default function BLReconciliation() {
     enabled: !!user
   });
 
+  // Debug : afficher les données récupérées
+  console.log('🔍 BL Reconciliation Debug:', {
+    totalDeliveries: deliveriesWithBL.length,
+    totalSuppliers: suppliers.length,
+    selectedStoreId,
+    userRole: user?.role,
+    deliveries: deliveriesWithBL.map(d => ({
+      id: d.id,
+      supplier: d.supplier?.name,
+      supplierId: d.supplierId,
+      status: d.status,
+      blNumber: d.blNumber,
+      reconciled: d.reconciled
+    })),
+    suppliers: suppliers.map(s => ({
+      id: s.id,
+      name: s.name,
+      isAutoReconciliation: s.isAutoReconciliation
+    }))
+  });
+
   // Séparer les livraisons par mode de rapprochement
   const manualReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
     const supplier = suppliers.find(s => s.id === delivery.supplierId);
