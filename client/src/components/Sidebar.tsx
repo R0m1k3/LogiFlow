@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuthSimple } from "@/hooks/useAuthSimple";
 import { Button } from "@/components/ui/button";
+import { useStore } from "./Layout";
 import { 
   Store, 
   Calendar, 
@@ -16,12 +17,15 @@ import {
   Database,
   ShoppingCart,
   Clock,
-  ListTodo
+  ListTodo,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 export default function Sidebar() {
   const { user, isLoading, error } = useAuthSimple();
   const [location] = useLocation();
+  const { sidebarCollapsed, setSidebarCollapsed } = useStore();
 
   // Debug logging pour production
   console.log('Sidebar - User:', user);
@@ -41,6 +45,12 @@ export default function Sidebar() {
       // Force redirect to auth page regardless of API response
       window.location.href = "/auth";
     }
+  };
+
+  const toggleSidebar = () => {
+    const newCollapsed = !sidebarCollapsed;
+    setSidebarCollapsed(newCollapsed);
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed));
   };
 
   const getInitials = (firstName?: string, lastName?: string) => {
@@ -155,12 +165,31 @@ export default function Sidebar() {
   // Si l'utilisateur n'est pas encore chargé, afficher un état de chargement
   if (isLoading) {
     return (
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shadow-lg">
-        <div className="h-16 flex items-center justify-center border-b border-gray-200 bg-white">
-          <div className="flex items-center space-x-3">
-            <Store className="h-6 w-6 text-blue-600" />
-            <span className="text-lg font-semibold text-gray-900">LogiFlow</span>
-          </div>
+      <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
+        <div className="h-16 flex items-center justify-between border-b border-gray-200 bg-white px-3">
+          {!sidebarCollapsed && (
+            <div className="flex items-center space-x-3">
+              <Store className="h-6 w-6 text-blue-600" />
+              <span className="text-lg font-semibold text-gray-900">LogiFlow</span>
+            </div>
+          )}
+          {sidebarCollapsed && (
+            <div className="flex items-center justify-center w-full">
+              <Store className="h-6 w-6 text-blue-600" />
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleSidebar}
+            className="h-8 w-8 p-0 hover:bg-gray-100"
+          >
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -172,16 +201,35 @@ export default function Sidebar() {
   // Si l'utilisateur n'est pas authentifié, afficher seulement le logo
   if (!user) {
     return (
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shadow-lg">
-        <div className="h-16 flex items-center justify-center border-b border-gray-200 bg-white">
-          <div className="flex items-center space-x-3">
-            <Store className="h-6 w-6 text-blue-600" />
-            <span className="text-lg font-semibold text-gray-900">LogiFlow</span>
-          </div>
+      <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
+        <div className="h-16 flex items-center justify-between border-b border-gray-200 bg-white px-3">
+          {!sidebarCollapsed && (
+            <div className="flex items-center space-x-3">
+              <Store className="h-6 w-6 text-blue-600" />
+              <span className="text-lg font-semibold text-gray-900">LogiFlow</span>
+            </div>
+          )}
+          {sidebarCollapsed && (
+            <div className="flex items-center justify-center w-full">
+              <Store className="h-6 w-6 text-blue-600" />
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleSidebar}
+            className="h-8 w-8 p-0 hover:bg-gray-100"
+          >
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-gray-500">
-            <p>Authentification requise</p>
+            {!sidebarCollapsed && <p>Authentification requise</p>}
           </div>
         </div>
       </aside>
@@ -189,13 +237,32 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shadow-lg">
-      {/* Logo */}
-      <div className="h-16 flex items-center justify-center border-b border-gray-200 bg-white">
-        <div className="flex items-center space-x-3">
-          <Store className="h-6 w-6 text-blue-600" />
-          <span className="text-lg font-semibold text-gray-900">LogiFlow</span>
-        </div>
+    <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
+      {/* Logo et bouton de collapse */}
+      <div className="h-16 flex items-center justify-between border-b border-gray-200 bg-white px-3">
+        {!sidebarCollapsed && (
+          <div className="flex items-center space-x-3">
+            <Store className="h-6 w-6 text-blue-600" />
+            <span className="text-lg font-semibold text-gray-900">LogiFlow</span>
+          </div>
+        )}
+        {sidebarCollapsed && (
+          <div className="flex items-center justify-center w-full">
+            <Store className="h-6 w-6 text-blue-600" />
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggleSidebar}
+          className="h-8 w-8 p-0 hover:bg-gray-100"
+        >
+          {sidebarCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </Button>
       </div>
 
       {/* Navigation */}
@@ -217,15 +284,16 @@ export default function Sidebar() {
             return (
               <Link key={item.path} href={item.path}>
                 <div
-                  className={`flex items-center px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-100 ${
+                  className={`flex items-center ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 ${
                     active
                       ? 'bg-gray-100 text-gray-900 border-r-2 border-gray-700'
                       : 'text-gray-700'
                   }`}
+                  title={sidebarCollapsed ? item.label : undefined}
                   onClick={() => console.log(`Navigating to: ${item.path}`)}
                 >
-                  <Icon className="mr-3 h-4 w-4" />
-                  {item.label}
+                  <Icon className={`h-4 w-4 ${sidebarCollapsed ? '' : 'mr-3'}`} />
+                  {!sidebarCollapsed && item.label}
                 </div>
               </Link>
             );
@@ -235,11 +303,14 @@ export default function Sidebar() {
         {/* Management Section */}
         {managementItems.some(item => hasPermission(item.roles)) && (
           <>
-            <div className="mt-6 mb-2">
-              <h3 className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Gestion
-              </h3>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="mt-6 mb-2">
+                <h3 className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Gestion
+                </h3>
+              </div>
+            )}
+            {sidebarCollapsed && <div className="mt-4 mb-2 border-t border-gray-200"></div>}
             <div className="space-y-1">
               {managementItems.map((item) => {
                 if (!hasPermission(item.roles)) return null;
@@ -250,15 +321,16 @@ export default function Sidebar() {
                 return (
                   <Link key={item.path} href={item.path}>
                     <div
-                      className={`flex items-center px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-100 ${
+                      className={`flex items-center ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 ${
                         active
                           ? 'bg-gray-100 text-gray-900 border-r-2 border-gray-700'
                           : 'text-gray-700'
                       }`}
+                      title={sidebarCollapsed ? item.label : undefined}
                       onClick={() => console.log(`Navigating to management: ${item.path}`)}
                     >
-                      <Icon className="mr-3 h-4 w-4" />
-                      {item.label}
+                      <Icon className={`h-4 w-4 ${sidebarCollapsed ? '' : 'mr-3'}`} />
+                      {!sidebarCollapsed && item.label}
                     </div>
                   </Link>
                 );
@@ -271,11 +343,13 @@ export default function Sidebar() {
       {/* Administration Section */}
       {adminItems.some(item => hasPermission(item.roles)) && (
         <div className="border-t border-gray-200 py-4 px-3">
-          <div className="mb-2">
-            <h3 className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Administration
-            </h3>
-          </div>
+          {!sidebarCollapsed && (
+            <div className="mb-2">
+              <h3 className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Administration
+              </h3>
+            </div>
+          )}
           <div className="space-y-1">
             {adminItems.map((item) => {
               if (!hasPermission(item.roles)) return null;
@@ -286,15 +360,16 @@ export default function Sidebar() {
               return (
                 <Link key={item.path} href={item.path}>
                   <div
-                    className={`flex items-center px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-100 ${
+                    className={`flex items-center ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 ${
                       active
                         ? 'bg-gray-100 text-gray-900 border-r-2 border-gray-700'
                         : 'text-gray-700'
                     }`}
+                    title={sidebarCollapsed ? item.label : undefined}
                     onClick={() => console.log(`Navigating to admin: ${item.path}`)}
                   >
-                    <Icon className="mr-3 h-4 w-4" />
-                    {item.label}
+                    <Icon className={`h-4 w-4 ${sidebarCollapsed ? '' : 'mr-3'}`} />
+                    {!sidebarCollapsed && item.label}
                   </div>
                 </Link>
               );
@@ -305,31 +380,53 @@ export default function Sidebar() {
 
       {/* User Profile & Logout */}
       <div className="border-t border-gray-200 p-4">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="h-8 w-8 bg-gray-100 flex items-center justify-center">
-            <span className="text-xs font-medium text-gray-700">
-              {getInitials(user?.firstName, user?.lastName)}
-            </span>
+        {!sidebarCollapsed ? (
+          <>
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="h-8 w-8 bg-gray-100 flex items-center justify-center">
+                <span className="text-xs font-medium text-gray-700">
+                  {getInitials(user?.firstName, user?.lastName)}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user?.firstName || user?.lastName ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim() : user?.username}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {user?.role === 'admin' ? 'Administrateur' : 
+                   user?.role === 'manager' ? 'Manager' : 
+                   user?.role === 'directeur' ? 'Directeur' : 'Employé'}
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleLogout}
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Déconnexion
+            </Button>
+          </>
+        ) : (
+          <div className="flex flex-col items-center space-y-3">
+            <div className="h-8 w-8 bg-gray-100 flex items-center justify-center">
+              <span className="text-xs font-medium text-gray-700">
+                {getInitials(user?.firstName, user?.lastName)}
+              </span>
+            </div>
+            <Button 
+              onClick={handleLogout}
+              variant="ghost"
+              size="sm"
+              className="w-8 h-8 p-0 text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+              title="Déconnexion"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.firstName} {user?.lastName}
-            </p>
-            <p className="text-xs text-gray-500 truncate">
-              {user?.email}
-            </p>
-          </div>
-        </div>
-        
-        <Button
-          onClick={handleLogout}
-          variant="outline"
-          size="sm"
-          className="w-full justify-start text-gray-600 hover:text-red-600 hover:border-red-300"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          Déconnexion
-        </Button>
+        )}
       </div>
     </aside>
   );

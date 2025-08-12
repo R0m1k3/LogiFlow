@@ -11,6 +11,8 @@ interface StoreContextType {
   selectedStoreId: number | null;
   setSelectedStoreId: (storeId: number | null) => void;
   stores: Group[];
+  sidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -38,6 +40,12 @@ export default function Layout({ children }: LayoutProps) {
     return restoredId;
   });
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    // Restaurer l'état de la sidebar depuis localStorage
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
+
   const { data: stores = [] } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
     enabled: !!user,
@@ -48,7 +56,7 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <StoreContext.Provider value={{ selectedStoreId, setSelectedStoreId, stores }}>
+    <StoreContext.Provider value={{ selectedStoreId, setSelectedStoreId, stores, sidebarCollapsed, setSidebarCollapsed }}>
       <div className="flex h-screen overflow-hidden bg-gray-50">
         <Sidebar />
         <main className="flex-1 flex flex-col overflow-hidden">
@@ -72,9 +80,9 @@ export default function Layout({ children }: LayoutProps) {
                     console.log('🧹 Invalidating data caches for store change');
                     queryClient.invalidateQueries({ predicate: (query) => {
                       const key = query.queryKey;
-                      return key[0]?.toString().includes('/api/orders') || 
+                      return Boolean(key[0]?.toString().includes('/api/orders') || 
                              key[0]?.toString().includes('/api/deliveries') || 
-                             key[0]?.toString().includes('/api/stats/monthly');
+                             key[0]?.toString().includes('/api/stats/monthly'));
                     }});
                     
                     // Sauvegarder dans localStorage et mettre à jour l'état
