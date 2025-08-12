@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { safeFormat } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
@@ -229,7 +229,7 @@ export default function BLReconciliation() {
   const totalAutomaticPages = getTotalPages(filteredAutomaticDeliveries);
 
   // Reset page when changing tabs or searching
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, searchTerm]);
 
