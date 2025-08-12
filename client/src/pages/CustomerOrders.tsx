@@ -40,10 +40,12 @@ import { CustomerOrderForm } from "@/components/CustomerOrderForm";
 import { CustomerOrderDetails } from "@/components/CustomerOrderDetails";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import { useStore } from "@/components/Layout";
+import { usePermissions } from "@shared/permissions";
 
 export default function CustomerOrders() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
+  const permissions = usePermissions(user?.role);
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -63,7 +65,7 @@ export default function CustomerOrders() {
   });
 
   // Fetch suppliers for filter
-  const { data: suppliers = [] } = useQuery({
+  const { data: suppliers = [] } = useQuery<any[]>({
     queryKey: ['/api/suppliers'],
   });
 
@@ -78,8 +80,8 @@ export default function CustomerOrders() {
     mutationFn: (data: any) => apiRequest('/api/customer-orders', 'POST', data),
     onSuccess: () => {
       // Force refresh of the query with store context
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes('/api/customer-orders') });
-      queryClient.refetchQueries({ predicate: (query) => query.queryKey[0]?.toString().includes('/api/customer-orders') });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
+      queryClient.refetchQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
       setShowCreateModal(false);
       toast({
         title: "Succès",
@@ -100,7 +102,7 @@ export default function CustomerOrders() {
     mutationFn: ({ id, data }: { id: number; data: any }) =>
       apiRequest(`/api/customer-orders/${id}`, 'PUT', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes('/api/customer-orders') });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
       setShowEditModal(false);
       setSelectedOrder(null);
       toast({
@@ -121,7 +123,7 @@ export default function CustomerOrders() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest(`/api/customer-orders/${id}`, 'DELETE'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes('/api/customer-orders') });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
       setShowDeleteModal(false);
       setSelectedOrder(null);
       toast({
@@ -143,7 +145,7 @@ export default function CustomerOrders() {
     mutationFn: ({ id, status }: { id: number; status: string }) =>
       apiRequest(`/api/customer-orders/${id}`, 'PUT', { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes('/api/customer-orders') });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
       toast({
         title: "Succès",
         description: "Statut de la commande mis à jour",
@@ -156,7 +158,7 @@ export default function CustomerOrders() {
     mutationFn: ({ id, customerNotified }: { id: number; customerNotified: boolean }) =>
       apiRequest(`/api/customer-orders/${id}`, 'PUT', { customerNotified }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes('/api/customer-orders') });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
       toast({
         title: "Succès",
         description: "Statut de notification mis à jour",
@@ -685,10 +687,12 @@ export default function CustomerOrders() {
               Gestion des commandes clients et étiquettes
             </p>
           </div>
-          <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white shadow-md">
-            <Plus className="w-4 h-4 mr-2" />
-            Nouvelle Commande
-          </Button>
+          {permissions.canCreate('customer-orders') && (
+            <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white shadow-md">
+              <Plus className="w-4 h-4 mr-2" />
+              Nouvelle Commande
+            </Button>
+          )}
         </div>
       </div>
 
@@ -847,7 +851,7 @@ export default function CustomerOrders() {
                             </Button>
                           </>
                         )}
-                        {user?.role === 'admin' && (
+                        {permissions.canDelete('customer-orders') && (
                           <Button
                             variant="outline"
                             size="sm"
