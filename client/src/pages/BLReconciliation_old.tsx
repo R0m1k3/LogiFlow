@@ -400,15 +400,6 @@ export default function BLReconciliation() {
             </div>
           ) : (
             <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-lg">
-              {/* Pagination du haut */}
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalManualPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredManualDeliveries.length}
-                itemsPerPage={itemsPerPage}
-              />
-              
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 border-b border-gray-200">
@@ -440,7 +431,7 @@ export default function BLReconciliation() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {currentManualData.map((delivery: any) => (
+                    {filteredManualDeliveries.map((delivery: any) => (
                       <tr 
                         key={delivery.id} 
                         className={`hover:bg-gray-50 ${
@@ -561,15 +552,6 @@ export default function BLReconciliation() {
                   </tbody>
                 </table>
               </div>
-              
-              {/* Pagination du bas */}
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalManualPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredManualDeliveries.length}
-                itemsPerPage={itemsPerPage}
-              />
             </div>
           )}
         </TabsContent>
@@ -605,15 +587,6 @@ export default function BLReconciliation() {
             </div>
           ) : (
             <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-lg">
-              {/* Pagination du haut */}
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalAutomaticPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredAutomaticDeliveries.length}
-                itemsPerPage={itemsPerPage}
-              />
-              
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 border-b border-gray-200">
@@ -646,7 +619,7 @@ export default function BLReconciliation() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {currentAutomaticData.map((delivery: any) => (
+                    {filteredAutomaticDeliveries.map((delivery: any) => (
                       <tr 
                         key={delivery.id} 
                         className={`hover:bg-gray-50 ${
@@ -760,15 +733,6 @@ export default function BLReconciliation() {
                   </tbody>
                 </table>
               </div>
-              
-              {/* Pagination du bas */}
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalAutomaticPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredAutomaticDeliveries.length}
-                itemsPerPage={itemsPerPage}
-              />
             </div>
           )}
         </TabsContent>
