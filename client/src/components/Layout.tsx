@@ -90,7 +90,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* Desktop Sidebar */}
         {!isMobile && <Sidebar />}
         
-        <main className={`flex-1 flex flex-col overflow-hidden ${
+        <main className={`flex-1 flex flex-col ${
           isMobile ? 'ml-0' : sidebarCollapsed ? 'ml-16' : 'ml-64'
         }`}>
           {/* Header with store selector for admin */}
