@@ -6,7 +6,19 @@
 
 ## CORRECTIONS À APPLIQUER SUR VOTRE SERVEUR PRIVÉ
 
-### 1️⃣ FICHIER: server/routes.ts SEULEMENT
+### 1️⃣ FICHIER: client/src/pages/Tasks.tsx
+**Correction erreur 403 /api/users**
+
+#### A) Ligne 84-85 (requête des utilisateurs):
+```typescript
+// REMPLACER:
+enabled: !!user,
+
+// PAR:
+enabled: !!user && (user.role === 'admin' || user.role === 'manager' || user.role === 'directeur'),
+```
+
+### 2️⃣ FICHIER: server/routes.ts
 **Les permissions dans shared/permissions.ts restent inchangées**
 
 #### A) Route GET /api/suppliers (environ ligne 188-194):

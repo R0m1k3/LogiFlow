@@ -70,7 +70,7 @@ export default function Tasks() {
     enabled: !!user,
   });
 
-  // Fetch users for task assignment
+  // Fetch users for task assignment - seulement pour admin/manager/directeur
   const { data: users = [] } = useQuery({
     queryKey: ["/api/users"],
     queryFn: () => fetch('/api/users', {
@@ -81,7 +81,7 @@ export default function Tasks() {
       }
       return res.json();
     }),
-    enabled: !!user,
+    enabled: !!user && (user.role === 'admin' || user.role === 'manager' || user.role === 'directeur'),
   });
 
 
@@ -218,7 +218,8 @@ export default function Tasks() {
     }
   };
 
-  const canCreateTasks = user?.role === 'admin' || user?.role === 'manager';
+  const canCreateTasks = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur';
+  const canEditTasks = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur';
 
   if (isLoading) {
     return (
@@ -382,29 +383,35 @@ export default function Tasks() {
                                   </div>
                                   
                                   <div className="flex items-center gap-2 ml-4">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleCompleteTask(task.id)}
-                                      className="text-green-600 hover:text-green-700"
-                                    >
-                                      <CheckCircle className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleEditTask(task)}
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleDeleteClick(task)}
-                                      className="text-red-600 hover:text-red-700"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    {canEditTasks && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleCompleteTask(task.id)}
+                                        className="text-green-600 hover:text-green-700"
+                                      >
+                                        <CheckCircle className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                    {canEditTasks && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleEditTask(task)}
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                    {canEditTasks && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleDeleteClick(task)}
+                                        className="text-red-600 hover:text-red-700"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                               </CardContent>
