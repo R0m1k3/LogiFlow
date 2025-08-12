@@ -1,0 +1,204 @@
+    nocodb_table_name: 'CommandeH',
+
+    invoice_column_name: 'RefFacture',
+
+    group_created_at: '2025-07-22 11:09:08.977622',
+
+    group_updated_at: '2025-08-12 09:39:32.989'
+
+  }
+
+]
+
+✅ Processed 1 groups for user _1753266816257
+
+🔍 getUserWithGroups called for user: _1753266816257
+
+🔍 Querying user_groups for user: _1753266816257
+
+🔍 Found 1 group assignments for user _1753266816257
+
+🔍 Raw query result: [
+
+  {
+
+    user_id: '_1753266816257',
+
+    group_id: 2,
+
+    group_id_ref: 2,
+
+    group_name: 'Houdemont',
+
+    group_color: '#455A64',
+
+    nocodb_config_id: 1,
+
+    nocodb_table_id: 'my7zunxprumahmm',
+
+    nocodb_table_name: 'CommandeH',
+
+    invoice_column_name: 'RefFacture',
+
+    group_created_at: '2025-07-22 11:09:08.977622',
+
+    group_updated_at: '2025-08-12 09:39:32.989'
+
+  }
+
+]
+
+✅ Processed 1 groups for user _1753266816257
+
+🔍 DLC Products API called with: {
+
+  userId: '_1753266816257',
+
+  userRole: 'employee',
+
+  userGroups: [ { groupId: 2, groupName: 'Houdemont' } ],
+
+  groupIds: [ 2 ],
+
+  filters: {},
+
+  queryStoreId: undefined
+
+}
+
+📋 DLC Products returned: 133 items
+
+📋 Sample DLC products groupIds: [
+
+  { id: 178, name: 'Nesta grenier strawberry aloe vera', groupId: 2 },
+
+  { id: 48, name: 'Gressins sésame', groupId: 2 },
+
+  { id: 154, name: 'M&m’s crispy 240g', groupId: 2 }
+
+]
+
+🔍 getUserWithGroups called for user: _1753266816257
+
+GET /api/dlc-products 304 in 34ms
+
+🔍 Querying user_groups for user: _1753266816257
+
+🔍 Found 1 group assignments for user _1753266816257
+
+🔍 Raw query result: [
+
+  {
+
+    user_id: '_1753266816257',
+
+    group_id: 2,
+
+    group_id_ref: 2,
+
+    group_name: 'Houdemont',
+
+    group_color: '#455A64',
+
+    nocodb_config_id: 1,
+
+    nocodb_table_id: 'my7zunxprumahmm',
+
+    nocodb_table_name: 'CommandeH',
+
+    invoice_column_name: 'RefFacture',
+
+    group_created_at: '2025-07-22 11:09:08.977622',
+
+    group_updated_at: '2025-08-12 09:39:32.989'
+
+  }
+
+]
+
+✅ Processed 1 groups for user _1753266816257
+
+🔍 getUserWithGroups called for user: _1753266816257
+
+🔍 Querying user_groups for user: _1753266816257
+
+🔍 Found 1 group assignments for user _1753266816257
+
+🔍 Raw query result: [
+
+  {
+
+    user_id: '_1753266816257',
+
+    group_id: 2,
+
+    group_id_ref: 2,
+
+    group_name: 'Houdemont',
+
+    group_color: '#455A64',
+
+    nocodb_config_id: 1,
+
+    nocodb_table_id: 'my7zunxprumahmm',
+
+    nocodb_table_name: 'CommandeH',
+
+    invoice_column_name: 'RefFacture',
+
+    group_created_at: '2025-07-22 11:09:08.977622',
+
+    group_updated_at: '2025-08-12 09:39:32.989'
+
+  }
+
+]
+
+✅ Processed 1 groups for user _1753266816257
+
+🔍 getUserWithGroups called for user: _1753266816257
+
+🔍 Querying user_groups for user: _1753266816257
+
+🔍 Found 1 group assignments for user _1753266816257
+
+🔍 Raw query result: [
+
+  {
+
+    user_id: '_1753266816257',
+
+    group_id: 2,
+
+    group_id_ref: 2,
+
+    group_name: 'Houdemont',
+
+    group_color: '#455A64',
+
+    nocodb_config_id: 1,
+
+    nocodb_table_id: 'my7zunxprumahmm',
+
+    nocodb_table_name: 'CommandeH',
+
+    invoice_column_name: 'RefFacture',
+
+    group_created_at: '2025-07-22 11:09:08.977622',
+
+    group_updated_at: '2025-08-12 09:39:32.989'
+
+  }
+
+]
+
+✅ Processed 1 groups for user _1753266816257
+
+GET /api/dlc-products/stats 304 in 45ms
+
+HEAD /api/health 200 in 1ms
+
+
+      
+      
+    

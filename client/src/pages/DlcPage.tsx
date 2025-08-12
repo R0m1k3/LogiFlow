@@ -200,18 +200,24 @@ export default function DlcPage() {
     
     // Déterminer le groupId correctement selon le rôle utilisateur
     let groupId;
-    if (user?.role === 'admin' && selectedStoreId) {
-      // Admin avec magasin sélectionné
-      groupId = selectedStoreId;
-    } else if (user?.userGroups?.[0]?.groupId) {
-      // Utilisateur non-admin : utiliser son groupe assigné
+    
+    // FORCE L'UTILISATION DU GROUPE ASSIGNÉ EN PREMIER
+    if (user?.userGroups?.[0]?.groupId) {
+      // Utilisateur avec groupe assigné : TOUJOURS utiliser ce groupe
       groupId = user.userGroups[0].groupId;
-    } else if (user?.role === 'admin') {
+      console.log("🎯 DLC Frontend: Using user's assigned group (PRIORITY):", groupId);
+    } else if (user?.role === 'admin' && selectedStoreId) {
+      // Admin avec magasin sélectionné ET pas de groupe assigné
+      groupId = selectedStoreId;
+      console.log("🎯 DLC Frontend: Using admin selected store:", groupId);
+    } else if (user?.role === 'admin' && stores?.[0]?.id) {
       // Admin sans sélection : premier magasin disponible
-      groupId = stores[0]?.id || 1;
+      groupId = stores[0].id;
+      console.log("🎯 DLC Frontend: Using first available store for admin:", groupId);
     } else {
-      // Fallback par défaut
+      // Fallback d'urgence
       groupId = 1;
+      console.log("🚨 DLC Frontend: Using emergency fallback groupId:", groupId);
     }
 
     console.log("🏪 DLC GroupId Selection DEBUG:", {
