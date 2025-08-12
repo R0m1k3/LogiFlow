@@ -2019,15 +2019,18 @@ RÉSUMÉ DU SCAN
       console.log("Backend data mapped:", backendData);
       
       // REMOVED: All role restrictions - tous les rôles peuvent créer des commandes client
-      console.log("Creating customer order - no role restrictions:", { 
+      console.log("🔍 PRODUCTION DEBUG - Creating customer order with data:", { 
         userId, 
         userRole: user.role, 
         userGroups: user.userGroups?.map(ug => ({groupId: ug.groupId, groupName: ug.group?.name})),
         originalGroupId: req.body.groupId,
-        finalGroupId: backendData.groupId 
+        finalGroupId: backendData.groupId,
+        backendDataGroupId: backendData.groupId
       });
 
+      console.log("🔍 PRODUCTION DEBUG - Calling storage.createCustomerOrder with groupId:", backendData.groupId);
       const customerOrder = await storage.createCustomerOrder(backendData);
+      console.log("🔍 PRODUCTION DEBUG - Customer order created with groupId:", customerOrder.groupId, "- Should be:", finalGroupId);
       res.status(201).json(customerOrder);
     } catch (error) {
       console.error("Error creating customer order:", error);
@@ -2406,15 +2409,22 @@ RÉSUMÉ DU SCAN
         combined: { ...req.body, createdBy: userId, groupId: finalGroupId }
       });
 
-      const validatedData = insertDlcProductFrontendSchema.parse({
+      const dataToValidate = {
         ...req.body,
         createdBy: userId,
         groupId: finalGroupId,
-      });
+      };
+      
+      console.log("🔍 PRODUCTION DEBUG - Data before validation:", dataToValidate);
+      
+      const validatedData = insertDlcProductFrontendSchema.parse(dataToValidate);
 
-      console.log("✅ Post-validation data:", validatedData);
+      console.log("✅ PRODUCTION DEBUG - Post-validation data:", validatedData);
+      console.log("🔍 PRODUCTION DEBUG - GroupId after validation:", validatedData.groupId, typeof validatedData.groupId);
 
+      console.log("🔍 PRODUCTION DEBUG - Calling storage.createDlcProduct with groupId:", validatedData.groupId);
       const dlcProduct = await storage.createDlcProduct(validatedData);
+      console.log("🔍 PRODUCTION DEBUG - DLC created with groupId:", dlcProduct.groupId, "- Should be:", finalGroupId);
       console.log("📦 Raw returned DLC product:", dlcProduct);
       console.log('✅ DLC Product created successfully:', {
         id: dlcProduct.id,
