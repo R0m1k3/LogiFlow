@@ -2161,7 +2161,7 @@ RÉSUMÉ DU SCAN
   });
 
   // DLC Products routes
-  app.get('/api/dlc-products', isAuthenticated, async (req: any, res) => {
+  app.get('/api/dlc-products', isAuthenticated, requirePermission('dlc', 'view'), async (req: any, res) => {
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       const user = await storage.getUserWithGroups(userId);
@@ -2208,7 +2208,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.get('/api/dlc-products/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/dlc-products/stats', isAuthenticated, requirePermission('dlc', 'view'), async (req: any, res) => {
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       const user = await storage.getUserWithGroups(userId);
@@ -2237,7 +2237,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.get('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/dlc-products/:id', isAuthenticated, requirePermission('dlc', 'view'), async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
@@ -2264,7 +2264,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.post('/api/dlc-products', isAuthenticated, async (req: any, res) => {
+  app.post('/api/dlc-products', isAuthenticated, requirePermission('dlc', 'create'), async (req: any, res) => {
     try {
       console.log('📨 POST /api/dlc-products - Request body:', JSON.stringify(req.body, null, 2));
       
@@ -2304,7 +2304,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.put('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/dlc-products/:id', isAuthenticated, requirePermission('dlc', 'edit'), async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
@@ -2339,15 +2339,13 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.post('/api/dlc-products/:id/validate', isAuthenticated, async (req: any, res) => {
+  app.post('/api/dlc-products/:id/validate', isAuthenticated, requirePermission('dlc', 'validate'), async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       const user = await storage.getUser(userId);
       
-      if (!user || !hasPermission(user.role, 'dlc', 'validate')) {
-        return res.status(403).json({ message: "Insufficient permissions to validate products" });
-      }
+      // Permission already checked by middleware
 
       // Check if the product exists and user has access
       const existingProduct = await storage.getDlcProduct(id);
@@ -2371,7 +2369,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.delete('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/dlc-products/:id', isAuthenticated, requirePermission('dlc', 'delete'), async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
