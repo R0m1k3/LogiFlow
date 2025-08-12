@@ -99,12 +99,19 @@ export function CustomerOrderForm({
     // Ensure groupId is set - force assignment for ALL users
     let groupId = data.groupId;
     
-    console.log("🔍 Customer Order GroupId Debug:", {
+    console.log("🔍 CUSTOMER ORDER FRONTEND DEBUG - Complete user data:", {
       userRole: user?.role,
       selectedStoreId,
-      userGroups: user?.userGroups?.map(ug => ({groupId: ug.groupId, groupName: ug.group?.name})),
+      userHasGroups: !!user?.userGroups,
+      userGroupsLength: user?.userGroups?.length,
+      userGroups: user?.userGroups?.map(ug => ({
+        groupId: ug.groupId || ug.group?.id, 
+        groupName: ug.group?.name,
+        fullGroupData: ug
+      })),
       initialGroupId: groupId,
-      availableGroups: groups.map(g => ({id: g.id, name: g.name}))
+      availableGroups: groups.map(g => ({id: g.id, name: g.name})),
+      fullUserObject: user
     });
     
     // FORCE L'UTILISATION DU GROUPE ASSIGNÉ EN PREMIER - MÊME LOGIQUE QUE DLC
@@ -132,7 +139,7 @@ export function CustomerOrderForm({
       }
     }
     
-    console.log("✅ Final groupId selected:", groupId);
+    console.log("✅ CUSTOMER ORDER - Final groupId selected:", groupId, typeof groupId);
     
     // Prepare data with proper types for frontend schema
     const submitData = {
@@ -149,7 +156,8 @@ export function CustomerOrderForm({
       gencode: data.gencode || '',
       supplierId: data.supplierId || 1,
     };
-    console.log("🔍 Frontend submit data:", submitData);
+    console.log("🔍 CUSTOMER ORDER - Frontend submit data final:", submitData);
+    console.log("🔍 CUSTOMER ORDER - Submit data groupId:", submitData.groupId, typeof submitData.groupId);
     onSubmit(submitData);
   };
 
