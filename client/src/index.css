@@ -125,6 +125,44 @@
   .hover\:bg-accent:hover {
     background-color: var(--accent);
   }
+
+  /* Responsive utilities */
+  .container-responsive {
+    @apply w-full mx-auto px-4 sm:px-6 lg:px-8;
+    max-width: 1400px;
+  }
+  
+  .grid-responsive {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  
+  .card-responsive {
+    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 sm:p-6;
+  }
+  
+  .text-responsive-sm {
+    @apply text-sm sm:text-base;
+  }
+  
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+  
+  .sidebar-width {
+    @apply w-16 lg:w-64;
+  }
+  
+  .sidebar-collapsed {
+    @apply w-16;
+  }
+  
+  .main-content {
+    @apply flex-1 flex flex-col overflow-hidden ml-16 lg:ml-64;
+  }
+  
+  .main-content-expanded {
+    @apply ml-16;
+  }
 }
 
 /* Supprimer le contour orange de la date du jour dans le calendrier */
