@@ -34,6 +34,7 @@ import {
   insertDlcProductFrontendSchema,
   insertTaskSchema
 } from "@shared/schema";
+import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1315,8 +1316,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Check permissions (admin or manager)
-      if (user.role === 'employee') {
+      // Check permissions using the shared permission system
+      if (!hasPermission(user.role, 'publicity', 'create')) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -1351,8 +1352,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Check permissions (admin or manager)
-      if (user.role === 'employee') {
+      // Check permissions using the shared permission system
+      if (!hasPermission(user.role, 'publicity', 'edit')) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -2010,9 +2011,9 @@ RÉSUMÉ DU SCAN
         return res.status(404).json({ message: "Customer order not found" });
       }
 
-      // Only admin can delete orders
-      if (user.role !== 'admin') {
-        return res.status(403).json({ message: "Only admins can delete customer orders" });
+      // Check permissions using the shared permission system
+      if (!hasPermission(user.role, 'customer-orders', 'delete')) {
+        return res.status(403).json({ message: "Insufficient permissions to delete customer orders" });
       }
 
       await storage.deleteCustomerOrder(id);
@@ -2347,7 +2348,7 @@ RÉSUMÉ DU SCAN
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       const user = await storage.getUser(userId);
       
-      if (!user || !['admin', 'manager', 'directeur'].includes(user.role)) {
+      if (!user || !hasPermission(user.role, 'dlc', 'validate')) {
         return res.status(403).json({ message: "Insufficient permissions to validate products" });
       }
 
