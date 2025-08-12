@@ -30,6 +30,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Business Entities
 - **Management**: Orders, Deliveries, Customer Orders, Suppliers, Publicities, DLC Products (limited shelf life), Tasks.
+- **Automatic Reconciliation**: Dual-mode BL/Invoice reconciliation system with automatic validation for designated suppliers.
 
 ### Data Flow
 - **Request Flow**: Client requests via React Query, processed by Express middleware for authentication/security, then by route handlers using Drizzle ORM for database operations.
@@ -41,6 +42,7 @@ Preferred communication style: Simple, everyday language.
 - **Multi-Store Management**: Global store context, role-based access control (admin, manager, employee, directeur), and data isolation.
 - **Universal Pagination**: Reusable client-side pagination component across all main tabular data pages.
 - **Reconciliation Module**: For balancing and tracking financial discrepancies.
+- **Automatic Reconciliation System**: Dual-mode BL/Invoice reconciliation with automatic validation for suppliers in automatic mode. Auto-validates deliveries when status = "delivered" AND BL number exists.
 - **Permission System**: Granular, hardcoded permissions (54 permissions across 12 categories, assigned to 4 roles) for improved performance and maintenance.
 - **User Management**: Comprehensive features including user deletion with ownership transfer, consistent name and email field handling, and robust password hashing.
 - **Calendar Synchronization**: Proper display of delivery dates and automatic synchronization of order statuses.

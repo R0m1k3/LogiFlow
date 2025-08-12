@@ -20,7 +20,8 @@ import {
   Package,
   Truck,
   CheckCircle,
-  XCircle
+  XCircle,
+  Clock
 } from "lucide-react";
 import type { Supplier } from "@shared/schema";
 
@@ -37,7 +38,10 @@ export default function Suppliers() {
     name: "",
     contact: "",
     phone: "",
+    email: "",
+    address: "",
     hasDlc: false,
+    automaticReconciliation: false,
   });
 
   const { data: suppliers = [], isLoading } = useQuery<Supplier[]>({
@@ -66,7 +70,15 @@ export default function Suppliers() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
       setShowCreateModal(false);
-      setFormData({ name: "", contact: "", phone: "", hasDlc: false });
+      setFormData({ 
+        name: "", 
+        contact: "", 
+        phone: "", 
+        email: "",
+        address: "",
+        hasDlc: false,
+        automaticReconciliation: false 
+      });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -137,7 +149,15 @@ export default function Suppliers() {
       
       setShowEditModal(false);
       setSelectedSupplier(null);
-      setFormData({ name: "", contact: "", phone: "", hasDlc: false });
+      setFormData({ 
+        name: "", 
+        contact: "", 
+        phone: "", 
+        email: "",
+        address: "",
+        hasDlc: false,
+        automaticReconciliation: false 
+      });
     },
     onError: (error, variables, context) => {
       // Rollback optimiste en cas d'erreur
@@ -214,7 +234,15 @@ export default function Suppliers() {
   };
 
   const handleCreate = () => {
-    setFormData({ name: "", contact: "", phone: "", hasDlc: false });
+    setFormData({ 
+      name: "", 
+      contact: "", 
+      phone: "", 
+      email: "",
+      address: "",
+      hasDlc: false,
+      automaticReconciliation: false 
+    });
     setShowCreateModal(true);
   };
 
@@ -224,7 +252,10 @@ export default function Suppliers() {
       name: supplier.name,
       contact: supplier.contact || "",
       phone: supplier.phone || "",
+      email: supplier.email || "",
+      address: supplier.address || "",
       hasDlc: supplier.hasDlc || false,
+      automaticReconciliation: supplier.automaticReconciliation || false,
     });
     setShowEditModal(true);
   };
@@ -400,19 +431,30 @@ export default function Suppliers() {
                           {supplier.phone}
                         </div>
                       )}
-                      <div className="flex items-center text-sm">
-                        {supplier.hasDlc ? (
-                          <div className="flex items-center text-green-600">
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            DLC activé
-                          </div>
-                        ) : (
-                          <div className="flex items-center text-gray-400">
-                            <XCircle className="w-4 h-4 mr-2" />
-                            DLC désactivé
-                          </div>
-                        )}
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2">
+                          {supplier.hasDlc && (
+                            <div className="flex items-center text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                              <Clock className="w-3 h-3 mr-1" />
+                              <span className="text-xs font-medium">DLC</span>
+                            </div>
+                          )}
+                          {supplier.automaticReconciliation && (
+                            <div className="flex items-center text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              <span className="text-xs font-medium">Auto-rapprochement</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
+
+                      {!supplier.hasDlc && !supplier.automaticReconciliation && (
+                        <div className="text-xs text-gray-500 mt-2">
+                          Aucune option activée
+                        </div>
+                      )}
+
+                      {/* Statistics section follows */}
                     </div>
 
                     <div className="border-t pt-4">
@@ -453,7 +495,15 @@ export default function Suppliers() {
         setShowCreateModal(false);
         setShowEditModal(false);
         setSelectedSupplier(null);
-        setFormData({ name: "", contact: "", phone: "", hasDlc: false });
+        setFormData({ 
+          name: "", 
+          contact: "", 
+          phone: "", 
+          email: "",
+          address: "",
+          hasDlc: false,
+          automaticReconciliation: false 
+        });
       }}>
         <DialogContent className="sm:max-w-md" aria-describedby="supplier-modal-description">
           <DialogHeader>
@@ -497,6 +547,27 @@ export default function Suppliers() {
               />
             </div>
 
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder="Adresse email"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="address">Adresse</Label>
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) => handleChange('address', e.target.value)}
+                placeholder="Adresse complète"
+              />
+            </div>
+
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id="hasDlc"
@@ -508,6 +579,17 @@ export default function Suppliers() {
               </Label>
             </div>
 
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="automaticReconciliation"
+                checked={formData.automaticReconciliation}
+                onCheckedChange={(checked) => handleChange('automaticReconciliation', checked === true)}
+              />
+              <Label htmlFor="automaticReconciliation" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Rapprochement automatique BL/Factures
+              </Label>
+            </div>
+
             <div className="flex items-center space-x-3 pt-4">
               <Button 
                 type="button" 
@@ -516,7 +598,15 @@ export default function Suppliers() {
                   setShowCreateModal(false);
                   setShowEditModal(false);
                   setSelectedSupplier(null);
-                  setFormData({ name: "", contact: "", phone: "", hasDlc: false });
+                  setFormData({ 
+                    name: "", 
+                    contact: "", 
+                    phone: "", 
+                    email: "",
+                    address: "",
+                    hasDlc: false,
+                    automaticReconciliation: false 
+                  });
                 }}
               >
                 Annuler
