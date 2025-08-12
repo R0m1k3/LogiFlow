@@ -81,7 +81,7 @@ export function CustomerOrderForm({
       deposit: order?.deposit || 0,
       isPromotionalPrice: order?.isPromotionalPrice || false,
       customerNotified: order?.customerNotified || false,
-      groupId: order?.groupId || (user?.role === 'admin' && selectedStoreId ? selectedStoreId : user?.userGroups?.[0]?.groupId) || 1, // Force assignment with fallback
+      groupId: order?.groupId || (user?.userGroups?.[0]?.groupId || (user?.role === 'admin' && selectedStoreId ? selectedStoreId : 1)), // PRIORITÉ: groupe utilisateur assigné
     },
   });
 
@@ -107,27 +107,28 @@ export function CustomerOrderForm({
       availableGroups: groups.map(g => ({id: g.id, name: g.name}))
     });
     
+    // FORCE L'UTILISATION DU GROUPE ASSIGNÉ EN PREMIER - MÊME LOGIQUE QUE DLC
     if (!groupId) {
-      if (user?.role === 'admin' && selectedStoreId) {
-        // Admin has selected a specific store - use it
-        groupId = selectedStoreId;
-        console.log("🏪 Using admin selected store:", selectedStoreId);
-      } else if (user?.userGroups?.[0]?.groupId) {
-        // User has assigned groups - use first one
+      if (user?.userGroups?.[0]?.groupId) {
+        // Utilisateur avec groupe assigné : TOUJOURS utiliser ce groupe (PRIORITÉ)
         groupId = user.userGroups[0].groupId;
-        console.log("👤 Using user group:", groupId);
+        console.log("🎯 Customer Order Frontend: Using user's assigned group (PRIORITY):", groupId);
+      } else if (user?.role === 'admin' && selectedStoreId) {
+        // Admin avec magasin sélectionné ET pas de groupe assigné
+        groupId = selectedStoreId;
+        console.log("🎯 Customer Order Frontend: Using admin selected store:", groupId);
       } else if (user?.role === 'admin' && groups.length > 0) {
-        // Admin in "tous magasins" mode - use first group
+        // Admin sans sélection : premier groupe disponible
         groupId = groups[0].id;
-        console.log("🏢 Admin fallback to first group:", groupId);
+        console.log("🎯 Customer Order Frontend: Using first group for admin:", groupId);
       } else if (groups.length > 0) {
         // EMERGENCY FALLBACK: Force assignment to first available group
         groupId = groups[0].id;
-        console.log("⚠️ EMERGENCY: Force assigning to first group:", groupId);
+        console.log("⚠️ Customer Order Frontend: Emergency fallback to first group:", groupId);
       } else {
         // LAST RESORT: Hard-coded fallback
         groupId = 1;
-        console.log("🚨 LAST RESORT: Using hard-coded groupId 1");
+        console.log("🚨 Customer Order Frontend: Using hard-coded groupId 1");
       }
     }
     
