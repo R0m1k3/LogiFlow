@@ -674,7 +674,7 @@ export default function CustomerOrders() {
   } = usePagination(sortedOrders, 10);
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="flex-1 overflow-y-auto">
       <div className="p-6 space-y-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6 shadow-sm -m-6 mb-6">
