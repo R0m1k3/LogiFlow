@@ -126,13 +126,13 @@ export default function Sidebar() {
       path: "/suppliers", 
       label: "Fournisseurs", 
       icon: Building, 
-      roles: ["admin", "directeur"] 
+      roles: ["admin"] 
     },
     { 
       path: "/groups", 
       label: "Magasins", 
       icon: Users, 
-      roles: ["admin", "directeur"] 
+      roles: ["admin"] 
     },
   ];
 
