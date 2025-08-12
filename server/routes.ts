@@ -1388,6 +1388,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Schema logging route for production debugging
+  app.get('/api/debug/log-schema', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: 'Accès refusé. Seuls les administrateurs peuvent utiliser cette route de debug.' });
+      }
+
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      if (!isProduction) {
+        return res.status(400).json({ error: 'Cette route fonctionne uniquement en production sur votre serveur privé' });
+      }
+
+      console.log('\n🔍 ===== DÉBUT SCAN SCHÉMA BASE DE DONNÉES =====');
+      console.log('⏰ Timestamp:', new Date().toISOString());
+
+      // Récupérer les tables
+      const tablesQuery = `
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        ORDER BY table_name
+      `;
+      
+      const tablesResult = await storage.db.query(tablesQuery);
+      
+      console.log(`\n📊 TOTAL DES TABLES TROUVÉES: ${tablesResult.rows.length}`);
+      console.log('==========================================');
+      
+      // Pour chaque table, récupérer les colonnes
+      for (const tableRow of tablesResult.rows) {
+        const tableName = tableRow.table_name;
+        
+        console.log(`\n🔸 TABLE: ${tableName.toUpperCase()}`);
+        console.log(`${'='.repeat(tableName.length + 8)}`);
+        
+        const columnsQuery = `
+          SELECT 
+            column_name,
+            data_type,
+            character_maximum_length,
+            is_nullable,
+            column_default,
+            ordinal_position
+          FROM information_schema.columns 
+          WHERE table_schema = 'public' 
+            AND table_name = $1
+          ORDER BY ordinal_position
+        `;
+        
+        const columnsResult = await storage.db.query(columnsQuery, [tableName]);
+        
+        if (columnsResult.rows.length > 0) {
+          columnsResult.rows.forEach((col, index) => {
+            const nullable = col.is_nullable === 'YES' ? 'NULL' : 'NOT NULL';
+            const maxLength = col.character_maximum_length ? `(${col.character_maximum_length})` : '';
+            const defaultVal = col.column_default ? ` DEFAULT ${col.column_default}` : '';
+            
+            console.log(`   ${(index + 1).toString().padStart(2, '0')}. ${col.column_name.padEnd(25)} : ${col.data_type}${maxLength} ${nullable}${defaultVal}`);
+          });
+          
+          // Compter les enregistrements dans la table
+          try {
+            const countQuery = `SELECT COUNT(*) as total FROM "${tableName}"`;
+            const countResult = await storage.db.query(countQuery);
+            console.log(`   📈 Nombre d'enregistrements: ${countResult.rows[0].total}`);
+          } catch (countError) {
+            console.log(`   ⚠️  Impossible de compter les enregistrements: ${countError.message}`);
+          }
+        }
+      }
+      
+      // Récupérer les contraintes de clés étrangères
+      console.log('\n🔗 CONTRAINTES DE CLÉS ÉTRANGÈRES:');
+      console.log('===================================');
+      
+      const fkQuery = `
+        SELECT
+          tc.table_name,
+          kcu.column_name,
+          ccu.table_name AS foreign_table_name,
+          ccu.column_name AS foreign_column_name,
+          tc.constraint_name
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.key_column_usage AS kcu
+          ON tc.constraint_name = kcu.constraint_name
+          AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.constraint_column_usage AS ccu
+          ON ccu.constraint_name = tc.constraint_name
+          AND ccu.table_schema = tc.table_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_schema = 'public'
+        ORDER BY tc.table_name, kcu.column_name
+      `;
+      
+      const fkResult = await storage.db.query(fkQuery);
+      
+      if (fkResult.rows.length > 0) {
+        fkResult.rows.forEach(fk => {
+          console.log(`   ${fk.table_name}.${fk.column_name} → ${fk.foreign_table_name}.${fk.foreign_column_name}`);
+        });
+      } else {
+        console.log('   Aucune contrainte de clé étrangère trouvée');
+      }
+
+      console.log('\n🏁 ===== FIN SCAN SCHÉMA BASE DE DONNÉES =====\n');
+      
+      res.json({ 
+        success: true, 
+        message: 'Schéma loggé avec succès dans les logs du serveur',
+        totalTables: tablesResult.rows.length,
+        totalForeignKeys: fkResult.rows.length,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('❌ ERREUR lors du scan du schéma:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Invoice verification routes
   app.post('/api/verify-invoice', isAuthenticated, async (req: any, res) => {
     try {
