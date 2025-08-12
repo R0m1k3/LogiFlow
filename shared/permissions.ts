@@ -48,10 +48,10 @@ const PERMISSIONS: Record<Module, Record<Role, Permission[]>> = {
     employee: []
   },
 
-  // Rapprochement - Admin tout, Directeur tout sauf delete, Manager/Employé rien
+  // Rapprochement - Admin tout y compris validate, Directeur tout sauf delete, Manager/Employé rien
   reconciliation: {
-    admin: ['view', 'create', 'edit', 'delete'],
-    directeur: ['view', 'create', 'edit'],
+    admin: ['view', 'create', 'edit', 'delete', 'validate'],
+    directeur: ['view', 'create', 'edit', 'validate'],
     manager: [],
     employee: []
   },
