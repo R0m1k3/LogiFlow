@@ -1,0 +1,200 @@
+GET /api/deliveries 500 in 24ms
+
+GET /api/orders 500 in 27ms
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+Orders API called with: {
+
+  startDate: '2025-08-01',
+
+  endDate: '2025-08-31',
+
+  storeId: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering with groupIds: undefined
+
+Fetching orders by date range: 2025-08-01 to 2025-08-31
+
+Error fetching orders: error: column orders_supplier.email does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.getOrdersByDateRange (file:///app/dist/index.js:1127:16)
+
+    at async file:///app/dist/index.js:3633:21 {
+
+  length: 120,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '555',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_relation.c',
+
+  line: '3665',
+
+  routine: 'errorMissingColumn'
+
+}
+
+GET /api/orders 500 in 13ms
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+🔍 getUserWithGroups called for user: admin_local
+
+🔍 Querying user_groups for user: admin_local
+
+🔍 Found 0 group assignments for user admin_local
+
+🔍 Raw query result: []
+
+✅ Processed 0 groups for user admin_local
+
+Deliveries API called with: {
+
+  startDate: '2025-08-01',
+
+  endDate: '2025-08-31',
+
+  storeId: undefined,
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering deliveries with groupIds: undefined
+
+Fetching deliveries by date range: 2025-08-01 to 2025-08-31
+
+Error fetching deliveries: error: column deliveries_supplier.email does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.getDeliveriesByDateRange (file:///app/dist/index.js:1186:25)
+
+    at async file:///app/dist/index.js:3848:25 {
+
+  length: 124,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '856',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_relation.c',
+
+  line: '3665',
+
+  routine: 'errorMissingColumn'
+
+}
+
+GET /api/deliveries 500 in 42ms
+
+HEAD /api/health 200 in 1ms
+
