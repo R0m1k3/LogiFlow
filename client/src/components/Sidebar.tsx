@@ -69,55 +69,55 @@ export default function Sidebar() {
       path: "/dashboard", 
       label: "Tableau de bord", 
       icon: BarChart3, 
-      roles: ["admin", "manager", "employee"] 
+      roles: ["admin", "directeur", "manager", "employee"] 
     },
     { 
       path: "/calendar", 
       label: "Calendrier", 
       icon: Calendar, 
-      roles: ["admin", "manager", "employee"] 
+      roles: ["admin", "directeur", "manager", "employee"] 
     },
     { 
       path: "/orders", 
       label: "Commandes", 
       icon: Package, 
-      roles: ["admin", "manager"] 
+      roles: ["admin", "directeur", "manager", "employee"] 
     },
     { 
       path: "/deliveries", 
       label: "Livraisons", 
       icon: Truck, 
-      roles: ["admin", "manager"] 
+      roles: ["admin", "directeur", "manager", "employee"] 
     },
     { 
       path: "/bl-reconciliation", 
       label: "Rapprochement", 
       icon: FileText, 
-      roles: ["admin", "manager"] 
+      roles: ["admin", "directeur"] 
     },
     { 
       path: "/publicities", 
       label: "Publicités", 
       icon: Megaphone, 
-      roles: ["admin", "manager"] 
+      roles: ["admin", "directeur", "manager", "employee"] 
     },
     { 
       path: "/customer-orders", 
       label: "Commandes Client", 
       icon: ShoppingCart, 
-      roles: ["admin", "manager", "employee"] 
+      roles: ["admin", "directeur", "manager", "employee"] 
     },
     { 
       path: "/dlc", 
       label: "Gestion DLC", 
       icon: Clock, 
-      roles: ["admin", "manager", "employee"] 
+      roles: ["admin", "directeur", "manager", "employee"] 
     },
     { 
       path: "/tasks", 
       label: "Tâches", 
       icon: ListTodo, 
-      roles: ["admin", "manager", "employee"] 
+      roles: ["admin", "directeur", "manager", "employee"] 
     },
   ];
 
@@ -126,13 +126,13 @@ export default function Sidebar() {
       path: "/suppliers", 
       label: "Fournisseurs", 
       icon: Building, 
-      roles: ["admin", "manager"] 
+      roles: ["admin", "directeur"] 
     },
     { 
       path: "/groups", 
       label: "Magasins", 
       icon: Users, 
-      roles: ["admin", "manager"] 
+      roles: ["admin", "directeur"] 
     },
   ];
 
