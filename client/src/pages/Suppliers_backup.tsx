@@ -14,11 +14,13 @@ import {
   Search, 
   Building, 
   Phone, 
+  Mail,
   Edit,
   Trash2,
   Package,
   Truck,
   CheckCircle,
+  XCircle,
   Clock
 } from "lucide-react";
 import type { Supplier } from "@shared/schema";
@@ -66,7 +68,15 @@ export default function Suppliers() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
       setShowCreateModal(false);
-      resetForm();
+      setFormData({ 
+        name: "", 
+        contact: "", 
+        phone: "", 
+        email: "",
+        address: "",
+        hasDlc: false,
+        automaticReconciliation: false 
+      });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -114,10 +124,43 @@ export default function Suppliers() {
       
       return { previousSuppliers };
     },
-    onError: (error, newData, context) => {
-      // Rollback en cas d'erreur
-      console.log('⚠️ Frontend: Rolling back optimistic update due to error');
+    onSuccess: async (result) => {
+      console.log('✅ Frontend: Update mutation successful, result:', result);
+      console.log('🔄 Frontend: Starting cache invalidation...');
+      
+      // Forcer une actualisation complète du cache
+      await queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+      await queryClient.refetchQueries({ 
+        queryKey: ['/api/suppliers'],
+        type: 'active'
+      });
+      
+      // Attendre un petit délai pour s'assurer que les données sont fraîches
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('✅ Frontend: Cache invalidation complete');
+      
+      toast({
+        title: "Succès",
+        description: "Fournisseur modifié avec succès",
+      });
+      
+      setShowEditModal(false);
+      setSelectedSupplier(null);
+      setFormData({ 
+        name: "", 
+        contact: "", 
+        phone: "", 
+        email: "",
+        address: "",
+        hasDlc: false,
+        automaticReconciliation: false 
+      });
+    },
+    onError: (error, variables, context) => {
+      // Rollback optimiste en cas d'erreur
       if (context?.previousSuppliers) {
+        console.log('❌ Frontend: Error occurred, rolling back optimistic update');
         queryClient.setQueryData(['/api/suppliers'], context.previousSuppliers);
       }
       
@@ -137,19 +180,6 @@ export default function Suppliers() {
         description: "Impossible de modifier le fournisseur",
         variant: "destructive",
       });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Succès",
-        description: "Fournisseur modifié avec succès",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
-      setShowEditModal(false);
-      setSelectedSupplier(null);
-      resetForm();
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
     },
   });
 
@@ -184,47 +214,44 @@ export default function Suppliers() {
     },
   });
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      contact: "",
-      phone: "",
-      hasDlc: false,
-      automaticReconciliation: false,
-    });
-  };
+  const filteredSuppliers = Array.isArray(suppliers) ? suppliers.filter(supplier =>
+    supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    supplier.contact?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    supplier.phone?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) : [];
 
-  const handleChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const getSupplierStats = (supplierId: number) => {
+    const supplierOrders = Array.isArray(orders) ? orders.filter(order => order.supplierId === supplierId) : [];
+    const supplierDeliveries = Array.isArray(deliveries) ? deliveries.filter(delivery => delivery.supplierId === supplierId) : [];
+    
+    return {
+      orders: supplierOrders.length,
+      deliveries: supplierDeliveries.length,
+      delivered: supplierDeliveries.filter(d => d.status === 'delivered').length,
+    };
   };
 
   const handleCreate = () => {
-    if (user?.role !== 'admin') {
-      toast({
-        title: "Accès refusé",
-        description: "Seuls les administrateurs peuvent créer des fournisseurs",
-        variant: "destructive",
-      });
-      return;
-    }
-    resetForm();
+    setFormData({ 
+      name: "", 
+      contact: "", 
+      phone: "", 
+      email: "",
+      address: "",
+      hasDlc: false,
+      automaticReconciliation: false 
+    });
     setShowCreateModal(true);
   };
 
   const handleEdit = (supplier: Supplier) => {
-    if (user?.role !== 'admin') {
-      toast({
-        title: "Accès refusé",
-        description: "Seuls les administrateurs peuvent modifier des fournisseurs",
-        variant: "destructive",
-      });
-      return;
-    }
     setSelectedSupplier(supplier);
     setFormData({
-      name: supplier.name || "",
+      name: supplier.name,
       contact: supplier.contact || "",
       phone: supplier.phone || "",
+      email: supplier.email || "",
+      address: supplier.address || "",
       hasDlc: supplier.hasDlc || false,
       automaticReconciliation: supplier.automaticReconciliation || false,
     });
@@ -232,22 +259,34 @@ export default function Suppliers() {
   };
 
   const handleDelete = (supplier: Supplier) => {
-    if (user?.role !== 'admin') {
+    const stats = getSupplierStats(supplier.id);
+    
+    if (stats.orders > 0 || stats.deliveries > 0) {
       toast({
-        title: "Accès refusé",
-        description: "Seuls les administrateurs peuvent supprimer des fournisseurs",
+        title: "Suppression impossible",
+        description: "Ce fournisseur a des commandes ou livraisons associées",
         variant: "destructive",
       });
       return;
     }
 
-    if (confirm(`Êtes-vous sûr de vouloir supprimer le fournisseur "${supplier.name}" ?`)) {
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer le fournisseur "${supplier.name}" ?`)) {
       deleteMutation.mutate(supplier.id);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.name.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Le nom du fournisseur est requis",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (selectedSupplier) {
       updateMutation.mutate(formData);
     } else {
@@ -255,64 +294,56 @@ export default function Suppliers() {
     }
   };
 
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getSupplierStats = (supplierId: number) => {
-    const supplierOrders = orders.filter((order: any) => order.supplierId === supplierId);
-    const supplierDeliveries = deliveries.filter((delivery: any) => delivery.supplierId === supplierId);
-    const deliveredCount = supplierDeliveries.filter((delivery: any) => delivery.status === 'delivered').length;
-    
-    return {
-      orders: supplierOrders.length,
-      deliveries: supplierDeliveries.length,
-      delivered: deliveredCount,
-    };
+  const handleChange = (field: string, value: string | boolean) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  if (isLoading) {
+  const canManage = user?.role === 'admin' || user?.role === 'manager';
+
+  if (!canManage) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-48 bg-gray-200 rounded"></div>
-            ))}
-          </div>
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="text-center">
+          <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Accès restreint
+          </h2>
+          <p className="text-gray-600">
+            Vous n'avez pas les permissions nécessaires pour accéder à cette page.
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900 flex items-center">
-            <Building className="w-6 h-6 mr-3 text-blue-600" />
-            Fournisseurs
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Gestion des fournisseurs et partenaires
-          </p>
-        </div>
-        
-        {user?.role === 'admin' && (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900 flex items-center">
+              <Building className="w-6 h-6 mr-3 text-blue-600" />
+              Gestion des Fournisseurs
+            </h2>
+            <p className="text-gray-600 mt-1">
+              {filteredSuppliers.length} fournisseur{filteredSuppliers.length !== 1 ? 's' : ''}
+            </p>
+          </div>
           <Button
             onClick={handleCreate}
-            className="bg-primary hover:bg-blue-700 text-white"
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Nouveau fournisseur
+            Nouveau Fournisseur
           </Button>
-        )}
+        </div>
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+      {/* Search */}
+      <div className="bg-gray-50 border-b border-gray-200 p-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <Input
             placeholder="Rechercher un fournisseur..."
             value={searchTerm}
@@ -322,20 +353,24 @@ export default function Suppliers() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-lg">
-        {filteredSuppliers.length === 0 ? (
-          <div className="text-center py-12">
-            <Building className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+      {/* Suppliers List */}
+      <div className="flex-1 overflow-auto">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredSuppliers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+            <Building className="w-16 h-16 mb-4 text-gray-300" />
+            <h3 className="text-lg font-medium mb-2">
               {searchTerm ? "Aucun fournisseur trouvé" : "Aucun fournisseur"}
             </h3>
-            <p className="text-gray-600">
+            <p className="text-center max-w-md">
               {searchTerm 
-                ? "Aucun fournisseur ne correspond à votre recherche"
-                : "Commencez par créer votre premier fournisseur"
-              }
+                ? "Aucun fournisseur ne correspond à votre recherche."
+                : "Vous n'avez pas encore de fournisseurs. Créez votre premier fournisseur pour commencer."}
             </p>
-            {!searchTerm && user?.role === 'admin' && (
+            {!searchTerm && (
               <Button
                 onClick={handleCreate}
                 className="mt-4 bg-primary hover:bg-blue-700 text-white"
@@ -362,31 +397,29 @@ export default function Suppliers() {
                           <p className="text-sm text-gray-500">#{supplier.id}</p>
                         </div>
                       </div>
-                      {user?.role === 'admin' && (
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(supplier)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(supplier)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(supplier)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(supplier)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="space-y-2 mb-4">
                       {supplier.contact && (
                         <div className="flex items-center text-sm text-gray-600">
-                          <Building className="w-4 h-4 mr-2" />
+                          <Mail className="w-4 h-4 mr-2" />
                           {supplier.contact}
                         </div>
                       )}
@@ -418,6 +451,8 @@ export default function Suppliers() {
                           Aucune option activée
                         </div>
                       )}
+
+                      {/* Statistics section follows */}
                     </div>
 
                     <div className="border-t pt-4">
@@ -458,7 +493,15 @@ export default function Suppliers() {
         setShowCreateModal(false);
         setShowEditModal(false);
         setSelectedSupplier(null);
-        resetForm();
+        setFormData({ 
+          name: "", 
+          contact: "", 
+          phone: "", 
+          email: "",
+          address: "",
+          hasDlc: false,
+          automaticReconciliation: false 
+        });
       }}>
         <DialogContent className="sm:max-w-md" aria-describedby="supplier-modal-description">
           <DialogHeader>
@@ -502,6 +545,27 @@ export default function Suppliers() {
               />
             </div>
 
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder="Adresse email"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="address">Adresse</Label>
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) => handleChange('address', e.target.value)}
+                placeholder="Adresse complète"
+              />
+            </div>
+
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id="hasDlc"
@@ -532,7 +596,15 @@ export default function Suppliers() {
                   setShowCreateModal(false);
                   setShowEditModal(false);
                   setSelectedSupplier(null);
-                  resetForm();
+                  setFormData({ 
+                    name: "", 
+                    contact: "", 
+                    phone: "", 
+                    email: "",
+                    address: "",
+                    hasDlc: false,
+                    automaticReconciliation: false 
+                  });
                 }}
               >
                 Annuler
