@@ -62,12 +62,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Admin sees all groups, others see only their assigned groups
+      // Only admin sees all groups, all other roles (manager, employee, directeur) see only their assigned groups
       if (user.role === 'admin') {
         const groups = await storage.getGroups();
         res.json(groups);
       } else {
-        const userGroups = user.userGroups.map(ug => ug.group);
+        const userGroups = (user as any).userGroups?.map((ug: any) => ug.group) || [];
         res.json(userGroups);
       }
     } catch (error) {
@@ -341,7 +341,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           orders = await storage.getOrders(groupIds);
         }
       } else {
-        const groupIds = user.userGroups.map(ug => ug.groupId);
+        // For all non-admin roles (manager, employee, directeur), filter by their assigned groups
+        const groupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         console.log('Non-admin filtering with groupIds:', groupIds);
         
         // Only filter by date if both startDate and endDate are provided
@@ -375,9 +376,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
 
-      // Check if user has access to this order
+      // Check if user has access to this order (only admin can access all orders)
       if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(order.groupId)) {
           return res.status(403).json({ message: "Access denied" });
         }
@@ -418,9 +419,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('✅ Order data validated:', data);
 
-      // Check if user has access to the group
+      // Check if user has access to the group (only admin can access all groups)
       if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(data.groupId)) {
           console.log('❌ Access denied to group:', { requestedGroupId: data.groupId, userGroups: userGroupIds });
           return res.status(403).json({ message: "Access denied to this group" });
@@ -613,7 +614,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deliveries = await storage.getDeliveries(groupIds);
         }
       } else {
-        const groupIds = user.userGroups.map(ug => ug.groupId);
+        // For non-admin users (managers, employees, directeurs), only show their assigned stores
+        const groupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         console.log('Non-admin filtering deliveries with groupIds:', groupIds);
         
         // Only filter by date if both startDate and endDate are provided
