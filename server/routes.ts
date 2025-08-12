@@ -1952,10 +1952,26 @@ RÉSUMÉ DU SCAN
 
       // Fix groupId BEFORE validation - use user's assigned group or fallback
       let finalGroupId = req.body.groupId;
+      
+      console.log("🔍 Customer Order GroupId Debug Production:", {
+        originalGroupId: req.body.groupId,
+        userGroups: user.userGroups?.map(ug => ({
+          groupId: ug.groupId, 
+          groupName: ug.group?.name,
+          rawGroup: ug.group
+        })),
+        userGroupsLength: user.userGroups?.length,
+        firstUserGroup: user.userGroups?.[0]
+      });
+      
       if (!finalGroupId || finalGroupId === undefined || finalGroupId === null || finalGroupId === '') {
         if (user.userGroups?.[0]?.groupId) {
           finalGroupId = user.userGroups[0].groupId;
           console.log("🔧 Customer Order Backend Fix: Using user's assigned group:", finalGroupId);
+        } else if (user.userGroups?.[0]?.group?.id) {
+          // Alternative access pattern for production
+          finalGroupId = user.userGroups[0].group.id;
+          console.log("🔧 Customer Order Backend Fix: Using user's group.id:", finalGroupId);
         } else {
           finalGroupId = 1; // Emergency fallback
           console.log("🚨 Customer Order Backend Fix: Using emergency fallback groupId:", finalGroupId);
@@ -2355,13 +2371,29 @@ RÉSUMÉ DU SCAN
 
       // Fix groupId if missing - use user's assigned group or fallback
       let finalGroupId = req.body.groupId;
-      if (!finalGroupId) {
+      
+      console.log("🔍 DLC GroupId Debug Production:", {
+        originalGroupId: req.body.groupId,
+        userGroups: user.userGroups?.map(ug => ({
+          groupId: ug.groupId, 
+          groupName: ug.group?.name,
+          rawGroup: ug.group
+        })),
+        userGroupsLength: user.userGroups?.length,
+        firstUserGroup: user.userGroups?.[0]
+      });
+      
+      if (!finalGroupId || finalGroupId === undefined || finalGroupId === null) {
         if (user.userGroups?.[0]?.groupId) {
           finalGroupId = user.userGroups[0].groupId;
-          console.log("🔧 Backend Fix: Using user's assigned group:", finalGroupId);
+          console.log("🔧 DLC Backend Fix: Using user's assigned group:", finalGroupId);
+        } else if (user.userGroups?.[0]?.group?.id) {
+          // Alternative access pattern for production
+          finalGroupId = user.userGroups[0].group.id;
+          console.log("🔧 DLC Backend Fix: Using user's group.id:", finalGroupId);
         } else {
           finalGroupId = 1; // Emergency fallback
-          console.log("🚨 Backend Fix: Using emergency fallback groupId:", finalGroupId);
+          console.log("🚨 DLC Backend Fix: Using emergency fallback groupId:", finalGroupId);
         }
       }
 
