@@ -80,12 +80,12 @@ const PERMISSIONS: Record<Module, Record<Role, Permission[]>> = {
     employee: ['view', 'create']
   },
 
-  // Tâches - Admin/Directeur tout, Manager view + validate, Employé view
+  // Tâches - Admin/Directeur tout, Manager view + validate, Employé view + create
   tasks: {
     admin: ['view', 'create', 'edit', 'delete', 'validate'],
     directeur: ['view', 'create', 'edit', 'delete', 'validate'],
     manager: ['view', 'validate'],
-    employee: ['view']
+    employee: ['view', 'create']
   }
 };
 

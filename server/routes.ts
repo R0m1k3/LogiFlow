@@ -2329,7 +2329,7 @@ RÉSUMÉ DU SCAN
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       const user = await storage.getUser(userId);
       
-      if (!user || !['admin', 'manager'].includes(user.role)) {
+      if (!user || !['admin', 'manager', 'directeur'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions to validate products" });
       }
 
