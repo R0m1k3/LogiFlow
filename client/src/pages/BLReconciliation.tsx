@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { safeFormat } from "@/lib/dateUtils";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast-robust";
 import { apiRequest } from "@/lib/queryClient";
 import { useStore } from "@/components/Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
