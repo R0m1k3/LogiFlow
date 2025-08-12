@@ -11,6 +11,7 @@ import { useStore } from "@/components/Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { usePermissions } from "@shared/permissions";
 import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban } from "lucide-react";
+import ReconciliationModal from "@/components/modals/ReconciliationModal";
 
 export default function BLReconciliation() {
   const { user } = useAuthUnified();
@@ -42,6 +43,8 @@ export default function BLReconciliation() {
   
   const [activeTab, setActiveTab] = useState("manual");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Récupérer les fournisseurs pour la logique automatique
   const { data: suppliers = [] } = useQuery<any[]>({
@@ -83,12 +86,28 @@ export default function BLReconciliation() {
     return supplier?.automaticReconciliation;
   });
 
-  // Fonction pour valider un rapprochement (admins et directeurs)
-  const handleValidateReconciliation = async (deliveryId: number) => {
+  // Fonction pour ouvrir le modal d'édition
+  const handleOpenModal = (delivery: any) => {
+    setSelectedDelivery(delivery);
+    setIsModalOpen(true);
+  };
+
+  // Fonction pour valider un rapprochement rapidement (avec validation des données)
+  const handleQuickValidate = async (delivery: any) => {
     if (!permissions.canValidate('reconciliation')) {
       toast({
         title: "Accès refusé",
         description: "Vous n'avez pas les permissions pour valider les rapprochements",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Vérifier que les données minimales sont présentes
+    if (!delivery.blNumber || delivery.blNumber.trim() === '') {
+      toast({
+        title: "Données manquantes",
+        description: "Le numéro de BL est requis. Cliquez sur 'Voir les détails' pour le renseigner.",
         variant: "destructive",
       });
       return;
@@ -99,7 +118,7 @@ export default function BLReconciliation() {
     }
 
     try {
-      await apiRequest(`/api/deliveries/${deliveryId}`, "PUT", {
+      await apiRequest(`/api/deliveries/${delivery.id}`, "PUT", {
         reconciled: true,
         validatedAt: new Date().toISOString()
       });
@@ -405,7 +424,7 @@ export default function BLReconciliation() {
                               <>
                                 {permissions.canValidate('reconciliation') && (
                                   <button
-                                    onClick={() => handleValidateReconciliation(delivery.id)}
+                                    onClick={() => handleQuickValidate(delivery)}
                                     className="text-gray-600 hover:text-green-600 transition-colors duration-200 p-1 hover:bg-green-50 rounded"
                                     title="Valider le rapprochement"
                                   >
@@ -447,8 +466,9 @@ export default function BLReconciliation() {
                             )}
                             {/* Bouton Voir les détails toujours disponible */}
                             <button
+                              onClick={() => handleOpenModal(delivery)}
                               className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                              title="Voir les détails"
+                              title="Voir les détails / Éditer"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -591,8 +611,9 @@ export default function BLReconciliation() {
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
                             <button
+                              onClick={() => handleOpenModal(delivery)}
                               className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                              title="Voir les détails"
+                              title="Voir les détails / Éditer"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -617,6 +638,17 @@ export default function BLReconciliation() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Modal de rapprochement */}
+      <ReconciliationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        delivery={selectedDelivery}
+        onSave={() => {
+          // Rafraîchir les données après sauvegarde
+          queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+        }}
+      />
     </div>
   );
 }
