@@ -4,13 +4,15 @@ import { safeFormat } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useStore } from "@/components/Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { usePermissions } from "@shared/permissions";
-import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban } from "lucide-react";
+import { Pagination, usePagination } from "@/components/ui/pagination";
+import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter } from "lucide-react";
 import ReconciliationModal from "@/components/modals/ReconciliationModal";
 
 export default function BLReconciliation() {
@@ -73,50 +75,52 @@ export default function BLReconciliation() {
       
       return filtered.sort((a: any, b: any) => new Date(b.deliveredDate || b.updatedAt).getTime() - new Date(a.deliveredDate || a.updatedAt).getTime());
     },
+    enabled: !!user
   });
 
-  // Séparer les livraisons selon le mode de rapprochement du fournisseur
+  // Séparer les livraisons par mode de rapprochement
   const manualReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
-    const supplier = suppliers.find((s: any) => s.id === delivery.supplierId);
-    return !supplier?.automaticReconciliation;
+    const supplier = suppliers.find(s => s.id === delivery.supplierId);
+    return !supplier?.isAutoReconciliation;
   });
 
   const automaticReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
-    const supplier = suppliers.find((s: any) => s.id === delivery.supplierId);
-    return supplier?.automaticReconciliation;
+    const supplier = suppliers.find(s => s.id === delivery.supplierId);
+    return supplier?.isAutoReconciliation;
   });
 
-  // Fonction pour ouvrir le modal d'édition
+  // Fonctions de gestion
   const handleOpenModal = (delivery: any) => {
     setSelectedDelivery(delivery);
     setIsModalOpen(true);
   };
 
-  // Fonction pour valider un rapprochement rapidement (avec validation des données)
+  const handleCloseModal = () => {
+    setSelectedDelivery(null);
+    setIsModalOpen(false);
+  };
+
+  const handleSaveReconciliation = async (data: any) => {
+    try {
+      await apiRequest(`/api/deliveries/${selectedDelivery.id}`, "PUT", data);
+      
+      toast({
+        title: "Succès",
+        description: "Données de rapprochement mises à jour",
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      handleCloseModal();
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour les données",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleQuickValidate = async (delivery: any) => {
-    if (!permissions.canValidate('reconciliation')) {
-      toast({
-        title: "Accès refusé",
-        description: "Vous n'avez pas les permissions pour valider les rapprochements",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Vérifier que les données minimales sont présentes
-    if (!delivery.blNumber || delivery.blNumber.trim() === '') {
-      toast({
-        title: "Données manquantes",
-        description: "Le numéro de BL est requis. Cliquez sur 'Voir les détails' pour le renseigner.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!window.confirm("Êtes-vous sûr de vouloir valider ce rapprochement ?")) {
-      return;
-    }
-
     try {
       await apiRequest(`/api/deliveries/${delivery.id}`, "PUT", {
         reconciled: true,
@@ -138,7 +142,6 @@ export default function BLReconciliation() {
     }
   };
 
-  // Fonction pour dévalider un rapprochement (admins uniquement)
   const handleDevalidateReconciliation = async (deliveryId: number) => {
     if (user?.role !== 'admin') {
       toast({
@@ -174,7 +177,6 @@ export default function BLReconciliation() {
     }
   };
 
-  // Fonction pour supprimer une livraison (admins uniquement)
   const handleDeleteDelivery = async (deliveryId: number) => {
     if (!permissions.canDelete('reconciliation')) {
       toast({
@@ -207,42 +209,6 @@ export default function BLReconciliation() {
     }
   };
 
-  // Fonction pour dévalider un rapprochement automatique (admins uniquement) 
-  const handleDevalidateAutoReconciliation = async (deliveryId: number) => {
-    if (user?.role !== 'admin') {
-      toast({
-        title: "Accès refusé",
-        description: "Seuls les administrateurs peuvent dévalider les rapprochements automatiques",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!window.confirm("Êtes-vous sûr de vouloir dévalider ce rapprochement automatique ?")) {
-      return;
-    }
-
-    try {
-      await apiRequest(`/api/deliveries/${deliveryId}`, "PUT", {
-        reconciled: false,
-        validatedAt: null
-      });
-      
-      toast({
-        title: "Succès",
-        description: "Rapprochement automatique dévalidé avec succès",
-      });
-      
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de dévalider le rapprochement",
-        variant: "destructive",
-      });
-    }
-  };
-
   // Filtrage des livraisons par recherche
   const filterDeliveries = (deliveries: any[]) => {
     return deliveries.filter((delivery: any) => {
@@ -258,11 +224,37 @@ export default function BLReconciliation() {
   const filteredManualDeliveries = filterDeliveries(manualReconciliationDeliveries);
   const filteredAutomaticDeliveries = filterDeliveries(automaticReconciliationDeliveries);
 
+  // Pagination pour les rapprochements manuels
+  const {
+    currentPage: manualCurrentPage,
+    setCurrentPage: setManualCurrentPage,
+    itemsPerPage: manualItemsPerPage,
+    setItemsPerPage: setManualItemsPerPage,
+    totalPages: manualTotalPages,
+    paginatedData: paginatedManualDeliveries,
+    totalItems: manualTotalItems
+  } = usePagination(filteredManualDeliveries, 20);
+
+  // Pagination pour les rapprochements automatiques
+  const {
+    currentPage: autoCurrentPage,
+    setCurrentPage: setAutoCurrentPage,
+    itemsPerPage: autoItemsPerPage,
+    setItemsPerPage: setAutoItemsPerPage,
+    totalPages: autoTotalPages,
+    paginatedData: paginatedAutoDeliveries,
+    totalItems: autoTotalItems
+  } = usePagination(filteredAutomaticDeliveries, 20);
+
   const canModify = user?.role === 'directeur' || user?.role === 'admin';
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-64">Chargement...</div>;
+  }
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header avec onglets */}
+      {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6 shadow-sm -m-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -306,17 +298,19 @@ export default function BLReconciliation() {
       </div>
 
       {/* Filtre de recherche */}
-      <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Rechercher par fournisseur, BL ou facture..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 border border-gray-300 shadow-sm"
-          />
-        </div>
-      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Rechercher par fournisseur, BL ou facture..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 border border-gray-300 shadow-sm"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Contenu des onglets */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -332,182 +326,210 @@ export default function BLReconciliation() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-lg">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Fournisseur
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        N° BL
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date Livr.
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Montant BL
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ref. Facture
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Montant Fact.
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Écart
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Magasin
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredManualDeliveries.map((delivery: any) => (
-                      <tr 
-                        key={delivery.id} 
-                        className={`hover:bg-gray-50 ${
-                          delivery.reconciled === true 
-                            ? 'bg-gray-100 opacity-60 text-gray-500' 
-                            : delivery.reconciled === false 
-                              ? 'bg-red-50 border-l-4 border-red-400' 
-                              : ''
-                        }`}
-                      >
-                        <td className="px-3 py-2 text-sm">
-                          <div className="font-medium text-gray-900 truncate max-w-32">
-                            {delivery.supplier?.name}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.blNumber || (
-                              <span className="text-gray-400 italic text-xs">Non renseigné</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {safeFormat(delivery.scheduledDate, 'dd/MM/yy')}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="font-medium text-gray-900">
-                            {delivery.blAmount ? 
-                              `${parseFloat(delivery.blAmount).toFixed(2)}€` :
-                              <span className="text-gray-400 italic text-xs">Non renseigné</span>
-                            }
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.invoiceReference || (
-                              <span className="text-gray-400 italic text-xs">Non renseigné</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.invoiceAmount ? 
-                              `${parseFloat(delivery.invoiceAmount).toFixed(2)}€` : 
-                              <span className="text-gray-400 italic text-xs">Non renseigné</span>
-                            }
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          {(() => {
-                            const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
-                            const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
-                            if (blAmount && invoiceAmount) {
-                              const diff = blAmount - invoiceAmount;
-                              const diffAbs = Math.abs(diff);
-                              return (
-                                <div className={`font-medium ${
-                                  diff === 0 ? 'text-green-600' : 
-                                  diffAbs > 10 ? 'text-red-600' : 'text-orange-600'
-                                }`}>
-                                  {diff > 0 ? '+' : ''}{diff.toFixed(2)}€
-                                </div>
-                              );
-                            }
-                            return <span className="text-gray-400 italic text-xs">-</span>;
-                          })()}
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.group?.name}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="flex items-center space-x-2">
-                            {/* Actions selon le statut de rapprochement et les permissions */}
-                            {!delivery.reconciled ? (
-                              // Livraison non rapprochée : Valider + Supprimer
-                              <>
-                                {permissions.canValidate('reconciliation') && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Edit className="w-5 h-5" />
+                  Rapprochements Manuels
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Pagination du haut */}
+                <Pagination
+                  currentPage={manualCurrentPage}
+                  totalPages={manualTotalPages}
+                  totalItems={manualTotalItems}
+                  itemsPerPage={manualItemsPerPage}
+                  onPageChange={setManualCurrentPage}
+                  onItemsPerPageChange={setManualItemsPerPage}
+                  className="mb-4"
+                />
+                
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fournisseur
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            N° BL
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date Livr.
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Montant BL
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ref. Facture
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Montant Fact.
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Écart
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Magasin
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {paginatedManualDeliveries.map((delivery: any) => (
+                          <tr 
+                            key={delivery.id} 
+                            className={`hover:bg-gray-50 ${
+                              delivery.reconciled === true 
+                                ? 'bg-gray-100 opacity-60 text-gray-500' 
+                                : delivery.reconciled === false 
+                                  ? 'bg-red-50 border-l-4 border-red-400' 
+                                  : ''
+                            }`}
+                          >
+                            <td className="px-3 py-2 text-sm">
+                              <div className="font-medium text-gray-900 truncate max-w-32">
+                                {delivery.supplier?.name}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="text-gray-900">
+                                {delivery.blNumber || (
+                                  <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="text-gray-900">
+                                {safeFormat(delivery.scheduledDate, 'dd/MM/yy')}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="font-medium text-gray-900">
+                                {delivery.blAmount ? 
+                                  `${parseFloat(delivery.blAmount).toFixed(2)}€` :
+                                  <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                }
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="text-gray-900">
+                                {delivery.invoiceReference || (
+                                  <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="text-gray-900">
+                                {delivery.invoiceAmount ? 
+                                  `${parseFloat(delivery.invoiceAmount).toFixed(2)}€` : 
+                                  <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                }
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              {(() => {
+                                const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
+                                const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
+                                if (blAmount && invoiceAmount) {
+                                  const diff = blAmount - invoiceAmount;
+                                  const diffAbs = Math.abs(diff);
+                                  return (
+                                    <div className={`font-medium ${
+                                      diff === 0 ? 'text-green-600' : 
+                                      diffAbs > 10 ? 'text-red-600' : 'text-orange-600'
+                                    }`}>
+                                      {diff > 0 ? '+' : ''}{diff.toFixed(2)}€
+                                    </div>
+                                  );
+                                }
+                                return <span className="text-gray-400 italic text-xs">-</span>;
+                              })()}
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="text-gray-900">
+                                {delivery.group?.name}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="flex items-center space-x-2">
+                                {!delivery.reconciled ? (
+                                  <>
+                                    {permissions.canValidate('reconciliation') && (
+                                      <button
+                                        onClick={() => handleQuickValidate(delivery)}
+                                        className="text-gray-600 hover:text-green-600 transition-colors duration-200 p-1 hover:bg-green-50 rounded"
+                                        title="Valider le rapprochement"
+                                      >
+                                        <Check className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                    {permissions.canDelete('reconciliation') && (
+                                      <button
+                                        onClick={() => handleDeleteDelivery(delivery.id)}
+                                        className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
+                                        title="Supprimer la livraison"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    {user?.role === 'admin' && (
+                                      <button
+                                        onClick={() => handleDevalidateReconciliation(delivery.id)}
+                                        className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
+                                        title="Dévalider le rapprochement"
+                                      >
+                                        <Ban className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                    {permissions.canDelete('reconciliation') && (
+                                      <button
+                                        onClick={() => handleDeleteDelivery(delivery.id)}
+                                        className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
+                                        title="Supprimer la livraison"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                                {!delivery.reconciled && (
                                   <button
-                                    onClick={() => handleQuickValidate(delivery)}
-                                    className="text-gray-600 hover:text-green-600 transition-colors duration-200 p-1 hover:bg-green-50 rounded"
-                                    title="Valider le rapprochement"
+                                    onClick={() => handleOpenModal(delivery)}
+                                    className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
+                                    title="Modifier les données de rapprochement"
                                   >
-                                    <Check className="w-4 h-4" />
+                                    <Settings className="w-4 h-4" />
                                   </button>
                                 )}
-                                {permissions.canDelete('reconciliation') && (
-                                  <button
-                                    onClick={() => handleDeleteDelivery(delivery.id)}
-                                    className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
-                                    title="Supprimer la livraison"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </>
-                            ) : (
-                              // Livraison rapprochée : Dévalider (admin seulement) + Supprimer
-                              <>
-                                {user?.role === 'admin' && (
-                                  <button
-                                    onClick={() => handleDevalidateReconciliation(delivery.id)}
-                                    className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
-                                    title="Dévalider le rapprochement"
-                                  >
-                                    <Ban className="w-4 h-4" />
-                                  </button>
-                                )}
-                                {permissions.canDelete('reconciliation') && (
-                                  <button
-                                    onClick={() => handleDeleteDelivery(delivery.id)}
-                                    className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
-                                    title="Supprimer la livraison"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </>
-                            )}
-                            {/* Bouton Modifier : disponible seulement si pas encore validé */}
-                            {!delivery.reconciled && (
-                              <button
-                                onClick={() => handleOpenModal(delivery)}
-                                className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                                title="Modifier les données de rapprochement"
-                              >
-                                <Settings className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                {/* Pagination du bas */}
+                <Pagination
+                  currentPage={manualCurrentPage}
+                  totalPages={manualTotalPages}
+                  totalItems={manualTotalItems}
+                  itemsPerPage={manualItemsPerPage}
+                  onPageChange={setManualCurrentPage}
+                  onItemsPerPageChange={setManualItemsPerPage}
+                  className="mt-4"
+                />
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
         
@@ -541,179 +563,144 @@ export default function BLReconciliation() {
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-lg">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Fournisseur
-                        <Badge variant="secondary" className="ml-2 text-xs">AUTO</Badge>
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        N° BL
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date Livr.
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date Valid.
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Montant BL
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ref. Facture
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Montant Fact.
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Écart
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Magasin
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredAutomaticDeliveries.map((delivery: any) => (
-                      <tr 
-                        key={delivery.id} 
-                        className={`hover:bg-gray-50 ${
-                          delivery.reconciled === true 
-                            ? 'bg-gray-100 opacity-60 text-gray-500' 
-                            : delivery.reconciled === false 
-                              ? 'bg-red-50 border-l-4 border-red-400' 
-                              : 'bg-green-50'
-                        }`}
-                      >
-                        <td className="px-3 py-2 text-sm">
-                          <div className="flex items-center space-x-2">
-                            <div className="font-medium text-gray-900 truncate max-w-32">
-                              {delivery.supplier?.name}
-                            </div>
-                            <Settings className="w-3 h-3 text-blue-500" />
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900 font-medium">
-                            {delivery.blNumber || '-'}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {safeFormat(delivery.scheduledDate, 'dd/MM/yy')}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.reconciled && delivery.updatedAt ? 
-                              safeFormat(delivery.updatedAt, 'dd/MM/yy') : 
-                              '-'
-                            }
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="font-medium text-gray-900">
-                            {delivery.blAmount ? 
-                              `${parseFloat(delivery.blAmount).toFixed(2)}€` :
-                              '-'
-                            }
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.invoiceReference || '-'}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.invoiceAmount ? 
-                              `${parseFloat(delivery.invoiceAmount).toFixed(2)}€` : 
-                              '-'
-                            }
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          {(() => {
-                            const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
-                            const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
-                            if (blAmount && invoiceAmount) {
-                              const diff = blAmount - invoiceAmount;
-                              const diffAbs = Math.abs(diff);
-                              return (
-                                <div className={`font-medium ${
-                                  diff === 0 ? 'text-green-600' : 
-                                  diffAbs > 10 ? 'text-red-600' : 'text-orange-600'
-                                }`}>
-                                  {diff > 0 ? '+' : ''}{diff.toFixed(2)}€
-                                </div>
-                              );
-                            }
-                            return <span className="text-gray-400 italic text-xs">-</span>;
-                          })()}
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.group?.name}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="flex items-center space-x-2">
-                            {user?.role === 'admin' && delivery.reconciled && (
-                              <button
-                                onClick={() => handleDevalidateAutoReconciliation(delivery.id)}
-                                className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
-                                title="Dévalider le rapprochement automatique"
-                              >
-                                <Ban className="w-4 h-4" />
-                              </button>
-                            )}
-                            {user?.role === 'admin' && (
-                              <button
-                                onClick={() => handleDeleteDelivery(delivery.id)}
-                                className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
-                                title="Supprimer la livraison"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                            {/* Bouton Modifier : disponible seulement si pas encore validé */}
-                            {!delivery.reconciled && (
-                              <button
-                                onClick={() => handleOpenModal(delivery)}
-                                className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                                title="Modifier les données de rapprochement"
-                              >
-                                <Settings className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Rapprochements Automatiques
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Pagination du haut */}
+                <Pagination
+                  currentPage={autoCurrentPage}
+                  totalPages={autoTotalPages}
+                  totalItems={autoTotalItems}
+                  itemsPerPage={autoItemsPerPage}
+                  onPageChange={setAutoCurrentPage}
+                  onItemsPerPageChange={setAutoItemsPerPage}
+                  className="mb-4"
+                />
+                
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fournisseur
+                            <Badge variant="secondary" className="ml-2 text-xs">AUTO</Badge>
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            N° BL
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date Livr.
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Date Valid.
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Magasin
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {paginatedAutoDeliveries.map((delivery: any) => (
+                          <tr key={delivery.id} className="hover:bg-gray-50 bg-green-50">
+                            <td className="px-3 py-2 text-sm">
+                              <div className="font-medium text-gray-900 truncate max-w-32">
+                                {delivery.supplier?.name}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="text-gray-900">
+                                {delivery.blNumber || (
+                                  <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="text-gray-900">
+                                {safeFormat(delivery.scheduledDate, 'dd/MM/yy')}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="text-gray-900">
+                                {delivery.validatedAt ? 
+                                  safeFormat(delivery.validatedAt, 'dd/MM/yy HH:mm') :
+                                  <span className="text-gray-400 italic text-xs">Non validé</span>
+                                }
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="text-gray-900">
+                                {delivery.group?.name}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="flex items-center space-x-2">
+                                {user?.role === 'admin' && (
+                                  <button
+                                    onClick={() => handleDevalidateReconciliation(delivery.id)}
+                                    className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
+                                    title="Dévalider le rapprochement automatique"
+                                  >
+                                    <Ban className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {permissions.canDelete('reconciliation') && (
+                                  <button
+                                    onClick={() => handleDeleteDelivery(delivery.id)}
+                                    className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
+                                    title="Supprimer la livraison"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleOpenModal(delivery)}
+                                  className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
+                                  title="Voir les détails"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                {/* Pagination du bas */}
+                <Pagination
+                  currentPage={autoCurrentPage}
+                  totalPages={autoTotalPages}
+                  totalItems={autoTotalItems}
+                  itemsPerPage={autoItemsPerPage}
+                  onPageChange={setAutoCurrentPage}
+                  onItemsPerPageChange={setAutoItemsPerPage}
+                  className="mt-4"
+                />
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
       </Tabs>
 
       {/* Modal de rapprochement */}
-      <ReconciliationModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        delivery={selectedDelivery}
-        onSave={() => {
-          // Rafraîchir les données après sauvegarde
-          queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-        }}
-      />
+      {isModalOpen && selectedDelivery && (
+        <ReconciliationModal
+          delivery={selectedDelivery}
+          onSave={handleSaveReconciliation}
+          onClose={handleCloseModal}
+        />
+      )}
     </div>
   );
 }
