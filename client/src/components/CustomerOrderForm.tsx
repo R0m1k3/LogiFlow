@@ -22,17 +22,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { insertCustomerOrderSchema, type CustomerOrderWithRelations, type Group, type Supplier } from "@shared/schema";
+import { insertCustomerOrderFrontendSchema, type CustomerOrderWithRelations, type Group, type Supplier } from "@shared/schema";
 import { useStore } from "@/components/Layout";
 
-const customerOrderFormSchema = insertCustomerOrderSchema.extend({
-  deposit: z.string().optional(),
-  gencode: z.string().min(1, "Le gencode est obligatoire"),
-  customerName: z.string().min(1, "Le nom du client est obligatoire"),
-  quantity: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseInt(val) || 1 : val),
-  supplierId: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseInt(val) : val),
-  groupId: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseInt(val) : val).optional(),
-  createdBy: z.string().optional(), // Will be set automatically
+const customerOrderFormSchema = insertCustomerOrderFrontendSchema.extend({
+  deposit: z.number().optional().default(0),
+  groupId: z.number().int().positive().optional(),
+  createdBy: z.string().optional(),
 });
 
 type CustomerOrderFormData = z.infer<typeof customerOrderFormSchema>;
@@ -120,15 +116,22 @@ export function CustomerOrderForm({
       return;
     }
     
-    // Prepare data with proper types
+    // Prepare data with proper types for frontend schema
     const submitData = {
-      ...data,
-      customerName: data.customerName.trim(), // Clean the customer name
-      deposit: data.deposit || "0.00", // Keep as string for decimal field
+      customerName: data.customerName.trim(),
+      contactNumber: (data as any).customerPhone || (data as any).contactNumber || '', 
+      productName: (data as any).productDesignation || (data as any).productName || '',
+      quantity: data.quantity,
       groupId: typeof groupId === 'number' ? groupId : parseInt(groupId.toString()),
-      createdBy: user?.id || '', // Add the current user ID
+      isPickup: false,
+      notes: (data as any).notes,
+      deposit: data.deposit || 0,
+      isPromotionalPrice: (data as any).isPromotionalPrice || false,
+      customerEmail: (data as any).customerEmail,
+      gencode: (data as any).gencode || '',
+      supplierId: (data as any).supplierId || 1,
     };
-    console.log("Processed submit data:", submitData);
+    console.log("🔍 Frontend submit data:", submitData);
     onSubmit(submitData);
   };
 
