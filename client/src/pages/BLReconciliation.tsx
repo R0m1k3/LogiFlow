@@ -386,13 +386,15 @@ export default function BLReconciliation() {
                             className={`hover:bg-gray-50 ${
                               delivery.reconciled === true 
                                 ? 'bg-gray-100 opacity-60 text-gray-500' 
-                                : delivery.reconciled === false 
-                                  ? 'bg-red-50 border-l-4 border-red-400' 
-                                  : ''
+                                : 'bg-white'
                             }`}
                           >
                             <td className="px-3 py-2 text-sm">
-                              <div className="font-medium text-gray-900 truncate max-w-32">
+                              <div className={`truncate max-w-32 ${
+                                delivery.reconciled !== true 
+                                  ? 'font-bold text-gray-900' 
+                                  : 'font-medium text-gray-900'
+                              }`}>
                                 {delivery.supplier?.name}
                               </div>
                             </td>
@@ -409,7 +411,7 @@ export default function BLReconciliation() {
                               </div>
                             </td>
                             <td className="px-3 py-2 text-sm">
-                              <div className="font-medium text-gray-900">
+                              <div className={delivery.reconciled !== true ? 'font-bold text-gray-900' : 'font-medium text-gray-900'}>
                                 {delivery.blAmount ? 
                                   `${parseFloat(delivery.blAmount).toFixed(2)}€` :
                                   <span className="text-gray-400 italic text-xs">Non renseigné</span>
@@ -417,14 +419,14 @@ export default function BLReconciliation() {
                               </div>
                             </td>
                             <td className="px-3 py-2 text-sm">
-                              <div className="text-gray-900">
+                              <div className={delivery.reconciled !== true ? 'font-bold text-gray-900' : 'text-gray-900'}>
                                 {delivery.invoiceReference || (
                                   <span className="text-gray-400 italic text-xs">Non renseigné</span>
                                 )}
                               </div>
                             </td>
                             <td className="px-3 py-2 text-sm">
-                              <div className="text-gray-900">
+                              <div className={delivery.reconciled !== true ? 'font-bold text-gray-900' : 'text-gray-900'}>
                                 {delivery.invoiceAmount ? 
                                   `${parseFloat(delivery.invoiceAmount).toFixed(2)}€` : 
                                   <span className="text-gray-400 italic text-xs">Non renseigné</span>
