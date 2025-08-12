@@ -1,134 +1,24 @@
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { safeFormat } from "@/lib/dateUtils";
-import { useToast } from "@/hooks/use-toast-robust";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useStore } from "@/components/Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { usePermissions } from "@shared/permissions";
-import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, ChevronLeft, ChevronRight } from "lucide-react";
-import type { Supplier } from "@shared/schema";
-
-// Composants UI robustes sans dépendances shadcn/ui problématiques
-const RobustButton = ({ children, onClick, disabled = false, variant = "default", size = "default", className = "", title = "" }: {
-  children: React.ReactNode,
-  onClick?: () => void,
-  disabled?: boolean,
-  variant?: "default" | "ghost" | "outline" | "destructive",
-  size?: "default" | "sm" | "lg",
-  className?: string,
-  title?: string
-}) => {
-  const variantStyles = {
-    default: "bg-blue-600 text-white hover:bg-blue-700 border-blue-600",
-    ghost: "text-gray-600 hover:text-gray-900 hover:bg-gray-100 border-transparent",
-    outline: "border-gray-300 bg-white text-gray-700 hover:bg-gray-50",
-    destructive: "bg-red-600 text-white hover:bg-red-700 border-red-600"
-  };
-
-  const sizeStyles = {
-    default: "px-4 py-2 text-sm",
-    sm: "px-3 py-1.5 text-xs",
-    lg: "px-6 py-3 text-base"
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={`inline-flex items-center justify-center font-medium rounded-md border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${variantStyles[variant]} ${sizeStyles[size]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
-    >
-      {children}
-    </button>
-  );
-};
-
-const RobustInput = ({ placeholder, value, onChange, className = "" }: {
-  placeholder?: string,
-  value: string,
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
-  className?: string
-}) => {
-  return (
-    <input
-      type="text"
-      placeholder={placeholder}
-      value={value}
-      onChange={onChange}
-      className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
-    />
-  );
-};
-
-const RobustBadge = ({ children, variant = "default", className = "" }: { 
-  children: React.ReactNode, 
-  variant?: "default" | "secondary" | "destructive" | "outline",
-  className?: string 
-}) => {
-  const variantStyles = {
-    default: "bg-blue-100 text-blue-800 border-blue-200",
-    secondary: "bg-gray-100 text-gray-800 border-gray-200",
-    destructive: "bg-red-100 text-red-800 border-red-200",
-    outline: "bg-white text-gray-700 border-gray-300"
-  };
-
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${variantStyles[variant]} ${className}`}>
-      {children}
-    </span>
-  );
-};
-
-const RobustTabs = ({ value, onValueChange, children }: { 
-  value: string, 
-  onValueChange: (value: string) => void, 
-  children: React.ReactNode 
-}) => {
-  return (
-    <div data-tab-value={value} onChange={() => onValueChange}>
-      {children}
-    </div>
-  );
-};
-
-const RobustTabsList = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <div className="inline-flex h-10 items-center justify-center rounded-md bg-gray-100 p-1">
-      {children}
-    </div>
-  );
-};
-
-const RobustTabsTrigger = ({ value, children, isActive, onClick }: {
-  value: string,
-  children: React.ReactNode,
-  isActive: boolean,
-  onClick: () => void
-}) => {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all focus:outline-none ${
-        isActive 
-          ? 'bg-white text-gray-900 shadow-sm' 
-          : 'text-gray-600 hover:text-gray-900'
-      }`}
-    >
-      {children}
-    </button>
-  );
-};
+import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X } from "lucide-react";
 
 export default function BLReconciliation() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const permissions = usePermissions(user?.role);
   
-  // Vérification des permissions d'accès au module
-  if (!permissions.canView('reconciliation')) {
+  // Redirection pour les employés
+  if (user?.role === 'employee') {
     return (
       <div className="p-6">
         <div className="bg-orange-50 border-l-4 border-orange-400 p-4">
@@ -139,7 +29,7 @@ export default function BLReconciliation() {
             <div className="ml-3">
               <p className="text-sm text-orange-700">
                 <strong>Accès restreint</strong><br />
-                Seuls les directeurs et administrateurs peuvent accéder au module de rapprochement BL/Factures.
+                Seuls les managers et administrateurs peuvent accéder au module de rapprochement BL/Factures.
               </p>
             </div>
           </div>
@@ -150,11 +40,9 @@ export default function BLReconciliation() {
   
   const [activeTab, setActiveTab] = useState("manual");
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
 
   // Récupérer les fournisseurs pour la logique automatique
-  const { data: suppliers = [], isLoading: suppliersLoading } = useQuery<Supplier[]>({
+  const { data: suppliers = [] } = useQuery<any[]>({
     queryKey: ['/api/suppliers'],
   });
 
@@ -193,111 +81,35 @@ export default function BLReconciliation() {
     return supplier?.automaticReconciliation;
   });
 
-  // Mutations pour les actions
-  const validateManualMutation = useMutation({
-    mutationFn: async (deliveryId: number) => {
-      return await apiRequest(`/api/deliveries/${deliveryId}`, "PUT", {
-        reconciled: true,
-        validatedAt: new Date().toISOString()
-      });
-    },
-    onSuccess: () => {
+  // Fonction pour dévalider un rapprochement automatique (directeurs et admins uniquement)
+  const handleDevalidateAutoReconciliation = async (deliveryId: number) => {
+    if (user?.role !== 'directeur' && user?.role !== 'admin') {
       toast({
-        title: "Succès",
-        description: "Rapprochement validé avec succès",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-    },
-    onError: () => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de valider le rapprochement",
+        title: "Accès refusé",
+        description: "Seuls les directeurs et administrateurs peuvent dévalider les rapprochements automatiques",
         variant: "destructive",
       });
+      return;
     }
-  });
 
-  const devalidateMutation = useMutation({
-    mutationFn: async (deliveryId: number) => {
-      return await apiRequest(`/api/deliveries/${deliveryId}`, "PUT", {
+    try {
+      await apiRequest(`/api/deliveries/${deliveryId}`, "PUT", {
         reconciled: false,
         validatedAt: null
       });
-    },
-    onSuccess: () => {
+      
       toast({
         title: "Succès",
-        description: "Rapprochement dévalidé avec succès",
+        description: "Rapprochement automatique dévalidé avec succès",
       });
+      
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-    },
-    onError: () => {
+    } catch (error) {
       toast({
         title: "Erreur",
         description: "Impossible de dévalider le rapprochement",
         variant: "destructive",
       });
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (deliveryId: number) => {
-      return await apiRequest(`/api/deliveries/${deliveryId}`, "DELETE");
-    },
-    onSuccess: () => {
-      toast({
-        title: "Succès",
-        description: "Ligne supprimée avec succès",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-    },
-    onError: () => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer la ligne",
-        variant: "destructive",
-      });
-    }
-  });
-
-  // Fonctions de gestion des actions
-  const handleValidateManual = (deliveryId: number) => {
-    if (!permissions.canValidate('reconciliation')) {
-      toast({
-        title: "Accès refusé",
-        description: "Vous n'avez pas les permissions pour valider les rapprochements",
-        variant: "destructive",
-      });
-      return;
-    }
-    validateManualMutation.mutate(deliveryId);
-  };
-
-  const handleDevalidate = (deliveryId: number) => {
-    if (!permissions.canEdit('reconciliation')) {
-      toast({
-        title: "Accès refusé",
-        description: "Seuls les administrateurs peuvent dévalider les rapprochements",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (confirm("Êtes-vous sûr de vouloir dévalider ce rapprochement ?")) {
-      devalidateMutation.mutate(deliveryId);
-    }
-  };
-
-  const handleDelete = (deliveryId: number) => {
-    if (!permissions.canDelete('reconciliation')) {
-      toast({
-        title: "Accès refusé",
-        description: "Seuls les administrateurs peuvent supprimer les lignes",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (confirm("Êtes-vous sûr de vouloir supprimer cette ligne ? Cette action est irréversible.")) {
-      deleteMutation.mutate(deliveryId);
     }
   };
 
@@ -316,94 +128,7 @@ export default function BLReconciliation() {
   const filteredManualDeliveries = filterDeliveries(manualReconciliationDeliveries);
   const filteredAutomaticDeliveries = filterDeliveries(automaticReconciliationDeliveries);
 
-  // Pagination
-  const getCurrentPageData = (data: any[]) => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return data.slice(startIndex, endIndex);
-  };
-
-  const getTotalPages = (data: any[]) => {
-    return Math.ceil(data.length / itemsPerPage);
-  };
-
-  const currentManualData = getCurrentPageData(filteredManualDeliveries);
-  const currentAutomaticData = getCurrentPageData(filteredAutomaticDeliveries);
-
-  const totalManualPages = getTotalPages(filteredManualDeliveries);
-  const totalAutomaticPages = getTotalPages(filteredAutomaticDeliveries);
-
-  // Reset page when changing tabs or searching
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, searchTerm]);
-
-  // Vérifier si une ligne est dévalidée (pour la coloration)
-  const isDevalidated = (delivery: any) => {
-    return delivery.reconciled === false && delivery.validatedAt === null;
-  };
-
-  // Composant de pagination robuste
-  const RobustPagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }: {
-    currentPage: number;
-    totalPages: number;
-    onPageChange: (page: number) => void;
-    totalItems: number;
-    itemsPerPage: number;
-  }) => {
-    if (totalPages <= 1) return null;
-
-    const startItem = (currentPage - 1) * itemsPerPage + 1;
-    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
-
-    return (
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200">
-        <div className="flex items-center text-sm text-gray-700">
-          <span>
-            Affichage de {startItem} à {endItem} sur {totalItems} éléments
-          </span>
-        </div>
-        <div className="flex items-center space-x-2">
-          <RobustButton
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="flex items-center space-x-1"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Précédent</span>
-          </RobustButton>
-          
-          <span className="px-3 py-1 text-sm bg-gray-100 rounded">
-            Page {currentPage} sur {totalPages}
-          </span>
-          
-          <RobustButton
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="flex items-center space-x-1"
-          >
-            <span>Suivant</span>
-            <ChevronRight className="w-4 h-4" />
-          </RobustButton>
-        </div>
-      </div>
-    );
-  };
-
-  if (isLoading || suppliersLoading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
-        </div>
-      </div>
-    );
-  }
+  const canModify = user?.role === 'directeur' || user?.role === 'admin';
 
   return (
     <div className="p-6 space-y-6">
@@ -420,64 +145,52 @@ export default function BLReconciliation() {
             </p>
           </div>
           <div className="flex items-center space-x-4">
-            <RobustBadge variant="outline" className="text-sm border border-gray-300">
+            <Badge variant="outline" className="text-sm border border-gray-300">
               {manualReconciliationDeliveries.length} rapprochements manuels
-            </RobustBadge>
-            <RobustBadge variant="outline" className="text-sm border border-gray-300 bg-blue-50">
+            </Badge>
+            <Badge variant="outline" className="text-sm border border-gray-300 bg-blue-50">
               {automaticReconciliationDeliveries.length} rapprochements automatiques
-            </RobustBadge>
+            </Badge>
           </div>
         </div>
 
-        {/* Onglets robustes */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <RobustTabsTrigger
-              value="manual"
-              isActive={activeTab === "manual"}
-              onClick={() => setActiveTab("manual")}
-            >
-              <div className="flex items-center space-x-2">
-                <Edit className="w-4 h-4" />
-                <span>Rapprochement Manuel</span>
-                <RobustBadge variant="secondary" className="ml-2">
-                  {manualReconciliationDeliveries.length}
-                </RobustBadge>
-              </div>
-            </RobustTabsTrigger>
-            <RobustTabsTrigger
-              value="automatic"
-              isActive={activeTab === "automatic"}
-              onClick={() => setActiveTab("automatic")}
-            >
-              <div className="flex items-center space-x-2">
-                <Settings className="w-4 h-4" />
-                <span>Rapprochement Automatique</span>
-                <RobustBadge variant="secondary" className="ml-2">
-                  {automaticReconciliationDeliveries.length}
-                </RobustBadge>
-              </div>
-            </RobustTabsTrigger>
-          </nav>
-        </div>
+        {/* Onglets */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="manual" className="flex items-center space-x-2">
+              <Edit className="w-4 h-4" />
+              <span>Rapprochement Manuel</span>
+              <Badge variant="secondary" className="ml-2">
+                {manualReconciliationDeliveries.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="automatic" className="flex items-center space-x-2">
+              <Settings className="w-4 h-4" />
+              <span>Rapprochement Automatique</span>
+              <Badge variant="secondary" className="ml-2">
+                {automaticReconciliationDeliveries.length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Filtre de recherche */}
       <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <RobustInput
+          <Input
             placeholder="Rechercher par fournisseur, BL ou facture..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 border border-gray-300 shadow-sm"
           />
         </div>
       </div>
 
       {/* Contenu des onglets */}
-      {activeTab === "manual" && (
-        <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsContent value="manual" className="space-y-6">
           {filteredManualDeliveries.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -490,38 +203,39 @@ export default function BLReconciliation() {
             </div>
           ) : (
             <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-lg">
-              {/* Pagination du haut */}
-              <RobustPagination
-                currentPage={currentPage}
-                totalPages={totalManualPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredManualDeliveries.length}
-                itemsPerPage={itemsPerPage}
-              />
-              
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fournisseur</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° BL</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Livr.</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant BL</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref. Facture</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant Fact.</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Fournisseur
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        N° BL
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date Livr.
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Montant BL
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ref. Facture
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Montant Fact.
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Magasin
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {currentManualData.map((delivery: any) => (
-                      <tr 
-                        key={delivery.id} 
-                        className={`hover:bg-gray-50 ${
-                          delivery.reconciled ? 'bg-green-50' : 
-                          isDevalidated(delivery) ? 'bg-red-50' : ''
-                        }`}
-                      >
+                    {filteredManualDeliveries.map((delivery: any) => (
+                      <tr key={delivery.id} className="hover:bg-gray-50">
                         <td className="px-3 py-2 text-sm">
                           <div className="font-medium text-gray-900 truncate max-w-32">
                             {delivery.supplier?.name}
@@ -563,71 +277,18 @@ export default function BLReconciliation() {
                           </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
-                          {delivery.reconciled ? (
-                            <RobustBadge variant="default" className="bg-green-600 text-white border-green-600">
-                              Validé
-                            </RobustBadge>
-                          ) : isDevalidated(delivery) ? (
-                            <RobustBadge variant="destructive">
-                              Dévalidé
-                            </RobustBadge>
-                          ) : (
-                            <RobustBadge variant="outline">
-                              En attente
-                            </RobustBadge>
-                          )}
+                          <div className="text-gray-900">
+                            {delivery.group?.name}
+                          </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
-                            {permissions.canEdit('reconciliation') && (
-                              <RobustButton
-                                variant="ghost"
-                                size="sm"
-                                className="text-gray-600 hover:text-blue-600 p-1"
-                                title="Modifier"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </RobustButton>
-                            )}
-                            
-                            {!delivery.reconciled && permissions.canValidate('reconciliation') && (
-                              <RobustButton
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleValidateManual(delivery.id)}
-                                disabled={validateManualMutation.isPending}
-                                className="text-green-600 hover:text-green-700 p-1"
-                                title="Valider"
-                              >
-                                <Check className="w-4 h-4" />
-                              </RobustButton>
-                            )}
-                            
-                            {delivery.reconciled && permissions.canEdit('reconciliation') && user?.role === 'admin' && (
-                              <RobustButton
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDevalidate(delivery.id)}
-                                disabled={devalidateMutation.isPending}
-                                className="text-orange-600 hover:text-orange-700 p-1"
-                                title="Dévalider"
-                              >
-                                <Ban className="w-4 h-4" />
-                              </RobustButton>
-                            )}
-                            
-                            {permissions.canDelete('reconciliation') && (
-                              <RobustButton
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(delivery.id)}
-                                disabled={deleteMutation.isPending}
-                                className="text-red-600 hover:text-red-700 p-1"
-                                title="Supprimer"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </RobustButton>
-                            )}
+                            <button
+                              className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50"
+                              title="Modifier"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -635,22 +296,11 @@ export default function BLReconciliation() {
                   </tbody>
                 </table>
               </div>
-              
-              {/* Pagination du bas */}
-              <RobustPagination
-                currentPage={currentPage}
-                totalPages={totalManualPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredManualDeliveries.length}
-                itemsPerPage={itemsPerPage}
-              />
             </div>
           )}
-        </div>
-      )}
-      
-      {activeTab === "automatic" && (
-        <div className="space-y-6">
+        </TabsContent>
+        
+        <TabsContent value="automatic" className="space-y-6">
           {/* Message d'information */}
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start space-x-3">
@@ -659,7 +309,7 @@ export default function BLReconciliation() {
                 <h4 className="text-sm font-medium text-blue-900">Mode rapprochement automatique</h4>
                 <p className="text-sm text-blue-700 mt-1">
                   Les livraisons de fournisseurs en mode automatique sont validées automatiquement lorsqu'elles ont le statut "delivered" et un numéro de BL.
-                  {permissions.canEdit('reconciliation') ? (
+                  {canModify ? (
                     " Vous pouvez dévalider ces rapprochements si nécessaire."
                   ) : (
                     " Seuls les directeurs et administrateurs peuvent modifier ces rapprochements."
@@ -681,46 +331,49 @@ export default function BLReconciliation() {
             </div>
           ) : (
             <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-lg">
-              {/* Pagination du haut */}
-              <RobustPagination
-                currentPage={currentPage}
-                totalPages={totalAutomaticPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredAutomaticDeliveries.length}
-                itemsPerPage={itemsPerPage}
-              />
-              
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Fournisseur
-                        <RobustBadge variant="secondary" className="ml-2 text-xs">AUTO</RobustBadge>
+                        <Badge variant="secondary" className="ml-2 text-xs">AUTO</Badge>
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° BL</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Livr.</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Valid.</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant BL</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref. Facture</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        N° BL
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date Livr.
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date Valid.
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Montant BL
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ref. Facture
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Montant Fact.
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Magasin
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {currentAutomaticData.map((delivery: any) => (
-                      <tr 
-                        key={delivery.id} 
-                        className={`hover:bg-gray-50 ${
-                          isDevalidated(delivery) ? 'bg-red-50' : 'bg-green-50'
-                        }`}
-                      >
+                    {filteredAutomaticDeliveries.map((delivery: any) => (
+                      <tr key={delivery.id} className="hover:bg-gray-50 bg-green-50">
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
                             <div className="font-medium text-gray-900 truncate max-w-32">
                               {delivery.supplier?.name}
                             </div>
-                            <div className="w-3 h-3 bg-blue-500 rounded-full" title="Mode automatique" />
+                            <Settings className="w-3 h-3 text-blue-500" />
                           </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
@@ -735,8 +388,8 @@ export default function BLReconciliation() {
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div className="text-gray-900">
-                            {delivery.reconciled && delivery.validatedAt ? 
-                              safeFormat(delivery.validatedAt, 'dd/MM/yy') : 
+                            {delivery.reconciled && delivery.updatedAt ? 
+                              safeFormat(delivery.updatedAt, 'dd/MM/yy') : 
                               '-'
                             }
                           </div>
@@ -755,65 +408,43 @@ export default function BLReconciliation() {
                           </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
-                          {isDevalidated(delivery) ? (
-                            <RobustBadge variant="destructive">
-                              Dévalidé
-                            </RobustBadge>
-                          ) : (
-                            <RobustBadge variant="default" className="bg-green-600 text-white border-green-600">
-                              Auto-validé
-                            </RobustBadge>
-                          )}
+                          <div className="text-gray-900">
+                            {delivery.invoiceAmount ? 
+                              `${parseFloat(delivery.invoiceAmount).toFixed(2)}€` : 
+                              '-'
+                            }
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-sm">
+                          <div className="text-gray-900">
+                            {delivery.group?.name}
+                          </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
-                            {isDevalidated(delivery) && permissions.canEdit('reconciliation') && (
+                            {canModify ? (
                               <>
-                                <RobustButton
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-gray-600 hover:text-blue-600 p-1"
-                                  title="Modifier"
+                                <button
+                                  className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50"
+                                  title="Voir les détails"
                                 >
-                                  <Edit className="w-4 h-4" />
-                                </RobustButton>
-                                <RobustButton
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleValidateManual(delivery.id)}
-                                  disabled={validateManualMutation.isPending}
-                                  className="text-green-600 hover:text-green-700 p-1"
-                                  title="Valider"
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDevalidateAutoReconciliation(delivery.id)}
+                                  className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50"
+                                  title="Dévalider le rapprochement automatique"
                                 >
-                                  <Check className="w-4 h-4" />
-                                </RobustButton>
+                                  <X className="w-4 h-4" />
+                                </button>
                               </>
-                            )}
-                            
-                            {!isDevalidated(delivery) && permissions.canEdit('reconciliation') && (
-                              <RobustButton
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDevalidate(delivery.id)}
-                                disabled={devalidateMutation.isPending}
-                                className="text-orange-600 hover:text-orange-700 p-1"
-                                title="Dévalider"
+                            ) : (
+                              <button
+                                className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50"
+                                title="Voir les détails"
                               >
-                                <Ban className="w-4 h-4" />
-                              </RobustButton>
-                            )}
-                            
-                            {permissions.canDelete('reconciliation') && (
-                              <RobustButton
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDelete(delivery.id)}
-                                disabled={deleteMutation.isPending}
-                                className="text-red-600 hover:text-red-700 p-1"
-                                title="Supprimer"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </RobustButton>
+                                <Eye className="w-4 h-4" />
+                              </button>
                             )}
                           </div>
                         </td>
@@ -822,19 +453,10 @@ export default function BLReconciliation() {
                   </tbody>
                 </table>
               </div>
-              
-              {/* Pagination du bas */}
-              <RobustPagination
-                currentPage={currentPage}
-                totalPages={totalAutomaticPages}
-                onPageChange={setCurrentPage}
-                totalItems={filteredAutomaticDeliveries.length}
-                itemsPerPage={itemsPerPage}
-              />
             </div>
           )}
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
