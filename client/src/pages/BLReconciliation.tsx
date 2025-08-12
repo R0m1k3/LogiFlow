@@ -81,12 +81,46 @@ export default function BLReconciliation() {
   // Séparer les livraisons par mode de rapprochement
   const manualReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
     const supplier = suppliers.find(s => s.id === delivery.supplierId);
-    return !supplier?.isAutoReconciliation;
+    
+    // Logique améliorée pour détecter le mode manuel :
+    // 1. Si le fournisseur a isAutoReconciliation explicitement à false
+    // 2. Si le fournisseur n'a pas la propriété isAutoReconciliation (défaut manuel)
+    // 3. Si pas de fournisseur trouvé (défaut manuel pour compatibilité)
+    const isManual = !supplier?.isAutoReconciliation;
+    
+    console.log('Manual filter - Delivery:', delivery.id, 'Supplier:', supplier?.name, 'isAutoReconciliation:', supplier?.isAutoReconciliation, 'isManual:', isManual);
+    return isManual;
   });
 
   const automaticReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
     const supplier = suppliers.find(s => s.id === delivery.supplierId);
-    return supplier?.isAutoReconciliation;
+    
+    // Logique améliorée pour détecter le mode automatique :
+    // 1. Si le fournisseur a isAutoReconciliation explicitement à true
+    // 2. OU si la livraison est déjà validée automatiquement (reconciled=true avec BL)
+    const isAutoBySupplier = supplier?.isAutoReconciliation === true;
+    const isAutoByStatus = delivery.reconciled === true && delivery.blNumber && !delivery.invoiceReference;
+    
+    const isAutomatic = isAutoBySupplier || isAutoByStatus;
+    
+    console.log('Auto filter - Delivery:', delivery.id, 'Supplier:', supplier?.name, 'isAutoReconciliation:', supplier?.isAutoReconciliation, 'reconciled:', delivery.reconciled, 'hasBlNumber:', !!delivery.blNumber, 'hasInvoiceRef:', !!delivery.invoiceReference, 'isAutomatic:', isAutomatic);
+    return isAutomatic;
+  });
+
+  console.log('🔍 Reconciliation Debug:', {
+    totalDeliveries: deliveriesWithBL.length,
+    totalSuppliers: suppliers.length,
+    manualCount: manualReconciliationDeliveries.length,
+    autoCount: automaticReconciliationDeliveries.length,
+    deliveriesData: deliveriesWithBL.map(d => ({
+      id: d.id, 
+      supplierId: d.supplierId, 
+      supplier: d.supplier?.name,
+      reconciled: d.reconciled,
+      blNumber: d.blNumber,
+      invoiceReference: d.invoiceReference
+    })),
+    suppliersData: suppliers.map(s => ({id: s.id, name: s.name, isAutoReconciliation: s.isAutoReconciliation}))
   });
 
   // Fonctions de gestion
