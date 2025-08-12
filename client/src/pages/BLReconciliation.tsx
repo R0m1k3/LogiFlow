@@ -368,7 +368,11 @@ export default function BLReconciliation() {
                       <tr 
                         key={delivery.id} 
                         className={`hover:bg-gray-50 ${
-                          delivery.reconciled === false ? 'bg-red-50 border-l-4 border-red-400' : ''
+                          delivery.reconciled === true 
+                            ? 'bg-gray-100 opacity-60 text-gray-500' 
+                            : delivery.reconciled === false 
+                              ? 'bg-red-50 border-l-4 border-red-400' 
+                              : ''
                         }`}
                       >
                         <td className="px-3 py-2 text-sm">
@@ -552,8 +556,12 @@ export default function BLReconciliation() {
                     {filteredAutomaticDeliveries.map((delivery: any) => (
                       <tr 
                         key={delivery.id} 
-                        className={`hover:bg-gray-50 bg-green-50 ${
-                          delivery.reconciled === false ? 'bg-red-50 border-l-4 border-red-400' : ''
+                        className={`hover:bg-gray-50 ${
+                          delivery.reconciled === true 
+                            ? 'bg-gray-100 opacity-60 text-gray-500' 
+                            : delivery.reconciled === false 
+                              ? 'bg-red-50 border-l-4 border-red-400' 
+                              : 'bg-green-50'
                         }`}
                       >
                         <td className="px-3 py-2 text-sm">
