@@ -66,6 +66,27 @@ export function CustomerOrderForm({
     queryKey: ['/api/suppliers'],
   });
 
+  // Calculate correct groupId with PRIORITY for user's assigned group
+  const getDefaultGroupId = () => {
+    if (order?.groupId) return order.groupId;
+    
+    // PRIORITY 1: User's assigned group (works for employees assigned to specific stores)
+    if (user?.userGroups?.[0]?.groupId) {
+      console.log("🎯 CustomerOrderForm defaultValue: Using user's assigned group:", user.userGroups[0].groupId);
+      return user.userGroups[0].groupId;
+    }
+    
+    // PRIORITY 2: Admin selected store (only if no assigned group)
+    if (user?.role === 'admin' && selectedStoreId) {
+      console.log("🎯 CustomerOrderForm defaultValue: Using admin selected store:", selectedStoreId);
+      return selectedStoreId;
+    }
+    
+    // FALLBACK: Default to 1
+    console.log("🚨 CustomerOrderForm defaultValue: Using fallback groupId 1");
+    return 1;
+  };
+
   const form = useForm<CustomerOrderFormData>({
     resolver: zodResolver(customerOrderFormSchema),
     defaultValues: {
@@ -81,7 +102,7 @@ export function CustomerOrderForm({
       deposit: order?.deposit || 0,
       isPromotionalPrice: order?.isPromotionalPrice || false,
       customerNotified: order?.customerNotified || false,
-      groupId: order?.groupId || (user?.userGroups?.[0]?.groupId || (user?.role === 'admin' && selectedStoreId ? selectedStoreId : 1)), // PRIORITÉ: groupe utilisateur assigné
+      groupId: getDefaultGroupId(), // ✅ PRIORITÉ CORRECTE APPLIQUÉE
     },
   });
 
