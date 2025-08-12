@@ -4,7 +4,7 @@ import { useStore } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Package, ShoppingCart, TrendingUp, Clock, MapPin, User, AlertTriangle, CheckCircle, Truck, FileText, BarChart3, Megaphone, Shield, XCircle, CheckSquare } from "lucide-react";
+import { Calendar, Package, ShoppingCart, TrendingUp, Clock, MapPin, User, AlertTriangle, CheckCircle, Truck, FileText, BarChart3, Megaphone, Shield, XCircle, CheckSquare, Circle } from "lucide-react";
 import { safeFormat, safeDate } from "@/lib/dateUtils";
 import type { PublicityWithRelations } from "@shared/schema";
 
@@ -119,7 +119,7 @@ export default function Dashboard() {
       const dateB = safeDate(b.createdAt);
       return (dateB ? dateB.getTime() : 0) - (dateA ? dateA.getTime() : 0);
     })
-    .slice(0, 3) : [];
+    .slice(0, 4) : []; // Afficher les 4 dernières commandes
   
   const upcomingDeliveries = Array.isArray(allDeliveries) ? allDeliveries
     .filter((d: any) => {
@@ -128,7 +128,7 @@ export default function Dashboard() {
       return isPlanned;
     })
     .sort((a: any, b: any) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
-    .slice(0, 2) : [];
+    .slice(0, 4) : []; // Afficher les 4 prochaines livraisons
     
   console.log('🚚 Dashboard - Upcoming deliveries result:', upcomingDeliveries.length, upcomingDeliveries);
 
@@ -143,13 +143,47 @@ export default function Dashboard() {
            delivery.status === 'delivered';
   }).length : 0;
 
-  // Calculer le total réel des palettes
+  // Calculer le total des palettes pour les livraisons 'delivered' du mois en cours
   const totalPalettes = Array.isArray(allDeliveries) ? allDeliveries.reduce((total: number, delivery: any) => {
-    if (delivery.unit === 'palettes') {
-      return total + (delivery.quantity || 0);
+    if (delivery.status === 'delivered' && delivery.unit === 'palettes') {
+      const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
+      const now = new Date();
+      if (deliveryDate.getMonth() === now.getMonth() && deliveryDate.getFullYear() === now.getFullYear()) {
+        return total + (delivery.quantity || 0);
+      }
     }
     return total;
   }, 0) : 0;
+
+  // Fonction pour obtenir la configuration des priorités (identique au module Tasks)
+  const getPriorityConfig = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return { 
+          color: 'destructive' as const, 
+          icon: AlertTriangle, 
+          label: 'Élevée' 
+        };
+      case 'medium':
+        return { 
+          color: 'default' as const, 
+          icon: Clock, 
+          label: 'Moyenne' 
+        };
+      case 'low':
+        return { 
+          color: 'secondary' as const, 
+          icon: Circle, 
+          label: 'Faible' 
+        };
+      default:
+        return { 
+          color: 'secondary' as const, 
+          icon: Circle, 
+          label: 'Moyenne' 
+        };
+    }
+  };
 
   console.log('📊 Dashboard Debug - Raw Data:', {
     allOrders: Array.isArray(allOrders) ? allOrders.length : 'NOT_ARRAY',
@@ -492,28 +526,36 @@ export default function Dashboard() {
                 return (dateA ? dateA.getTime() : 0) - (dateB ? dateB.getTime() : 0);
               })
               .slice(0, 5)
-              .map((task: any) => (
-                <div key={task.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-blue-500">
-                  <div className="flex items-center space-x-3">
-                    <div className="h-2 w-2 bg-blue-500"></div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 truncate">{task.title}</p>
-                      <p className="text-sm text-gray-600 truncate">{task.assignedTo}</p>
+              .map((task: any) => {
+                const priorityConfig = getPriorityConfig(task.priority);
+                const PriorityIcon = priorityConfig.icon;
+                
+                return (
+                  <div key={task.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-blue-500">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-2 w-2 bg-blue-500"></div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 truncate">{task.title}</p>
+                        <p className="text-sm text-gray-600 truncate">{task.assignedUser?.username || task.assignedTo}</p>
+                      </div>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Badge 
+                          variant={priorityConfig.color}
+                          className="text-xs flex items-center gap-1"
+                        >
+                          <PriorityIcon className="h-3 w-3" />
+                          {priorityConfig.label}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {safeFormat(task.createdAt, "d MMM")}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <Badge 
-                      variant={task.status === 'completed' ? 'default' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {task.status === 'completed' ? 'Terminé' : 'En cours'}
-                    </Badge>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {safeFormat(task.createdAt, "d MMM")}
-                    </p>
-                  </div>
-                </div>
-              )) : (
+                );
+              }) : (
                 <div className="text-center py-8">
                   <p className="text-gray-600">Aucune tâche en cours</p>
                   <p className="text-xs text-gray-400 mt-1">Toutes les tâches sont terminées</p>
