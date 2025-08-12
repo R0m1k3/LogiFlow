@@ -683,14 +683,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check permissions
       if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(delivery.groupId)) {
           return res.status(403).json({ message: "Access denied" });
         }
       }
 
+      console.log('🔄 Updating delivery:', { id, data: req.body, user: user.id });
       const data = insertDeliverySchema.partial().parse(req.body);
       const updatedDelivery = await storage.updateDelivery(id, data);
+      console.log('✅ Delivery updated successfully:', { id, updatedDelivery });
       
       // SYNCHRONISATION AUTOMATIQUE : Si livraison devient "delivered", marquer la commande associée comme "delivered"
       if (data.status === 'delivered' && updatedDelivery.orderId) {
@@ -706,8 +708,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // AUTO-VALIDATION RAPPROCHEMENT AUTOMATIQUE : Si fournisseur en mode automatique, livraison delivered + BL → auto-valider
       if (data.status === 'delivered' || data.blNumber) {
         try {
-          // Récupérer le fournisseur pour vérifier le mode automatique
-          const supplier = await storage.getSupplier(updatedDelivery.supplierId);
+          // Récupérer le fournisseur pour vérifier le mode automatique  
+          const suppliers = await storage.getSuppliers();
+          const supplier = suppliers.find((s: any) => s.id === updatedDelivery.supplierId);
           
           if (supplier?.automaticReconciliation && 
               updatedDelivery.status === 'delivered' && 
@@ -763,36 +766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/deliveries/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const id = parseInt(req.params.id);
-      const delivery = await storage.getDelivery(id);
-      
-      if (!delivery) {
-        return res.status(404).json({ message: "Delivery not found" });
-      }
-
-      // Check permissions
-      if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
-        if (!userGroupIds.includes(delivery.groupId)) {
-          return res.status(403).json({ message: "Access denied" });
-        }
-      }
-
-      const data = insertDeliverySchema.partial().parse(req.body);
-      const updatedDelivery = await storage.updateDelivery(id, data);
-      res.json(updatedDelivery);
-    } catch (error) {
-      console.error("Error updating delivery:", error);
-      res.status(500).json({ message: "Failed to update delivery" });
-    }
-  });
+  // SUPPRIMÉ : Doublon d'endpoint PUT /api/deliveries/:id (le premier endpoint avec logique complète est conservé)
 
   app.delete('/api/deliveries/:id', isAuthenticated, async (req: any, res) => {
     try {

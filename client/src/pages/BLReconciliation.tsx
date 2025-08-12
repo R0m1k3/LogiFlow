@@ -464,13 +464,13 @@ export default function BLReconciliation() {
                                 )}
                               </>
                             )}
-                            {/* Bouton Voir les détails toujours disponible */}
+                            {/* Bouton Modifier toujours disponible */}
                             <button
                               onClick={() => handleOpenModal(delivery)}
                               className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                              title="Voir les détails / Éditer"
+                              title="Modifier les données de rapprochement"
                             >
-                              <Eye className="w-4 h-4" />
+                              <Settings className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -613,9 +613,9 @@ export default function BLReconciliation() {
                             <button
                               onClick={() => handleOpenModal(delivery)}
                               className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                              title="Voir les détails / Éditer"
+                              title="Modifier les données de rapprochement"
                             >
-                              <Eye className="w-4 h-4" />
+                              <Settings className="w-4 h-4" />
                             </button>
                             {/* Dévalider automatique - admin uniquement */}
                             {user?.role === 'admin' && (

@@ -50,7 +50,10 @@ export default function ReconciliationModal({
 
   const updateDeliveryMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest(`/api/deliveries/${delivery?.id}`, "PUT", data);
+      console.log('Sending update for delivery:', delivery?.id, 'with data:', data);
+      const response = await apiRequest(`/api/deliveries/${delivery?.id}`, "PUT", data);
+      console.log('Update response:', response);
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -58,13 +61,15 @@ export default function ReconciliationModal({
         description: "Données de rapprochement mises à jour avec succès",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
       if (onSave) onSave();
       onClose();
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      console.error('Update error:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour les données",
+        description: `Impossible de mettre à jour les données: ${error?.message || 'Erreur inconnue'}`,
         variant: "destructive",
       });
     }
