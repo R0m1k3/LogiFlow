@@ -694,10 +694,11 @@ export default function BLReconciliation() {
       </Tabs>
 
       {/* Modal de rapprochement */}
-      {isModalOpen && selectedDelivery && (
+      {selectedDelivery && (
         <ReconciliationModal
+          isOpen={isModalOpen}
           delivery={selectedDelivery}
-          onSave={handleSaveReconciliation}
+          onSave={() => handleSaveReconciliation(selectedDelivery)}
           onClose={handleCloseModal}
         />
       )}
