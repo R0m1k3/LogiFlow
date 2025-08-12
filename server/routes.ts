@@ -1940,9 +1940,10 @@ RÉSUMÉ DU SCAN
 
   app.post('/api/customer-orders', isAuthenticated, async (req: any, res) => {
     try {
-      console.log("Raw body received:", req.body);
-      console.log("Body type:", typeof req.body);
-      console.log("Body keys:", req.body ? Object.keys(req.body) : 'no keys');
+      console.log("🔍 CUSTOMER ORDER BACKEND - Raw body received:", req.body);
+      console.log("🔍 CUSTOMER ORDER BACKEND - Body type:", typeof req.body);
+      console.log("🔍 CUSTOMER ORDER BACKEND - Body keys:", req.body ? Object.keys(req.body) : 'no keys');
+      console.log("🔍 CUSTOMER ORDER BACKEND - Original groupId from frontend:", req.body.groupId, typeof req.body.groupId);
       
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       const user = await storage.getUserWithGroups(userId);
