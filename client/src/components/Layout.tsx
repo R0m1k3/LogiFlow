@@ -2,9 +2,8 @@ import { ReactNode, useState, createContext, useContext } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { LogOut, Store, Menu, X } from "lucide-react";
+import { LogOut, Store } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { useResponsive } from "@/hooks/useResponsive";
 import Sidebar from "./Sidebar";
 import type { Group } from "@shared/schema";
 
@@ -14,8 +13,6 @@ interface StoreContextType {
   stores: Group[];
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (collapsed: boolean) => void;
-  mobileMenuOpen: boolean;
-  setMobileMenuOpen: (open: boolean) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -35,8 +32,6 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { user } = useAuthUnified();
   const queryClient = useQueryClient();
-  const { isMobile, isTablet, isDesktop } = useResponsive();
-  
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
     // Restaurer le selectedStoreId depuis localStorage si disponible
     const saved = localStorage.getItem('selectedStoreId');
@@ -48,11 +43,8 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     // Restaurer l'état de la sidebar depuis localStorage
     const saved = localStorage.getItem('sidebarCollapsed');
-    // Sur mobile, toujours collapsé par défaut
-    return saved ? JSON.parse(saved) : isMobile;
+    return saved ? JSON.parse(saved) : false;
   });
-
-  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   const { data: stores = [] } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
@@ -64,56 +56,20 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <StoreContext.Provider value={{ 
-      selectedStoreId, 
-      setSelectedStoreId, 
-      stores, 
-      sidebarCollapsed, 
-      setSidebarCollapsed, 
-      mobileMenuOpen, 
-      setMobileMenuOpen 
-    }}>
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-        {/* Mobile Sidebar Overlay */}
-        {isMobile && mobileMenuOpen && (
-          <>
-            <div 
-              className="fixed inset-0 bg-black/50 z-40" 
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800">
-              <Sidebar />
-            </div>
-          </>
-        )}
-        
-        {/* Desktop Sidebar */}
-        {!isMobile && <Sidebar />}
-        
-        <main className={`flex-1 flex flex-col min-h-0 ${
-          isMobile ? 'ml-0' : sidebarCollapsed ? 'ml-16' : 'ml-64'
-        }`}>
+    <StoreContext.Provider value={{ selectedStoreId, setSelectedStoreId, stores, sidebarCollapsed, setSidebarCollapsed }}>
+      <div className="flex h-screen overflow-hidden bg-gray-50">
+        <Sidebar />
+        <main className="flex-1 flex flex-col overflow-hidden">
           {/* Header with store selector for admin */}
-          <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
+          <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
             <div className="flex items-center gap-4">
-              {/* Mobile menu button */}
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="h-8 w-8 p-0"
-                >
-                  {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </Button>
-              )}
-              <h1 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-gray-200">LogiFlow</h1>
+              <h1 className="text-lg font-medium text-gray-800">LogiFlow</h1>
             </div>
 
             {/* Store selector for admin - moved to top right */}
             {user?.role === 'admin' && stores.length > 0 && (
               <div className="flex items-center gap-2">
-                <Store className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <Store className="h-4 w-4 text-gray-500" />
                 <Select
                   value={selectedStoreId?.toString() || "all"}
                   onValueChange={(value) => {
@@ -155,7 +111,7 @@ export default function Layout({ children }: LayoutProps) {
                         <div className="flex items-center gap-2">
                           <div 
                             className="w-3 h-3" 
-                            style={{ backgroundColor: store.color || '#6B7280' }}
+                            style={{ backgroundColor: store.color }}
                           />
                           <span>{store.name}</span>
                         </div>
@@ -167,19 +123,10 @@ export default function Layout({ children }: LayoutProps) {
             )}
           </header>
 
-          {/* Main content area */}
-          <div className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+          <div className="flex-1 overflow-auto bg-gray-50 p-6">
             {children}
           </div>
         </main>
-        
-        {/* Mobile menu close overlay */}
-        {isMobile && mobileMenuOpen && (
-          <div 
-            className="fixed inset-0 bg-black/20 z-30" 
-            onClick={() => setMobileMenuOpen(false)}
-          />
-        )}
       </div>
     </StoreContext.Provider>
   );

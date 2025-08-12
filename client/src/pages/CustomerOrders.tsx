@@ -674,8 +674,7 @@ export default function CustomerOrders() {
   } = usePagination(sortedOrders, 10);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6 shadow-sm -m-6 mb-6">
         <div className="flex items-center justify-between">
@@ -753,7 +752,7 @@ export default function CustomerOrders() {
           {isLoading ? (
             <div>Chargement...</div>
           ) : (
-              <Table>
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Client</TableHead>
@@ -984,7 +983,6 @@ export default function CustomerOrders() {
         confirmText="Supprimer"
         isLoading={deleteMutation.isPending}
       />
-    </div>
     </div>
   );
 }
