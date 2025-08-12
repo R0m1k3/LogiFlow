@@ -110,23 +110,22 @@ async function createDefaultAdminUser() {
         passwordFormat: existingAdmin.password ? 'present' : 'missing'
       });
       
-      // Test if current password works with 'admin'
-      if (existingAdmin.password) {
-        const testLogin = await comparePasswords('admin', existingAdmin.password);
-        if (!testLogin) {
-          console.log('🔄 Admin password incompatible with current system, forcing reset...');
-          try {
-            const newHashedPassword = await hashPassword('admin');
-            await storage.updateUser(existingAdmin.id, { 
-              password: newHashedPassword,
-              passwordChanged: false 
-            });
-            console.log('✅ Admin password force-reset to: admin/admin');
-          } catch (error) {
-            console.error('❌ Failed to reset admin password:', (error as Error).message);
-          }
-        } else {
-          console.log('✅ Admin password works with current system');
+      // Ne plus forcer la réinitialisation du mot de passe admin
+      // L'admin peut maintenant changer son mot de passe et il sera conservé
+      console.log('✅ Admin user exists, preserving current password');
+      
+      // Seulement réinitialiser si explicitement demandé via FORCE_ADMIN_RESET
+      if (process.env.FORCE_ADMIN_RESET === 'true') {
+        console.log('🔄 FORCE_ADMIN_RESET env var set, resetting admin password...');
+        try {
+          const newHashedPassword = await hashPassword('admin');
+          await storage.updateUser(existingAdmin.id, { 
+            password: newHashedPassword,
+            passwordChanged: false 
+          });
+          console.log('✅ Admin password manually reset to: admin/admin');
+        } catch (error) {
+          console.error('❌ Failed to reset admin password:', (error as Error).message);
         }
       }
     }
