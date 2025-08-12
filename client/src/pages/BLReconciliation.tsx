@@ -81,12 +81,12 @@ export default function BLReconciliation() {
   // Séparer les livraisons par mode de rapprochement
   const manualReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
     const supplier = suppliers.find(s => s.id === delivery.supplierId);
-    return supplier?.isAutoReconciliation !== true;
+    return supplier?.automaticReconciliation !== true;
   });
 
   const automaticReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
     const supplier = suppliers.find(s => s.id === delivery.supplierId);
-    return supplier?.isAutoReconciliation === true;
+    return supplier?.automaticReconciliation === true;
   });
 
   // Fonctions de gestion
