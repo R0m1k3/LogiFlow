@@ -311,7 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Orders routes
-  app.get('/api/orders', isAuthenticated, requirePermission('orders', 'view'), async (req: any, res) => {
+  app.get('/api/orders', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -584,7 +584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Deliveries routes
-  app.get('/api/deliveries', isAuthenticated, requirePermission('deliveries', 'view'), async (req: any, res) => {
+  app.get('/api/deliveries', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
