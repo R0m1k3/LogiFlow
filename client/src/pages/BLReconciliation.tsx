@@ -78,19 +78,6 @@ export default function BLReconciliation() {
     enabled: !!user
   });
 
-  // Debug: vérifier les données des fournisseurs
-  console.log('🔍 Debug Filtrage Réconciliation:', {
-    totalDeliveries: deliveriesWithBL.length,
-    totalSuppliers: suppliers.length,
-    deliveriesWithSuppliers: deliveriesWithBL.map(d => ({
-      id: d.id,
-      supplierId: d.supplierId,
-      supplier: suppliers.find(s => s.id === d.supplierId),
-      supplierAuto: suppliers.find(s => s.id === d.supplierId)?.isAutoReconciliation
-    })),
-    suppliersAuto: suppliers.filter(s => s.isAutoReconciliation === true)
-  });
-
   // Séparer les livraisons par mode de rapprochement
   const manualReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
     const supplier = suppliers.find(s => s.id === delivery.supplierId);
@@ -444,7 +431,7 @@ export default function BLReconciliation() {
                                 }
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-sm text-left">
+                            <td className="px-3 py-2 text-sm text-right">
                               {(() => {
                                 const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
                                 const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
