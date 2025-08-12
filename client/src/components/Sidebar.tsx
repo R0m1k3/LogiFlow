@@ -259,13 +259,13 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className={`${isCollapsed ? 'w-16' : 'w-72 xl:w-80'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-xl transition-all duration-300 ease-in-out`}>
+    <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
       {/* Logo et bouton de collapse */}
-      <div className="h-20 xl:h-24 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 xl:px-6">
+      <div className="h-16 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4">
         {!isCollapsed && (
           <div className="flex items-center space-x-3">
             <Store className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-            <span className="text-xl xl:text-2xl font-bold text-gray-900 dark:text-gray-100">LogiFlow</span>
+            <span className="text-lg font-bold text-gray-900 dark:text-gray-100">LogiFlow</span>
           </div>
         )}
         {isCollapsed && (
@@ -290,8 +290,8 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 xl:py-8 px-4 xl:px-6">
-        <div className="space-y-2 xl:space-y-3">
+      <nav className="flex-1 py-4 px-4 overflow-y-auto">
+        <div className="space-y-1">
           {menuItems.map((item) => {
             const hasRolePermission = hasPermission(item.roles);
             // console.log(`🔍 Menu item ${item.path} (${item.label}):`, { 
@@ -374,7 +374,7 @@ export default function Sidebar() {
               </h3>
             </div>
           )}
-          <div className="space-y-2 xl:space-y-3">
+          <div className="space-y-1">
             {adminItems.map((item) => {
               if (!hasPermission(item.roles)) return null;
               
