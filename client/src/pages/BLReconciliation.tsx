@@ -9,7 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useStore } from "@/components/Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X } from "lucide-react";
+import { usePermissions } from "@shared/permissions";
+import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban } from "lucide-react";
 
 export default function BLReconciliation() {
   const { user } = useAuthUnified();
@@ -81,14 +82,123 @@ export default function BLReconciliation() {
     return supplier?.automaticReconciliation;
   });
 
-  // Fonction pour dévalider un rapprochement automatique (directeurs et admins uniquement)
-  const handleDevalidateAutoReconciliation = async (deliveryId: number) => {
-    if (user?.role !== 'directeur' && user?.role !== 'admin') {
+  // Fonction pour valider un rapprochement (admins et directeurs)
+  const handleValidateReconciliation = async (deliveryId: number) => {
+    if (!permissions.canValidate('reconciliation')) {
       toast({
         title: "Accès refusé",
-        description: "Seuls les directeurs et administrateurs peuvent dévalider les rapprochements automatiques",
+        description: "Vous n'avez pas les permissions pour valider les rapprochements",
         variant: "destructive",
       });
+      return;
+    }
+
+    if (!window.confirm("Êtes-vous sûr de vouloir valider ce rapprochement ?")) {
+      return;
+    }
+
+    try {
+      await apiRequest(`/api/deliveries/${deliveryId}`, "PUT", {
+        reconciled: true,
+        validatedAt: new Date().toISOString()
+      });
+      
+      toast({
+        title: "Succès",
+        description: "Rapprochement validé avec succès",
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de valider le rapprochement",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fonction pour dévalider un rapprochement (admins uniquement)
+  const handleDevalidateReconciliation = async (deliveryId: number) => {
+    if (user?.role !== 'admin') {
+      toast({
+        title: "Accès refusé",
+        description: "Seuls les administrateurs peuvent dévalider les rapprochements",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!window.confirm("Êtes-vous sûr de vouloir dévalider ce rapprochement ?")) {
+      return;
+    }
+
+    try {
+      await apiRequest(`/api/deliveries/${deliveryId}`, "PUT", {
+        reconciled: false,
+        validatedAt: null
+      });
+      
+      toast({
+        title: "Succès",
+        description: "Rapprochement dévalidé avec succès",
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de dévalider le rapprochement",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fonction pour supprimer une livraison (admins uniquement)
+  const handleDeleteDelivery = async (deliveryId: number) => {
+    if (!permissions.canDelete('reconciliation')) {
+      toast({
+        title: "Accès refusé",
+        description: "Seuls les administrateurs peuvent supprimer les livraisons",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette livraison ? Cette action est irréversible.")) {
+      return;
+    }
+
+    try {
+      await apiRequest(`/api/deliveries/${deliveryId}`, "DELETE");
+      
+      toast({
+        title: "Succès",
+        description: "Livraison supprimée avec succès",
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la livraison",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fonction pour dévalider un rapprochement automatique (admins uniquement) 
+  const handleDevalidateAutoReconciliation = async (deliveryId: number) => {
+    if (user?.role !== 'admin') {
+      toast({
+        title: "Accès refusé",
+        description: "Seuls les administrateurs peuvent dévalider les rapprochements automatiques",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!window.confirm("Êtes-vous sûr de vouloir dévalider ce rapprochement automatique ?")) {
       return;
     }
 
@@ -235,7 +345,12 @@ export default function BLReconciliation() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredManualDeliveries.map((delivery: any) => (
-                      <tr key={delivery.id} className="hover:bg-gray-50">
+                      <tr 
+                        key={delivery.id} 
+                        className={`hover:bg-gray-50 ${
+                          delivery.reconciled === false ? 'bg-red-50 border-l-4 border-red-400' : ''
+                        }`}
+                      >
                         <td className="px-3 py-2 text-sm">
                           <div className="font-medium text-gray-900 truncate max-w-32">
                             {delivery.supplier?.name}
@@ -283,11 +398,58 @@ export default function BLReconciliation() {
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
+                            {/* Actions selon le statut de rapprochement et les permissions */}
+                            {!delivery.reconciled ? (
+                              // Livraison non rapprochée : Valider + Supprimer
+                              <>
+                                {permissions.canValidate('reconciliation') && (
+                                  <button
+                                    onClick={() => handleValidateReconciliation(delivery.id)}
+                                    className="text-gray-600 hover:text-green-600 transition-colors duration-200 p-1 hover:bg-green-50 rounded"
+                                    title="Valider le rapprochement"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {permissions.canDelete('reconciliation') && (
+                                  <button
+                                    onClick={() => handleDeleteDelivery(delivery.id)}
+                                    className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
+                                    title="Supprimer la livraison"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              // Livraison rapprochée : Dévalider (admin seulement) + Supprimer
+                              <>
+                                {user?.role === 'admin' && (
+                                  <button
+                                    onClick={() => handleDevalidateReconciliation(delivery.id)}
+                                    className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
+                                    title="Dévalider le rapprochement"
+                                  >
+                                    <Ban className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {permissions.canDelete('reconciliation') && (
+                                  <button
+                                    onClick={() => handleDeleteDelivery(delivery.id)}
+                                    className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
+                                    title="Supprimer la livraison"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            {/* Bouton Voir les détails toujours disponible */}
                             <button
-                              className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50"
-                              title="Modifier"
+                              className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
+                              title="Voir les détails"
                             >
-                              <Edit className="w-4 h-4" />
+                              <Eye className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -309,10 +471,10 @@ export default function BLReconciliation() {
                 <h4 className="text-sm font-medium text-blue-900">Mode rapprochement automatique</h4>
                 <p className="text-sm text-blue-700 mt-1">
                   Les livraisons de fournisseurs en mode automatique sont validées automatiquement lorsqu'elles ont le statut "delivered" et un numéro de BL.
-                  {canModify ? (
+                  {user?.role === 'admin' ? (
                     " Vous pouvez dévalider ces rapprochements si nécessaire."
                   ) : (
-                    " Seuls les directeurs et administrateurs peuvent modifier ces rapprochements."
+                    " Seuls les administrateurs peuvent dévalider ces rapprochements."
                   )}
                 </p>
               </div>
@@ -367,7 +529,12 @@ export default function BLReconciliation() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredAutomaticDeliveries.map((delivery: any) => (
-                      <tr key={delivery.id} className="hover:bg-gray-50 bg-green-50">
+                      <tr 
+                        key={delivery.id} 
+                        className={`hover:bg-gray-50 bg-green-50 ${
+                          delivery.reconciled === false ? 'bg-red-50 border-l-4 border-red-400' : ''
+                        }`}
+                      >
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
                             <div className="font-medium text-gray-900 truncate max-w-32">
@@ -422,28 +589,20 @@ export default function BLReconciliation() {
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
-                            {canModify ? (
-                              <>
-                                <button
-                                  className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50"
-                                  title="Voir les détails"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDevalidateAutoReconciliation(delivery.id)}
-                                  className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50"
-                                  title="Dévalider le rapprochement automatique"
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              </>
-                            ) : (
+                            <button
+                              className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
+                              title="Voir les détails"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            {/* Dévalider automatique - admin uniquement */}
+                            {user?.role === 'admin' && (
                               <button
-                                className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50"
-                                title="Voir les détails"
+                                onClick={() => handleDevalidateAutoReconciliation(delivery.id)}
+                                className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
+                                title="Dévalider le rapprochement automatique"
                               >
-                                <Eye className="w-4 h-4" />
+                                <Ban className="w-4 h-4" />
                               </button>
                             )}
                           </div>
