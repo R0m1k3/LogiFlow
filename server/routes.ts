@@ -1952,13 +1952,8 @@ RÉSUMÉ DU SCAN
       const data = insertCustomerOrderSchema.parse(req.body);
       console.log("Parsed data:", data);
       
-      // Check if user has access to the specified group
-      if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
-        if (!userGroupIds.includes(data.groupId)) {
-          return res.status(403).json({ message: "Access denied to this group" });
-        }
-      }
+      // REMOVED: All role restrictions - tous les rôles peuvent créer des commandes client
+      console.log("Creating customer order - no role restrictions:", { userId, userRole: user.role, groupId: data.groupId });
 
       const customerOrder = await storage.createCustomerOrder({
         ...data,
