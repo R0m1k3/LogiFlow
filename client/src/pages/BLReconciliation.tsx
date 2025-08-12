@@ -17,6 +17,7 @@ export default function BLReconciliation() {
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const permissions = usePermissions(user?.role);
   
   // Redirection pour les employés
   if (user?.role === 'employee') {
