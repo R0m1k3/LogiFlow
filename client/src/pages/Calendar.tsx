@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { fr } from "date-fns/locale";
+import { hasPermission } from "@/lib/permissions";
 
 export default function Calendar() {
   const { user } = useAuthUnified();
@@ -250,14 +251,15 @@ export default function Calendar() {
             </Button>
           </div>
           <div className="flex items-center space-x-2">
-
-            <Button
-              onClick={() => setShowQuickCreate(true)}
-              className="bg-accent hover:bg-orange-600 text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Nouveau
-            </Button>
+            {(hasPermission(user?.role || '', 'orders', 'create') || hasPermission(user?.role || '', 'deliveries', 'create')) && (
+              <Button
+                onClick={() => setShowQuickCreate(true)}
+                className="bg-accent hover:bg-orange-600 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nouveau
+              </Button>
+            )}
           </div>
         </div>
       </div>

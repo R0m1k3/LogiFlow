@@ -188,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/suppliers', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
+      if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'directeur' && user.role !== 'employee')) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -237,8 +237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('✅ User found:', { username: user.username, role: user.role });
       
       // Vérifier les permissions
-      if (user.role !== 'admin' && user.role !== 'manager') {
-        console.error('❌ Insufficient permissions:', { userRole: user.role, required: ['admin', 'manager'] });
+      if (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'directeur') {
+        console.error('❌ Insufficient permissions:', { userRole: user.role, required: ['admin', 'manager', 'directeur'] });
         return res.status(403).json({ message: "Insufficient permissions" });
       }
       
@@ -279,7 +279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/suppliers/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
+      if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'directeur')) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
@@ -296,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/suppliers/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
+      if (!user || (user.role !== 'admin' && user.role !== 'directeur')) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 

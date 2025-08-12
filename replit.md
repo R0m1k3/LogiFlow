@@ -163,3 +163,50 @@ Preferred communication style: Simple, everyday language.
   - Created `fix-delivery-order-sync.sql` script to correct existing production data inconsistencies
   - Improved Calendar date initialization to show current month instead of hardcoded July 2025
 - **Result**: Calendar now properly displays delivery dates and automatically synchronizes order statuses when deliveries are completed
+
+### August 12, 2025 - Employee Permissions Restriction & Database Schema Download
+
+#### Employee Role Permissions Update
+- **Issue**: Employee role had excessive access to orders and deliveries modules, but needed restricted calendar access
+- **Root Cause**: Permission system allowed employees full access to create orders/deliveries from calendar and sidebar navigation
+- **Solution Implemented**:
+  - Updated `shared/permissions.ts`: Removed all permissions for employees on 'orders' and 'deliveries' modules
+  - Modified `client/src/components/Sidebar.tsx`: Removed orders and deliveries menu items for employee role
+  - Enhanced `client/src/pages/Calendar.tsx`: Added permission checks to hide "Nouveau" button for employees
+  - Updated `client/src/components/modals/QuickCreateMenu.tsx`: Added role-based filtering for order/delivery creation options
+- **Employee Access Rules**:
+  - **Calendar**: View-only access, cannot create orders or deliveries
+  - **Sidebar**: No access to Orders and Deliveries menu items
+  - **Customer Orders & DLC**: Maintains supplier list access for creating customer orders and DLC entries
+- **Result**: Employees now have appropriate restricted access while maintaining necessary supplier information for their workflows
+
+#### Database Schema Download Feature
+- **Issue**: Database schema scan results were only available in server logs, needed downloadable reports
+- **Solution Implemented**:
+  - Created new API route `/api/debug/download-schema` for production schema downloads
+  - Added comprehensive schema report generation with tables, columns, constraints, and record counts
+  - Enhanced `client/src/pages/DatabaseDebug.tsx`: Added download button that appears after successful scans
+  - Implemented proper file download headers with automatic filename generation
+  - Added admin-only access restriction and production environment validation
+- **Download Report Features**:
+  - Complete database structure with column details and constraints
+  - Record counts per table for data overview
+  - Foreign key relationships mapping
+  - Formatted text file with timestamps and user information
+- **Result**: Administrators can now download comprehensive database schema reports for documentation and analysis
+
+#### Employee Supplier Access Fix
+- **Issue**: Employee role could not access supplier lists in Customer Orders and DLC modules on production server
+- **Root Cause**: API route `/api/suppliers` was restricted to admin and manager roles only, excluding employees and directeurs
+- **Solution Implemented**:
+  - Updated `/api/suppliers` GET route: Added employee and directeur role access for read operations
+  - Updated `/api/suppliers` POST route: Added directeur role access for creation operations  
+  - Updated `/api/suppliers` PUT route: Added directeur role access for edit operations
+  - Updated `/api/suppliers` DELETE route: Restricted to admin and directeur only (removed manager access)
+  - Created test script `test-employee-supplier-access.js` for production verification
+- **Access Matrix Updated**:
+  - **GET /api/suppliers**: admin, directeur, manager, employee (all roles can read)
+  - **POST /api/suppliers**: admin, directeur, manager (creation permissions)
+  - **PUT /api/suppliers**: admin, directeur, manager (edit permissions)  
+  - **DELETE /api/suppliers**: admin, directeur only (delete permissions)
+- **Result**: Employees can now access supplier lists in Customer Orders and DLC modules while maintaining appropriate write restrictions
