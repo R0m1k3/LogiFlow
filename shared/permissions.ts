@@ -40,11 +40,11 @@ const PERMISSIONS: Record<Module, Record<Role, Permission[]>> = {
     employee: []
   },
 
-  // Livraisons - Admin/Directeur tout, Manager tout sauf delete, Employé aucun accès
+  // Livraisons - Admin/Directeur tout + validate, Manager tout sauf delete + validate, Employé aucun accès
   deliveries: {
-    admin: ['view', 'create', 'edit', 'delete'],
-    directeur: ['view', 'create', 'edit', 'delete'],
-    manager: ['view', 'create', 'edit'],
+    admin: ['view', 'create', 'edit', 'delete', 'validate'],
+    directeur: ['view', 'create', 'edit', 'delete', 'validate'],
+    manager: ['view', 'create', 'edit', 'validate'],
     employee: []
   },
 

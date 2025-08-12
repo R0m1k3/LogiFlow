@@ -174,7 +174,7 @@ export default function OrderDetailModal({
 
   const canEdit = user?.role === 'admin' || user?.role === 'manager';
   const canDelete = user?.role === 'admin' || user?.role === 'manager';
-  const canValidate = (user?.role === 'admin' || user?.role === 'manager') && 
+  const canValidate = (user?.role === 'admin' || user?.role === 'directeur' || user?.role === 'manager') && 
                      isDelivery && item.status !== 'delivered';
 
   const getStatusBadge = (status: string) => {
