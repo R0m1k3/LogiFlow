@@ -1928,7 +1928,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.post('/api/customer-orders', isAuthenticated, requirePermission('customer-orders', 'create'), async (req: any, res) => {
+  app.post('/api/customer-orders', isAuthenticated, async (req: any, res) => {
     try {
       console.log("Raw body received:", req.body);
       console.log("Body type:", typeof req.body);
@@ -1965,7 +1965,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.put('/api/customer-orders/:id', isAuthenticated, requirePermission('customer-orders', 'edit'), async (req: any, res) => {
+  app.put('/api/customer-orders/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
@@ -1996,7 +1996,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.delete('/api/customer-orders/:id', isAuthenticated, requirePermission('customer-orders', 'delete'), async (req: any, res) => {
+  app.delete('/api/customer-orders/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
@@ -2011,7 +2011,10 @@ RÉSUMÉ DU SCAN
         return res.status(404).json({ message: "Customer order not found" });
       }
 
-      // Permission already checked by middleware
+      // Check permissions using the shared permission system
+      if (!hasPermission(user.role, 'customer-orders', 'delete')) {
+        return res.status(403).json({ message: "Insufficient permissions to delete customer orders" });
+      }
 
       await storage.deleteCustomerOrder(id);
       res.status(204).send();
