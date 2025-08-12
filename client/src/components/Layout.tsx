@@ -91,10 +91,10 @@ export default function Layout({ children }: LayoutProps) {
         {!isMobile && <Sidebar />}
         
         <main className={`flex-1 flex flex-col overflow-hidden ${
-          isMobile ? 'ml-0' : sidebarCollapsed ? 'ml-16' : 'ml-64'
+          isMobile ? 'ml-0' : sidebarCollapsed ? 'ml-16' : 'ml-72 xl:ml-80'
         }`}>
           {/* Header with store selector for admin */}
-          <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 sm:px-6">
+          <header className="h-20 xl:h-24 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 sm:px-8 xl:px-12">
             <div className="flex items-center gap-4">
               {/* Mobile menu button */}
               {isMobile && (
@@ -107,7 +107,7 @@ export default function Layout({ children }: LayoutProps) {
                   {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                 </Button>
               )}
-              <h1 className="text-lg font-medium text-gray-800 dark:text-gray-200">LogiFlow</h1>
+              <h1 className="text-xl xl:text-2xl font-semibold text-gray-800 dark:text-gray-200">LogiFlow</h1>
             </div>
 
             {/* Store selector for admin - moved to top right */}
@@ -155,7 +155,7 @@ export default function Layout({ children }: LayoutProps) {
                         <div className="flex items-center gap-2">
                           <div 
                             className="w-3 h-3" 
-                            style={{ backgroundColor: store.color }}
+                            style={{ backgroundColor: store.color || '#6B7280' }}
                           />
                           <span>{store.name}</span>
                         </div>
@@ -168,9 +168,11 @@ export default function Layout({ children }: LayoutProps) {
           </header>
 
           {/* Main content area */}
-          <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
+          <div className="flex-1 bg-gray-50 dark:bg-gray-900 p-6 sm:p-8 xl:p-12 overflow-y-auto">
             <div className="container-responsive">
-              {children}
+              <div className="desktop-spacing">
+                {children}
+              </div>
             </div>
           </div>
         </main>

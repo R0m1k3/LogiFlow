@@ -27,6 +27,7 @@ import CreateOrderModal from "@/components/modals/CreateOrderModal";
 import EditOrderModal from "@/components/modals/EditOrderModal";
 import OrderDetailModal from "@/components/modals/OrderDetailModal";
 import ConfirmDeleteModal from "@/components/modals/ConfirmDeleteModal";
+import { usePermissions } from "@shared/permissions";
 import type { OrderWithRelations } from "@shared/schema";
 
 export default function Orders() {
@@ -34,6 +35,7 @@ export default function Orders() {
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const permissions = usePermissions(user?.role);
   
   // Redirection pour les employés
   if (user?.role === 'employee') {
@@ -285,7 +287,7 @@ export default function Orders() {
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
-        ) : (console.log('📦 Filtered orders length:', filteredOrders.length) || filteredOrders.length === 0) ? (
+        ) : filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
             <Package className="w-16 h-16 mb-4 text-gray-300" />
             <h3 className="text-lg font-medium mb-2">Aucune commande trouvée</h3>
@@ -305,11 +307,10 @@ export default function Orders() {
             )}
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+          <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Fournisseur
@@ -330,8 +331,8 @@ export default function Orders() {
                         Actions
                       </th>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
                     {paginatedOrders.map((order) => (
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -404,21 +405,20 @@ export default function Orders() {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              {/* Pagination */}
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={setItemsPerPage}
-                className="mt-4 p-4 border-t border-gray-200"
-              />
+                </tbody>
+              </table>
             </div>
+            
+            {/* Pagination */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              className="mt-4 p-4 border-t border-gray-200"
+            />
           </div>
         )}
       </div>
