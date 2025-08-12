@@ -2014,6 +2014,8 @@ class MemStorage implements IStorage {
   private tasks = new Map<number, Task>();
   private publicities = new Map<number, any>();
   private publicityParticipations = new Array<any>();
+  private dlcProducts = new Map<number, any>();
+  private dlcIdCounter = 1;
 
   constructor() {
     // Create default admin user for development
@@ -2257,11 +2259,62 @@ class MemStorage implements IStorage {
   async createCustomerOrder(): Promise<any> { return {}; }
   async updateCustomerOrder(): Promise<any> { return {}; }
   async deleteCustomerOrder(): Promise<void> {}
-  async getDlcProducts(): Promise<any[]> { return []; }
-  async getDlcProduct(): Promise<any> { return undefined; }
-  async createDlcProduct(): Promise<any> { return {}; }
-  async updateDlcProduct(): Promise<any> { return {}; }
-  async deleteDlcProduct(): Promise<void> {}
+  async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; }): Promise<any[]> { 
+    console.log("📋 MemStorage getDlcProducts:", { groupIds, dlcCount: this.dlcProducts.size });
+    let products = Array.from(this.dlcProducts.values());
+    
+    // Filter by groups if provided
+    if (groupIds && groupIds.length > 0) {
+      products = products.filter(p => groupIds.includes(p.groupId));
+      console.log("🔍 Filtered by groups:", { original: this.dlcProducts.size, filtered: products.length, groupIds });
+    }
+    
+    // Filter by status
+    if (filters?.status) {
+      products = products.filter(p => p.status === filters.status);
+    }
+    
+    // Filter by supplier
+    if (filters?.supplierId) {
+      products = products.filter(p => p.supplierId === filters.supplierId);
+    }
+    
+    return products;
+  }
+  
+  async getDlcProduct(id: number): Promise<any> { 
+    return this.dlcProducts.get(id); 
+  }
+  
+  async createDlcProduct(dlcProduct: any): Promise<any> { 
+    const id = this.dlcIdCounter++;
+    const newProduct = {
+      id,
+      ...dlcProduct,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.dlcProducts.set(id, newProduct);
+    console.log("✅ MemStorage DLC créé:", { id, productName: newProduct.productName, groupId: newProduct.groupId });
+    return newProduct;
+  }
+  
+  async updateDlcProduct(id: number, dlcProduct: any): Promise<any> { 
+    const existing = this.dlcProducts.get(id);
+    if (!existing) throw new Error("DLC product not found");
+    
+    const updated = {
+      ...existing,
+      ...dlcProduct,
+      updatedAt: new Date(),
+    };
+    this.dlcProducts.set(id, updated);
+    return updated;
+  }
+  
+  async deleteDlcProduct(id: number): Promise<void> {
+    this.dlcProducts.delete(id);
+  }
   async getTasks(): Promise<Task[]> { return Array.from(this.tasks.values()); }
   async getTask(): Promise<any> { return undefined; }
   async createTask(): Promise<any> { return {}; }
@@ -2295,7 +2348,26 @@ class MemStorage implements IStorage {
   async getUserEffectivePermissions(): Promise<any[]> { return []; }
   async userHasPermission(): Promise<boolean> { return false; }
   async userHasRole(): Promise<boolean> { return false; }
-  async getDlcStats(): Promise<any> { return {}; }
+  async getDlcStats(groupIds?: number[]): Promise<any> { 
+    const products = Array.from(this.dlcProducts.values());
+    
+    // Filter by groups if provided
+    const filteredProducts = groupIds && groupIds.length > 0 
+      ? products.filter(p => groupIds.includes(p.groupId))
+      : products;
+    
+    const now = new Date();
+    const in15Days = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
+    
+    const stats = {
+      active: filteredProducts.filter(p => p.status !== 'valides' && new Date(p.dlcDate) > in15Days).length,
+      expiringSoon: filteredProducts.filter(p => p.status !== 'valides' && new Date(p.dlcDate) <= in15Days && new Date(p.dlcDate) > now).length,
+      expired: filteredProducts.filter(p => p.status !== 'valides' && new Date(p.dlcDate) <= now).length,
+    };
+    
+    console.log("📊 MemStorage DLC stats:", stats);
+    return stats;
+  }
   async validateDlcProduct(id: number, validatedBy: string): Promise<DlcProductFrontend> {
     // MemStorage stub implementation - return a basic DlcProductFrontend object
     return {
