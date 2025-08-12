@@ -214,11 +214,15 @@ export default function DlcPage() {
       groupId = 1;
     }
 
-    console.log("🏪 DLC GroupId Selection:", {
+    console.log("🏪 DLC GroupId Selection DEBUG:", {
       userRole: user?.role,
       selectedStoreId,
       userGroups: user?.userGroups?.map(ug => ({groupId: ug.groupId, groupName: ug.group?.name})),
-      finalGroupId: groupId
+      availableStores: stores.map(s => ({id: s.id, name: s.name})),
+      userGroupsRaw: user?.userGroups,
+      firstUserGroup: user?.userGroups?.[0],
+      finalGroupId: groupId,
+      logicPath: !groupId ? 'need-fallback' : 'already-set'
     });
     
     const dlcData: InsertDlcProduct = {

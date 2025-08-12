@@ -2319,15 +2319,31 @@ RÉSUMÉ DU SCAN
         userGroups: user.userGroups?.map(ug => ({groupId: ug.group.id, groupName: ug.group.name}))
       });
 
+      // Fix groupId if missing - use user's assigned group or fallback
+      let finalGroupId = req.body.groupId;
+      if (!finalGroupId) {
+        if (user.userGroups?.[0]?.groupId) {
+          finalGroupId = user.userGroups[0].groupId;
+          console.log("🔧 Backend Fix: Using user's assigned group:", finalGroupId);
+        } else {
+          finalGroupId = 1; // Emergency fallback
+          console.log("🚨 Backend Fix: Using emergency fallback groupId:", finalGroupId);
+        }
+      }
+
       console.log("🔍 Pre-validation data:", {
         body: req.body,
         userId,
-        combined: { ...req.body, createdBy: userId }
+        userGroups: user.userGroups?.map(ug => ({groupId: ug.groupId, groupName: ug.group?.name})),
+        originalGroupId: req.body.groupId,
+        finalGroupId,
+        combined: { ...req.body, createdBy: userId, groupId: finalGroupId }
       });
 
       const validatedData = insertDlcProductFrontendSchema.parse({
         ...req.body,
         createdBy: userId,
+        groupId: finalGroupId,
       });
 
       console.log("✅ Post-validation data:", validatedData);
