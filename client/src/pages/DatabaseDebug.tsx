@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Database, Eye, Loader2 } from "lucide-react";
-import { useAuthSimple } from "@/hooks/useAuthSimple";
+import { useAuthUnified } from "@/hooks/useAuthUnified";
 
 export default function DatabaseDebug() {
-  const { user } = useAuthSimple();
+  const { user } = useAuthUnified();
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
