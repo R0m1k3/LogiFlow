@@ -226,7 +226,7 @@ export default function Orders() {
   const canDelete = permissions.canDelete('orders');
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 overflow-y-auto">
       <div className="p-6 space-y-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6 shadow-sm -m-6 mb-6">
@@ -309,7 +309,7 @@ export default function Orders() {
           </div>
         ) : (
           <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-xl">
-            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+            <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>

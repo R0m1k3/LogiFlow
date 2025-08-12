@@ -73,7 +73,7 @@ export default function Layout({ children }: LayoutProps) {
       mobileMenuOpen, 
       setMobileMenuOpen 
     }}>
-      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
         {/* Mobile Sidebar Overlay */}
         {isMobile && mobileMenuOpen && (
           <>

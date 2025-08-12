@@ -259,7 +259,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
+    <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg transition-all duration-300 ease-in-out h-screen`}>
       {/* Logo et bouton de collapse */}
       <div className="h-16 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4">
         {!isCollapsed && (
@@ -316,7 +316,7 @@ export default function Sidebar() {
                   title={isCollapsed ? item.label : undefined}
                   onClick={handleLinkClick}
                 >
-                  <Icon className={`h-4 w-4 ${isCollapsed ? '' : 'mr-3'}`} />
+                  <Icon className={`${isCollapsed ? 'h-5 w-5' : 'h-4 w-4 mr-3'}`} />
                   {!isCollapsed && item.label}
                 </div>
               </Link>
@@ -353,7 +353,7 @@ export default function Sidebar() {
                       title={isCollapsed ? item.label : undefined}
                       onClick={handleLinkClick}
                     >
-                      <Icon className={`h-4 w-4 ${isCollapsed ? '' : 'mr-3'}`} />
+                      <Icon className={`${isCollapsed ? 'h-5 w-5' : 'h-4 w-4 mr-3'}`} />
                       {!isCollapsed && item.label}
                     </div>
                   </Link>
@@ -392,7 +392,7 @@ export default function Sidebar() {
                     title={isCollapsed ? item.label : undefined}
                     onClick={handleLinkClick}
                   >
-                    <Icon className={`h-4 w-4 ${isCollapsed ? '' : 'mr-3'}`} />
+                    <Icon className={`${isCollapsed ? 'h-5 w-5' : 'h-4 w-4 mr-3'}`} />
                     {!isCollapsed && item.label}
                   </div>
                 </Link>
