@@ -702,6 +702,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`❌ Auto-sync failed for order #${updatedDelivery.orderId}:`, error);
         }
       }
+
+      // AUTO-VALIDATION RAPPROCHEMENT AUTOMATIQUE : Si fournisseur en mode automatique, livraison delivered + BL → auto-valider
+      if (data.status === 'delivered' || data.blNumber) {
+        try {
+          // Récupérer le fournisseur pour vérifier le mode automatique
+          const supplier = await storage.getSupplier(updatedDelivery.supplierId);
+          
+          if (supplier?.automaticReconciliation && 
+              updatedDelivery.status === 'delivered' && 
+              updatedDelivery.blNumber) {
+            
+            console.log(`🤖 Auto-reconciliation: Delivery #${id} from automatic supplier ${supplier.name}, auto-validating...`);
+            
+            // Auto-valider le rapprochement
+            await storage.updateDelivery(id, {
+              reconciled: true,
+              validatedAt: new Date()
+            });
+            
+            console.log(`✅ Auto-reconciliation: Delivery #${id} automatically validated for supplier ${supplier.name}`);
+          }
+        } catch (error) {
+          console.error(`❌ Auto-reconciliation failed for delivery #${id}:`, error);
+        }
+      }
       
       res.json(updatedDelivery);
     } catch (error) {
