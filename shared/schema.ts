@@ -47,12 +47,17 @@ export const users = pgTable("users", {
 export const groups = pgTable("groups", {
   id: serial("id").primaryKey(),
   name: varchar("name").notNull(),
-  color: varchar("color").notNull(), // hex color code
+  color: varchar("color").notNull().default("#1976D2"), // hex color code
   // Configuration NocoDB pour vérification automatique des factures
   nocodbConfigId: integer("nocodb_config_id"), // Référence vers la configuration NocoDB
   nocodbTableId: varchar("nocodb_table_id"), // ID de la table dans NocoDB
   nocodbTableName: varchar("nocodb_table_name"), // Nom de la table dans NocoDB
-  invoiceColumnName: varchar("invoice_column_name").default("Ref Facture"), // Nom de la colonne contenant les références de facture
+  invoiceColumnName: varchar("invoice_column_name"), // Nom de la colonne contenant les références de facture
+  // Nouveaux champs pour l'intégration NocoDB avancée
+  nocodbBlColumnName: varchar("nocodb_bl_column_name"), // Nom de la colonne BL dans NocoDB
+  nocodbAmountColumnName: varchar("nocodb_amount_column_name"), // Nom de la colonne montant dans NocoDB
+  nocodbSupplierColumnName: varchar("nocodb_supplier_column_name"), // Nom de la colonne fournisseur dans NocoDB
+  webhookUrl: varchar("webhook_url", { length: 500 }), // URL de webhook pour notifications
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
