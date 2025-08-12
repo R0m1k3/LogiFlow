@@ -90,9 +90,9 @@ export default function ReconciliationModal({
 
     updateDeliveryMutation.mutate({
       blNumber: formData.blNumber.trim(),
-      blAmount: formData.blAmount ? parseFloat(formData.blAmount) : null,
+      blAmount: formData.blAmount ? formData.blAmount.toString() : null,
       invoiceReference: formData.invoiceReference.trim() || null,
-      invoiceAmount: formData.invoiceAmount ? parseFloat(formData.invoiceAmount) : null,
+      invoiceAmount: formData.invoiceAmount ? formData.invoiceAmount.toString() : null,
     });
   };
 
@@ -108,9 +108,9 @@ export default function ReconciliationModal({
 
     updateDeliveryMutation.mutate({
       blNumber: formData.blNumber.trim(),
-      blAmount: formData.blAmount ? parseFloat(formData.blAmount) : null,
+      blAmount: formData.blAmount ? formData.blAmount.toString() : null,
       invoiceReference: formData.invoiceReference.trim() || null,
-      invoiceAmount: formData.invoiceAmount ? parseFloat(formData.invoiceAmount) : null,
+      invoiceAmount: formData.invoiceAmount ? formData.invoiceAmount.toString() : null,
       reconciled: true,
       validatedAt: new Date().toISOString()
     });
