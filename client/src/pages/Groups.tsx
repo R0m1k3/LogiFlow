@@ -46,9 +46,12 @@ export default function Groups() {
     name: "",
     color: "#1976D2",
     nocodbConfigId: "",
-    nocodbTableId: "",
     nocodbTableName: "",
-    invoiceColumnName: "Ref Facture",
+    invoiceColumnName: "",
+    nocodbBlColumnName: "",
+    nocodbAmountColumnName: "",
+    nocodbSupplierColumnName: "",
+    webhookUrl: "",
   });
 
   const { data: groups = [], isLoading } = useQuery<Group[]>({
@@ -243,9 +246,12 @@ export default function Groups() {
       name: "",
       color: "#1976D2",
       nocodbConfigId: "",
-      nocodbTableId: "",
       nocodbTableName: "",
-      invoiceColumnName: "Ref Facture",
+      invoiceColumnName: "",
+      nocodbBlColumnName: "",
+      nocodbAmountColumnName: "",
+      nocodbSupplierColumnName: "",
+      webhookUrl: "",
     });
     setShowCreateModal(true);
   };
@@ -254,11 +260,14 @@ export default function Groups() {
     setSelectedGroup(group);
     setFormData({
       name: group.name,
-      color: group.color,
+      color: group.color || "#1976D2",
       nocodbConfigId: group.nocodbConfigId?.toString() || "",
-      nocodbTableId: group.nocodbTableId || "",
       nocodbTableName: group.nocodbTableName || "",
-      invoiceColumnName: group.invoiceColumnName || "Ref Facture",
+      invoiceColumnName: group.invoiceColumnName || "",
+      nocodbBlColumnName: group.nocodbBlColumnName || "",
+      nocodbAmountColumnName: group.nocodbAmountColumnName || "",
+      nocodbSupplierColumnName: group.nocodbSupplierColumnName || "",
+      webhookUrl: group.webhookUrl || "",
     });
     setShowEditModal(true);
   };
@@ -562,34 +571,107 @@ export default function Groups() {
               {formData.nocodbConfigId && (
                 <>
                   <div>
-                    <Label htmlFor="nocodbTableId">ID de la table</Label>
-                    <Input
-                      id="nocodbTableId"
-                      value={formData.nocodbTableId}
-                      onChange={(e) => handleChange('nocodbTableId', e.target.value)}
-                      placeholder="m_xxxxxxxxxxxx (ID de la table NocoDB)"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="nocodbTableName">Nom de la table</Label>
+                    <Label htmlFor="nocodbTableName">Nom de la table NocoDB *</Label>
                     <Input
                       id="nocodbTableName"
                       value={formData.nocodbTableName}
                       onChange={(e) => handleChange('nocodbTableName', e.target.value)}
-                      placeholder="Nom de la table (pour affichage)"
+                      placeholder="ex: Factures_Paris_2025"
+                      required
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Nom exact de la table dans votre base NocoDB
+                    </p>
                   </div>
 
-                  <div>
-                    <Label htmlFor="invoiceColumnName">Nom de la colonne des références facture</Label>
-                    <Input
-                      id="invoiceColumnName"
-                      value={formData.invoiceColumnName}
-                      onChange={(e) => handleChange('invoiceColumnName', e.target.value)}
-                      placeholder="Ref Facture"
-                    />
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium text-gray-900 mb-3">Mapping des colonnes</h4>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Configurez les noms exacts des colonnes dans votre table NocoDB
+                    </p>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="invoiceColumnName">Colonne Facture *</Label>
+                        <Input
+                          id="invoiceColumnName"
+                          value={formData.invoiceColumnName}
+                          onChange={(e) => handleChange('invoiceColumnName', e.target.value)}
+                          placeholder="ex: Ref_Facture"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="nocodbBlColumnName">Colonne BL</Label>
+                        <Input
+                          id="nocodbBlColumnName"
+                          value={formData.nocodbBlColumnName}
+                          onChange={(e) => handleChange('nocodbBlColumnName', e.target.value)}
+                          placeholder="ex: Num_BL"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="nocodbAmountColumnName">Colonne Montant</Label>
+                        <Input
+                          id="nocodbAmountColumnName"
+                          value={formData.nocodbAmountColumnName}
+                          onChange={(e) => handleChange('nocodbAmountColumnName', e.target.value)}
+                          placeholder="ex: Montant_HT"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="nocodbSupplierColumnName">Colonne Fournisseur</Label>
+                        <Input
+                          id="nocodbSupplierColumnName"
+                          value={formData.nocodbSupplierColumnName}
+                          onChange={(e) => handleChange('nocodbSupplierColumnName', e.target.value)}
+                          placeholder="ex: Fournisseur"
+                        />
+                      </div>
+                    </div>
                   </div>
+
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium text-gray-900 mb-3">Notifications</h4>
+                    <div>
+                      <Label htmlFor="webhookUrl">URL Webhook (optionnel)</Label>
+                      <Input
+                        id="webhookUrl"
+                        value={formData.webhookUrl}
+                        onChange={(e) => handleChange('webhookUrl', e.target.value)}
+                        placeholder="https://votre-site.com/webhook"
+                        type="url"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        URL pour recevoir les notifications d'événements
+                      </p>
+                    </div>
+                  </div>
+
+                  {(formData.nocodbTableName && formData.invoiceColumnName) && (
+                    <div className="border-t pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          // TODO: Implémenter le test de configuration
+                          toast({
+                            title: "Test de configuration",
+                            description: "Fonctionnalité à implémenter",
+                          });
+                        }}
+                      >
+                        🔍 Tester la configuration NocoDB
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-1 text-center">
+                        Vérifie que la table et les colonnes existent
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -606,9 +688,12 @@ export default function Groups() {
                     name: "",
                     color: "#1976D2",
                     nocodbConfigId: "",
-                    nocodbTableId: "",
                     nocodbTableName: "",
-                    invoiceColumnName: "Ref Facture",
+                    invoiceColumnName: "",
+                    nocodbBlColumnName: "",
+                    nocodbAmountColumnName: "",
+                    nocodbSupplierColumnName: "",
+                    webhookUrl: "",
                   });
                 }}
               >
