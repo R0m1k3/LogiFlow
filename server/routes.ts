@@ -30,6 +30,7 @@ import {
   insertUserGroupSchema,
   insertPublicitySchema,
   insertCustomerOrderSchema,
+  insertCustomerOrderFrontendSchema,
   insertDlcProductSchema,
   insertDlcProductFrontendSchema,
   insertTaskSchema
@@ -1949,16 +1950,34 @@ RÉSUMÉ DU SCAN
         return res.status(404).json({ message: "User not found" });
       }
 
-      const data = insertCustomerOrderSchema.parse(req.body);
-      console.log("Parsed data:", data);
+      // Use frontend schema and map to backend fields
+      const frontendData = insertCustomerOrderFrontendSchema.parse(req.body);
+      console.log("Frontend data parsed:", frontendData);
+      
+      // Map frontend fields to backend schema
+      const backendData = {
+        orderTaker: frontendData.orderTaker || `${user.firstName} ${user.lastName}`.trim() || user.username,
+        customerName: frontendData.customerName,
+        customerPhone: frontendData.contactNumber,
+        customerEmail: frontendData.customerEmail,
+        productDesignation: frontendData.productName,
+        productReference: frontendData.productReference,
+        gencode: frontendData.gencode || "",
+        quantity: frontendData.quantity,
+        supplierId: frontendData.supplierId || 1, // Default supplier
+        groupId: frontendData.groupId,
+        deposit: frontendData.deposit,
+        isPromotionalPrice: frontendData.isPromotionalPrice,
+        notes: frontendData.notes,
+        createdBy: userId,
+      };
+      
+      console.log("Backend data mapped:", backendData);
       
       // REMOVED: All role restrictions - tous les rôles peuvent créer des commandes client
-      console.log("Creating customer order - no role restrictions:", { userId, userRole: user.role, groupId: data.groupId });
+      console.log("Creating customer order - no role restrictions:", { userId, userRole: user.role, groupId: backendData.groupId });
 
-      const customerOrder = await storage.createCustomerOrder({
-        ...data,
-        createdBy: userId,
-      });
+      const customerOrder = await storage.createCustomerOrder(backendData);
       res.status(201).json(customerOrder);
     } catch (error) {
       console.error("Error creating customer order:", error);
@@ -2311,7 +2330,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.put('/api/dlc-products/:id', isAuthenticated, requirePermission('dlc', 'edit'), async (req: any, res) => {
+  app.put('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
@@ -2346,7 +2365,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.post('/api/dlc-products/:id/validate', isAuthenticated, requirePermission('dlc', 'validate'), async (req: any, res) => {
+  app.post('/api/dlc-products/:id/validate', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
@@ -2376,7 +2395,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.delete('/api/dlc-products/:id', isAuthenticated, requirePermission('dlc', 'delete'), async (req: any, res) => {
+  app.delete('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;

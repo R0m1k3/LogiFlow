@@ -450,6 +450,26 @@ export const insertCustomerOrderSchema = createInsertSchema(customerOrders).omit
   updatedAt: true,
 });
 
+// Frontend-compatible schema with different field names
+export const insertCustomerOrderFrontendSchema = z.object({
+  customerName: z.string().min(1, "Customer name is required"),
+  contactNumber: z.string().min(1, "Contact number is required"), // Maps to customerPhone
+  productName: z.string().min(1, "Product name is required"), // Maps to productDesignation
+  productDescription: z.string().optional(), // Optional description
+  quantity: z.number().int().positive().default(1),
+  groupId: z.number().int().positive(),
+  isPickup: z.boolean().default(false),
+  notes: z.string().optional(),
+  // Optional fields with defaults
+  orderTaker: z.string().optional(), // Will be set to creator name if not provided
+  gencode: z.string().optional().default(""), // Will be empty if not provided
+  supplierId: z.number().int().positive().optional().default(1), // Default supplier ID
+  deposit: z.number().optional().default(0),
+  isPromotionalPrice: z.boolean().default(false),
+  customerEmail: z.string().email().optional(),
+  productReference: z.string().optional(),
+});
+
 export const insertDlcProductSchema = createInsertSchema(dlcProducts).omit({
   id: true,
   createdAt: true,
