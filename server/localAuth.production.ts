@@ -232,6 +232,17 @@ export function setupLocalAuth(app: Express) {
   // Get current user
   app.get("/api/user", (req: any, res) => {
     if (req.isAuthenticated && req.isAuthenticated()) {
+      console.log("🔍 PRODUCTION /api/user - req.user:", {
+        id: req.user.id,
+        role: req.user.role,
+        hasUserGroups: !!req.user.userGroups,
+        userGroupsLength: req.user.userGroups?.length,
+        userGroups: req.user.userGroups?.map((ug: any) => ({
+          groupId: ug.groupId || ug.group?.id,
+          groupName: ug.group?.name
+        }))
+      });
+      
       res.json({
         id: req.user.id,
         username: req.user.username,
@@ -239,7 +250,8 @@ export function setupLocalAuth(app: Express) {
         firstName: req.user.firstName,
         lastName: req.user.lastName,
         role: req.user.role,
-        passwordChanged: req.user.passwordChanged
+        passwordChanged: req.user.passwordChanged,
+        userGroups: req.user.userGroups || [] // ✅ AJOUT DES USER GROUPS !
       });
     } else {
       res.status(401).json({ message: "Not authenticated" });
