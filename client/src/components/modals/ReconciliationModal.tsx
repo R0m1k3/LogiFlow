@@ -255,7 +255,7 @@ export default function ReconciliationModal({
                 disabled={!canValidate || updateDeliveryMutation.isPending}
                 className="bg-green-600 hover:bg-green-700"
               >
-                <Check className="w-4 h-4 mr-2" />
+                <Check className="w-4 h-4 mr-2 border border-gray-300 rounded p-0.5" />
                 {updateDeliveryMutation.isPending ? "Validation..." : "Valider le rapprochement"}
               </Button>
             </div>

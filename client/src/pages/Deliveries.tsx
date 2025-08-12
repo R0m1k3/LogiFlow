@@ -449,7 +449,7 @@ export default function Deliveries() {
                                 className="text-green-600 hover:text-green-700"
                                 disabled={validateMutation.isPending}
                               >
-                                <Check className="w-4 h-4" />
+                                <Check className="w-4 h-4 border border-gray-300 rounded p-0.5" />
                               </Button>
                             )}
                             {canDelete && (
