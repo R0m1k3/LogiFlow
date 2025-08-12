@@ -12,6 +12,7 @@ import EditOrderModal from "./EditOrderModal";
 import EditDeliveryModal from "./EditDeliveryModal";
 import ValidateDeliveryModal from "./ValidateDeliveryModal";
 import { Package, Truck, Edit, Trash2, Check, X, CheckCircle } from "lucide-react";
+import { hasPermission } from "@/lib/permissions";
 
 interface OrderDetailModalProps {
   isOpen: boolean;
@@ -172,8 +173,8 @@ export default function OrderDetailModal({
     setShowEditModal(true);
   };
 
-  const canEdit = permissions.canEdit(isOrder ? 'orders' : 'deliveries');
-  const canDelete = permissions.canDelete(isOrder ? 'orders' : 'deliveries');
+  const canEdit = hasPermission(user?.role || '', isOrder ? 'orders' : 'deliveries', 'edit');
+  const canDelete = hasPermission(user?.role || '', isOrder ? 'orders' : 'deliveries', 'delete');
   const canValidate = (user?.role === 'admin' || user?.role === 'directeur' || user?.role === 'manager') && 
                      isDelivery && item.status !== 'delivered';
 
