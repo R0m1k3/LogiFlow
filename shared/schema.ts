@@ -68,18 +68,16 @@ export const userGroups = pgTable("user_groups", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Suppliers
+// Suppliers - Schema exact correspondant à la production
 export const suppliers = pgTable("suppliers", {
   id: serial("id").primaryKey(),
   name: varchar("name").notNull(),
   contact: varchar("contact"),
   phone: varchar("phone"),
-  email: varchar("email"),
-  address: text("address"),
   hasDlc: boolean("has_dlc").default(false), // Coche DLC pour la gestion DLC
-  automaticReconciliation: boolean("automatic_reconciliation").default(false), // Rapprochement automatique BL/Factures
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  automaticReconciliation: boolean("automatic_reconciliation").default(false), // Rapprochement automatique BL/Factures
 });
 
 // Orders
