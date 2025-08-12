@@ -47,7 +47,7 @@ Preferred communication style: Simple, everyday language.
 - **User Management**: Comprehensive features including user deletion with ownership transfer, consistent name and email field handling, and robust password hashing.
 - **Calendar Synchronization**: Proper display of delivery dates and automatic synchronization of order statuses.
 - **Database Schema Download**: Admin-only feature to download comprehensive database structure reports.
-- **DLC Product Management**: **DEV-FIXED**: Corrected MemStorage implementation for proper DLC persistence in development. Cache invalidation fixed with exact:false for production compatibility.
+- **DLC Product Management**: **FULLY-FIXED**: Corrected MemStorage implementation for proper DLC persistence in development. Cache invalidation fixed with exact:false for production compatibility. **GROUPID-FIX**: Resolved issue where users assigned to store #2 were creating DLC products for store #1 due to incorrect groupId selection logic.
 - **Robust UI Architecture**: Critical pages rebuilt with custom Tailwind CSS components to eliminate shadcn/ui production bundling issues.
 
 ## External Dependencies

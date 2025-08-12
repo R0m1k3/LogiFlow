@@ -198,6 +198,29 @@ export default function DlcPage() {
     // Calculer la date d'expiration et le seuil d'alerte (15 jours avant)
     const dlcDate = new Date(data.dlcDate);
     
+    // Déterminer le groupId correctement selon le rôle utilisateur
+    let groupId;
+    if (user?.role === 'admin' && selectedStoreId) {
+      // Admin avec magasin sélectionné
+      groupId = selectedStoreId;
+    } else if (user?.userGroups?.[0]?.groupId) {
+      // Utilisateur non-admin : utiliser son groupe assigné
+      groupId = user.userGroups[0].groupId;
+    } else if (user?.role === 'admin') {
+      // Admin sans sélection : premier magasin disponible
+      groupId = stores[0]?.id || 1;
+    } else {
+      // Fallback par défaut
+      groupId = 1;
+    }
+
+    console.log("🏪 DLC GroupId Selection:", {
+      userRole: user?.role,
+      selectedStoreId,
+      userGroups: user?.userGroups?.map(ug => ({groupId: ug.groupId, groupName: ug.group?.name})),
+      finalGroupId: groupId
+    });
+    
     const dlcData: InsertDlcProduct = {
       ...data,
       dlcDate,
@@ -205,7 +228,7 @@ export default function DlcPage() {
       unit: "unité", // Valeur par défaut
       location: "Magasin", // Valeur par défaut
       alertThreshold: 15, // Toujours 15 jours
-      groupId: selectedStoreId || stores[0]?.id || 2, // Utilise le magasin sélectionné ou le premier disponible
+      groupId,
     };
 
     if (editingProduct) {
