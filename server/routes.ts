@@ -514,8 +514,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions to delete orders" });
       }
 
-      if (user.role === 'manager') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(order.groupId)) {
           return res.status(403).json({ message: "Access denied" });
         }
@@ -815,8 +815,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions to delete deliveries" });
       }
 
-      if (user.role === 'manager') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(delivery.groupId)) {
           return res.status(403).json({ message: "Access denied" });
         }
@@ -1947,11 +1947,6 @@ RÉSUMÉ DU SCAN
       const user = await storage.getUserWithGroups(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
-      }
-
-      // Check permissions for customer-orders create
-      if (!hasPermission(user.role, 'customer-orders', 'create')) {
-        return res.status(403).json({ message: "Insufficient permissions to create customer orders" });
       }
 
       const data = insertCustomerOrderSchema.parse(req.body);
