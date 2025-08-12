@@ -1,74 +1,86 @@
-# LogiFlow - Replit Development Guide
+# Enterprise Weather Management Platform
 
-## Overview
-LogiFlow is a comprehensive logistics management platform for La Foir'Fouille retail stores. It centralizes order, delivery, customer order, inventory, and user administration across multiple store locations. Its business vision is to streamline logistics operations, enhance inventory accuracy, and improve overall operational efficiency for retail chains.
+## Project Overview
+Plateforme de gestion météorologique d'entreprise avec suivi logistique multi-tenant avancé et capacités complètes de gestion des commandes.
 
-## User Preferences
-Preferred communication style: Simple, everyday language.
+La plateforme fournit une gestion robuste des flux de travail de livraison avec des fonctionnalités de rapprochement améliorées, se concentrant sur l'efficacité opérationnelle grâce au suivi financier détaillé, aux contrôles d'accès granulaires et à la gestion sophistiquée des permissions.
 
-## System Architecture
+## Tech Stack
+- Frontend: React.js avec composants UI personnalisés (shadcn/ui)
+- Backend: Node.js Express (ESM)
+- API Météo: Visual Crossing
+- Gestion d'état: React Query
+- Base de données: PostgreSQL avec Drizzle ORM
+- Authentification: Gestion d'accès sécurisée basée sur les rôles
+- Validation: Schémas de validation Zod
+- Styling: Tailwind CSS
+- Déploiement: Docker
+- Localisation: Support français amélioré
 
-### Frontend
-- **Framework**: React 18 with TypeScript, Vite
-- **UI Framework**: Shadcn/ui (built on Radix UI), Tailwind CSS
-- **State Management**: TanStack Query (React Query)
-- **Routing**: Wouter
-- **Forms**: React Hook Form with Zod validation
-- **UI/UX Decisions**: Clean, intuitive interface using Shadcn/ui components for consistency and accessibility. Color schemes managed via Tailwind CSS custom variables for easy theming.
+## Recent Changes
 
-### Backend
-- **Framework**: Express.js with TypeScript, Node.js (ES modules)
-- **Database ORM**: Drizzle ORM
-- **Authentication**: Dual system (local for production, Replit Auth for development)
-- **Session Management**: Express sessions with PostgreSQL storage
-- **Security**: Comprehensive middleware (rate limiting, input sanitization, security headers)
+### 2025-08-12 - Nettoyage des fichiers inutiles
+✅ **Suppression complète des fichiers inutiles** effectuée pour optimiser le projet :
+
+**Fichiers supprimés :**
+- Fichiers de sauvegarde/cassés : `*_broken.tsx`, `*_backup.tsx`, `*.backup.*`
+- Dossier `attached_assets/` complet (captures d'écran et logs de débogage)
+- Documentation de débogage : tous les fichiers `*.md` de correction temporaire
+- Scripts de débogage : `debug-*.js`, `fix-*.sql`, `apply-production-fixes.js`
+- Scripts de test temporaires : `test-*.js`, `reset-admin.js`
+- Fichiers de production/debug : `production-*.txt`, `production-*.sh`, `production-*.patch`
+- Fichiers de cookies de test : `cookies.txt`, `cookies_employee.txt`
+
+**Fichiers conservés (essentiels) :**
+- `client/` - Frontend React complet
+- `server/` - Backend Express complet
+- `shared/` - Schémas partagés
+- `migrations/` - Migrations de base de données
+- Configuration : `package.json`, `vite.config.ts`, `tailwind.config.ts`, etc.
+- Déploiement : `Dockerfile`, `docker-compose.yml`
+
+## Project Architecture
+
+### Frontend Structure
+```
+client/src/
+├── components/       # Composants UI réutilisables
+├── pages/           # Pages principales de l'application
+├── hooks/           # Hooks React personnalisés
+├── lib/             # Utilitaires et clients
+└── main.tsx         # Point d'entrée
+```
+
+### Backend Structure
+```
+server/
+├── index.ts         # Serveur principal (développement)
+├── index.production.ts  # Serveur production
+├── routes.ts        # Routes API
+├── storage.ts       # Couche d'accès aux données
+├── localAuth.ts     # Authentification locale
+└── services/        # Services métier
+```
 
 ### Database
-- **Primary Database**: PostgreSQL with Drizzle ORM (Neon serverless for development, Docker for production)
-- **Schema**: Centralized definition in `shared/schema.ts`
-- **Migrations**: Drizzle Kit
+- PostgreSQL avec Drizzle ORM
+- Migrations gérées dans `migrations/`
+- Schémas définis dans `shared/schema.ts`
 
-### Core Business Entities
-- **Management**: Orders, Deliveries, Customer Orders, Suppliers, Publicities, DLC Products (limited shelf life), Tasks.
-- **Automatic Reconciliation**: Dual-mode BL/Invoice reconciliation system with automatic validation for designated suppliers.
+## User Preferences
+- Langue préférée : Français
+- Communication : Langue simple et accessible, éviter les détails techniques
+- Nettoyage : Préfère un projet optimisé sans fichiers inutiles
 
-### Data Flow
-- **Request Flow**: Client requests via React Query, processed by Express middleware for authentication/security, then by route handlers using Drizzle ORM for database operations.
-- **Authentication Flow**: Replit Auth for dev, secure username/password for production with PostgreSQL-backed sessions and role-based authorization.
-- **Data Synchronization**: Real-time updates via React Query with optimistic updates and intelligent cache invalidation. Global store context filters data.
+## Development Guidelines
+- Utiliser `npm run dev` pour lancer l'application
+- Les migrations sont gérées avec `npm run db:push`
+- Architecture full-stack JavaScript avec focus frontend
+- Validation des données avec Zod
+- UI avec shadcn/ui + Tailwind CSS
 
-### Key Features
-- **Authentication System**: Secure dual authentication with password hashing and session management.
-- **Multi-Store Management**: Global store context, role-based access control (admin, manager, employee, directeur), and data isolation.
-- **Universal Pagination**: Reusable client-side pagination component across all main tabular data pages.
-- **Reconciliation Module**: For balancing and tracking financial discrepancies. **PRODUCTION-READY**: Rebuilt with robust UI components to eliminate React #310 errors in production.
-- **Automatic Reconciliation System**: Dual-mode BL/Invoice reconciliation with automatic validation for suppliers in automatic mode. Auto-validates deliveries when status = "delivered" AND BL number exists.
-- **Permission System**: Granular, hardcoded permissions (54 permissions across 12 categories, assigned to 4 roles) for improved performance and maintenance. **EMPLOYEE PERMISSIONS**: Employees can create customer orders and DLC products.
-- **User Management**: Comprehensive features including user deletion with ownership transfer, consistent name and email field handling, and robust password hashing. **EMPLOYEE CUSTOMER ORDERS FINAL**: Fixed critical groupId assignment bug where employees assigned to store #2 were creating customer orders for store #1. Root cause was missing userGroups in /api/user response + form defaultValues override logic. Implemented proper group prioritization in both defaultValues and removed override logic in handleSubmit.
-- **Calendar Synchronization**: Proper display of delivery dates and automatic synchronization of order statuses.
-- **Database Schema Download**: Admin-only feature to download comprehensive database structure reports.
-- **DLC Product Management**: **PRODUCTION-READY**: Corrected MemStorage implementation for proper DLC persistence in development. Cache invalidation fixed with exact:false for production compatibility. **GROUPID-FIX-FINAL**: Resolved issue where users assigned to store #2 were creating DLC products for store #1 by implementing dual-layer groupId fallback logic (frontend + backend security).
-- **Robust UI Architecture**: Critical pages rebuilt with custom Tailwind CSS components to eliminate shadcn/ui production bundling issues.
-
-## External Dependencies
-
-### Frontend Dependencies
-- **UI Components**: Radix UI
-- **Form Management**: React Hook Form, Zod
-- **Date Handling**: date-fns
-- **Query Management**: TanStack Query
-- **Barcode Generation**: JsBarcode
-
-### Backend Dependencies
-- **Database**: PostgreSQL (pg driver), Drizzle ORM
-- **Authentication**: Passport.js (local strategy), connect-pg-simple
-- **Security**: express-rate-limit, helmet equivalent
-- **Validation**: Zod
-
-### Development Dependencies
-- **Build Tools**: Vite (React plugin, TypeScript support)
-- **Code Quality**: ESLint, TypeScript compiler
-- **Development Server**: Vite dev server
-
-### Other Integrations
-- **NocoDB Integration**: Configurable for invoice verification and data synchronization.
+## Notes
+- L'application utilise un système de stockage en mémoire pour le développement
+- Support multi-tenant avec gestion des groupes et permissions
+- Interface météorologique simplifiée intégrée
+- Système d'authentification unifié pour développement et production
