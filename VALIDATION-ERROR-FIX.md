@@ -1,106 +1,61 @@
-# Fix Urgent - Erreurs de Validation Zod
+# Fix Validation Errors - Commandes Client Production
 
-## ❌ Problème Identifié
-**Erreur 500 :** ZodError lors de PUT /api/deliveries/:id
+## Problème Identifié
 
-### Erreurs Specifiques
-1. **blAmount** : Expected string, received number
-2. **validatedAt** : Expected date, received string
+**Erreurs de validation dans le formulaire de commande client :**
+1. `"Expected number, received string"` pour le champ **Fournisseur** (`supplierId`)
+2. `"Expected number, received string"` pour le champ **Acompte** (`deposit`)
 
-## 🔍 Analyse du Problème
+## Cause du Problème
 
-### Schema Drizzle (shared/schema.ts)
-```typescript
-// Dans deliveries table:
-blAmount: decimal("bl_amount", { precision: 10, scale: 2 })      // → Zod attend string
-invoiceAmount: decimal("invoice_amount", { precision: 10, scale: 2 }) // → Zod attend string
-validatedAt: timestamp("validated_at")                           // → Zod attend Date object
-```
+Le formulaire frontend envoie des valeurs string, mais le schema Zod attend des numbers :
 
-### Données Envoyées depuis Frontend
 ```javascript
-// ❌ Problématique
-{
-  blAmount: 3397.86,                    // number → should be string
-  invoiceAmount: null,                  // OK
-  validatedAt: '2025-08-12T11:42:39.679Z' // string → should be Date
-}
+// AVANT (Problématique)
+supplierId: z.number().int().positive().optional().default(1)
+deposit: z.number().optional().default(0)
+
+// APRÈS (Corrigé)
+supplierId: z.coerce.number().int().positive().optional().default(1)
+deposit: z.coerce.number().optional().default(0)
 ```
 
-## ✅ Solutions Appliquées
+## Solution Appliquée
 
-### 1. **Transformation côté Serveur** (server/routes.ts)
-```typescript
-// Avant validation Zod, transformer les types
-const transformedData = { ...req.body };
+**Fichier modifié :** `shared/schema.ts`
 
-// Convertir montants number → string
-if (transformedData.blAmount !== undefined && transformedData.blAmount !== null) {
-  transformedData.blAmount = transformedData.blAmount.toString();
-}
-if (transformedData.invoiceAmount !== undefined && transformedData.invoiceAmount !== null) {
-  transformedData.invoiceAmount = transformedData.invoiceAmount.toString();
-}
+✅ Ajouté `z.coerce.number()` pour forcer la conversion automatique string → number
+✅ Appliqué aussi pour `quantity` et `groupId` par précaution
+✅ Corrigé `customerEmail` pour accepter chaîne vide avec `.or(z.literal(""))`
 
-// Convertir validatedAt string → Date
-if (transformedData.validatedAt && typeof transformedData.validatedAt === 'string') {
-  transformedData.validatedAt = new Date(transformedData.validatedAt);
-}
+## Schema Corrigé
 
-const data = insertDeliverySchema.partial().parse(transformedData);
-```
-
-### 2. **Correction côté Frontend** (ReconciliationModal.tsx)
-```typescript
-// Avant
-validatedAt: new Date()              // ❌ Date object → string lors JSON.stringify
-
-// Après  
-validatedAt: new Date().toISOString() // ✅ string → convertie en Date côté serveur
-```
-
-### 3. **Montants toujours en string** (ReconciliationModal.tsx)
-```typescript
-// Déjà corrigé précédemment
-blAmount: formData.blAmount ? formData.blAmount.toString() : null,
-invoiceAmount: formData.invoiceAmount ? formData.invoiceAmount.toString() : null,
-```
-
-## 🧪 Test de Validation
-
-### Payload Attendu Maintenant
 ```javascript
-// ✅ Correct après transformation
-{
-  blNumber: 'LD2250800571',
-  blAmount: '3397.86',                   // string ✅
-  invoiceReference: null,
-  invoiceAmount: null,
-  reconciled: true,
-  validatedAt: new Date('2025-08-12T11:42:39.679Z') // Date object ✅
-}
+export const insertCustomerOrderFrontendSchema = z.object({
+  customerName: z.string().min(1, "Customer name is required"),
+  contactNumber: z.string().min(1, "Contact number is required"),
+  productName: z.string().min(1, "Product name is required"),
+  productDescription: z.string().optional(),
+  quantity: z.coerce.number().int().positive().default(1), // ✅ CORRIGÉ
+  groupId: z.coerce.number().int().positive(), // ✅ CORRIGÉ
+  isPickup: z.boolean().default(false),
+  notes: z.string().optional(),
+  orderTaker: z.string().optional(),
+  gencode: z.string().optional().default(""),
+  supplierId: z.coerce.number().int().positive().optional().default(1), // ✅ CORRIGÉ
+  deposit: z.coerce.number().optional().default(0), // ✅ CORRIGÉ
+  isPromotionalPrice: z.boolean().default(false),
+  customerEmail: z.string().email().optional().or(z.literal("")), // ✅ CORRIGÉ
+  productReference: z.string().optional(),
+});
 ```
 
-### Tests à Effectuer
-1. **Enregistrer données BL** : blAmount doit passer en string
-2. **Valider rapprochement** : validatedAt doit passer en Date
-3. **Enregistrer montant facture** : invoiceAmount doit passer en string
-4. **Vérifier console** : Plus d'erreurs ZodError 500
+## Test
 
-## 🔄 Flux de Données Complet
+Après cette correction, les employés devraient pouvoir créer des commandes client sans erreur de validation en production.
 
-```
-Frontend Form → JSON.stringify → HTTP Request → Server Transform → Zod Validation → Database
-     ↓              ↓                ↓               ↓               ↓             ↓
-{number}     →  "3397.86"    →    "3397.86"   →    "3397.86"   →    ✅         →  DECIMAL
-{Date}       →  "2025-..."   →    "2025-..."  →    Date(...)   →    ✅         →  TIMESTAMP
-```
+## Déploiement
 
-## 📊 Status
-
-- ✅ Transformation automatique côté serveur
-- ✅ Frontend envoie validatedAt en ISO string  
-- ✅ Montants forcés en string côté client
-- 🔄 **À tester en production**
-
-**L'erreur 500 ZodError devrait être résolue !**
+1. ✅ Schema corrigé dans `shared/schema.ts`
+2. 🔄 **Redémarrer le serveur production**
+3. 🧪 **Tester création commande client avec employé**

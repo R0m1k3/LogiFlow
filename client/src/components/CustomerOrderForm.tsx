@@ -26,8 +26,7 @@ import { insertCustomerOrderFrontendSchema, type CustomerOrderWithRelations, typ
 import { useStore } from "@/components/Layout";
 
 const customerOrderFormSchema = insertCustomerOrderFrontendSchema.extend({
-  deposit: z.number().optional().default(0),
-  groupId: z.number().int().positive().optional(),
+  groupId: z.coerce.number().int().positive().optional(),
   createdBy: z.string().optional(),
 });
 
@@ -72,14 +71,14 @@ export function CustomerOrderForm({
     defaultValues: {
       orderTaker: order?.orderTaker || user?.name || "",
       customerName: order?.customerName || "",
-      customerPhone: order?.customerPhone || "",
-      productDesignation: order?.productDesignation || "",
+      contactNumber: order?.customerPhone || "",
+      productName: order?.productDesignation || "",
       productReference: order?.productReference || "",
       gencode: order?.gencode || "",
       quantity: order?.quantity || 1,
       supplierId: order?.supplierId || undefined,
       status: "En attente de Commande", // Statut fixe
-      deposit: order?.deposit ? order.deposit.toString() : "0",
+      deposit: order?.deposit || 0,
       isPromotionalPrice: order?.isPromotionalPrice || false,
       customerNotified: order?.customerNotified || false,
       groupId: order?.groupId || (user?.role === 'admin' && selectedStoreId ? selectedStoreId : user?.userGroups?.[0]?.groupId) || undefined, // Respect admin store selection
@@ -119,17 +118,17 @@ export function CustomerOrderForm({
     // Prepare data with proper types for frontend schema
     const submitData = {
       customerName: data.customerName.trim(),
-      contactNumber: (data as any).customerPhone || (data as any).contactNumber || '', 
-      productName: (data as any).productDesignation || (data as any).productName || '',
+      contactNumber: data.contactNumber || '', 
+      productName: data.productName || '',
       quantity: data.quantity,
       groupId: typeof groupId === 'number' ? groupId : parseInt(groupId.toString()),
       isPickup: false,
-      notes: (data as any).notes,
+      notes: data.notes,
       deposit: data.deposit || 0,
-      isPromotionalPrice: (data as any).isPromotionalPrice || false,
-      customerEmail: (data as any).customerEmail,
-      gencode: (data as any).gencode || '',
-      supplierId: (data as any).supplierId || 1,
+      isPromotionalPrice: data.isPromotionalPrice || false,
+      customerEmail: data.customerEmail,
+      gencode: data.gencode || '',
+      supplierId: data.supplierId || 1,
     };
     console.log("🔍 Frontend submit data:", submitData);
     onSubmit(submitData);
@@ -193,7 +192,7 @@ export function CustomerOrderForm({
 
             <FormField
               control={form.control}
-              name="customerPhone"
+              name="contactNumber"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>N° de téléphone</FormLabel>
@@ -236,7 +235,7 @@ export function CustomerOrderForm({
             
             <FormField
               control={form.control}
-              name="productDesignation"
+              name="productName"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Désignation du produit</FormLabel>
