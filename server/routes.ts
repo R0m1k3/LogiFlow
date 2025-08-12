@@ -1950,9 +1950,37 @@ RÉSUMÉ DU SCAN
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Fix groupId BEFORE validation - use user's assigned group or fallback
+      let finalGroupId = req.body.groupId;
+      if (!finalGroupId || finalGroupId === undefined || finalGroupId === null || finalGroupId === '') {
+        if (user.userGroups?.[0]?.groupId) {
+          finalGroupId = user.userGroups[0].groupId;
+          console.log("🔧 Customer Order Backend Fix: Using user's assigned group:", finalGroupId);
+        } else {
+          finalGroupId = 1; // Emergency fallback
+          console.log("🚨 Customer Order Backend Fix: Using emergency fallback groupId:", finalGroupId);
+        }
+      }
+
+      console.log("🔍 GroupId resolution debug:", {
+        originalGroupId: req.body.groupId,
+        finalGroupId,
+        typeOfFinal: typeof finalGroupId,
+        userGroups: user.userGroups?.map(ug => ({groupId: ug.groupId, groupName: ug.group?.name}))
+      });
+
+      // Prepare body with valid groupId for validation
+      const bodyWithGroupId = {
+        ...req.body,
+        groupId: finalGroupId
+      };
+
       // Use frontend schema and map to backend fields
-      const frontendData = insertCustomerOrderFrontendSchema.parse(req.body);
-      console.log("Frontend data parsed:", frontendData);
+      console.log("🔍 Pre-parse bodyWithGroupId:", bodyWithGroupId);
+      console.log("🔍 GroupId value and type:", { groupId: bodyWithGroupId.groupId, type: typeof bodyWithGroupId.groupId });
+      
+      const frontendData = insertCustomerOrderFrontendSchema.parse(bodyWithGroupId);
+      console.log("Frontend data parsed with fixed groupId:", frontendData);
       
       // Map frontend fields to backend schema
       const backendData = {
@@ -1965,7 +1993,7 @@ RÉSUMÉ DU SCAN
         gencode: frontendData.gencode || "",
         quantity: frontendData.quantity,
         supplierId: frontendData.supplierId || 1, // Default supplier
-        groupId: frontendData.groupId,
+        groupId: finalGroupId, // Use fixed groupId
         deposit: frontendData.deposit,
         isPromotionalPrice: frontendData.isPromotionalPrice,
         notes: frontendData.notes,
@@ -1975,7 +2003,13 @@ RÉSUMÉ DU SCAN
       console.log("Backend data mapped:", backendData);
       
       // REMOVED: All role restrictions - tous les rôles peuvent créer des commandes client
-      console.log("Creating customer order - no role restrictions:", { userId, userRole: user.role, groupId: backendData.groupId });
+      console.log("Creating customer order - no role restrictions:", { 
+        userId, 
+        userRole: user.role, 
+        userGroups: user.userGroups?.map(ug => ({groupId: ug.groupId, groupName: ug.group?.name})),
+        originalGroupId: req.body.groupId,
+        finalGroupId: backendData.groupId 
+      });
 
       const customerOrder = await storage.createCustomerOrder(backendData);
       res.status(201).json(customerOrder);
