@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { safeFormat } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
@@ -238,8 +238,8 @@ export default function BLReconciliation() {
     return delivery.reconciled === false && delivery.validatedAt === null;
   };
 
-  // Composant de pagination simplifiée
-  const SimplePagination = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }: {
+  // Composant de pagination
+  const PaginationControls = ({ currentPage, totalPages, onPageChange, totalItems, itemsPerPage }: {
     currentPage: number;
     totalPages: number;
     onPageChange: (page: number) => void;
@@ -270,9 +270,36 @@ export default function BLReconciliation() {
             <span>Précédent</span>
           </Button>
           
-          <span className="px-3 py-1 text-sm bg-gray-100 rounded">
-            Page {currentPage} sur {totalPages}
-          </span>
+          <div className="flex items-center space-x-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(page => {
+                // Afficher la première page, la dernière page, et les pages autour de la page actuelle
+                return page === 1 || 
+                       page === totalPages || 
+                       (page >= currentPage - 2 && page <= currentPage + 2);
+              })
+              .map((page, index, array) => {
+                // Ajouter des points de suspension si nécessaire
+                const prevPage = array[index - 1];
+                const showEllipsis = prevPage && page > prevPage + 1;
+                
+                return (
+                  <React.Fragment key={page}>
+                    {showEllipsis && (
+                      <span className="px-2 text-gray-500">...</span>
+                    )}
+                    <Button
+                      variant={page === currentPage ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => onPageChange(page)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {page}
+                    </Button>
+                  </React.Fragment>
+                );
+              })}
+          </div>
           
           <Button
             variant="outline"
@@ -374,7 +401,7 @@ export default function BLReconciliation() {
           ) : (
             <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-lg">
               {/* Pagination du haut */}
-              <SimplePagination
+              <PaginationControls
                 currentPage={currentPage}
                 totalPages={totalManualPages}
                 onPageChange={setCurrentPage}
@@ -536,7 +563,7 @@ export default function BLReconciliation() {
               </div>
               
               {/* Pagination du bas */}
-              <SimplePagination
+              <PaginationControls
                 currentPage={currentPage}
                 totalPages={totalManualPages}
                 onPageChange={setCurrentPage}
@@ -579,7 +606,7 @@ export default function BLReconciliation() {
           ) : (
             <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-lg">
               {/* Pagination du haut */}
-              <SimplePagination
+              <PaginationControls
                 currentPage={currentPage}
                 totalPages={totalAutomaticPages}
                 onPageChange={setCurrentPage}
@@ -735,7 +762,7 @@ export default function BLReconciliation() {
               </div>
               
               {/* Pagination du bas */}
-              <SimplePagination
+              <PaginationControls
                 currentPage={currentPage}
                 totalPages={totalAutomaticPages}
                 onPageChange={setCurrentPage}
