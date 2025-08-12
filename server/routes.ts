@@ -474,9 +474,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
 
-      // Check permissions
+      // Check edit permissions using the shared permission system
+      if (!hasPermission(user.role, 'orders', 'edit')) {
+        return res.status(403).json({ message: "Insufficient permissions to edit orders" });
+      }
+
       if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(order.groupId)) {
           return res.status(403).json({ message: "Access denied" });
         }
@@ -505,9 +509,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
 
-      // Check permissions
-      if (user.role !== 'admin' && user.role !== 'manager') {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      // Check delete permissions using the shared permission system
+      if (!hasPermission(user.role, 'orders', 'delete')) {
+        return res.status(403).json({ message: "Insufficient permissions to delete orders" });
       }
 
       if (user.role === 'manager') {
@@ -684,7 +688,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Delivery not found" });
       }
 
-      // Check permissions
+      // Check edit permissions using the shared permission system
+      if (!hasPermission(user.role, 'deliveries', 'edit')) {
+        return res.status(403).json({ message: "Insufficient permissions to edit deliveries" });
+      }
+
       if (user.role !== 'admin') {
         const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(delivery.groupId)) {
@@ -802,9 +810,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Delivery not found" });
       }
 
-      // Check permissions
-      if (user.role !== 'admin' && user.role !== 'manager') {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      // Check permissions using the shared permission system
+      if (!hasPermission(user.role, 'deliveries', 'delete')) {
+        return res.status(403).json({ message: "Insufficient permissions to delete deliveries" });
       }
 
       if (user.role === 'manager') {
@@ -829,8 +837,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      if (user.role !== 'admin' && user.role !== 'manager') {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      // Check validate permissions using the shared permission system
+      if (!hasPermission(user.role, 'deliveries', 'validate')) {
+        return res.status(403).json({ message: "Insufficient permissions to validate deliveries" });
       }
 
       const id = parseInt(req.params.id);
