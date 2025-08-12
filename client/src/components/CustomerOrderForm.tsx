@@ -135,8 +135,18 @@ export function CustomerOrderForm({
       fullUserObject: user
     });
     
-    // GroupId should already be correct from defaultValues - no override needed
-    console.log("✅ Customer Order: Using groupId from form (defaultValues already correct):", groupId);
+    // Override groupId if needed (defaultValues might be calculated before userGroups is loaded)
+    if (!groupId || groupId === 1) {
+      if (user?.userGroups?.[0]?.groupId) {
+        groupId = user.userGroups[0].groupId;
+        console.log("🔧 Customer Order Override: Using user's assigned group:", groupId);
+      } else if (user?.role === 'admin' && selectedStoreId) {
+        groupId = selectedStoreId;
+        console.log("🔧 Customer Order Override: Using admin selected store:", groupId);
+      }
+    }
+    
+    console.log("✅ Customer Order: Final groupId after override check:", groupId);
     
     console.log("✅ CUSTOMER ORDER - Final groupId selected:", groupId, typeof groupId);
     
