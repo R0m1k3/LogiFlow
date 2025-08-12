@@ -394,7 +394,7 @@ export default function OrderDetailModal({
                 disabled={validateOrderMutation.isPending}
                 className="bg-green-600 hover:bg-green-700"
               >
-                <CheckCircle className="w-4 h-4 mr-2" />
+                <CheckCircle className="w-4 h-4 mr-2 border border-gray-300 rounded p-0.5" />
                 {validateOrderMutation.isPending ? 'Validation...' : 'Valider Commande'}
               </Button>
             )}
@@ -404,7 +404,7 @@ export default function OrderDetailModal({
                 onClick={handleValidateDelivery}
                 className="bg-secondary hover:bg-green-700"
               >
-                <Check className="w-4 h-4 mr-2" />
+                <Check className="w-4 h-4 mr-2 border border-gray-300 rounded p-0.5" />
                 Valider livraison
               </Button>
             )}

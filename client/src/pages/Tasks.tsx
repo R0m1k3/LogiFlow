@@ -445,7 +445,7 @@ export default function Tasks() {
                                         {task.title}
                                       </h5>
                                       <Badge variant="secondary" className="flex items-center gap-1">
-                                        <CheckCircle className="w-3 h-3" />
+                                        <CheckCircle className="w-3 h-3 border border-gray-300 rounded p-0.5" />
                                         Terminée
                                       </Badge>
                                     </div>

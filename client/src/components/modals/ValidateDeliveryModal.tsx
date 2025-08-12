@@ -108,7 +108,7 @@ export default function ValidateDeliveryModal({
       <DialogContent className="sm:max-w-md" aria-describedby="validate-delivery-modal-description">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <Check className="w-5 h-5 text-green-600" />
+            <Check className="w-5 h-5 text-green-600 border border-gray-300 rounded p-0.5" />
             <span>Valider la livraison</span>
           </DialogTitle>
           <p id="validate-delivery-modal-description" className="text-sm text-gray-600 mt-1">
@@ -182,7 +182,7 @@ export default function ValidateDeliveryModal({
                 disabled={validateDeliveryMutation.isPending}
                 className="bg-green-600 hover:bg-green-700"
               >
-                <Check className="w-4 h-4 mr-2" />
+                <Check className="w-4 h-4 mr-2 border border-gray-300 rounded p-0.5" />
                 {validateDeliveryMutation.isPending ? "Validation..." : "Valider livraison"}
               </Button>
             </div>

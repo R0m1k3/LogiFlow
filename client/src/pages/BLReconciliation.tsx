@@ -465,7 +465,7 @@ export default function BLReconciliation() {
                                         className="text-gray-600 hover:text-green-600 transition-colors duration-200 p-1 hover:bg-green-50 rounded"
                                         title="Valider le rapprochement"
                                       >
-                                        <Check className="w-4 h-4" />
+                                        <Check className="w-4 h-4 border border-gray-300 rounded p-0.5" />
                                       </button>
                                     )}
                                     {permissions.canDelete('reconciliation') && (

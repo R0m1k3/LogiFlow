@@ -105,7 +105,7 @@ const DropdownMenuCheckboxItem = forwardRef<
   >
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
+        <Check className="h-4 w-4 border border-gray-300 rounded p-0.5" />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
     {children}
