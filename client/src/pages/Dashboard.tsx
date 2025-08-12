@@ -137,6 +137,7 @@ export default function Dashboard() {
   const averageDeliveryTime = Math.round(stats?.averageDeliveryTime || 0);
   const deliveredThisMonth = Array.isArray(allDeliveries) ? allDeliveries.filter((delivery: any) => {
     const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
+    if (!deliveryDate) return false;
     const now = new Date();
     return deliveryDate.getMonth() === now.getMonth() && 
            deliveryDate.getFullYear() === now.getFullYear() && 
@@ -147,6 +148,7 @@ export default function Dashboard() {
   const totalPalettes = Array.isArray(allDeliveries) ? allDeliveries.reduce((total: number, delivery: any) => {
     if (delivery.status === 'delivered' && delivery.unit === 'palettes') {
       const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
+      if (!deliveryDate) return total;
       const now = new Date();
       if (deliveryDate.getMonth() === now.getMonth() && deliveryDate.getFullYear() === now.getFullYear()) {
         return total + (delivery.quantity || 0);
@@ -192,10 +194,10 @@ export default function Dashboard() {
     upcomingPublicities: Array.isArray(upcomingPublicities) ? upcomingPublicities.length : 'NOT_ARRAY',
     stats: stats,
     samples: {
-      order: allOrders[0],
-      delivery: allDeliveries[0],
-      customerOrder: customerOrders[0],
-      publicity: upcomingPublicities[0]
+      order: Array.isArray(allOrders) && allOrders.length > 0 ? allOrders[0] : null,
+      delivery: Array.isArray(allDeliveries) && allDeliveries.length > 0 ? allDeliveries[0] : null,
+      customerOrder: Array.isArray(customerOrders) && customerOrders.length > 0 ? customerOrders[0] : null,
+      publicity: Array.isArray(upcomingPublicities) && upcomingPublicities.length > 0 ? upcomingPublicities[0] : null
     }
   });
 
@@ -218,13 +220,18 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="flex-1 space-y-4 sm:space-y-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">Tableau de Bord</h2>
-          <p className="text-gray-600 mt-1">Vue d'ensemble des performances et statistiques</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Tableau de Bord</h2>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Vue d'ensemble des performances et statistiques</p>
         </div>
+        {selectedStoreId && user?.role === 'admin' && (
+          <Badge variant="outline" className="text-blue-700 border-blue-300 w-fit">
+            Magasin sélectionné
+          </Badge>
+        )}
       </div>
 
       {/* Alerts */}
@@ -258,58 +265,58 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Livraisons ce mois</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{deliveredThisMonth}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Livraisons ce mois</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{deliveredThisMonth}</p>
               </div>
-              <div className="h-12 w-12 bg-green-100 flex items-center justify-center">
-                <Truck className="h-6 w-6 text-green-600" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 bg-green-100 flex items-center justify-center rounded-lg">
+                <Truck className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Commandes en attente</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{pendingOrdersCount}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Commandes en attente</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{pendingOrdersCount}</p>
               </div>
-              <div className="h-12 w-12 bg-orange-100 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-orange-600" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 bg-orange-100 flex items-center justify-center rounded-lg">
+                <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Délai moyen (jours)</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{averageDeliveryTime}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Délai moyen (jours)</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{averageDeliveryTime}</p>
               </div>
-              <div className="h-12 w-12 bg-blue-100 flex items-center justify-center">
-                <BarChart3 className="h-6 w-6 text-blue-600" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 bg-blue-100 flex items-center justify-center rounded-lg">
+                <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total palettes</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{totalPalettes}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total palettes</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{totalPalettes}</p>
               </div>
-              <div className="h-12 w-12 bg-purple-100 flex items-center justify-center">
-                <Package className="h-6 w-6 text-purple-600" />
+              <div className="h-10 w-10 sm:h-12 sm:w-12 bg-purple-100 flex items-center justify-center rounded-lg">
+                <Package className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
               </div>
             </div>
           </CardContent>
@@ -317,7 +324,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Dernières Commandes */}
         <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="pb-4 border-b border-gray-100">
@@ -403,7 +410,7 @@ export default function Dashboard() {
               .slice(0, 3)
               .map((publicity: any) => {
                 const participatingStores = publicity.participations || [];
-                const isCurrentStoreParticipating = selectedStoreId && participatingStores.some((p: any) => p.groupId === parseInt(selectedStoreId));
+                const isCurrentStoreParticipating = selectedStoreId && participatingStores.some((p: any) => p.groupId === parseInt(selectedStoreId.toString()));
                 
                 return (
                   <div key={publicity.id} className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-purple-500 space-y-2">
@@ -436,7 +443,7 @@ export default function Dashboard() {
                             <Badge 
                               key={participation.groupId} 
                               className={`text-xs ${
-                                selectedStoreId && participation.groupId === parseInt(selectedStoreId)
+                                selectedStoreId && participation.groupId === parseInt(selectedStoreId.toString())
                                   ? 'bg-green-100 text-green-800 border border-green-300'
                                   : 'bg-gray-100 text-gray-700'
                               }`}
@@ -461,7 +468,7 @@ export default function Dashboard() {
       </div>
 
       {/* Section Rapprochement BL */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Statistiques des commandes clients */}
         <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="pb-4 border-b border-gray-100">
