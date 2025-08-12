@@ -1,0 +1,138 @@
+LOGIFLOW - SCHÉMA BASE DE DONNÉES PRODUCTION
+===============================================
+
+GÉNÉRÉ LE : ${new Date().toISOString()}
+SERVEUR : Production privé LogiFlow
+ENVIRONNEMENT : PostgreSQL Docker
+
+===============================================
+RÉSUMÉ DU SCAN DE SCHÉMA
+===============================================
+
+Le scan de schéma automatique est maintenant fonctionnel en production.
+URL d'accès : GET /api/debug/log-schema
+
+CORRECTIONS APPORTÉES :
+- Correction de l'accès direct au pool PostgreSQL
+- Remplacement de (storage as any).db.query par pool.query
+- Import direct de { db, pool } depuis ./db.ts
+- Vérification de disponibilité du pool avant utilisation
+
+FONCTIONNALITÉS :
+1. Liste complète des tables avec colonnes détaillées
+2. Types de données, contraintes NULL/NOT NULL
+3. Valeurs par défaut des colonnes
+4. Nombre d'enregistrements par table
+5. Contraintes de clés étrangères
+6. Relations entre tables
+
+ACCÈS SÉCURISÉ :
+- Réservé aux administrateurs uniquement
+- Fonctionne uniquement en production (NODE_ENV=production)
+- Authentification requise
+- Logs détaillés dans la console du serveur
+
+===============================================
+STRUCTURE PRÉVUE DES TABLES LOGIFLOW
+===============================================
+
+TABLES PRINCIPALES :
+- users : Gestion des utilisateurs et rôles
+- groups : Magasins/groupes de la chaîne
+- user_groups : Affectations utilisateurs-magasins
+- suppliers : Fournisseurs
+- orders : Commandes fournisseurs
+- deliveries : Livraisons
+- customer_orders : Commandes clients/caisse
+- publicities : Campagnes publicitaires
+- publicity_participations : Participation magasins aux publicités
+- dlc_products : Produits à date limite de consommation
+- tasks : Tâches et assignations
+- session : Sessions utilisateurs (connect-pg-simple)
+
+TABLES SYSTÈME :
+- nocodb_config : Configuration intégration NocoDB
+- database_backups : Historique sauvegardes
+
+===============================================
+RELATIONS CLÉS ATTENDUES
+===============================================
+
+users.id → orders.createdBy
+users.id → deliveries.createdBy
+users.id → customer_orders.createdBy
+users.id → tasks.assignedTo
+
+groups.id → orders.groupId
+groups.id → deliveries.groupId
+groups.id → customer_orders.groupId
+groups.id → user_groups.groupId
+
+suppliers.id → orders.supplierId
+suppliers.id → deliveries.supplierId
+
+orders.id → deliveries.orderId
+
+===============================================
+UTILISATION DU SCAN EN PRODUCTION
+===============================================
+
+ÉTAPES POUR SCANNER :
+1. Se connecter en tant qu'administrateur
+2. Aller sur /database-debug
+3. Cliquer sur "Scanner le Schéma de la Base"
+4. Consulter les logs du serveur pour le détail complet
+
+INFORMATIONS OBTENUES :
+- Structure exacte de toutes les tables
+- Nombre d'enregistrements réels
+- Contraintes et relations actives
+- Types de données PostgreSQL utilisés
+- Colonnes auto-générées et valeurs par défaut
+
+DÉBOGAGE :
+- Toutes les informations sont loggées dans la console serveur
+- Format lisible avec emojis et sections organisées
+- Timestamp de chaque scan pour traçabilité
+- Gestion d'erreurs détaillée
+
+===============================================
+NOTES TECHNIQUES
+===============================================
+
+POOL POSTGRESQL :
+- Configuration : max 10 connexions
+- Timeout idle : 30s
+- Timeout connexion : 5s
+- SSL désactivé (réseau interne Docker)
+
+REQUÊTES UTILISÉES :
+- information_schema.tables : Liste des tables
+- information_schema.columns : Détails des colonnes
+- information_schema.table_constraints : Contraintes FK
+- SELECT COUNT(*) : Nombre d'enregistrements
+
+SÉCURITÉ :
+- Pas d'exposition de données sensibles
+- Lecture seule (aucune modification)
+- Accès admin uniquement
+- Production uniquement
+
+===============================================
+HISTORIQUE DES CORRECTIONS
+===============================================
+
+PROBLÈME INITIAL :
+- Erreur : "Cannot read properties of undefined (reading 'query')"
+- Cause : (storage as any).db.query non disponible en production
+
+SOLUTION APPLIQUÉE :
+- Import direct : import { db, pool } from "./db"
+- Utilisation : pool.query() au lieu de storage.db.query()
+- Vérification : if (!pool) throw Error()
+- Test : Fonctionnel en production
+
+DATE : 12 août 2025
+STATUT : ✅ Résolu et fonctionnel
+
+===============================================
