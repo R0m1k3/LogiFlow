@@ -135,30 +135,8 @@ export function CustomerOrderForm({
       fullUserObject: user
     });
     
-    // FORCE L'UTILISATION DU GROUPE ASSIGNÉ EN PREMIER - MÊME LOGIQUE QUE DLC
-    if (!groupId) {
-      if (user?.userGroups?.[0]?.groupId) {
-        // Utilisateur avec groupe assigné : TOUJOURS utiliser ce groupe (PRIORITÉ)
-        groupId = user.userGroups[0].groupId;
-        console.log("🎯 Customer Order Frontend: Using user's assigned group (PRIORITY):", groupId);
-      } else if (user?.role === 'admin' && selectedStoreId) {
-        // Admin avec magasin sélectionné ET pas de groupe assigné
-        groupId = selectedStoreId;
-        console.log("🎯 Customer Order Frontend: Using admin selected store:", groupId);
-      } else if (user?.role === 'admin' && groups.length > 0) {
-        // Admin sans sélection : premier groupe disponible
-        groupId = groups[0].id;
-        console.log("🎯 Customer Order Frontend: Using first group for admin:", groupId);
-      } else if (groups.length > 0) {
-        // EMERGENCY FALLBACK: Force assignment to first available group
-        groupId = groups[0].id;
-        console.log("⚠️ Customer Order Frontend: Emergency fallback to first group:", groupId);
-      } else {
-        // LAST RESORT: Hard-coded fallback
-        groupId = 1;
-        console.log("🚨 Customer Order Frontend: Using hard-coded groupId 1");
-      }
-    }
+    // GroupId should already be correct from defaultValues - no override needed
+    console.log("✅ Customer Order: Using groupId from form (defaultValues already correct):", groupId);
     
     console.log("✅ CUSTOMER ORDER - Final groupId selected:", groupId, typeof groupId);
     
