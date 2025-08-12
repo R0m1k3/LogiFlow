@@ -500,9 +500,6 @@ export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 
 // Complex types with relations
-export type UserWithGroups = User & {
-  groups: Group[];
-};
 
 export type OrderWithRelations = Order & {
   supplier: Supplier;
