@@ -543,7 +543,7 @@ export default function BLReconciliation() {
     totalPages,
     paginatedData: paginatedDeliveries,
     totalItems
-  } = usePagination(filteredDeliveries, 10);
+  } = usePagination(filteredDeliveries, 20);
 
   if (isLoading) {
     return (
@@ -657,6 +657,18 @@ export default function BLReconciliation() {
           </div>
         ) : (
           <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
+            {/* Pagination en haut */}
+            {totalItems > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                className="px-4 py-3 border-b border-gray-200"
+              />
+            )}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -868,7 +880,7 @@ export default function BLReconciliation() {
             </table>
           </div>
           
-          {/* Pagination */}
+          {/* Pagination en bas */}
           {totalItems > 0 && (
             <Pagination
               currentPage={currentPage}
@@ -877,7 +889,7 @@ export default function BLReconciliation() {
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
               onItemsPerPageChange={setItemsPerPage}
-              className="mt-4 border-t border-gray-200 pt-4"
+              className="px-4 py-3 border-t border-gray-200 bg-gray-50"
             />
           )}
         </div>
