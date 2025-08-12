@@ -9,16 +9,19 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useStore } from "@/components/Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X } from "lucide-react";
+import { usePermissions } from "@shared/permissions";
+import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban } from "lucide-react";
+import type { Supplier } from "@shared/schema";
 
 export default function BLReconciliation() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const permissions = usePermissions(user?.role);
   
-  // Redirection pour les employés
-  if (user?.role === 'employee') {
+  // Vérification des permissions d'accès au module
+  if (!permissions.canView('reconciliation')) {
     return (
       <div className="p-6">
         <div className="bg-orange-50 border-l-4 border-orange-400 p-4">
@@ -29,7 +32,7 @@ export default function BLReconciliation() {
             <div className="ml-3">
               <p className="text-sm text-orange-700">
                 <strong>Accès restreint</strong><br />
-                Seuls les managers et administrateurs peuvent accéder au module de rapprochement BL/Factures.
+                Seuls les directeurs et administrateurs peuvent accéder au module de rapprochement BL/Factures.
               </p>
             </div>
           </div>
@@ -42,7 +45,7 @@ export default function BLReconciliation() {
   const [searchTerm, setSearchTerm] = useState("");
 
   // Récupérer les fournisseurs pour la logique automatique
-  const { data: suppliers = [] } = useQuery({
+  const { data: suppliers = [], isLoading: suppliersLoading } = useQuery<Supplier[]>({
     queryKey: ['/api/suppliers'],
   });
 
@@ -81,35 +84,113 @@ export default function BLReconciliation() {
     return supplier?.automaticReconciliation;
   });
 
-  // Fonction pour dévalider un rapprochement automatique (directeurs et admins uniquement)
-  const handleDevalidateAutoReconciliation = async (deliveryId: number) => {
-    if (user?.role !== 'directeur' && user?.role !== 'admin') {
+  // Mutation pour valider un rapprochement manuel
+  const validateManualMutation = useMutation({
+    mutationFn: async (deliveryId: number) => {
+      return await apiRequest(`/api/deliveries/${deliveryId}`, "PUT", {
+        reconciled: true,
+        validatedAt: new Date().toISOString()
+      });
+    },
+    onSuccess: () => {
       toast({
-        title: "Accès refusé",
-        description: "Seuls les directeurs et administrateurs peuvent dévalider les rapprochements automatiques",
+        title: "Succès",
+        description: "Rapprochement validé avec succès",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de valider le rapprochement",
         variant: "destructive",
       });
-      return;
     }
+  });
 
-    try {
-      await apiRequest(`/api/deliveries/${deliveryId}`, "PUT", {
+  // Mutation pour dévalider un rapprochement (admins uniquement)
+  const devalidateMutation = useMutation({
+    mutationFn: async (deliveryId: number) => {
+      return await apiRequest(`/api/deliveries/${deliveryId}`, "PUT", {
         reconciled: false,
         validatedAt: null
       });
-      
+    },
+    onSuccess: () => {
       toast({
         title: "Succès",
-        description: "Rapprochement automatique dévalidé avec succès",
+        description: "Rapprochement dévalidé avec succès",
       });
-      
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-    } catch (error) {
+    },
+    onError: () => {
       toast({
         title: "Erreur",
         description: "Impossible de dévalider le rapprochement",
         variant: "destructive",
       });
+    }
+  });
+
+  // Mutation pour supprimer une ligne (admins uniquement)
+  const deleteMutation = useMutation({
+    mutationFn: async (deliveryId: number) => {
+      return await apiRequest(`/api/deliveries/${deliveryId}`, "DELETE");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Succès",
+        description: "Ligne supprimée avec succès",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+    },
+    onError: () => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la ligne",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Fonctions de gestion des actions
+  const handleValidateManual = (deliveryId: number) => {
+    if (!permissions.canValidate('reconciliation')) {
+      toast({
+        title: "Accès refusé",
+        description: "Vous n'avez pas les permissions pour valider les rapprochements",
+        variant: "destructive",
+      });
+      return;
+    }
+    validateManualMutation.mutate(deliveryId);
+  };
+
+  const handleDevalidate = (deliveryId: number) => {
+    if (!permissions.canEdit('reconciliation')) {
+      toast({
+        title: "Accès refusé",
+        description: "Seuls les administrateurs peuvent dévalider les rapprochements",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (confirm("Êtes-vous sûr de vouloir dévalider ce rapprochement ?")) {
+      devalidateMutation.mutate(deliveryId);
+    }
+  };
+
+  const handleDelete = (deliveryId: number) => {
+    if (!permissions.canDelete('reconciliation')) {
+      toast({
+        title: "Accès refusé",
+        description: "Seuls les administrateurs peuvent supprimer les lignes",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (confirm("Êtes-vous sûr de vouloir supprimer cette ligne ? Cette action est irréversible.")) {
+      deleteMutation.mutate(deliveryId);
     }
   };
 
@@ -128,7 +209,21 @@ export default function BLReconciliation() {
   const filteredManualDeliveries = filterDeliveries(manualReconciliationDeliveries);
   const filteredAutomaticDeliveries = filterDeliveries(automaticReconciliationDeliveries);
 
-  const canModify = user?.role === 'directeur' || user?.role === 'admin';
+  // Vérifier si une ligne est dévalidée (pour la coloration)
+  const isDevalidated = (delivery: any) => {
+    return delivery.reconciled === false && delivery.validatedAt === null;
+  };
+
+  if (isLoading || suppliersLoading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -226,7 +321,7 @@ export default function BLReconciliation() {
                         Montant Fact.
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Magasin
+                        Statut
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -235,7 +330,13 @@ export default function BLReconciliation() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredManualDeliveries.map((delivery: any) => (
-                      <tr key={delivery.id} className="hover:bg-gray-50">
+                      <tr 
+                        key={delivery.id} 
+                        className={`hover:bg-gray-50 ${
+                          delivery.reconciled ? 'bg-green-50' : 
+                          isDevalidated(delivery) ? 'bg-red-50' : ''
+                        }`}
+                      >
                         <td className="px-3 py-2 text-sm">
                           <div className="font-medium text-gray-900 truncate max-w-32">
                             {delivery.supplier?.name}
@@ -277,18 +378,71 @@ export default function BLReconciliation() {
                           </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.group?.name}
-                          </div>
+                          {delivery.reconciled ? (
+                            <Badge variant="default" className="bg-green-600 text-white">
+                              Validé
+                            </Badge>
+                          ) : isDevalidated(delivery) ? (
+                            <Badge variant="destructive">
+                              Dévalidé
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">
+                              En attente
+                            </Badge>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
-                            <button
-                              className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50"
-                              title="Modifier"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
+                            {permissions.canEdit('reconciliation') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-600 hover:text-blue-600 p-1"
+                                title="Modifier"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            )}
+                            
+                            {!delivery.reconciled && permissions.canValidate('reconciliation') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleValidateManual(delivery.id)}
+                                disabled={validateManualMutation.isPending}
+                                className="text-green-600 hover:text-green-700 p-1"
+                                title="Valider"
+                              >
+                                <Check className="w-4 h-4" />
+                              </Button>
+                            )}
+                            
+                            {delivery.reconciled && permissions.canEdit('reconciliation') && user?.role === 'admin' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDevalidate(delivery.id)}
+                                disabled={devalidateMutation.isPending}
+                                className="text-orange-600 hover:text-orange-700 p-1"
+                                title="Dévalider"
+                              >
+                                <Ban className="w-4 h-4" />
+                              </Button>
+                            )}
+                            
+                            {permissions.canDelete('reconciliation') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(delivery.id)}
+                                disabled={deleteMutation.isPending}
+                                className="text-red-600 hover:text-red-700 p-1"
+                                title="Supprimer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -309,7 +463,7 @@ export default function BLReconciliation() {
                 <h4 className="text-sm font-medium text-blue-900">Mode rapprochement automatique</h4>
                 <p className="text-sm text-blue-700 mt-1">
                   Les livraisons de fournisseurs en mode automatique sont validées automatiquement lorsqu'elles ont le statut "delivered" et un numéro de BL.
-                  {canModify ? (
+                  {permissions.canEdit('reconciliation') ? (
                     " Vous pouvez dévalider ces rapprochements si nécessaire."
                   ) : (
                     " Seuls les directeurs et administrateurs peuvent modifier ces rapprochements."
@@ -355,10 +509,7 @@ export default function BLReconciliation() {
                         Ref. Facture
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Montant Fact.
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Magasin
+                        Statut
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -367,13 +518,18 @@ export default function BLReconciliation() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredAutomaticDeliveries.map((delivery: any) => (
-                      <tr key={delivery.id} className="hover:bg-gray-50 bg-green-50">
+                      <tr 
+                        key={delivery.id} 
+                        className={`hover:bg-gray-50 ${
+                          isDevalidated(delivery) ? 'bg-red-50' : 'bg-green-50'
+                        }`}
+                      >
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
                             <div className="font-medium text-gray-900 truncate max-w-32">
                               {delivery.supplier?.name}
                             </div>
-                            <Settings className="w-3 h-3 text-blue-500" title="Mode automatique" />
+                            <div className="w-3 h-3 bg-blue-500 rounded-full" title="Mode automatique" />
                           </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
@@ -388,8 +544,8 @@ export default function BLReconciliation() {
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div className="text-gray-900">
-                            {delivery.reconciled && delivery.updatedAt ? 
-                              safeFormat(delivery.updatedAt, 'dd/MM/yy') : 
+                            {delivery.reconciled && delivery.validatedAt ? 
+                              safeFormat(delivery.validatedAt, 'dd/MM/yy') : 
                               '-'
                             }
                           </div>
@@ -408,43 +564,65 @@ export default function BLReconciliation() {
                           </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.invoiceAmount ? 
-                              `${parseFloat(delivery.invoiceAmount).toFixed(2)}€` : 
-                              '-'
-                            }
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <div className="text-gray-900">
-                            {delivery.group?.name}
-                          </div>
+                          {isDevalidated(delivery) ? (
+                            <Badge variant="destructive">
+                              Dévalidé
+                            </Badge>
+                          ) : (
+                            <Badge variant="default" className="bg-green-600 text-white">
+                              Auto-validé
+                            </Badge>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
-                            {canModify ? (
+                            {isDevalidated(delivery) && permissions.canEdit('reconciliation') && (
                               <>
-                                <button
-                                  className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50"
-                                  title="Voir les détails"
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-gray-600 hover:text-blue-600 p-1"
+                                  title="Modifier"
                                 >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDevalidateAutoReconciliation(delivery.id)}
-                                  className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50"
-                                  title="Dévalider le rapprochement automatique"
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleValidateManual(delivery.id)}
+                                  disabled={validateManualMutation.isPending}
+                                  className="text-green-600 hover:text-green-700 p-1"
+                                  title="Valider"
                                 >
-                                  <X className="w-4 h-4" />
-                                </button>
+                                  <Check className="w-4 h-4" />
+                                </Button>
                               </>
-                            ) : (
-                              <button
-                                className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50"
-                                title="Voir les détails"
+                            )}
+                            
+                            {!isDevalidated(delivery) && permissions.canEdit('reconciliation') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDevalidate(delivery.id)}
+                                disabled={devalidateMutation.isPending}
+                                className="text-orange-600 hover:text-orange-700 p-1"
+                                title="Dévalider"
                               >
-                                <Eye className="w-4 h-4" />
-                              </button>
+                                <Ban className="w-4 h-4" />
+                              </Button>
+                            )}
+                            
+                            {permissions.canDelete('reconciliation') && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(delivery.id)}
+                                disabled={deleteMutation.isPending}
+                                className="text-red-600 hover:text-red-700 p-1"
+                                title="Supprimer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             )}
                           </div>
                         </td>
