@@ -356,6 +356,9 @@ export default function BLReconciliation() {
                         Montant Fact.
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Écart
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Magasin
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -416,6 +419,25 @@ export default function BLReconciliation() {
                           </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
+                          {(() => {
+                            const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
+                            const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
+                            if (blAmount && invoiceAmount) {
+                              const diff = blAmount - invoiceAmount;
+                              const diffAbs = Math.abs(diff);
+                              return (
+                                <div className={`font-medium ${
+                                  diff === 0 ? 'text-green-600' : 
+                                  diffAbs > 10 ? 'text-red-600' : 'text-orange-600'
+                                }`}>
+                                  {diff > 0 ? '+' : ''}{diff.toFixed(2)}€
+                                </div>
+                              );
+                            }
+                            return <span className="text-gray-400 italic text-xs">-</span>;
+                          })()}
+                        </td>
+                        <td className="px-3 py-2 text-sm">
                           <div className="text-gray-900">
                             {delivery.group?.name}
                           </div>
@@ -468,14 +490,16 @@ export default function BLReconciliation() {
                                 )}
                               </>
                             )}
-                            {/* Bouton Modifier toujours disponible */}
-                            <button
-                              onClick={() => handleOpenModal(delivery)}
-                              className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                              title="Modifier les données de rapprochement"
-                            >
-                              <Settings className="w-4 h-4" />
-                            </button>
+                            {/* Bouton Modifier : disponible seulement si pas encore validé */}
+                            {!delivery.reconciled && (
+                              <button
+                                onClick={() => handleOpenModal(delivery)}
+                                className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
+                                title="Modifier les données de rapprochement"
+                              >
+                                <Settings className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -545,6 +569,9 @@ export default function BLReconciliation() {
                         Montant Fact.
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Écart
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Magasin
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -612,27 +639,57 @@ export default function BLReconciliation() {
                           </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
+                          {(() => {
+                            const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
+                            const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
+                            if (blAmount && invoiceAmount) {
+                              const diff = blAmount - invoiceAmount;
+                              const diffAbs = Math.abs(diff);
+                              return (
+                                <div className={`font-medium ${
+                                  diff === 0 ? 'text-green-600' : 
+                                  diffAbs > 10 ? 'text-red-600' : 'text-orange-600'
+                                }`}>
+                                  {diff > 0 ? '+' : ''}{diff.toFixed(2)}€
+                                </div>
+                              );
+                            }
+                            return <span className="text-gray-400 italic text-xs">-</span>;
+                          })()}
+                        </td>
+                        <td className="px-3 py-2 text-sm">
                           <div className="text-gray-900">
                             {delivery.group?.name}
                           </div>
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleOpenModal(delivery)}
-                              className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                              title="Modifier les données de rapprochement"
-                            >
-                              <Settings className="w-4 h-4" />
-                            </button>
-                            {/* Dévalider automatique - admin uniquement */}
-                            {user?.role === 'admin' && (
+                            {user?.role === 'admin' && delivery.reconciled && (
                               <button
                                 onClick={() => handleDevalidateAutoReconciliation(delivery.id)}
                                 className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
                                 title="Dévalider le rapprochement automatique"
                               >
                                 <Ban className="w-4 h-4" />
+                              </button>
+                            )}
+                            {user?.role === 'admin' && (
+                              <button
+                                onClick={() => handleDeleteDelivery(delivery.id)}
+                                className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
+                                title="Supprimer la livraison"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            {/* Bouton Modifier : disponible seulement si pas encore validé */}
+                            {!delivery.reconciled && (
+                              <button
+                                onClick={() => handleOpenModal(delivery)}
+                                className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
+                                title="Modifier les données de rapprochement"
+                              >
+                                <Settings className="w-4 h-4" />
                               </button>
                             )}
                           </div>
