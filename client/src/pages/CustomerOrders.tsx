@@ -674,7 +674,7 @@ export default function CustomerOrders() {
   } = usePagination(sortedOrders, 10);
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1">
       <div className="p-6 space-y-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6 shadow-sm -m-6 mb-6">
@@ -753,7 +753,8 @@ export default function CustomerOrders() {
           {isLoading ? (
             <div>Chargement...</div>
           ) : (
-            <Table>
+            <div className="max-h-96 overflow-y-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Client</TableHead>
@@ -867,6 +868,7 @@ export default function CustomerOrders() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
           
           {/* Pagination */}
