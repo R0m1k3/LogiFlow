@@ -10,6 +10,7 @@ import { useStore } from "@/components/Layout";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { usePermissions } from "@shared/permissions";
 import { 
   Plus, 
   Search, 
@@ -34,6 +35,7 @@ export default function Orders() {
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const permissions = usePermissions(user?.role);
   
   // Redirection pour les employés
   if (user?.role === 'employee') {
@@ -197,7 +199,7 @@ export default function Orders() {
   };
 
   const handleViewOrder = (order: OrderWithRelations) => {
-    setSelectedOrder({ ...order, type: 'order' });
+    setSelectedOrder(order);
     setShowDetailModal(true);
   };
 
@@ -285,7 +287,7 @@ export default function Orders() {
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
-        ) : (console.log('📦 Filtered orders length:', filteredOrders.length) || filteredOrders.length === 0) ? (
+        ) : filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
             <Package className="w-16 h-16 mb-4 text-gray-300" />
             <h3 className="text-lg font-medium mb-2">Aucune commande trouvée</h3>
