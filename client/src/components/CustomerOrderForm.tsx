@@ -99,7 +99,7 @@ export function CustomerOrderForm({
       quantity: order?.quantity || 1,
       supplierId: order?.supplierId || undefined,
       status: "En attente de Commande", // Statut fixe
-      deposit: Number(order?.deposit) || 0,
+      deposit: order?.deposit || 0,
       isPromotionalPrice: order?.isPromotionalPrice || false,
       customerNotified: order?.customerNotified || false,
       groupId: getDefaultGroupId(), // ✅ PRIORITÉ CORRECTE APPLIQUÉE
@@ -125,7 +125,7 @@ export function CustomerOrderForm({
       selectedStoreId,
       userHasGroups: !!user?.userGroups,
       userGroupsLength: user?.userGroups?.length,
-      userGroups: user?.userGroups?.map((ug: any) => ({
+      userGroups: user?.userGroups?.map(ug => ({
         groupId: ug.groupId || ug.group?.id, 
         groupName: ug.group?.name,
         fullGroupData: ug
@@ -156,7 +156,7 @@ export function CustomerOrderForm({
       contactNumber: data.contactNumber || '', 
       productName: data.productName || '',
       quantity: data.quantity,
-      groupId: typeof groupId === 'number' ? groupId : parseInt(groupId?.toString() || '1'),
+      groupId: typeof groupId === 'number' ? groupId : parseInt(groupId.toString()),
       isPickup: false,
       notes: data.notes,
       deposit: data.deposit || 0,
@@ -173,7 +173,7 @@ export function CustomerOrderForm({
   // Get available groups for the user
   const availableGroups = user?.role === 'admin' 
     ? groups 
-    : user?.userGroups?.map((ug: any) => ug.group) || [];
+    : user?.userGroups?.map(ug => ug.group) || [];
 
   // Auto-select group for users respecting admin store selection
   const currentGroupId = form.getValues('groupId');

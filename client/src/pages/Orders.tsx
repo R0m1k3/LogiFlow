@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pagination } from "@/components/ui/pagination";
-import { usePagination } from "@/hooks/usePagination";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/components/Layout";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +27,6 @@ import CreateOrderModal from "@/components/modals/CreateOrderModal";
 import EditOrderModal from "@/components/modals/EditOrderModal";
 import OrderDetailModal from "@/components/modals/OrderDetailModal";
 import ConfirmDeleteModal from "@/components/modals/ConfirmDeleteModal";
-import { usePermissions } from "@shared/permissions";
 import type { OrderWithRelations } from "@shared/schema";
 
 export default function Orders() {
@@ -36,7 +34,6 @@ export default function Orders() {
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const permissions = usePermissions(user?.role);
   
   // Redirection pour les employés
   if (user?.role === 'employee') {
@@ -227,8 +224,7 @@ export default function Orders() {
   const canDelete = permissions.canDelete('orders');
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6 shadow-sm -m-6 mb-6">
         <div className="flex items-center justify-between">
@@ -289,7 +285,7 @@ export default function Orders() {
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
-        ) : filteredOrders.length === 0 ? (
+        ) : (console.log('📦 Filtered orders length:', filteredOrders.length) || filteredOrders.length === 0) ? (
           <div className="flex flex-col items-center justify-center h-64 text-gray-500">
             <Package className="w-16 h-16 mb-4 text-gray-300" />
             <h3 className="text-lg font-medium mb-2">Aucune commande trouvée</h3>
@@ -309,10 +305,11 @@ export default function Orders() {
             )}
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Fournisseur
@@ -333,8 +330,8 @@ export default function Orders() {
                         Actions
                       </th>
                     </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
                     {paginatedOrders.map((order) => (
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -407,20 +404,21 @@ export default function Orders() {
                         </td>
                       </tr>
                     ))}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                className="mt-4 p-4 border-t border-gray-200"
+              />
             </div>
-            
-            {/* Pagination */}
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-              onItemsPerPageChange={setItemsPerPage}
-              className="mt-4 p-4 border-t border-gray-200"
-            />
           </div>
         )}
       </div>
@@ -463,7 +461,6 @@ export default function Orders() {
         itemName={orderToDelete ? `${orderToDelete.supplier?.name} - ${safeFormat(orderToDelete.plannedDate, 'dd/MM/yyyy')}` : undefined}
         isLoading={deleteMutation.isPending}
       />
-      </div>
     </div>
   );
 }

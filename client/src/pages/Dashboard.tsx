@@ -138,7 +138,7 @@ export default function Dashboard() {
   const deliveredThisMonth = Array.isArray(allDeliveries) ? allDeliveries.filter((delivery: any) => {
     const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
     const now = new Date();
-    return deliveryDate && deliveryDate.getMonth() === now.getMonth() && 
+    return deliveryDate.getMonth() === now.getMonth() && 
            deliveryDate.getFullYear() === now.getFullYear() && 
            delivery.status === 'delivered';
   }).length : 0;
@@ -148,7 +148,7 @@ export default function Dashboard() {
     if (delivery.status === 'delivered' && delivery.unit === 'palettes') {
       const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
       const now = new Date();
-      if (deliveryDate && deliveryDate.getMonth() === now.getMonth() && deliveryDate.getFullYear() === now.getFullYear()) {
+      if (deliveryDate.getMonth() === now.getMonth() && deliveryDate.getFullYear() === now.getFullYear()) {
         return total + (delivery.quantity || 0);
       }
     }
@@ -218,8 +218,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+    <div className="flex-1 space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -404,7 +403,7 @@ export default function Dashboard() {
               .slice(0, 3)
               .map((publicity: any) => {
                 const participatingStores = publicity.participations || [];
-                const isCurrentStoreParticipating = selectedStoreId && participatingStores.some((p: any) => p.groupId === parseInt(selectedStoreId.toString()));
+                const isCurrentStoreParticipating = selectedStoreId && participatingStores.some((p: any) => p.groupId === parseInt(selectedStoreId));
                 
                 return (
                   <div key={publicity.id} className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-purple-500 space-y-2">
@@ -437,7 +436,7 @@ export default function Dashboard() {
                             <Badge 
                               key={participation.groupId} 
                               className={`text-xs ${
-                                selectedStoreId && participation.groupId === parseInt(selectedStoreId.toString())
+                                selectedStoreId && participation.groupId === parseInt(selectedStoreId)
                                   ? 'bg-green-100 text-green-800 border border-green-300'
                                   : 'bg-gray-100 text-gray-700'
                               }`}
@@ -565,7 +564,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-    </div>
     </div>
   );
 }
