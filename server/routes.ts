@@ -1448,7 +1448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const columnsResult = await pool.query(columnsQuery, [tableName]);
         
         if (columnsResult.rows.length > 0) {
-          columnsResult.rows.forEach((col, index) => {
+          columnsResult.rows.forEach((col: any, index: number) => {
             const nullable = col.is_nullable === 'YES' ? 'NULL' : 'NOT NULL';
             const maxLength = col.character_maximum_length ? `(${col.character_maximum_length})` : '';
             const defaultVal = col.column_default ? ` DEFAULT ${col.column_default}` : '';
@@ -1462,7 +1462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const countResult = await pool.query(countQuery);
             console.log(`   📈 Nombre d'enregistrements: ${countResult.rows[0].total}`);
           } catch (countError) {
-            console.log(`   ⚠️  Impossible de compter les enregistrements: ${countError.message}`);
+            console.log(`   ⚠️  Impossible de compter les enregistrements: ${(countError as Error).message}`);
           }
         }
       }
@@ -1493,7 +1493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fkResult = await pool.query(fkQuery);
       
       if (fkResult.rows.length > 0) {
-        fkResult.rows.forEach(fk => {
+        fkResult.rows.forEach((fk: any) => {
           console.log(`   ${fk.table_name}.${fk.column_name} → ${fk.foreign_table_name}.${fk.foreign_column_name}`);
         });
       } else {
@@ -1507,12 +1507,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Schéma loggé avec succès dans les logs du serveur',
         totalTables: tablesResult.rows.length,
         totalForeignKeys: fkResult.rows.length,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        downloadUrl: '/api/debug/download-schema'
       });
       
     } catch (error) {
       console.error('❌ ERREUR lors du scan du schéma:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  // Download database schema report
+  app.get('/api/debug/download-schema', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: 'Accès refusé. Seuls les administrateurs peuvent télécharger le rapport de schéma.' });
+      }
+
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      if (!isProduction) {
+        return res.status(400).json({ error: 'Cette route fonctionne uniquement en production sur votre serveur privé' });
+      }
+
+      // Vérifier que pool est disponible
+      if (!pool) {
+        throw new Error('Pool de base de données non disponible en production');
+      }
+
+      const timestamp = new Date().toISOString();
+      let reportContent = `LOGIFLOW - RAPPORT SCHÉMA BASE DE DONNÉES PRODUCTION
+===============================================
+
+GÉNÉRÉ LE : ${timestamp}
+SERVEUR : Production privé LogiFlow
+ENVIRONNEMENT : PostgreSQL Docker
+UTILISATEUR : ${user.username}
+
+===============================================
+RÉSUMÉ DU SCAN
+===============================================
+
+`;
+
+      // Récupérer les tables
+      const tablesQuery = `
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        ORDER BY table_name
+      `;
+      
+      const tablesResult = await pool.query(tablesQuery);
+      
+      reportContent += `TOTAL DES TABLES TROUVÉES: ${tablesResult.rows.length}\n`;
+      reportContent += `==========================================\n\n`;
+      
+      // Pour chaque table, récupérer les colonnes
+      for (const tableRow of tablesResult.rows) {
+        const tableName = tableRow.table_name;
+        
+        reportContent += `TABLE: ${tableName.toUpperCase()}\n`;
+        reportContent += `${'='.repeat(tableName.length + 6)}\n\n`;
+        
+        const columnsQuery = `
+          SELECT 
+            column_name,
+            data_type,
+            character_maximum_length,
+            is_nullable,
+            column_default,
+            ordinal_position
+          FROM information_schema.columns 
+          WHERE table_schema = 'public' 
+            AND table_name = $1
+          ORDER BY ordinal_position
+        `;
+        
+        const columnsResult = await pool.query(columnsQuery, [tableName]);
+        
+        if (columnsResult.rows.length > 0) {
+          columnsResult.rows.forEach((col: any, index: number) => {
+            const nullable = col.is_nullable === 'YES' ? 'NULL' : 'NOT NULL';
+            const maxLength = col.character_maximum_length ? `(${col.character_maximum_length})` : '';
+            const defaultVal = col.column_default ? ` DEFAULT ${col.column_default}` : '';
+            
+            reportContent += `   ${(index + 1).toString().padStart(2, '0')}. ${col.column_name.padEnd(25)} : ${col.data_type}${maxLength} ${nullable}${defaultVal}\n`;
+          });
+          
+          // Compter les enregistrements dans la table
+          try {
+            const countQuery = `SELECT COUNT(*) as total FROM "${tableName}"`;
+            const countResult = await pool.query(countQuery);
+            reportContent += `   📈 Nombre d'enregistrements: ${countResult.rows[0].total}\n\n`;
+          } catch (countError) {
+            reportContent += `   ⚠️  Impossible de compter les enregistrements: ${(countError as Error).message}\n\n`;
+          }
+        }
+      }
+      
+      // Récupérer les contraintes de clés étrangères
+      reportContent += `CONTRAINTES DE CLÉS ÉTRANGÈRES:\n`;
+      reportContent += `===================================\n\n`;
+      
+      const fkQuery = `
+        SELECT
+          tc.table_name,
+          kcu.column_name,
+          ccu.table_name AS foreign_table_name,
+          ccu.column_name AS foreign_column_name,
+          tc.constraint_name
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.key_column_usage AS kcu
+          ON tc.constraint_name = kcu.constraint_name
+          AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.constraint_column_usage AS ccu
+          ON ccu.constraint_name = tc.constraint_name
+          AND ccu.table_schema = tc.table_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_schema = 'public'
+        ORDER BY tc.table_name, kcu.column_name
+      `;
+      
+      const fkResult = await pool.query(fkQuery);
+      
+      if (fkResult.rows.length > 0) {
+        fkResult.rows.forEach((fk: any) => {
+          reportContent += `   ${fk.table_name}.${fk.column_name} → ${fk.foreign_table_name}.${fk.foreign_column_name}\n`;
+        });
+      } else {
+        reportContent += '   Aucune contrainte de clé étrangère trouvée\n';
+      }
+
+      reportContent += `\n===============================================\n`;
+      reportContent += `FIN DU RAPPORT - ${timestamp}\n`;
+      reportContent += `===============================================`;
+
+      // Définir les headers pour le téléchargement
+      const filename = `logiflow-schema-${new Date().toISOString().split('T')[0]}.txt`;
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(reportContent);
+      
+    } catch (error) {
+      console.error('❌ ERREUR lors de la génération du rapport de schéma:', error);
+      res.status(500).json({ error: (error as Error).message });
     }
   });
 

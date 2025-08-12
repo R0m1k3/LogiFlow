@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database, Eye, Loader2 } from "lucide-react";
+import { Database, Eye, Loader2, Download } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 
 export default function DatabaseDebug() {
@@ -82,23 +82,36 @@ export default function DatabaseDebug() {
             </p>
           </div>
 
-          <Button 
-            onClick={handleLogSchema}
-            disabled={isLoading}
-            className="w-full"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Scan en cours...
-              </>
-            ) : (
-              <>
-                <Database className="mr-2 h-4 w-4" />
-                Démarrer le Scan du Schéma
-              </>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleLogSchema}
+              disabled={isLoading}
+              className="flex-1"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Scan en cours...
+                </>
+              ) : (
+                <>
+                  <Database className="mr-2 h-4 w-4" />
+                  Démarrer le Scan du Schéma
+                </>
+              )}
+            </Button>
+            
+            {result && (
+              <Button 
+                onClick={() => window.open('/api/debug/download-schema', '_blank')}
+                variant="outline"
+                className="flex-shrink-0"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Télécharger
+              </Button>
             )}
-          </Button>
+          </div>
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -117,6 +130,9 @@ export default function DatabaseDebug() {
                 <p><strong>Timestamp :</strong> {new Date(result.timestamp).toLocaleString('fr-FR')}</p>
                 <p className="mt-2 font-medium">
                   📋 Consultez maintenant les logs de votre serveur pour voir le détail complet du schéma.
+                </p>
+                <p className="mt-1 text-blue-700 font-medium">
+                  💾 Cliquez sur "Télécharger" pour obtenir le rapport complet au format fichier texte.
                 </p>
               </div>
             </div>
