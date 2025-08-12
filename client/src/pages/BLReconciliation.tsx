@@ -362,7 +362,7 @@ export default function BLReconciliation() {
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Montant Fact.
                           </th>
-                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Écart
                           </th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -431,7 +431,7 @@ export default function BLReconciliation() {
                                 }
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-sm text-right">
+                            <td className="px-3 py-2 text-sm text-left">
                               {(() => {
                                 const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
                                 const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
