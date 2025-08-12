@@ -2319,12 +2319,21 @@ RÉSUMÉ DU SCAN
         userGroups: user.userGroups?.map(ug => ({groupId: ug.group.id, groupName: ug.group.name}))
       });
 
+      console.log("🔍 Pre-validation data:", {
+        body: req.body,
+        userId,
+        combined: { ...req.body, createdBy: userId }
+      });
+
       const validatedData = insertDlcProductFrontendSchema.parse({
         ...req.body,
         createdBy: userId,
       });
 
+      console.log("✅ Post-validation data:", validatedData);
+
       const dlcProduct = await storage.createDlcProduct(validatedData);
+      console.log("📦 Raw returned DLC product:", dlcProduct);
       console.log('✅ DLC Product created successfully:', {
         id: dlcProduct.id,
         productName: dlcProduct.productName,

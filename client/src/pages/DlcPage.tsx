@@ -73,9 +73,22 @@ export default function DlcPage() {
       if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
       if (supplierFilter && supplierFilter !== "all") params.append("supplierId", supplierFilter);
       
+      console.log("🔍 Requête DLC products:", {
+        url: `/api/dlc-products?${params.toString()}`,
+        user: user?.role,
+        selectedStoreId,
+        userGroups: user?.userGroups?.map(ug => ({ groupId: ug.groupId, groupName: ug.group?.name }))
+      });
+      
       return apiRequest(`/api/dlc-products?${params.toString()}`);
     },
     enabled: !authLoading,
+    onSuccess: (data) => {
+      console.log("📋 DLC products reçus:", {
+        total: data.length,
+        sample: data.slice(0, 3).map(d => ({ id: d.id, productName: d.productName, groupId: d.groupId }))
+      });
+    }
   });
 
   // Fetch DLC stats
@@ -105,8 +118,10 @@ export default function DlcPage() {
   const createMutation = useMutation({
     mutationFn: (data: InsertDlcProduct) => apiRequest("/api/dlc-products", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"] });
+      // Invalidate all DLC queries with any combination of parameters
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
+      console.log("🔄 Cache DLC invalidé après création");
       toast({ title: "Produit DLC créé avec succès" });
       setIsDialogOpen(false);
       form.reset();
@@ -126,8 +141,9 @@ export default function DlcPage() {
     mutationFn: ({ id, data }: { id: number; data: Partial<InsertDlcProduct> }) =>
       apiRequest(`/api/dlc-products/${id}`, "PUT", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
+      console.log("🔄 Cache DLC invalidé après mise à jour");
       toast({ title: "Produit DLC mis à jour avec succès" });
       setIsDialogOpen(false);
       form.reset();
@@ -146,8 +162,9 @@ export default function DlcPage() {
   const validateMutation = useMutation({
     mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/validate`, "PUT"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
+      console.log("🔄 Cache DLC invalidé après validation");
       toast({ title: "Produit validé avec succès" });
     },
     onError: (error: any) => {
@@ -163,8 +180,9 @@ export default function DlcPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}`, "DELETE"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
+      console.log("🔄 Cache DLC invalidé après suppression");
       toast({ title: "Produit supprimé avec succès" });
     },
     onError: (error: any) => {
