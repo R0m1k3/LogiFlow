@@ -1413,7 +1413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ORDER BY table_name
       `;
       
-      const tablesResult = await storage.db.query(tablesQuery);
+      const tablesResult = await (storage as any).db.query(tablesQuery);
       
       console.log(`\n📊 TOTAL DES TABLES TROUVÉES: ${tablesResult.rows.length}`);
       console.log('==========================================');
@@ -1439,7 +1439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ORDER BY ordinal_position
         `;
         
-        const columnsResult = await storage.db.query(columnsQuery, [tableName]);
+        const columnsResult = await (storage as any).db.query(columnsQuery, [tableName]);
         
         if (columnsResult.rows.length > 0) {
           columnsResult.rows.forEach((col, index) => {
@@ -1453,7 +1453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Compter les enregistrements dans la table
           try {
             const countQuery = `SELECT COUNT(*) as total FROM "${tableName}"`;
-            const countResult = await storage.db.query(countQuery);
+            const countResult = await (storage as any).db.query(countQuery);
             console.log(`   📈 Nombre d'enregistrements: ${countResult.rows[0].total}`);
           } catch (countError) {
             console.log(`   ⚠️  Impossible de compter les enregistrements: ${countError.message}`);
@@ -1484,7 +1484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ORDER BY tc.table_name, kcu.column_name
       `;
       
-      const fkResult = await storage.db.query(fkQuery);
+      const fkResult = await (storage as any).db.query(fkQuery);
       
       if (fkResult.rows.length > 0) {
         fkResult.rows.forEach(fk => {

@@ -149,6 +149,12 @@ export default function Sidebar() {
       icon: Database, 
       roles: ["admin"] 
     },
+    { 
+      path: "/database-debug", 
+      label: "Debug Base de Données", 
+      icon: Database, 
+      roles: ["admin"] 
+    },
   ];
 
   const hasPermission = (roles: string[]) => {
