@@ -468,14 +468,16 @@ export default function BLReconciliation() {
                                 )}
                               </>
                             )}
-                            {/* Bouton Modifier toujours disponible */}
-                            <button
-                              onClick={() => handleOpenModal(delivery)}
-                              className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                              title="Modifier les données de rapprochement"
-                            >
-                              <Settings className="w-4 h-4" />
-                            </button>
+                            {/* Bouton Modifier : disponible seulement si pas encore validé */}
+                            {!delivery.reconciled && (
+                              <button
+                                onClick={() => handleOpenModal(delivery)}
+                                className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
+                                title="Modifier les données de rapprochement"
+                              >
+                                <Settings className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -618,21 +620,32 @@ export default function BLReconciliation() {
                         </td>
                         <td className="px-3 py-2 text-sm">
                           <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleOpenModal(delivery)}
-                              className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                              title="Modifier les données de rapprochement"
-                            >
-                              <Settings className="w-4 h-4" />
-                            </button>
-                            {/* Dévalider automatique - admin uniquement */}
-                            {user?.role === 'admin' && (
+                            {user?.role === 'admin' && delivery.reconciled && (
                               <button
                                 onClick={() => handleDevalidateAutoReconciliation(delivery.id)}
                                 className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
                                 title="Dévalider le rapprochement automatique"
                               >
                                 <Ban className="w-4 h-4" />
+                              </button>
+                            )}
+                            {user?.role === 'admin' && (
+                              <button
+                                onClick={() => handleDeleteDelivery(delivery.id)}
+                                className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
+                                title="Supprimer la livraison"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            {/* Bouton Modifier : disponible seulement si pas encore validé */}
+                            {!delivery.reconciled && (
+                              <button
+                                onClick={() => handleOpenModal(delivery)}
+                                className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
+                                title="Modifier les données de rapprochement"
+                              >
+                                <Settings className="w-4 h-4" />
                               </button>
                             )}
                           </div>
