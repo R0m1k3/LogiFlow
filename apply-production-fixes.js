@@ -27,7 +27,7 @@ console.log('tasks: {');
 console.log('  admin: [\'view\', \'create\', \'edit\', \'delete\', \'validate\'],');
 console.log('  directeur: [\'view\', \'create\', \'edit\', \'delete\', \'validate\'],');
 console.log('  manager: [\'view\', \'validate\'],');
-console.log('  employee: [\'view\', \'create\']  // ← CORRECTION');
+console.log('  employee: [\'view\']  // ← PERMISSIONS INCHANGÉES - VOIR SEULEMENT');
 console.log('}');
 console.log('\n');
 

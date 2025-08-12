@@ -7,8 +7,7 @@ index 1234567..abcdefg 100644
      admin: ['view', 'create', 'edit', 'delete', 'validate'],
      directeur: ['view', 'create', 'edit', 'delete', 'validate'],
      manager: ['view', 'validate'],
--    employee: ['view']
-+    employee: ['view', 'create']
+     employee: ['view']  // PAS DE CHANGEMENT - VOIR SEULEMENT
    }
  };
 
