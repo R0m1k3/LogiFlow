@@ -42,17 +42,14 @@ export default function Suppliers() {
 
   const { data: suppliers = [], isLoading } = useQuery<Supplier[]>({
     queryKey: ['/api/suppliers'],
-    enabled: user?.role === 'admin' || user?.role === 'manager',
   });
 
   const { data: orders = [] } = useQuery({
     queryKey: ['/api/orders'],
-    enabled: user?.role === 'admin' || user?.role === 'manager',
   });
 
   const { data: deliveries = [] } = useQuery({
     queryKey: ['/api/deliveries'],
-    enabled: user?.role === 'admin' || user?.role === 'manager',
   });
 
   const createMutation = useMutation({

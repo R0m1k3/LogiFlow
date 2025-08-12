@@ -43,7 +43,6 @@ export default function CreateDeliveryModal({
 
   const { data: suppliers = [] } = useQuery<Supplier[]>({
     queryKey: ['/api/suppliers'],
-    enabled: user?.role === 'admin' || user?.role === 'manager',
   });
 
   const { data: groupsData = [] } = useQuery<Group[]>({
@@ -139,9 +138,10 @@ export default function CreateDeliveryModal({
       console.log('🚚 Delivery created, clearing cache for consistency');
       queryClient.invalidateQueries({ predicate: (query) => {
         const key = query.queryKey;
-        return key[0]?.toString().includes('/api/orders') || 
-               key[0]?.toString().includes('/api/deliveries') || 
-               key[0]?.toString().includes('/api/stats/monthly');
+        const firstKey = key[0]?.toString() || '';
+        return firstKey.includes('/api/orders') || 
+               firstKey.includes('/api/deliveries') || 
+               firstKey.includes('/api/stats/monthly');
       }});
       
       onClose();
