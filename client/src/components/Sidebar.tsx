@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuthSimple } from "@/hooks/useAuthSimple";
+import { useResponsive } from "@/hooks/useResponsive";
 import { Button } from "@/components/ui/button";
 import { useStore } from "./Layout";
 import { 
@@ -25,7 +26,8 @@ import {
 export default function Sidebar() {
   const { user, isLoading, error } = useAuthSimple();
   const [location] = useLocation();
-  const { sidebarCollapsed, setSidebarCollapsed } = useStore();
+  const { isMobile, isTablet, isDesktop } = useResponsive();
+  const { sidebarCollapsed, setSidebarCollapsed, mobileMenuOpen, setMobileMenuOpen } = useStore();
 
   // Debug logging pour production
   console.log('Sidebar - User:', user);
@@ -48,9 +50,20 @@ export default function Sidebar() {
   };
 
   const toggleSidebar = () => {
-    const newCollapsed = !sidebarCollapsed;
-    setSidebarCollapsed(newCollapsed);
-    localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed));
+    if (isMobile) {
+      setMobileMenuOpen(!mobileMenuOpen);
+    } else {
+      const newCollapsed = !sidebarCollapsed;
+      setSidebarCollapsed(newCollapsed);
+      localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed));
+    }
+  };
+
+  // Close mobile menu when clicking on a link
+  const handleLinkClick = () => {
+    if (isMobile && mobileMenuOpen) {
+      setMobileMenuOpen(false);
+    }
   };
 
   const getInitials = (firstName?: string, lastName?: string) => {
@@ -168,10 +181,13 @@ export default function Sidebar() {
 
 
 
+  // Sur mobile, toujours afficher en mode collapsed quand fermé
+  const isCollapsed = isMobile ? false : sidebarCollapsed;
+  
   // Si l'utilisateur n'est pas encore chargé, afficher un état de chargement
   if (isLoading) {
     return (
-      <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
+      <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
         <div className="h-16 flex items-center justify-between border-b border-gray-200 bg-white px-3">
           {!sidebarCollapsed && (
             <div className="flex items-center space-x-3">
@@ -207,7 +223,7 @@ export default function Sidebar() {
   // Si l'utilisateur n'est pas authentifié, afficher seulement le logo
   if (!user) {
     return (
-      <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
+      <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
         <div className="h-16 flex items-center justify-between border-b border-gray-200 bg-white px-3">
           {!sidebarCollapsed && (
             <div className="flex items-center space-x-3">
@@ -243,32 +259,34 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className={`${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
+    <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-lg transition-all duration-300 ease-in-out`}>
       {/* Logo et bouton de collapse */}
-      <div className="h-16 flex items-center justify-between border-b border-gray-200 bg-white px-3">
-        {!sidebarCollapsed && (
+      <div className="h-16 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3">
+        {!isCollapsed && (
           <div className="flex items-center space-x-3">
-            <Store className="h-6 w-6 text-blue-600" />
-            <span className="text-lg font-semibold text-gray-900">LogiFlow</span>
+            <Store className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">LogiFlow</span>
           </div>
         )}
-        {sidebarCollapsed && (
+        {isCollapsed && (
           <div className="flex items-center justify-center w-full">
-            <Store className="h-6 w-6 text-blue-600" />
+            <Store className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={toggleSidebar}
-          className="h-8 w-8 p-0 hover:bg-gray-100"
-        >
-          {sidebarCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </Button>
+        {!isMobile && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleSidebar}
+            className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -290,16 +308,16 @@ export default function Sidebar() {
             return (
               <Link key={item.path} href={item.path}>
                 <div
-                  className={`flex items-center ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 ${
+                  className={`flex items-center ${isCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${
                     active
-                      ? 'bg-gray-100 text-gray-900 border-r-2 border-gray-700'
-                      : 'text-gray-700'
+                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-r-2 border-blue-600 dark:border-blue-400'
+                      : 'text-gray-700 dark:text-gray-300'
                   }`}
-                  title={sidebarCollapsed ? item.label : undefined}
-                  onClick={() => console.log(`Navigating to: ${item.path}`)}
+                  title={isCollapsed ? item.label : undefined}
+                  onClick={handleLinkClick}
                 >
-                  <Icon className={`h-4 w-4 ${sidebarCollapsed ? '' : 'mr-3'}`} />
-                  {!sidebarCollapsed && item.label}
+                  <Icon className={`h-4 w-4 ${isCollapsed ? '' : 'mr-3'}`} />
+                  {!isCollapsed && item.label}
                 </div>
               </Link>
             );
@@ -309,14 +327,14 @@ export default function Sidebar() {
         {/* Management Section */}
         {managementItems.some(item => hasPermission(item.roles)) && (
           <>
-            {!sidebarCollapsed && (
+            {!isCollapsed && (
               <div className="mt-6 mb-2">
-                <h3 className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <h3 className="px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Gestion
                 </h3>
               </div>
             )}
-            {sidebarCollapsed && <div className="mt-4 mb-2 border-t border-gray-200"></div>}
+            {isCollapsed && <div className="mt-4 mb-2 border-t border-gray-200 dark:border-gray-700"></div>}
             <div className="space-y-1">
               {managementItems.map((item) => {
                 if (!hasPermission(item.roles)) return null;
@@ -327,16 +345,16 @@ export default function Sidebar() {
                 return (
                   <Link key={item.path} href={item.path}>
                     <div
-                      className={`flex items-center ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 ${
+                      className={`flex items-center ${isCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${
                         active
-                          ? 'bg-gray-100 text-gray-900 border-r-2 border-gray-700'
-                          : 'text-gray-700'
+                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-r-2 border-blue-600 dark:border-blue-400'
+                          : 'text-gray-700 dark:text-gray-300'
                       }`}
-                      title={sidebarCollapsed ? item.label : undefined}
-                      onClick={() => console.log(`Navigating to management: ${item.path}`)}
+                      title={isCollapsed ? item.label : undefined}
+                      onClick={handleLinkClick}
                     >
-                      <Icon className={`h-4 w-4 ${sidebarCollapsed ? '' : 'mr-3'}`} />
-                      {!sidebarCollapsed && item.label}
+                      <Icon className={`h-4 w-4 ${isCollapsed ? '' : 'mr-3'}`} />
+                      {!isCollapsed && item.label}
                     </div>
                   </Link>
                 );
@@ -348,10 +366,10 @@ export default function Sidebar() {
 
       {/* Administration Section */}
       {adminItems.some(item => hasPermission(item.roles)) && (
-        <div className="border-t border-gray-200 py-4 px-3">
-          {!sidebarCollapsed && (
+        <div className="border-t border-gray-200 dark:border-gray-700 py-4 px-3">
+          {!isCollapsed && (
             <div className="mb-2">
-              <h3 className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <h3 className="px-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Administration
               </h3>
             </div>
@@ -366,16 +384,16 @@ export default function Sidebar() {
               return (
                 <Link key={item.path} href={item.path}>
                   <div
-                    className={`flex items-center ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 ${
+                    className={`flex items-center ${isCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-700 ${
                       active
-                        ? 'bg-gray-100 text-gray-900 border-r-2 border-gray-700'
-                        : 'text-gray-700'
+                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-r-2 border-blue-600 dark:border-blue-400'
+                        : 'text-gray-700 dark:text-gray-300'
                     }`}
-                    title={sidebarCollapsed ? item.label : undefined}
-                    onClick={() => console.log(`Navigating to admin: ${item.path}`)}
+                    title={isCollapsed ? item.label : undefined}
+                    onClick={handleLinkClick}
                   >
-                    <Icon className={`h-4 w-4 ${sidebarCollapsed ? '' : 'mr-3'}`} />
-                    {!sidebarCollapsed && item.label}
+                    <Icon className={`h-4 w-4 ${isCollapsed ? '' : 'mr-3'}`} />
+                    {!isCollapsed && item.label}
                   </div>
                 </Link>
               );
@@ -385,20 +403,20 @@ export default function Sidebar() {
       )}
 
       {/* User Profile & Logout */}
-      <div className="border-t border-gray-200 p-4">
-        {!sidebarCollapsed ? (
+      <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+        {!isCollapsed ? (
           <>
             <div className="flex items-center space-x-3 mb-3">
-              <div className="h-8 w-8 bg-gray-100 flex items-center justify-center">
-                <span className="text-xs font-medium text-gray-700">
+              <div className="h-8 w-8 bg-gray-100 dark:bg-gray-700 flex items-center justify-center rounded-full">
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                   {getInitials(user?.firstName, user?.lastName)}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                   {user?.firstName || user?.lastName ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim() : user?.username}
                 </p>
-                <p className="text-xs text-gray-500 truncate">
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   {user?.role === 'admin' ? 'Administrateur' : 
                    user?.role === 'manager' ? 'Manager' : 
                    user?.role === 'directeur' ? 'Directeur' : 'Employé'}
