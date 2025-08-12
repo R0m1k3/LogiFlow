@@ -1940,12 +1940,17 @@ RÉSUMÉ DU SCAN
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Check permissions for customer-orders create
+      if (!hasPermission(user.role, 'customer-orders', 'create')) {
+        return res.status(403).json({ message: "Insufficient permissions to create customer orders" });
+      }
+
       const data = insertCustomerOrderSchema.parse(req.body);
       console.log("Parsed data:", data);
       
       // Check if user has access to the specified group
       if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(data.groupId)) {
           return res.status(403).json({ message: "Access denied to this group" });
         }
@@ -1980,8 +1985,13 @@ RÉSUMÉ DU SCAN
         return res.status(404).json({ message: "Customer order not found" });
       }
 
+      // Check edit permissions
+      if (!hasPermission(user.role, 'customer-orders', 'edit')) {
+        return res.status(403).json({ message: "Insufficient permissions to edit customer orders" });
+      }
+
       if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(existingOrder.groupId)) {
           return res.status(403).json({ message: "Access denied" });
         }
