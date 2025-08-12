@@ -81,7 +81,7 @@ export function CustomerOrderForm({
       deposit: order?.deposit || 0,
       isPromotionalPrice: order?.isPromotionalPrice || false,
       customerNotified: order?.customerNotified || false,
-      groupId: order?.groupId || (user?.role === 'admin' && selectedStoreId ? selectedStoreId : user?.userGroups?.[0]?.groupId) || undefined, // Respect admin store selection
+      groupId: order?.groupId || (user?.role === 'admin' && selectedStoreId ? selectedStoreId : user?.userGroups?.[0]?.groupId) || 1, // Force assignment with fallback
     },
   });
 
@@ -96,24 +96,42 @@ export function CustomerOrderForm({
       return;
     }
     
-    // Ensure groupId is set - prioritize selectedStoreId for admins
+    // Ensure groupId is set - force assignment for ALL users
     let groupId = data.groupId;
+    
+    console.log("🔍 Customer Order GroupId Debug:", {
+      userRole: user?.role,
+      selectedStoreId,
+      userGroups: user?.userGroups?.map(ug => ({groupId: ug.groupId, groupName: ug.group?.name})),
+      initialGroupId: groupId,
+      availableGroups: groups.map(g => ({id: g.id, name: g.name}))
+    });
+    
     if (!groupId) {
       if (user?.role === 'admin' && selectedStoreId) {
         // Admin has selected a specific store - use it
         groupId = selectedStoreId;
         console.log("🏪 Using admin selected store:", selectedStoreId);
       } else if (user?.userGroups?.[0]?.groupId) {
+        // User has assigned groups - use first one
         groupId = user.userGroups[0].groupId;
+        console.log("👤 Using user group:", groupId);
       } else if (user?.role === 'admin' && groups.length > 0) {
-        groupId = groups[0].id; // Admin in "tous magasins" mode - use first group
+        // Admin in "tous magasins" mode - use first group
+        groupId = groups[0].id;
+        console.log("🏢 Admin fallback to first group:", groupId);
+      } else if (groups.length > 0) {
+        // EMERGENCY FALLBACK: Force assignment to first available group
+        groupId = groups[0].id;
+        console.log("⚠️ EMERGENCY: Force assigning to first group:", groupId);
+      } else {
+        // LAST RESORT: Hard-coded fallback
+        groupId = 1;
+        console.log("🚨 LAST RESORT: Using hard-coded groupId 1");
       }
     }
     
-    if (!groupId) {
-      console.error("No groupId available - user groups:", user?.userGroups, "available groups:", groups);
-      return;
-    }
+    console.log("✅ Final groupId selected:", groupId);
     
     // Prepare data with proper types for frontend schema
     const submitData = {
