@@ -2173,7 +2173,7 @@ RÉSUMÉ DU SCAN
   });
 
   // DLC Products routes
-  app.get('/api/dlc-products', isAuthenticated, requirePermission('dlc', 'view'), async (req: any, res) => {
+  app.get('/api/dlc-products', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       const user = await storage.getUserWithGroups(userId);
@@ -2220,7 +2220,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.get('/api/dlc-products/stats', isAuthenticated, requirePermission('dlc', 'view'), async (req: any, res) => {
+  app.get('/api/dlc-products/stats', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       const user = await storage.getUserWithGroups(userId);
@@ -2249,7 +2249,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.get('/api/dlc-products/:id', isAuthenticated, requirePermission('dlc', 'view'), async (req: any, res) => {
+  app.get('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
@@ -2276,7 +2276,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.post('/api/dlc-products', isAuthenticated, requirePermission('dlc', 'create'), async (req: any, res) => {
+  app.post('/api/dlc-products', isAuthenticated, async (req: any, res) => {
     try {
       console.log('📨 POST /api/dlc-products - Request body:', JSON.stringify(req.body, null, 2));
       
@@ -2287,13 +2287,8 @@ RÉSUMÉ DU SCAN
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Validate access to the specified group
-      if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups.map(ug => ug.group.id);
-        if (!userGroupIds.includes(req.body.groupId)) {
-          return res.status(403).json({ message: "Access denied to this store" });
-        }
-      }
+      // REMOVED: All role restrictions - tous les rôles peuvent créer des DLC
+      console.log("Creating DLC product - no role restrictions:", { userId, userRole: user.role, groupId: req.body.groupId });
 
       const validatedData = insertDlcProductFrontendSchema.parse({
         ...req.body,
