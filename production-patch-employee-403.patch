@@ -1,0 +1,63 @@
+diff --git a/shared/permissions.ts b/shared/permissions.ts
+index 1234567..abcdefg 100644
+--- a/shared/permissions.ts
++++ b/shared/permissions.ts
+@@ -84,7 +84,7 @@ export const PERMISSIONS: Record<Module, Record<Role, Permission[]>> = {
+   tasks: {
+     admin: ['view', 'create', 'edit', 'delete', 'validate'],
+     directeur: ['view', 'create', 'edit', 'delete', 'validate'],
+     manager: ['view', 'validate'],
+-    employee: ['view']
++    employee: ['view', 'create']
+   }
+ };
+
+diff --git a/server/routes.ts b/server/routes.ts
+index 1234567..abcdefg 100644
+--- a/server/routes.ts
++++ b/server/routes.ts
+@@ -188,7 +188,7 @@ export function createRoutes(app: Express, storage: IStorage, isAuthenticated:
+   app.get('/api/suppliers', isAuthenticated, async (req: any, res) => {
+     try {
+       const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+-      if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
++      if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'directeur' && user.role !== 'employee')) {
+         return res.status(403).json({ message: "Insufficient permissions" });
+       }
+ 
+@@ -240,7 +240,7 @@ export function createRoutes(app: Express, storage: IStorage, isAuthenticated:
+       console.log('✅ User found:', { username: user.username, role: user.role });
+       
+       // Vérifier les permissions
+-      if (user.role !== 'admin' && user.role !== 'manager') {
++      if (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'directeur') {
+-        console.error('❌ Insufficient permissions:', { userRole: user.role, required: ['admin', 'manager'] });
++        console.error('❌ Insufficient permissions:', { userRole: user.role, required: ['admin', 'manager', 'directeur'] });
+         return res.status(403).json({ message: "Insufficient permissions" });
+       }
+ 
+@@ -281,7 +281,7 @@ export function createRoutes(app: Express, storage: IStorage, isAuthenticated:
+   app.put('/api/suppliers/:id', isAuthenticated, async (req: any, res) => {
+     try {
+       const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+-      if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
++      if (!user || (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'directeur')) {
+         return res.status(403).json({ message: "Insufficient permissions" });
+       }
+ 
+@@ -298,7 +298,7 @@ export function createRoutes(app: Express, storage: IStorage, isAuthenticated:
+   app.delete('/api/suppliers/:id', isAuthenticated, async (req: any, res) => {
+     try {
+       const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+-      if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
++      if (!user || (user.role !== 'admin' && user.role !== 'directeur')) {
+         return res.status(403).json({ message: "Insufficient permissions" });
+       }
+ 
+@@ -2332,7 +2332,7 @@ export function createRoutes(app: Express, storage: IStorage, isAuthenticated:
+       const user = await storage.getUser(userId);
+       
+-      if (!user || !['admin', 'manager'].includes(user.role)) {
++      if (!user || !['admin', 'manager', 'directeur'].includes(user.role)) {
+         return res.status(403).json({ message: "Insufficient permissions to validate products" });
+       }
