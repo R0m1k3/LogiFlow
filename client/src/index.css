@@ -126,30 +126,30 @@
     background-color: var(--accent);
   }
 
-  /* Responsive utilities */
+  /* Responsive utilities - Optimisé pour grand écran */
   .container-responsive {
-    @apply w-full mx-auto px-4 sm:px-6 lg:px-8;
-    max-width: 1400px;
+    @apply w-full mx-auto px-4 sm:px-6 lg:px-8 xl:px-12;
+    max-width: none; /* Utilise toute la largeur disponible */
   }
   
   .grid-responsive {
-    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+    @apply grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5;
   }
   
   .card-responsive {
-    @apply bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 sm:p-6;
+    @apply bg-card border border-border rounded-xl shadow-sm hover:shadow-lg transition-all p-6 sm:p-8;
   }
   
   .text-responsive-sm {
-    @apply text-sm sm:text-base;
+    @apply text-base sm:text-lg lg:text-xl;
   }
   
   .text-responsive-lg {
-    @apply text-lg sm:text-xl lg:text-2xl;
+    @apply text-xl sm:text-2xl lg:text-3xl xl:text-4xl;
   }
   
   .sidebar-width {
-    @apply w-16 lg:w-64;
+    @apply w-16 lg:w-72 xl:w-80;
   }
   
   .sidebar-collapsed {
@@ -157,11 +157,24 @@
   }
   
   .main-content {
-    @apply flex-1 flex flex-col overflow-hidden ml-16 lg:ml-64;
+    @apply flex-1 flex flex-col overflow-hidden ml-16 lg:ml-72 xl:ml-80;
   }
   
   .main-content-expanded {
     @apply ml-16;
+  }
+  
+  /* Utilitaires pour grand écran */
+  .desktop-padding {
+    @apply p-8 xl:p-12;
+  }
+  
+  .desktop-text {
+    @apply text-lg xl:text-xl;
+  }
+  
+  .desktop-spacing {
+    @apply space-y-8 xl:space-y-12;
   }
 }
 

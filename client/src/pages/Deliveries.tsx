@@ -29,6 +29,7 @@ import CreateDeliveryModal from "@/components/modals/CreateDeliveryModal";
 import EditDeliveryModal from "@/components/modals/EditDeliveryModal";
 import OrderDetailModal from "@/components/modals/OrderDetailModal";
 import ConfirmDeleteModal from "@/components/modals/ConfirmDeleteModal";
+import { usePermissions } from "@shared/permissions";
 import type { DeliveryWithRelations } from "@shared/schema";
 
 export default function Deliveries() {
@@ -36,6 +37,7 @@ export default function Deliveries() {
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const permissions = usePermissions(user?.role);
   
   // Redirection pour les employés
   if (user?.role === 'employee') {
@@ -336,11 +338,10 @@ export default function Deliveries() {
             )}
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+          <div className="bg-white border border-gray-200 shadow-lg overflow-hidden rounded-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Fournisseur
@@ -367,8 +368,8 @@ export default function Deliveries() {
                         Actions
                       </th>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
                     {paginatedDeliveries.map((delivery) => (
                       <tr key={delivery.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -466,21 +467,20 @@ export default function Deliveries() {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              {/* Pagination */}
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={setItemsPerPage}
-                className="mt-4 p-4 border-t border-gray-200"
-              />
+                </tbody>
+              </table>
             </div>
+            
+            {/* Pagination */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              className="mt-4 p-4 border-t border-gray-200"
+            />
           </div>
         )}
       </div>
