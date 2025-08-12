@@ -43,10 +43,11 @@ Preferred communication style: Simple, everyday language.
 - **Universal Pagination**: Reusable client-side pagination component across all main tabular data pages.
 - **Reconciliation Module**: For balancing and tracking financial discrepancies. **PRODUCTION-READY**: Rebuilt with robust UI components to eliminate React #310 errors in production.
 - **Automatic Reconciliation System**: Dual-mode BL/Invoice reconciliation with automatic validation for suppliers in automatic mode. Auto-validates deliveries when status = "delivered" AND BL number exists.
-- **Permission System**: Granular, hardcoded permissions (54 permissions across 12 categories, assigned to 4 roles) for improved performance and maintenance.
+- **Permission System**: Granular, hardcoded permissions (54 permissions across 12 categories, assigned to 4 roles) for improved performance and maintenance. **EMPLOYEE PERMISSIONS**: Employees can create customer orders and DLC products.
 - **User Management**: Comprehensive features including user deletion with ownership transfer, consistent name and email field handling, and robust password hashing.
 - **Calendar Synchronization**: Proper display of delivery dates and automatic synchronization of order statuses.
 - **Database Schema Download**: Admin-only feature to download comprehensive database structure reports.
+- **DLC Product Management**: **DEV-FIXED**: Corrected MemStorage implementation for proper DLC persistence in development. Cache invalidation fixed with exact:false for production compatibility.
 - **Robust UI Architecture**: Critical pages rebuilt with custom Tailwind CSS components to eliminate shadcn/ui production bundling issues.
 
 ## External Dependencies
