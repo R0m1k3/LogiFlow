@@ -690,7 +690,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log('🔄 Updating delivery:', { id, data: req.body, user: user.id });
-      const data = insertDeliverySchema.partial().parse(req.body);
+      
+      // Transform data types before validation
+      const transformedData = { ...req.body };
+      
+      // Convert decimal amounts to strings (schema expects string for decimal fields)
+      if (transformedData.blAmount !== undefined && transformedData.blAmount !== null) {
+        transformedData.blAmount = transformedData.blAmount.toString();
+      }
+      if (transformedData.invoiceAmount !== undefined && transformedData.invoiceAmount !== null) {
+        transformedData.invoiceAmount = transformedData.invoiceAmount.toString();
+      }
+      
+      // Convert validatedAt to Date object (schema expects Date for timestamp fields)
+      if (transformedData.validatedAt && typeof transformedData.validatedAt === 'string') {
+        transformedData.validatedAt = new Date(transformedData.validatedAt);
+      }
+      
+      const data = insertDeliverySchema.partial().parse(transformedData);
       const updatedDelivery = await storage.updateDelivery(id, data);
       console.log('✅ Delivery updated successfully:', { id, updatedDelivery });
       
@@ -721,7 +738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Auto-valider le rapprochement
             await storage.updateDelivery(id, {
               reconciled: true,
-              validatedAt: new Date()
+              validatedAt: new Date().toISOString()
             });
             
             console.log(`✅ Auto-reconciliation: Delivery #${id} automatically validated for supplier ${supplier.name}`);
