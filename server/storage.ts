@@ -1252,14 +1252,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCustomerOrder(customerOrderData: InsertCustomerOrder): Promise<CustomerOrder> {
+    const insertData = {
+      ...customerOrderData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    console.log("🔍 STORAGE DEBUG - Customer Order insertData:", insertData);
+    console.log("🔍 STORAGE DEBUG - Customer Order insertData.groupId:", insertData.groupId, typeof insertData.groupId);
+    
     const [customerOrder] = await db
       .insert(customerOrders)
-      .values({
-        ...customerOrderData,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
+      .values(insertData)
       .returning();
+    
+    console.log("🔍 STORAGE DEBUG - Customer Order returned from DB:", customerOrder);
+    console.log("🔍 STORAGE DEBUG - Customer Order returned groupId:", customerOrder.groupId, typeof customerOrder.groupId);
+    
     return customerOrder;
   }
 
@@ -1471,21 +1480,33 @@ export class DatabaseStorage implements IStorage {
   async createDlcProduct(dlcProductData: InsertDlcProductFrontend): Promise<DlcProductFrontend> {
     // Convert dlcDate to expiryDate for Drizzle schema compatibility
     const { dlcDate, ...restData } = dlcProductData as any;
+    
+    const insertData = {
+      ...restData,
+      expiryDate: dlcDate,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    console.log("🔍 STORAGE DEBUG - DLC insertData:", insertData);
+    console.log("🔍 STORAGE DEBUG - DLC insertData.groupId:", insertData.groupId, typeof insertData.groupId);
+    
     const [dlcProduct] = await db
       .insert(dlcProducts)
-      .values({
-        ...restData,
-        expiryDate: dlcDate,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
+      .values(insertData)
       .returning();
     
+    console.log("🔍 STORAGE DEBUG - DLC returned from DB:", dlcProduct);
+    console.log("🔍 STORAGE DEBUG - DLC returned groupId:", dlcProduct.groupId, typeof dlcProduct.groupId);
+    
     // Return with dlcDate field for frontend compatibility
-    return {
+    const result = {
       ...dlcProduct,
       dlcDate: dlcProduct.expiryDate,
     } as any;
+    
+    console.log("🔍 STORAGE DEBUG - DLC final result:", result);
+    return result;
   }
 
   async updateDlcProduct(id: number, dlcProductData: Partial<InsertDlcProductFrontend>): Promise<DlcProductFrontend> {
