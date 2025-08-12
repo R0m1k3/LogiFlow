@@ -219,9 +219,9 @@ export default function Orders() {
     }
   };
 
-  const canCreate = true; // All users can create orders
-  const canEdit = user?.role === 'admin' || user?.role === 'manager';
-  const canDelete = user?.role === 'admin' || user?.role === 'manager';
+  const canCreate = permissions.canCreate('orders');
+  const canEdit = permissions.canEdit('orders');
+  const canDelete = permissions.canDelete('orders');
 
   return (
     <div className="p-6 space-y-6">
