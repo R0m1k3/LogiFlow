@@ -10,6 +10,8 @@ import {
   customerOrders,
   dlcProducts,
   tasks,
+  invoiceVerificationCache,
+  invoiceVerifications,
   type User,
   type UpsertUser,
   type Group,
@@ -41,6 +43,10 @@ import {
   type DlcProductFrontend,
   type InsertDlcProductFrontend,
   type DlcProductWithRelations,
+  type InvoiceVerificationCache,
+  type InsertInvoiceVerificationCache,
+  type InvoiceVerification,
+  type InsertInvoiceVerification,
   type Task,
   type InsertTask,
 } from "@shared/schema";
@@ -152,6 +158,12 @@ export interface IStorage {
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
   deleteTask(id: number): Promise<void>;
   completeTask(id: number, completedBy?: string): Promise<void>;
+
+  // Invoice Verification operations - Tables existantes en production
+  getInvoiceVerifications(deliveryId?: number): Promise<InvoiceVerification[]>;
+  createInvoiceVerification(verification: InsertInvoiceVerification): Promise<InvoiceVerification>;
+  getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined>;
+  createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2025,6 +2037,52 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date() 
       })
       .where(eq(tasks.id, id));
+  }
+
+  // Invoice Verification operations - Utilise les tables existantes en production
+  async getInvoiceVerifications(deliveryId?: number): Promise<InvoiceVerification[]> {
+    const query = db.select().from(invoiceVerifications);
+    if (deliveryId) {
+      return await query.where(eq(invoiceVerifications.deliveryId, deliveryId));
+    }
+    return await query.orderBy(desc(invoiceVerifications.verifiedAt));
+  }
+
+  async createInvoiceVerification(verification: InsertInvoiceVerification): Promise<InvoiceVerification> {
+    const [newVerification] = await db
+      .insert(invoiceVerifications)
+      .values({
+        ...verification,
+        verifiedAt: new Date(),
+        lastCheckedAt: new Date(),
+      })
+      .returning();
+    return newVerification;
+  }
+
+  async getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined> {
+    const [cache] = await db
+      .select()
+      .from(invoiceVerificationCache)
+      .where(
+        and(
+          eq(invoiceVerificationCache.cacheKey, cacheKey),
+          sql`expires_at > NOW()`
+        )
+      );
+    return cache;
+  }
+
+  async createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
+    const [newCache] = await db
+      .insert(invoiceVerificationCache)
+      .values({
+        ...cache,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return newCache;
   }
 }
 

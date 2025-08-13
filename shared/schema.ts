@@ -217,6 +217,37 @@ export const dlcProducts = pgTable("dlc_products", {
   updatedAt: timestamp("updated_at").defaultNow(), // Date de mise à jour
 });
 
+// Invoice Verification Cache - Table existante en production
+export const invoiceVerificationCache = pgTable("invoice_verification_cache", {
+  id: serial("id").primaryKey(),
+  cacheKey: varchar("cache_key", { length: 255 }).notNull(),
+  groupId: integer("group_id").notNull(),
+  invoiceReference: varchar("invoice_reference", { length: 255 }).notNull(),
+  supplierName: varchar("supplier_name", { length: 255 }),
+  exists: boolean("exists").notNull(),
+  matchType: varchar("match_type", { length: 50 }).notNull(),
+  errorMessage: text("error_message"),
+  cacheHit: boolean("cache_hit").default(false),
+  apiCallTime: integer("api_call_time"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Invoice Verifications - Table existante en production 
+export const invoiceVerifications = pgTable("invoice_verifications", {
+  id: serial("id").primaryKey(),
+  deliveryId: integer("delivery_id").notNull(),
+  groupId: integer("group_id").notNull(),
+  invoiceReference: varchar("invoice_reference", { length: 255 }).notNull(),
+  supplierName: varchar("supplier_name", { length: 255 }),
+  exists: boolean("exists").notNull(),
+  matchType: varchar("match_type", { length: 50 }),
+  verifiedAt: timestamp("verified_at").defaultNow(),
+  isValid: boolean("is_valid").default(true),
+  lastCheckedAt: timestamp("last_checked_at").defaultNow(),
+});
+
 // Tasks table
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
@@ -481,6 +512,18 @@ export const insertDlcProductFrontendSchema = insertDlcProductSchema
   .omit({ expiryDate: true })
   .extend({ dlcDate: z.coerce.date() });
 
+export const insertInvoiceVerificationCacheSchema = createInsertSchema(invoiceVerificationCache).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInvoiceVerificationsSchema = createInsertSchema(invoiceVerifications).omit({
+  id: true,
+  verifiedAt: true,
+  lastCheckedAt: true,
+});
+
 export const insertTaskSchema = createInsertSchema(tasks).omit({
   id: true,
   createdAt: true,
@@ -516,6 +559,10 @@ export type DlcProduct = typeof dlcProducts.$inferSelect;
 export type InsertDlcProduct = z.infer<typeof insertDlcProductSchema>;
 export type DlcProductFrontend = Omit<DlcProduct, 'expiryDate'> & { dlcDate: Date };
 export type InsertDlcProductFrontend = z.infer<typeof insertDlcProductFrontendSchema>;
+export type InvoiceVerificationCache = typeof invoiceVerificationCache.$inferSelect;
+export type InsertInvoiceVerificationCache = z.infer<typeof insertInvoiceVerificationCacheSchema>;
+export type InvoiceVerification = typeof invoiceVerifications.$inferSelect;
+export type InsertInvoiceVerification = z.infer<typeof insertInvoiceVerificationsSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 
