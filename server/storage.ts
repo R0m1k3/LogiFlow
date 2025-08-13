@@ -591,7 +591,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDelivery(deliveryData: InsertDelivery): Promise<Delivery> {
-    const [delivery] = await db.insert(deliveries).values(deliveryData).returning();
+    // Créer la livraison avec statut "planned" par défaut
+    const deliveryDataWithStatus = {
+      ...deliveryData,
+      status: deliveryData.status || 'planned' // Force planned status by default
+    };
+    
+    const [delivery] = await db.insert(deliveries).values(deliveryDataWithStatus).returning();
+    
+    // Si une commande est liée, la marquer comme "planned" (pas delivered!)
+    if (deliveryData.orderId) {
+      try {
+        console.log(`🔗 PRODUCTION: Delivery #${delivery.id} linked to order #${deliveryData.orderId}, updating order status to 'planned'`);
+        
+        // Récupérer la commande actuelle
+        const [currentOrder] = await db
+          .select()
+          .from(orders)
+          .where(eq(orders.id, deliveryData.orderId));
+        
+        if (currentOrder && currentOrder.status === 'pending') {
+          await db
+            .update(orders)
+            .set({ 
+              status: 'planned',
+              updatedAt: new Date() 
+            })
+            .where(eq(orders.id, deliveryData.orderId));
+          
+          console.log(`✅ PRODUCTION: Order #${deliveryData.orderId} status updated to 'planned'`);
+        }
+      } catch (error) {
+        console.error(`❌ PRODUCTION: Failed to update order #${deliveryData.orderId} status to planned:`, error);
+      }
+    }
+    
     return delivery;
   }
 

@@ -19,6 +19,14 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-13 - Correction statut commande lors liaison avec livraison (PRODUCTION)
+✅ **Problème production PostgreSQL résolu** :
+- **Problème** : Commandes passaient à "delivered" au lieu de "planned" lors liaison avec livraison
+- **Cause** : Méthode createDelivery() dans DatabaseStorage (PostgreSQL) manquait logique status
+- **Solution** : Ajout logique complète dans createDelivery() production identique à développement
+- **Correction** : Commandes liées passent maintenant à "planned" (jaune) et non "delivered"
+- **Test** : Synchronisation automatique uniquement lors validation, pas création
+
 ### 2025-08-13 - Interface épurée + redirection automatique + réorganisation navigation
 ✅ **Redirection automatique vers authentification** :
 - RouterProduction redirige immédiatement si utilisateur non connecté
