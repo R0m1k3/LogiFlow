@@ -42,13 +42,14 @@ import {
   type DlcProductWithRelations,
   type Task,
   type InsertTask,
+  type TaskWithRelations,
   type NocodbConfig,
   type InsertNocodbConfig,
   type InvoiceVerificationCache,
   type InsertInvoiceVerificationCache,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, desc, sql, gte, lte, lt, or, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, desc, sql, gte, lte, lt, or, isNull, isNotNull, asc } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -141,8 +142,8 @@ export interface IStorage {
   // DLC Product operations
   getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; }): Promise<DlcProductWithRelations[]>;
   getDlcProduct(id: number): Promise<DlcProductWithRelations | undefined>;
-  createDlcProduct(dlcProduct: InsertDlcProductFrontend): Promise<DlcProductFrontend>;
-  updateDlcProduct(id: number, dlcProduct: Partial<InsertDlcProductFrontend>): Promise<DlcProductFrontend>;
+  createDlcProduct(dlcProduct: InsertDlcProduct): Promise<DlcProductFrontend>;
+  updateDlcProduct(id: number, dlcProduct: Partial<InsertDlcProduct>): Promise<DlcProductFrontend>;
   deleteDlcProduct(id: number): Promise<void>;
   validateDlcProduct(id: number, validatedBy: string): Promise<DlcProductFrontend>;
   getDlcStats(groupIds?: number[]): Promise<{ active: number; expiringSoon: number; expired: number; }>;
@@ -875,29 +876,238 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
-  // Placeholder implementations for other operations
-  async getCustomerOrders(): Promise<CustomerOrderWithRelations[]> { return []; }
-  async getCustomerOrder(): Promise<CustomerOrderWithRelations | undefined> { return undefined; }
-  async createCustomerOrder(): Promise<CustomerOrder> { return {} as CustomerOrder; }
-  async updateCustomerOrder(): Promise<CustomerOrder> { return {} as CustomerOrder; }
-  async deleteCustomerOrder(): Promise<void> {}
+  // Real implementations for production operations
+  async getCustomerOrders(groupIds?: number[]): Promise<CustomerOrderWithRelations[]> {
+    let query = db
+      .select({
+        customerOrder: customerOrders,
+        supplier: suppliers,
+        group: groups
+      })
+      .from(customerOrders)
+      .leftJoin(suppliers, eq(customerOrders.supplierId, suppliers.id))
+      .leftJoin(groups, eq(customerOrders.groupId, groups.id));
 
-  async getDlcProducts(): Promise<DlcProductWithRelations[]> { return []; }
-  async getDlcProduct(): Promise<DlcProductWithRelations | undefined> { return undefined; }
-  async createDlcProduct(): Promise<DlcProductFrontend> { return {} as DlcProductFrontend; }
-  async updateDlcProduct(): Promise<DlcProductFrontend> { return {} as DlcProductFrontend; }
-  async deleteDlcProduct(): Promise<void> {}
-  async validateDlcProduct(): Promise<DlcProductFrontend> { return {} as DlcProductFrontend; }
-  async getDlcStats(): Promise<{ active: number; expiringSoon: number; expired: number; }> { 
-    return { active: 0, expiringSoon: 0, expired: 0 }; 
+    if (groupIds && groupIds.length > 0) {
+      query = query.where(inArray(customerOrders.groupId, groupIds));
+    }
+
+    const results = await query.orderBy(desc(customerOrders.createdAt));
+    return results.map((row: any) => ({
+      ...row.customerOrder,
+      supplier: row.supplier,
+      group: row.group,
+      creator: row.creator || { id: row.customerOrder.createdBy, username: 'unknown' }
+    }));
   }
 
-  async getTasks(): Promise<any[]> { return []; }
-  async getTask(): Promise<any | undefined> { return undefined; }
-  async createTask(): Promise<Task> { return {} as Task; }
-  async updateTask(): Promise<Task> { return {} as Task; }
-  async deleteTask(): Promise<void> {}
-  async completeTask(): Promise<void> {}
+  async getCustomerOrder(id: number): Promise<CustomerOrderWithRelations | undefined> {
+    const [result] = await db
+      .select({
+        customerOrder: customerOrders,
+        supplier: suppliers,
+        group: groups
+      })
+      .from(customerOrders)
+      .leftJoin(suppliers, eq(customerOrders.supplierId, suppliers.id))
+      .leftJoin(groups, eq(customerOrders.groupId, groups.id))
+      .where(eq(customerOrders.id, id));
+
+    if (!result) return undefined;
+    return {
+      ...result.customerOrder,
+      supplier: result.supplier,
+      group: result.group,
+      creator: result.creator || { id: result.customerOrder.createdBy, username: 'unknown' }
+    };
+  }
+
+  async createCustomerOrder(orderData: InsertCustomerOrder): Promise<CustomerOrder> {
+    const [customerOrder] = await db.insert(customerOrders).values(orderData).returning();
+    return customerOrder;
+  }
+
+  async updateCustomerOrder(id: number, orderData: Partial<InsertCustomerOrder>): Promise<CustomerOrder> {
+    const [customerOrder] = await db
+      .update(customerOrders)
+      .set({ ...orderData, updatedAt: new Date() })
+      .where(eq(customerOrders.id, id))
+      .returning();
+    return customerOrder;
+  }
+
+  async deleteCustomerOrder(id: number): Promise<void> {
+    await db.delete(customerOrders).where(eq(customerOrders.id, id));
+  }
+
+  async getDlcProducts(groupIds?: number[]): Promise<DlcProductWithRelations[]> {
+    let query = db
+      .select({
+        dlcProduct: dlcProducts,
+        supplier: suppliers,
+        group: groups
+      })
+      .from(dlcProducts)
+      .leftJoin(suppliers, eq(dlcProducts.supplierId, suppliers.id))
+      .leftJoin(groups, eq(dlcProducts.groupId, groups.id));
+
+    if (groupIds && groupIds.length > 0) {
+      query = query.where(inArray(dlcProducts.groupId, groupIds));
+    }
+
+    const results = await query.orderBy(asc(dlcProducts.expiryDate));
+    return results.map((row: any) => ({
+      ...row.dlcProduct,
+      supplier: row.supplier,
+      group: row.group,
+      creator: row.creator || { id: row.dlcProduct.createdBy, username: 'unknown' }
+    }));
+  }
+
+  async getDlcProduct(id: number): Promise<DlcProductWithRelations | undefined> {
+    const [result] = await db
+      .select({
+        dlcProduct: dlcProducts,
+        supplier: suppliers,
+        group: groups
+      })
+      .from(dlcProducts)
+      .leftJoin(suppliers, eq(dlcProducts.supplierId, suppliers.id))
+      .leftJoin(groups, eq(dlcProducts.groupId, groups.id))
+      .where(eq(dlcProducts.id, id));
+
+    if (!result) return undefined;
+    return {
+      ...result.dlcProduct,
+      supplier: result.supplier,
+      group: result.group,
+      creator: result.creator || { id: result.dlcProduct.createdBy, username: 'unknown' }
+    };
+  }
+
+  async createDlcProduct(productData: InsertDlcProduct): Promise<DlcProductFrontend> {
+    const [dlcProduct] = await db.insert(dlcProducts).values(productData).returning();
+    return { ...dlcProduct, dlcDate: new Date(dlcProduct.expiryDate) } as DlcProductFrontend;
+  }
+
+  async updateDlcProduct(id: number, productData: Partial<InsertDlcProduct>): Promise<DlcProductFrontend> {
+    const [dlcProduct] = await db
+      .update(dlcProducts)
+      .set({ ...productData, updatedAt: new Date() })
+      .where(eq(dlcProducts.id, id))
+      .returning();
+    return dlcProduct as DlcProductFrontend;
+  }
+
+  async deleteDlcProduct(id: number): Promise<void> {
+    await db.delete(dlcProducts).where(eq(dlcProducts.id, id));
+  }
+
+  async validateDlcProduct(id: number, validatedBy: string): Promise<DlcProductFrontend> {
+    const [dlcProduct] = await db
+      .update(dlcProducts)
+      .set({ 
+        validatedBy,
+        validatedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(dlcProducts.id, id))
+      .returning();
+    return dlcProduct as DlcProductFrontend;
+  }
+
+  async getDlcStats(groupIds?: number[]): Promise<{ active: number; expiringSoon: number; expired: number; }> {
+    const today = new Date();
+    const alertDate = new Date();
+    alertDate.setDate(today.getDate() + 15);
+
+    let whereCondition = sql`1 = 1`;
+    if (groupIds && groupIds.length > 0) {
+      whereCondition = inArray(dlcProducts.groupId, groupIds);
+    }
+
+    const [stats] = await db
+      .select({
+        active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} THEN 1 END)`,
+        expiringSoon: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} THEN 1 END)`,
+        expired: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} THEN 1 END)`
+      })
+      .from(dlcProducts)
+      .where(whereCondition);
+
+    return {
+      active: stats.active || 0,
+      expiringSoon: stats.expiringSoon || 0,
+      expired: stats.expired || 0
+    };
+  }
+
+  async getTasks(groupIds?: number[]): Promise<TaskWithRelations[]> {
+    let query = db
+      .select({
+        task: tasks,
+        group: groups
+      })
+      .from(tasks)
+      .leftJoin(groups, eq(tasks.groupId, groups.id));
+
+    if (groupIds && groupIds.length > 0) {
+      query = query.where(inArray(tasks.groupId, groupIds));
+    }
+
+    const results = await query.orderBy(desc(tasks.createdAt));
+    return results.map((row: any) => ({
+      ...row.task,
+      group: row.group
+    }));
+  }
+
+  async getTask(id: number): Promise<TaskWithRelations | undefined> {
+    const [result] = await db
+      .select({
+        task: tasks,
+        group: groups
+      })
+      .from(tasks)
+      .leftJoin(groups, eq(tasks.groupId, groups.id))
+      .where(eq(tasks.id, id));
+
+    if (!result) return undefined;
+    return {
+      ...result.task,
+      group: result.group
+    };
+  }
+
+  async createTask(taskData: InsertTask): Promise<Task> {
+    const [task] = await db.insert(tasks).values(taskData).returning();
+    return task;
+  }
+
+  async updateTask(id: number, taskData: Partial<InsertTask>): Promise<Task> {
+    const [task] = await db
+      .update(tasks)
+      .set({ ...taskData, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return task;
+  }
+
+  async deleteTask(id: number): Promise<void> {
+    await db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  async completeTask(id: number, completedBy: string): Promise<void> {
+    await db
+      .update(tasks)
+      .set({ 
+        status: 'completed',
+        completedAt: new Date(),
+        completedBy,
+        updatedAt: new Date()
+      })
+      .where(eq(tasks.id, id));
+  }
 }
 
 // MemStorage class for development
@@ -927,6 +1137,7 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.initializeTestData();
+    this.initializeExtraTestData();
   }
 
   private initializeTestData() {
@@ -1253,28 +1464,324 @@ export class MemStorage implements IStorage {
   async getPublicityParticipations(): Promise<PublicityParticipation[]> { return []; }
   async setPublicityParticipations(): Promise<void> {}
 
-  async getCustomerOrders(): Promise<CustomerOrderWithRelations[]> { return []; }
-  async getCustomerOrder(): Promise<CustomerOrderWithRelations | undefined> { return undefined; }
-  async createCustomerOrder(): Promise<CustomerOrder> { return {} as CustomerOrder; }
-  async updateCustomerOrder(): Promise<CustomerOrder> { return {} as CustomerOrder; }
-  async deleteCustomerOrder(): Promise<void> {}
-
-  async getDlcProducts(): Promise<DlcProductWithRelations[]> { return []; }
-  async getDlcProduct(): Promise<DlcProductWithRelations | undefined> { return undefined; }
-  async createDlcProduct(): Promise<DlcProductFrontend> { return {} as DlcProductFrontend; }
-  async updateDlcProduct(): Promise<DlcProductFrontend> { return {} as DlcProductFrontend; }
-  async deleteDlcProduct(): Promise<void> {}
-  async validateDlcProduct(): Promise<DlcProductFrontend> { return {} as DlcProductFrontend; }
-  async getDlcStats(): Promise<{ active: number; expiringSoon: number; expired: number; }> { 
-    return { active: 0, expiringSoon: 0, expired: 0 }; 
+  async getCustomerOrders(): Promise<CustomerOrderWithRelations[]> {
+    return Array.from(this.customerOrders.values()).map(order => ({
+      ...order,
+      supplier: this.suppliers.get(order.supplierId)!,
+      group: this.groups.get(order.groupId)!,
+      creator: this.users.get(order.createdBy)!
+    }));
   }
 
-  async getTasks(): Promise<any[]> { return []; }
-  async getTask(): Promise<any | undefined> { return undefined; }
-  async createTask(): Promise<Task> { return {} as Task; }
-  async updateTask(): Promise<Task> { return {} as Task; }
-  async deleteTask(): Promise<void> {}
-  async completeTask(): Promise<void> {}
+  async getCustomerOrder(id: number): Promise<CustomerOrderWithRelations | undefined> {
+    const order = this.customerOrders.get(id);
+    if (!order) return undefined;
+    
+    return {
+      ...order,
+      supplier: this.suppliers.get(order.supplierId)!,
+      group: this.groups.get(order.groupId)!,
+      creator: this.users.get(order.createdBy)!
+    };
+  }
+
+  async createCustomerOrder(orderData: InsertCustomerOrder): Promise<CustomerOrder> {
+    const id = this.idCounters.customerOrder++;
+    const order: CustomerOrder = {
+      id,
+      ...orderData,
+      status: orderData.status || 'En attente de Commande',
+      quantity: orderData.quantity || 1,
+      deposit: orderData.deposit || "0.00" as any,
+      isPromotionalPrice: orderData.isPromotionalPrice || false,
+      customerNotified: orderData.customerNotified || false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.customerOrders.set(id, order);
+    return order;
+  }
+
+  async updateCustomerOrder(id: number, orderData: Partial<InsertCustomerOrder>): Promise<CustomerOrder> {
+    const existingOrder = this.customerOrders.get(id);
+    if (!existingOrder) throw new Error('Customer order not found');
+    
+    const updatedOrder = { ...existingOrder, ...orderData, updatedAt: new Date() };
+    this.customerOrders.set(id, updatedOrder);
+    return updatedOrder;
+  }
+
+  async deleteCustomerOrder(id: number): Promise<void> {
+    this.customerOrders.delete(id);
+  }
+
+  async getDlcProducts(): Promise<DlcProductWithRelations[]> {
+    return Array.from(this.dlcProducts.values()).map(product => ({
+      ...product,
+      supplier: this.suppliers.get(product.supplierId)!,
+      group: this.groups.get(product.groupId)!,
+      creator: this.users.get(product.createdBy)!
+    }));
+  }
+
+  async getDlcProduct(id: number): Promise<DlcProductWithRelations | undefined> {
+    const product = this.dlcProducts.get(id);
+    if (!product) return undefined;
+    
+    return {
+      ...product,
+      supplier: this.suppliers.get(product.supplierId)!,
+      group: this.groups.get(product.groupId)!,
+      creator: this.users.get(product.createdBy)!
+    };
+  }
+
+  async createDlcProduct(productData: InsertDlcProduct): Promise<DlcProductFrontend> {
+    const id = this.idCounters.dlcProduct++;
+    const product: DlcProduct = {
+      id,
+      ...productData,
+      status: productData.status || 'en_cours',
+      quantity: productData.quantity || 1,
+      unit: productData.unit || 'unité',
+      location: productData.location || 'Magasin',
+      alertThreshold: productData.alertThreshold || 15,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.dlcProducts.set(id, product);
+    return { ...product, dlcDate: new Date(product.expiryDate) } as DlcProductFrontend;
+  }
+
+  async updateDlcProduct(id: number, productData: Partial<InsertDlcProduct>): Promise<DlcProductFrontend> {
+    const existingProduct = this.dlcProducts.get(id);
+    if (!existingProduct) throw new Error('DLC Product not found');
+    
+    const updatedProduct = { ...existingProduct, ...productData, updatedAt: new Date() };
+    this.dlcProducts.set(id, updatedProduct);
+    return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
+  }
+
+  async deleteDlcProduct(id: number): Promise<void> {
+    this.dlcProducts.delete(id);
+  }
+
+  async validateDlcProduct(id: number, validatedBy: string): Promise<DlcProductFrontend> {
+    const existingProduct = this.dlcProducts.get(id);
+    if (!existingProduct) throw new Error('DLC Product not found');
+    
+    const updatedProduct = { 
+      ...existingProduct, 
+      validatedBy,
+      validatedAt: new Date(),
+      updatedAt: new Date() 
+    };
+    this.dlcProducts.set(id, updatedProduct);
+    return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
+  }
+
+  async getDlcStats(): Promise<{ active: number; expiringSoon: number; expired: number; }> {
+    const today = new Date();
+    const alertDate = new Date();
+    alertDate.setDate(today.getDate() + 15);
+
+    const products = Array.from(this.dlcProducts.values());
+    return {
+      active: products.filter(p => new Date(p.expiryDate) > today).length,
+      expiringSoon: products.filter(p => {
+        const expiry = new Date(p.expiryDate);
+        return expiry >= today && expiry <= alertDate;
+      }).length,
+      expired: products.filter(p => new Date(p.expiryDate) <= today).length
+    };
+  }
+
+  async getTasks(): Promise<TaskWithRelations[]> {
+    return Array.from(this.tasks.values()).map(task => ({
+      ...task,
+      group: this.groups.get(task.groupId)!,
+      creator: this.users.get(task.createdBy)!
+    }));
+  }
+
+  async getTask(id: number): Promise<TaskWithRelations | undefined> {
+    const task = this.tasks.get(id);
+    if (!task) return undefined;
+    
+    return {
+      ...task,
+      group: this.groups.get(task.groupId)!,
+      creator: this.users.get(task.createdBy)!
+    };
+  }
+
+  async createTask(taskData: InsertTask): Promise<Task> {
+    const id = this.idCounters.task++;
+    const task: Task = {
+      id,
+      ...taskData,
+      status: taskData.status || 'pending',
+      priority: taskData.priority || 'medium',
+      completedAt: null,
+      completedBy: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.tasks.set(id, task);
+    return task;
+  }
+
+  private initializeExtraTestData() {
+    // Add test customer orders
+    const testOrder1: CustomerOrder = {
+      id: 1,
+      supplierId: 1,
+      groupId: 1,
+      createdBy: 'admin',
+      orderTaker: 'Admin',
+      customerName: 'Marie Dupont',
+      customerPhone: '0123456789',
+      productDesignation: 'Table de jardin',
+      quantity: 2,
+      deposit: '150.00' as any,
+      status: 'En attente de Commande',
+      isPromotionalPrice: false,
+      customerNotified: false,
+      notes: 'Livraison urgente demandée',
+      createdAt: new Date('2025-01-15'),
+      updatedAt: new Date('2025-01-15'),
+    };
+    
+    const testOrder2: CustomerOrder = {
+      id: 2,
+      supplierId: 1,
+      groupId: 1,
+      createdBy: 'admin',
+      orderTaker: 'Admin',
+      customerName: 'Pierre Martin',
+      customerPhone: '0987654321',
+      productDesignation: 'Chaises pliantes x4',
+      quantity: 1,
+      deposit: '80.00' as any,
+      status: 'Commande passée',
+      isPromotionalPrice: true,
+      customerNotified: true,
+      notes: null,
+      createdAt: new Date('2025-01-10'),
+      updatedAt: new Date('2025-01-12'),
+    };
+
+    this.customerOrders.set(1, testOrder1);
+    this.customerOrders.set(2, testOrder2);
+    this.idCounters.customerOrder = 3;
+
+    // Add test DLC products
+    const testDlc1: DlcProduct = {
+      id: 1,
+      supplierId: 1,
+      groupId: 1,
+      createdBy: 'admin',
+      productName: 'Yaourts bio',
+      expiryDate: '2025-08-20',
+      status: 'en_cours',
+      quantity: 24,
+      unit: 'pièces',
+      notes: 'À vendre rapidement',
+      location: 'Frigo principal',
+      alertThreshold: 5,
+      validatedBy: null,
+      validatedAt: null,
+      createdAt: new Date('2025-08-10'),
+      updatedAt: new Date('2025-08-10'),
+    };
+
+    const testDlc2: DlcProduct = {
+      id: 2,
+      supplierId: 1,
+      groupId: 1,
+      createdBy: 'admin',
+      productName: 'Pain de mie complet',
+      expiryDate: '2025-08-16',
+      status: 'alerte',
+      quantity: 8,
+      unit: 'unités',
+      notes: 'DLC proche, promotion conseillée',
+      location: 'Rayonnage A3',
+      alertThreshold: 3,
+      validatedBy: null,
+      validatedAt: null,
+      createdAt: new Date('2025-08-08'),
+      updatedAt: new Date('2025-08-13'),
+    };
+
+    this.dlcProducts.set(1, testDlc1);
+    this.dlcProducts.set(2, testDlc2);
+    this.idCounters.dlcProduct = 3;
+
+    // Add test tasks
+    const testTask1: Task = {
+      id: 1,
+      groupId: 1,
+      createdBy: 'admin',
+      title: 'Vérifier stock yaourts',
+      description: 'Contrôler les DLC des yaourts et organiser la rotation',
+      status: 'pending',
+      priority: 'high',
+      assignedTo: 'admin',
+      dueDate: new Date('2025-08-15'),
+      completedAt: null,
+      completedBy: null,
+      createdAt: new Date('2025-08-13'),
+      updatedAt: new Date('2025-08-13'),
+    };
+
+    const testTask2: Task = {
+      id: 2,
+      groupId: 1,
+      createdBy: 'admin',
+      title: 'Contacter fournisseur',
+      description: 'Appeler le fournisseur pour confirmer la livraison de demain',
+      status: 'in_progress',
+      priority: 'medium',
+      assignedTo: 'admin',
+      dueDate: new Date('2025-08-14'),
+      completedAt: null,
+      completedBy: null,
+      createdAt: new Date('2025-08-12'),
+      updatedAt: new Date('2025-08-13'),
+    };
+
+    this.tasks.set(1, testTask1);
+    this.tasks.set(2, testTask2);
+    this.idCounters.task = 3;
+  }
+
+  async updateTask(id: number, taskData: Partial<InsertTask>): Promise<Task> {
+    const existingTask = this.tasks.get(id);
+    if (!existingTask) throw new Error('Task not found');
+    
+    const updatedTask = { ...existingTask, ...taskData, updatedAt: new Date() };
+    this.tasks.set(id, updatedTask);
+    return updatedTask;
+  }
+
+  async deleteTask(id: number): Promise<void> {
+    this.tasks.delete(id);
+  }
+
+  async completeTask(id: number, completedBy: string): Promise<void> {
+    const existingTask = this.tasks.get(id);
+    if (!existingTask) throw new Error('Task not found');
+    
+    const updatedTask = { 
+      ...existingTask, 
+      status: 'completed' as const,
+      completedAt: new Date(),
+      completedBy,
+      updatedAt: new Date() 
+    };
+    this.tasks.set(id, updatedTask);
+  }
 }
 
 // Use MemStorage in development, DatabaseStorage in production
