@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { safeFormat } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
@@ -189,6 +189,25 @@ export default function BLReconciliation() {
     },
     enabled: !!user
   });
+
+  // VÉRIFICATION AUTOMATIQUE AU CHARGEMENT
+  useEffect(() => {
+    if (!deliveriesWithBL.length || !suppliers.length) return;
+    
+    console.log('🔄 Déclenchement vérifications automatiques...');
+    
+    deliveriesWithBL.forEach((delivery: any) => {
+      // Vérifier seulement si on a une référence de facture et pas déjà de résultat
+      if (delivery.invoiceReference && !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id)) {
+        console.log(`🔍 Vérification auto pour livraison ${delivery.id}:`, delivery.invoiceReference);
+        
+        // Délai pour éviter de surcharger le serveur
+        setTimeout(() => {
+          handleVerifyInvoice(delivery);
+        }, Math.random() * 2000); // Délai aléatoire entre 0 et 2 secondes
+      }
+    });
+  }, [deliveriesWithBL, suppliers, verificationResults, verifyingDeliveries]);
 
   // Séparer les livraisons par mode de rapprochement
   const manualReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {

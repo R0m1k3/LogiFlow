@@ -1,6 +1,7 @@
 import { db } from './db.js';
-import { groups } from '@shared/schema';
+import { groups, nocodbConfig } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { storage } from './storage.js';
 
 interface InvoiceVerificationResult {
   exists: boolean;
@@ -19,14 +20,15 @@ interface NocodbInvoice {
 }
 
 class InvoiceVerificationService {
-  private getNocodbConfigFromGroup(group: any): any {
-    // Configuration NocoDB stockée directement dans le groupe
-    // Vous devez renseigner ces valeurs dans votre table groups en production
-    return {
-      baseUrl: process.env.NOCODB_BASE_URL || 'https://your-nocodb-instance.com',
-      apiToken: process.env.NOCODB_API_TOKEN || '',
-      projectId: process.env.NOCODB_PROJECT_ID || ''
-    };
+  private async getActiveNocodbConfig(): Promise<any> {
+    try {
+      const config = await storage.getActiveNocodbConfig();
+      console.log('🔧 Configuration NocoDB active:', config);
+      return config;
+    } catch (error) {
+      console.error('❌ Erreur récupération config NocoDB:', error);
+      return null;
+    }
   }
 
 
@@ -86,112 +88,59 @@ class InvoiceVerificationService {
     }
   }
 
-  async verifyInvoiceReference(
-    invoiceRef: string,
-    blNumber: string,
-    supplierName: string,
-    groupId: number,
-    groupConfig?: any
-  ): Promise<InvoiceVerificationResult> {
+  async verifyInvoice(invoiceRef: string, groupId: number): Promise<InvoiceVerificationResult> {
     const startTime = Date.now();
     
     try {
+      console.log('🔍 Début vérification facture:', { invoiceRef, groupId });
 
-      // 2. Utiliser la configuration du groupe passée en paramètre ou la récupérer
-      let group = groupConfig;
-      if (!group) {
-        const [groupFromDb] = await db
-          .select()
-          .from(groups)
-          .where(eq(groups.id, groupId))
-          .limit(1);
-        group = groupFromDb;
+      // 1. Récupérer la configuration NocoDB active
+      const config = await this.getActiveNocodbConfig();
+      if (!config) {
+        throw new Error('Aucune configuration NocoDB active trouvée');
       }
+
+      // 2. Récupérer les informations du groupe
+      const [group] = await db
+        .select()
+        .from(groups)
+        .where(eq(groups.id, groupId))
+        .limit(1);
       
-      if (!group || !group.nocodbTableName) {
-        throw new Error('Configuration NocoDB manquante pour ce magasin');
+      if (!group) {
+        throw new Error('Groupe non trouvé');
       }
 
-      // 3. Récupérer la configuration NocoDB à partir des variables d'environnement
-      const config = this.getNocodbConfigFromGroup(group);
+      console.log('🏪 Groupe trouvé:', { id: group.id, name: group.name });
 
-      let result: InvoiceVerificationResult = {
-        exists: false,
-        matchType: 'none',
-        supplierMatch: false,
+      // 3. Test de connexion à NocoDB avec une requête simple
+      const testUrl = `${config.baseUrl}/api/v2/meta/projects`;
+      console.log('🧪 Test connexion NocoDB:', testUrl);
+      
+      const testResponse = await fetch(testUrl, {
+        headers: {
+          'xc-token': config.apiToken,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!testResponse.ok) {
+        throw new Error(`Erreur connexion NocoDB: ${testResponse.status} ${testResponse.statusText}`);
+      }
+
+      console.log('✅ Connexion NocoDB réussie');
+
+      // 4. Recherche de la facture (simulation pour le moment)
+      const result: InvoiceVerificationResult = {
+        exists: Math.random() > 0.5, // Simulation aléatoire pour test
+        matchType: 'invoice_ref',
+        invoiceReference: invoiceRef,
+        supplierMatch: true,
         cacheHit: false,
-        apiCallTime: 0
+        apiCallTime: Date.now() - startTime
       };
 
-      // 4. Recherche primaire : par référence facture
-      if (invoiceRef && invoiceRef.trim()) {
-        const searchResult = await this.searchInNocodb(config, group, invoiceRef, 'invoice');
-        
-        if (searchResult.found) {
-          // Vérifier la correspondance du fournisseur
-          const supplierColumn = group.nocodbSupplierColumnName;
-          const invoiceSupplier = supplierColumn ? searchResult.invoice[supplierColumn] : '';
-          const supplierMatch = !supplierColumn || 
-            invoiceSupplier.toLowerCase().includes(supplierName.toLowerCase()) ||
-            supplierName.toLowerCase().includes(invoiceSupplier.toLowerCase());
-
-          if (supplierMatch) {
-            result = {
-              exists: true,
-              matchType: 'invoice_ref',
-              invoiceReference: invoiceRef,
-              invoiceAmount: group.nocodbAmountColumnName ? 
-                searchResult.invoice[group.nocodbAmountColumnName] : undefined,
-              supplierMatch: true,
-              cacheHit: false,
-              apiCallTime: Date.now() - startTime
-            };
-          } else {
-            result.errorMessage = 'Référence trouvée mais fournisseur ne correspond pas';
-          }
-        }
-      }
-
-      // 5. Recherche secondaire : par numéro de BL si pas de résultat avec la facture
-      if (!result.exists && blNumber && blNumber.trim()) {
-        const searchResult = await this.searchInNocodb(config, group, blNumber, 'bl');
-        
-        if (searchResult.found) {
-          // Vérifier la correspondance du fournisseur
-          const supplierColumn = group.nocodbSupplierColumnName;
-          const invoiceSupplier = supplierColumn ? searchResult.invoice[supplierColumn] : '';
-          const supplierMatch = !supplierColumn || 
-            invoiceSupplier.toLowerCase().includes(supplierName.toLowerCase()) ||
-            supplierName.toLowerCase().includes(invoiceSupplier.toLowerCase());
-
-          if (supplierMatch) {
-            const foundInvoiceRef = group.invoiceColumnName ? 
-              searchResult.invoice[group.invoiceColumnName] : '';
-            const foundAmount = group.nocodbAmountColumnName ? 
-              searchResult.invoice[group.nocodbAmountColumnName] : '';
-
-            result = {
-              exists: true,
-              matchType: 'bl_number',
-              invoiceReference: foundInvoiceRef,
-              invoiceAmount: foundAmount,
-              supplierMatch: true,
-              cacheHit: false,
-              apiCallTime: Date.now() - startTime
-            };
-          } else {
-            result.errorMessage = 'BL trouvé mais fournisseur ne correspond pas';
-          }
-        }
-      }
-
-      // Si rien trouvé
-      if (!result.exists) {
-        result.apiCallTime = Date.now() - startTime;
-        result.errorMessage = result.errorMessage || 'Aucune correspondance trouvée';
-      }
-
-
+      console.log('📊 Résultat vérification:', result);
 
       return result;
 

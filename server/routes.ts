@@ -860,35 +860,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const { invoiceReference, blNumber } = req.body;
+      const { invoiceReference } = req.body;
       
       if (!delivery.supplier || !delivery.group) {
         console.log('❌ Livraison manque informations:', {
           deliveryId,
           hasSupplier: !!delivery.supplier,
-          hasGroup: !!delivery.group,
-          delivery: delivery
+          hasGroup: !!delivery.group
         });
         return res.status(400).json({ message: "Delivery missing supplier or group information" });
       }
 
-      console.log('🔍 Tentative de vérification facture:', {
+      if (!invoiceReference || !invoiceReference.trim()) {
+        return res.status(400).json({ message: "Référence de facture requise" });
+      }
+
+      console.log('🔍 Vérification facture:', {
         deliveryId,
-        invoiceReference: invoiceReference || delivery.invoiceReference,
-        blNumber: blNumber || delivery.blNumber,
-        supplierName: delivery.supplier.name,
-        groupId: delivery.groupId,
-        groupData: delivery.group
+        invoiceReference,
+        supplier: delivery.supplier?.name,
+        group: delivery.group?.name,
+        groupId: delivery.groupId
       });
 
-      const result = await invoiceVerificationService.verifyInvoiceReference(
-        invoiceReference || delivery.invoiceReference || '',
-        blNumber || delivery.blNumber || '',
-        delivery.supplier.name,
-        delivery.groupId,
-        delivery.group
+      // Appeler le service de vérification
+      const result = await invoiceVerificationService.verifyInvoice(
+        invoiceReference,
+        delivery.groupId
       );
 
+      console.log('✅ Résultat vérification:', result);
       res.json(result);
     } catch (error) {
       console.error("Error verifying invoice:", error);
