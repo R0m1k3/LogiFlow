@@ -610,7 +610,7 @@ export class DatabaseStorage implements IStorage {
   async validateDelivery(id: number, blData?: { blNumber: string; blAmount: number }): Promise<void> {
     const updateData: any = {
       status: 'delivered',
-      deliveredDate: new Date().toISOString(),
+      deliveredDate: new Date(),
       updatedAt: new Date(),
     };
 
