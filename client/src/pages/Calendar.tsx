@@ -49,12 +49,14 @@ export default function Calendar() {
       }
       
       const url = `/api/orders?${params.toString()}`;
-      console.log('📅 Calendar fetching orders:', {
-        url,
-        selectedStoreId,
-        userRole: user?.role,
-        params: params.toString()
-      });
+      if (import.meta.env.DEV) {
+        console.log('📅 Calendar fetching orders:', {
+          url,
+          selectedStoreId,
+          userRole: user?.role,
+          params: params.toString()
+        });
+      }
       
       const response = await fetch(url, {
         credentials: 'include'
@@ -65,7 +67,9 @@ export default function Calendar() {
       }
       
       const data = await response.json();
-      console.log('📅 Calendar orders received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      if (import.meta.env.DEV) {
+        console.log('📅 Calendar orders received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      }
       
       // Protection contre les données invalides en production
       if (!Array.isArray(data)) {
@@ -74,6 +78,8 @@ export default function Calendar() {
       }
       return data;
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes de cache pour éviter la disparition des données
+    gcTime: 10 * 60 * 1000, // 10 minutes en cache
   });
 
   const { data: deliveries = [], isLoading: loadingDeliveries } = useQuery({
@@ -91,12 +97,14 @@ export default function Calendar() {
       }
       
       const url = `/api/deliveries?${params.toString()}`;
-      console.log('📅 Calendar fetching deliveries:', {
-        url,
-        selectedStoreId,
-        userRole: user?.role,
-        params: params.toString()
-      });
+      if (import.meta.env.DEV) {
+        console.log('📅 Calendar fetching deliveries:', {
+          url,
+          selectedStoreId,
+          userRole: user?.role,
+          params: params.toString()
+        });
+      }
       
       const response = await fetch(url, {
         credentials: 'include'
@@ -107,7 +115,9 @@ export default function Calendar() {
       }
       
       const data = await response.json();
-      console.log('📅 Calendar deliveries received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      if (import.meta.env.DEV) {
+        console.log('📅 Calendar deliveries received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      }
       
       // Protection contre les données invalides en production
       if (!Array.isArray(data)) {
@@ -116,6 +126,8 @@ export default function Calendar() {
       }
       return data;
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes de cache pour éviter la disparition des données
+    gcTime: 10 * 60 * 1000, // 10 minutes en cache
   });
 
   // Fetch publicities for the current year
@@ -129,12 +141,14 @@ export default function Calendar() {
       }
       
       const url = `/api/publicities?${params.toString()}`;
-      console.log('📅 Calendar fetching publicities:', {
-        url,
-        selectedStoreId,
-        userRole: user?.role,
-        year: currentDate.getFullYear()
-      });
+      if (import.meta.env.DEV) {
+        console.log('📅 Calendar fetching publicities:', {
+          url,
+          selectedStoreId,
+          userRole: user?.role,
+          year: currentDate.getFullYear()
+        });
+      }
       
       const response = await fetch(url, {
         credentials: 'include'
@@ -145,7 +159,9 @@ export default function Calendar() {
       }
       
       const data = await response.json();
-      console.log('📅 Calendar publicities received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      if (import.meta.env.DEV) {
+        console.log('📅 Calendar publicities received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      }
       return Array.isArray(data) ? data : [];
     },
   });
@@ -166,12 +182,7 @@ export default function Calendar() {
   };
 
   const handleItemClick = (item: any, type: 'order' | 'delivery') => {
-    // Rafraîchir les données avant d'ouvrir le modal pour s'assurer d'avoir les liaisons à jour
-    queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-    queryClient.invalidateQueries({ queryKey: ['/api/orders', selectedStoreId] });
-    queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-    queryClient.invalidateQueries({ queryKey: ['/api/deliveries', selectedStoreId] });
-    
+    // Ne pas invalider le cache à l'ouverture pour éviter la disparition des données
     setSelectedItem({ ...item, type });
     setShowOrderDetail(true);
   };

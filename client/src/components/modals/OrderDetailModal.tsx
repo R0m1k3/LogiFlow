@@ -43,8 +43,8 @@ export default function OrderDetailModal({
         title: "Succès",
         description: "Commande validée avec succès",
       });
+      // Invalidation sélective pour éviter la disparition du calendrier
       queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
       onClose();
     },
     onError: (error) => {
@@ -76,8 +76,8 @@ export default function OrderDetailModal({
         title: "Succès",
         description: "Livraison validée avec succès",
       });
+      // Invalidation sélective pour éviter la disparition du calendrier
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
       onClose();
     },
     onError: (error) => {
@@ -103,37 +103,26 @@ export default function OrderDetailModal({
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const endpoint = isOrder ? `/api/orders/${id}` : `/api/deliveries/${id}`;
-      console.log(`🗑️ Deleting ${isOrder ? 'order' : 'delivery'}:`, id);
+      if (import.meta.env.DEV) {
+        console.log(`🗑️ Deleting ${isOrder ? 'order' : 'delivery'}:`, id);
+      }
       await apiRequest(endpoint, "DELETE");
     },
     onSuccess: () => {
-      console.log(`✅ ${isOrder ? 'Order' : 'Delivery'} deleted successfully, clearing cache...`);
+      if (import.meta.env.DEV) {
+        console.log(`✅ ${isOrder ? 'Order' : 'Delivery'} deleted successfully`);
+      }
       toast({
         title: "Succès",
         description: `${isOrder ? 'Commande' : 'Livraison'} supprimée avec succès`,
       });
       
-      // SOLUTION PRODUCTION : Cache clearing radical pour éviter incohérences storeId
-      console.log('🗑️ Cache cleared, forcing page reload to maintain storeId consistency...');
-      
-      // SOLUTION HYBRIDE : Invalidation sélective pour éviter perte storeId
-      console.log('🧹 Using selective invalidation to preserve storeId context...');
-      
-      // Invalidation ciblée sans clear() pour préserver le contexte
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey[0]?.toString() || '';
-          return key.includes('/api/orders') || key.includes('/api/deliveries');
-        }
-      });
-      
-      // Force refetch pour garantir synchronisation immédiate
-      queryClient.refetchQueries({
-        predicate: (query) => {
-          const key = query.queryKey[0]?.toString() || '';
-          return key.includes('/api/orders') || key.includes('/api/deliveries');
-        }
-      });
+      // Invalidation sélective uniquement pour l'API concernée
+      if (isOrder) {
+        queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+      }
       
       onClose();
     },

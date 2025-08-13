@@ -17,6 +17,7 @@ import DatabaseDebug from "@/pages/DatabaseDebug";
 import CustomerOrders from "@/pages/CustomerOrders";
 
 import DlcPage from "@/pages/DlcPage";
+import BackupManager from "@/pages/BackupManager";
 import Tasks from "@/pages/Tasks";
 import TasksSimplified from "@/pages/TasksSimplified";
 import Layout from "@/components/Layout";
@@ -76,6 +77,7 @@ function RouterProduction() {
         <Route path="/publicities" component={Publicities} />
         <Route path="/customer-orders" component={CustomerOrders} />
         <Route path="/dlc" component={DlcPage} />
+        <Route path="/backup" component={BackupManager} />
         <Route path="/tasks" component={Tasks} />
         <Route path="/nocodb-config" component={NocoDBConfig} />
         <Route path="/database-debug" component={DatabaseDebug} />

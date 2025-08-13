@@ -39,6 +39,7 @@ import {
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
 import { invoiceVerificationService } from "./invoiceVerification";
+import { backupService } from "./backupService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for Docker
@@ -2335,6 +2336,60 @@ RÉSUMÉ DU SCAN
     } catch (error) {
       console.error('Error fetching active NocoDB config:', error);
       res.status(500).json({ error: 'Failed to fetch active configuration' });
+    }
+  });
+
+  // Backup management routes (Admin only)
+  app.get('/api/backups', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const backups = await backupService.getBackupList();
+      res.json(backups);
+    } catch (error) {
+      console.error("Error fetching backups:", error);
+      res.status(500).json({ message: "Failed to fetch backups" });
+    }
+  });
+
+  app.post('/api/backups', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const backup = await backupService.createBackup('manual', user.id);
+      res.json(backup);
+    } catch (error) {
+      console.error("Error creating backup:", error);
+      res.status(500).json({ message: "Failed to create backup" });
+    }
+  });
+
+  app.get('/api/backups/:filename/download', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const { filename } = req.params;
+      const filepath = await backupService.downloadBackup(filename);
+      
+      res.download(filepath, filename, (err) => {
+        if (err) {
+          console.error("Error downloading backup:", err);
+          res.status(404).json({ message: "Backup file not found" });
+        }
+      });
+    } catch (error) {
+      console.error("Error downloading backup:", error);
+      res.status(500).json({ message: "Failed to download backup" });
+    }
+  });
+
+  app.delete('/api/backups/:filename', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const { filename } = req.params;
+      await backupService.deleteBackup(filename);
+      res.json({ message: "Backup deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting backup:", error);
+      res.status(500).json({ message: "Failed to delete backup" });
     }
   });
 

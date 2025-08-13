@@ -171,14 +171,16 @@ export default function CalendarGrid({
   onDateClick,
   onItemClick,
 }: CalendarGridProps) {
-  console.log('🗓️ CalendarGrid rendered with:', {
-    currentDate: currentDate?.toISOString(),
-    ordersCount: orders?.length || 0,
-    deliveriesCount: deliveries?.length || 0,
-    publicitiesCount: publicities?.length || 0,
-    selectedStoreId,
-    userGroupsCount: userGroups?.length || 0
-  });
+  if (import.meta.env.DEV) {
+    console.log('🗓️ CalendarGrid rendered with:', {
+      currentDate: currentDate?.toISOString(),
+      ordersCount: orders?.length || 0,
+      deliveriesCount: deliveries?.length || 0,
+      publicitiesCount: publicities?.length || 0,
+      selectedStoreId,
+      userGroupsCount: userGroups?.length || 0
+    });
+  }
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
 
@@ -192,12 +194,14 @@ export default function CalendarGrid({
       return [];
     }
     
-    console.log('🔍 CalendarGrid getPublicitiesForDate:', {
-      date: dateStr,
-      totalPublicities: publicities.length,
-      selectedStoreId,
-      userGroups: userGroups?.length || 0
-    });
+    if (import.meta.env.DEV) {
+      console.log('🔍 CalendarGrid getPublicitiesForDate:', {
+        date: dateStr,
+        totalPublicities: publicities.length,
+        selectedStoreId,
+        userGroups: userGroups?.length || 0
+      });
+    }
     
     try {
       return publicities.filter(pub => {
@@ -222,7 +226,7 @@ export default function CalendarGrid({
       // If no store is selected and user has no assigned groups, show only publicities with participations
       if (!selectedStoreId && (!userGroups || userGroups.length === 0)) {
         const hasParticipations = pub.participations && Array.isArray(pub.participations) && pub.participations.length > 0;
-        if (hasParticipations) {
+        if (hasParticipations && import.meta.env.DEV) {
           console.log('📋 Publicity has participations (no store selected):', { pubNumber: pub.pubNumber, participationCount: pub.participations.length });
         }
         return hasParticipations;
@@ -232,7 +236,7 @@ export default function CalendarGrid({
       if (selectedStoreId) {
         const matches = pub.participations && Array.isArray(pub.participations) && 
                        pub.participations.some((pg: any) => pg?.groupId === selectedStoreId);
-        if (matches) {
+        if (matches && import.meta.env.DEV) {
           console.log('🎯 Publicity matches selected store:', { pubNumber: pub.pubNumber, selectedStoreId });
         }
         return matches;

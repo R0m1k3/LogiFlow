@@ -138,7 +138,7 @@ export default function Layout({ children }: LayoutProps) {
                         <div className="flex items-center gap-2">
                           <div 
                             className="w-3 h-3" 
-                            style={{ backgroundColor: store.color }}
+                            style={{ backgroundColor: store.color || '#gray-400' }}
                           />
                           <span>{store.name}</span>
                         </div>
