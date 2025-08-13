@@ -1464,8 +1464,14 @@ export class MemStorage implements IStorage {
   async getPublicityParticipations(): Promise<PublicityParticipation[]> { return []; }
   async setPublicityParticipations(): Promise<void> {}
 
-  async getCustomerOrders(): Promise<CustomerOrderWithRelations[]> {
-    return Array.from(this.customerOrders.values()).map(order => ({
+  async getCustomerOrders(groupIds?: number[]): Promise<CustomerOrderWithRelations[]> {
+    let orders = Array.from(this.customerOrders.values());
+    
+    if (groupIds && groupIds.length > 0) {
+      orders = orders.filter(order => groupIds.includes(order.groupId));
+    }
+    
+    return orders.map(order => ({
       ...order,
       supplier: this.suppliers.get(order.supplierId)!,
       group: this.groups.get(order.groupId)!,
@@ -1515,8 +1521,23 @@ export class MemStorage implements IStorage {
     this.customerOrders.delete(id);
   }
 
-  async getDlcProducts(): Promise<DlcProductWithRelations[]> {
-    return Array.from(this.dlcProducts.values()).map(product => ({
+  async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; }): Promise<DlcProductWithRelations[]> {
+    let products = Array.from(this.dlcProducts.values());
+    
+    if (groupIds && groupIds.length > 0) {
+      products = products.filter(product => groupIds.includes(product.groupId));
+    }
+    
+    if (filters) {
+      if (filters.status) {
+        products = products.filter(product => product.status === filters.status);
+      }
+      if (filters.supplierId) {
+        products = products.filter(product => product.supplierId === filters.supplierId);
+      }
+    }
+    
+    return products.map(product => ({
       ...product,
       supplier: this.suppliers.get(product.supplierId)!,
       group: this.groups.get(product.groupId)!,
@@ -1580,12 +1601,17 @@ export class MemStorage implements IStorage {
     return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
   }
 
-  async getDlcStats(): Promise<{ active: number; expiringSoon: number; expired: number; }> {
+  async getDlcStats(groupIds?: number[]): Promise<{ active: number; expiringSoon: number; expired: number; }> {
     const today = new Date();
     const alertDate = new Date();
     alertDate.setDate(today.getDate() + 15);
 
-    const products = Array.from(this.dlcProducts.values());
+    let products = Array.from(this.dlcProducts.values());
+    
+    if (groupIds && groupIds.length > 0) {
+      products = products.filter(product => groupIds.includes(product.groupId));
+    }
+    
     return {
       active: products.filter(p => new Date(p.expiryDate) > today).length,
       expiringSoon: products.filter(p => {
@@ -1596,8 +1622,14 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async getTasks(): Promise<TaskWithRelations[]> {
-    return Array.from(this.tasks.values()).map(task => ({
+  async getTasks(groupIds?: number[]): Promise<TaskWithRelations[]> {
+    let tasks = Array.from(this.tasks.values());
+    
+    if (groupIds && groupIds.length > 0) {
+      tasks = tasks.filter(task => groupIds.includes(task.groupId));
+    }
+    
+    return tasks.map(task => ({
       ...task,
       group: this.groups.get(task.groupId)!,
       creator: this.users.get(task.createdBy)!
@@ -1784,6 +1816,14 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use MemStorage in development, DatabaseStorage in production
-const isProduction = process.env.NODE_ENV === 'production';
-export const storage: IStorage = isProduction ? new DatabaseStorage() : new MemStorage();
+// FORCE: Use DatabaseStorage to see real production data
+console.log('🔗 Database initialization:', {
+  NODE_ENV: process.env.NODE_ENV,
+  isProduction: process.env.NODE_ENV === 'production',
+  hasDbUrl: !!process.env.DATABASE_URL,
+  dbHost: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'unknown'
+});
+
+// Force DatabaseStorage for real data access
+export const storage: IStorage = new DatabaseStorage();
+console.log('✅ Using DatabaseStorage (real PostgreSQL data)');

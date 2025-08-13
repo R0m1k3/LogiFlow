@@ -958,6 +958,488 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DLC Products routes
+  app.get('/api/dlc-products', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { storeId, status, supplierId } = req.query;
+      let groupIds: number[] | undefined;
+      
+      if (user.role === 'admin') {
+        groupIds = storeId ? [parseInt(storeId as string)] : undefined;
+      } else {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (storeId && userGroupIds.includes(parseInt(storeId as string))) {
+          groupIds = [parseInt(storeId as string)];
+        } else {
+          groupIds = userGroupIds;
+        }
+      }
+
+      const filters: any = {};
+      if (status && status !== 'all') filters.status = status as string;
+      if (supplierId && supplierId !== 'all') filters.supplierId = parseInt(supplierId as string);
+
+      console.log('DLC Products API called with:', { groupIds, filters, userRole: user.role });
+      const dlcProducts = await storage.getDlcProducts(groupIds, filters);
+      console.log('DLC Products returned:', dlcProducts.length, 'items');
+      res.json(dlcProducts);
+    } catch (error) {
+      console.error("Error fetching DLC products:", error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.get('/api/dlc-products/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { storeId } = req.query;
+      let groupIds: number[] | undefined;
+      
+      if (user.role === 'admin') {
+        groupIds = storeId ? [parseInt(storeId as string)] : undefined;
+      } else {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (storeId && userGroupIds.includes(parseInt(storeId as string))) {
+          groupIds = [parseInt(storeId as string)];
+        } else {
+          groupIds = userGroupIds;
+        }
+      }
+
+      const stats = await storage.getDlcStats(groupIds);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching DLC stats:", error);
+      res.status(500).json({ active: 0, expiringSoon: 0, expired: 0 });
+    }
+  });
+
+  app.get('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const dlcProduct = await storage.getDlcProduct(id);
+      
+      if (!dlcProduct) {
+        return res.status(404).json({ message: "DLC Product not found" });
+      }
+
+      // Check permissions
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(dlcProduct.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      res.json(dlcProduct);
+    } catch (error) {
+      console.error("Error fetching DLC product:", error);
+      res.status(500).json({ message: "Failed to fetch DLC product" });
+    }
+  });
+
+  app.post('/api/dlc-products', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const data = {
+        ...req.body,
+        createdBy: user.id,
+      };
+
+      // Check if user has access to the group
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(data.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      const dlcProduct = await storage.createDlcProduct(data);
+      res.json(dlcProduct);
+    } catch (error) {
+      console.error("Error creating DLC product:", error);
+      res.status(500).json({ message: "Failed to create DLC product" });
+    }
+  });
+
+  app.put('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const dlcProduct = await storage.getDlcProduct(id);
+      
+      if (!dlcProduct) {
+        return res.status(404).json({ message: "DLC Product not found" });
+      }
+
+      // Check permissions
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(dlcProduct.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      const updatedProduct = await storage.updateDlcProduct(id, req.body);
+      res.json(updatedProduct);
+    } catch (error) {
+      console.error("Error updating DLC product:", error);
+      res.status(500).json({ message: "Failed to update DLC product" });
+    }
+  });
+
+  app.delete('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const dlcProduct = await storage.getDlcProduct(id);
+      
+      if (!dlcProduct) {
+        return res.status(404).json({ message: "DLC Product not found" });
+      }
+
+      // Check permissions
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(dlcProduct.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      await storage.deleteDlcProduct(id);
+      res.json({ message: "DLC Product deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting DLC product:", error);
+      res.status(500).json({ message: "Failed to delete DLC product" });
+    }
+  });
+
+  app.post('/api/dlc-products/:id/validate', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const dlcProduct = await storage.getDlcProduct(id);
+      
+      if (!dlcProduct) {
+        return res.status(404).json({ message: "DLC Product not found" });
+      }
+
+      // Check permissions
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(dlcProduct.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      const validatedProduct = await storage.validateDlcProduct(id, user.id);
+      res.json(validatedProduct);
+    } catch (error) {
+      console.error("Error validating DLC product:", error);
+      res.status(500).json({ message: "Failed to validate DLC product" });
+    }
+  });
+
+  // Tasks routes
+  app.get('/api/tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { storeId } = req.query;
+      let groupIds: number[] | undefined;
+      
+      if (user.role === 'admin') {
+        groupIds = storeId ? [parseInt(storeId as string)] : undefined;
+      } else {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (storeId && userGroupIds.includes(parseInt(storeId as string))) {
+          groupIds = [parseInt(storeId as string)];
+        } else {
+          groupIds = userGroupIds;
+        }
+      }
+
+      console.log('Tasks API called with:', { groupIds, userRole: user.role });
+      const tasks = await storage.getTasks(groupIds);
+      console.log('Tasks returned:', tasks.length, 'items');
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.post('/api/tasks', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const data = {
+        ...req.body,
+        createdBy: user.id,
+      };
+
+      // Check if user has access to the group
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(data.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      const task = await storage.createTask(data);
+      res.json(task);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ message: "Failed to create task" });
+    }
+  });
+
+  app.put('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const task = await storage.getTask(id);
+      
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Check permissions
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(task.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      const updatedTask = await storage.updateTask(id, req.body);
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ message: "Failed to update task" });
+    }
+  });
+
+  app.delete('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const task = await storage.getTask(id);
+      
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Check permissions
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(task.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      await storage.deleteTask(id);
+      res.json({ message: "Task deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ message: "Failed to delete task" });
+    }
+  });
+
+  app.post('/api/tasks/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const task = await storage.getTask(id);
+      
+      if (!task) {
+        return res.status(404).json({ message: "Task not found" });
+      }
+
+      // Check permissions
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(task.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      await storage.completeTask(id, user.id);
+      res.json({ message: "Task completed successfully" });
+    } catch (error) {
+      console.error("Error completing task:", error);
+      res.status(500).json({ message: "Failed to complete task" });
+    }
+  });
+
+  // Customer Orders routes
+  app.get('/api/customer-orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { storeId } = req.query;
+      let groupIds: number[] | undefined;
+      
+      if (user.role === 'admin') {
+        groupIds = storeId ? [parseInt(storeId as string)] : undefined;
+      } else {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (storeId && userGroupIds.includes(parseInt(storeId as string))) {
+          groupIds = [parseInt(storeId as string)];
+        } else {
+          groupIds = userGroupIds;
+        }
+      }
+
+      console.log('Customer Orders API called with:', { groupIds, userRole: user.role });
+      const customerOrders = await storage.getCustomerOrders(groupIds);
+      console.log('Customer Orders returned:', customerOrders.length, 'items');
+      res.json(customerOrders);
+    } catch (error) {
+      console.error("Error fetching customer orders:", error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.post('/api/customer-orders', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const data = {
+        ...req.body,
+        createdBy: user.id,
+      };
+
+      // Check if user has access to the group
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(data.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      const customerOrder = await storage.createCustomerOrder(data);
+      res.json(customerOrder);
+    } catch (error) {
+      console.error("Error creating customer order:", error);
+      res.status(500).json({ message: "Failed to create customer order" });
+    }
+  });
+
+  app.put('/api/customer-orders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const customerOrder = await storage.getCustomerOrder(id);
+      
+      if (!customerOrder) {
+        return res.status(404).json({ message: "Customer order not found" });
+      }
+
+      // Check permissions
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(customerOrder.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      const updatedOrder = await storage.updateCustomerOrder(id, req.body);
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error("Error updating customer order:", error);
+      res.status(500).json({ message: "Failed to update customer order" });
+    }
+  });
+
+  app.delete('/api/customer-orders/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const customerOrder = await storage.getCustomerOrder(id);
+      
+      if (!customerOrder) {
+        return res.status(404).json({ message: "Customer order not found" });
+      }
+
+      // Check permissions
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(customerOrder.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      await storage.deleteCustomerOrder(id);
+      res.json({ message: "Customer order deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting customer order:", error);
+      res.status(500).json({ message: "Failed to delete customer order" });
+    }
+  });
+
   // Statistics routes
   app.get('/api/stats/monthly', isAuthenticated, async (req: any, res) => {
     try {

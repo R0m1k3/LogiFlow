@@ -442,7 +442,7 @@ export default function DlcPage() {
     }
   };
 
-  const filteredProducts = dlcProducts.filter(product => {
+  const filteredProducts = (dlcProducts || []).filter(product => {
     if (searchTerm) {
       return product.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
              (product.supplier?.name && product.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()));
