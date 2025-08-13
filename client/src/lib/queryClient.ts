@@ -13,7 +13,10 @@ export async function apiRequest(
   body?: unknown,
   headers: Record<string, string> = {}
 ): Promise<any> {
-  console.log("🌐 API Request:", { url, method, body });
+  // Logging désactivé en production pour éviter la latence
+  if (import.meta.env.DEV) {
+    console.log("🌐 API Request:", { url, method });
+  }
   
   const res = await fetch(url, {
     method,
@@ -25,7 +28,10 @@ export async function apiRequest(
     credentials: "include",
   });
 
-  console.log("🌐 API Response:", { status: res.status, ok: res.ok });
+  // Logging des erreurs uniquement en production
+  if (!res.ok || import.meta.env.DEV) {
+    console.log("🌐 API Response:", { status: res.status, ok: res.ok, url });
+  }
   
   await throwIfResNotOk(res);
   

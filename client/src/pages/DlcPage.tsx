@@ -73,21 +73,25 @@ export default function DlcPage() {
       if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
       if (supplierFilter && supplierFilter !== "all") params.append("supplierId", supplierFilter);
       
-      console.log("🔍 Requête DLC products:", {
-        url: `/api/dlc-products?${params.toString()}`,
-        user: user?.role,
-        selectedStoreId,
-        userGroups: user?.userGroups?.map(ug => ({ groupId: ug.groupId, groupName: ug.group?.name }))
-      });
+      if (import.meta.env.DEV) {
+        console.log("🔍 Requête DLC products:", {
+          url: `/api/dlc-products?${params.toString()}`,
+          user: user?.role,
+          selectedStoreId,
+          userGroups: user?.userGroups?.map(ug => ({ groupId: ug.groupId, groupName: ug.group?.name }))
+        });
+      }
       
       return apiRequest(`/api/dlc-products?${params.toString()}`);
     },
     enabled: !authLoading,
     onSuccess: (data) => {
-      console.log("📋 DLC products reçus:", {
-        total: data.length,
-        sample: data.slice(0, 3).map(d => ({ id: d.id, productName: d.productName, groupId: d.groupId }))
-      });
+      if (import.meta.env.DEV) {
+        console.log("📋 DLC products reçus:", {
+          total: data.length,
+          sample: data.slice(0, 3).map(d => ({ id: d.id, productName: d.productName, groupId: d.groupId }))
+        });
+      }
     }
   });
 
@@ -121,7 +125,9 @@ export default function DlcPage() {
       // Invalidate all DLC queries with any combination of parameters
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
-      console.log("🔄 Cache DLC invalidé après création");
+      if (import.meta.env.DEV) {
+        console.log("🔄 Cache DLC invalidé après création");
+      }
       toast({ title: "Produit DLC créé avec succès" });
       setIsDialogOpen(false);
       form.reset();
@@ -143,7 +149,9 @@ export default function DlcPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
-      console.log("🔄 Cache DLC invalidé après mise à jour");
+      if (import.meta.env.DEV) {
+        console.log("🔄 Cache DLC invalidé après mise à jour");
+      }
       toast({ title: "Produit DLC mis à jour avec succès" });
       setIsDialogOpen(false);
       form.reset();
@@ -164,7 +172,9 @@ export default function DlcPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
-      console.log("🔄 Cache DLC invalidé après validation");
+      if (import.meta.env.DEV) {
+        console.log("🔄 Cache DLC invalidé après validation");
+      }
       toast({ title: "Produit validé avec succès" });
     },
     onError: (error: any) => {

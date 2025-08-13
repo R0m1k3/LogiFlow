@@ -206,10 +206,10 @@ export default function BLReconciliation() {
       
       const deliveries = await response.json();
       
-      // Debug : examiner les données des groupes en production
-      console.log('🔍 DEBUG Production - Première livraison:', deliveries[0]);
-      console.log('🔍 DEBUG Production - Groupe de la première livraison:', deliveries[0]?.group);
-      console.log('🔍 DEBUG Production - Champs disponibles dans group:', deliveries[0]?.group ? Object.keys(deliveries[0].group) : 'Pas de groupe');
+      // Debug désactivé en production pour éviter latence
+      if (import.meta.env.DEV && deliveries[0]) {
+        console.log('🔍 DEBUG - Première livraison:', deliveries[0]);
+      }
       const filtered = Array.isArray(deliveries) ? deliveries.filter((d: any) => d.status === 'delivered') : [];
       
       return filtered.sort((a: any, b: any) => new Date(b.deliveredDate || b.updatedAt).getTime() - new Date(a.deliveredDate || a.updatedAt).getTime());
@@ -222,12 +222,16 @@ export default function BLReconciliation() {
   useEffect(() => {
     if (!deliveriesWithBL.length || !suppliers.length) return;
     
-    console.log('🔄 Déclenchement vérifications automatiques...');
+    if (import.meta.env.DEV) {
+      console.log('🔄 Déclenchement vérifications automatiques...');
+    }
     
     deliveriesWithBL.forEach((delivery: any) => {
       // Vérifier seulement si on a une référence de facture et pas déjà de résultat
       if (delivery.invoiceReference && !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id)) {
-        console.log(`🔍 Vérification auto pour livraison ${delivery.id}:`, delivery.invoiceReference);
+        if (import.meta.env.DEV) {
+          console.log(`🔍 Vérification auto pour livraison ${delivery.id}:`, delivery.invoiceReference);
+        }
         
         // Délai pour éviter de surcharger le serveur - le cache évitera les appels inutiles
         setTimeout(() => {
@@ -373,14 +377,12 @@ export default function BLReconciliation() {
     // Et il faut qu'il y ait un magasin assigné avec un webhook
     const hasValidGroup = delivery.group && delivery.group.webhookUrl;
     
-    // Debug temporaire pour diagnostiquer le problème
-    if (delivery && delivery.supplier?.name) {
+    // Debug uniquement en développement
+    if (import.meta.env.DEV && delivery && delivery.supplier?.name) {
       console.log(`🔍 Debug bouton facture pour ${delivery.supplier.name}:`, {
         isNotValidated,
         hasNoInvoiceReference,
         hasValidGroup,
-        group: delivery.group,
-        webhookUrl: delivery.group?.webhookUrl,
         shouldShow: (isNotValidated || hasNoInvoiceReference) && hasValidGroup
       });
     }

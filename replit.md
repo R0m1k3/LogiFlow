@@ -19,6 +19,19 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-13 - Optimisation performance production + suppression fonctionnelle
+✅ **Résolution latence production** :
+- **Problème** : Console saturée par centaines de logs "API Response" causant latence
+- **Solution** : Logging conditionnel - seulement en développement pour requêtes normales
+- **Production** : Seules les erreurs API sont loggées pour debugging
+- **Impact** : Réduction drastique de la charge console et amélioration performances
+
+✅ **Fonctionnalité suppression complètement opérationnelle** :
+- **Cache NocoDB** : Fonction `saveInvoiceVerificationCache` ajoutée aux deux systèmes stockage
+- **MemStorage** : Implémentation CRUD complète pour ordres et livraisons
+- **Test validé** : Création, lecture et suppression fonctionnent parfaitement
+- **Production** : Les suppressions de livraisons et rapprochements sont maintenant possibles
+
 ### 2025-08-13 - Problème authentification production résolu
 ✅ **Diagnostic et solution du problème de validation des livraisons** :
 
