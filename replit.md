@@ -19,6 +19,23 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-13 - Problème authentification production résolu
+✅ **Diagnostic et solution du problème de validation des livraisons** :
+
+**Problème identifié :**
+- Erreur "Cannot validate Delivery" en production = problème d'authentification (401)
+- L'endpoint `/api/deliveries/:id/validate` fonctionne correctement
+- Toutes les erreurs TypeScript de compilation corrigées
+- Le problème est que l'utilisateur n'est plus connecté au système
+
+**Causes possibles :**
+- Session PostgreSQL expirée ou perdue
+- Problème de cookies de session en production
+- Déconnexion automatique du système
+- Configuration HTTPS/cookies sécurisés
+
+**Solution :** L'utilisateur doit se reconnecter au système pour pouvoir valider les livraisons
+
 ### 2025-08-13 - Correction finale statistiques + affichage BL résolu
 ✅ **Résolution définitive des bugs statistiques et affichage BL** :
 
