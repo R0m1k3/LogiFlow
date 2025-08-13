@@ -1165,6 +1165,7 @@ export class MemStorage implements IStorage {
       color: '#3B82F6',
       nocodbConfigId: 1, // Référence vers la config NocoDB de test
       nocodbTableName: 'invoices',
+      nocodbTableId: 'mrr733dfb8wtt9b', // ID réel de la table NocoDB
       invoiceColumnName: 'invoice_reference',
       nocodbBlColumnName: 'bl_number',
       nocodbAmountColumnName: 'amount',
@@ -1284,6 +1285,7 @@ export class MemStorage implements IStorage {
       color: groupData.color || null,
       nocodbConfigId: groupData.nocodbConfigId || null,
       nocodbTableName: groupData.nocodbTableName || null,
+      nocodbTableId: groupData.nocodbTableId || null,
       invoiceColumnName: groupData.invoiceColumnName || null,
       nocodbBlColumnName: groupData.nocodbBlColumnName || null,
       nocodbAmountColumnName: groupData.nocodbAmountColumnName || null,
@@ -1353,14 +1355,14 @@ export class MemStorage implements IStorage {
   }
 
   async getActiveNocodbConfig(): Promise<NocodbConfig | undefined> {
-    // En développement, créer une config de test réaliste  
+    // Configuration corrigée pour votre serveur NocoDB
     const testConfig: NocodbConfig = {
       id: 1,
-      name: 'Configuration Production NocoDB',
-      baseUrl: 'https://nocodb.lafoirfouille.com', // URL réaliste
-      projectId: 'p_invoice_management',
+      name: 'Configuration Production NocoDB FFNancy',
+      baseUrl: 'https://nocodb.ffnancy.fr', // URL corrigée
+      projectId: 'pcg4uw79ukvycxc', // Project ID de vos logs
       apiToken: 'xc-token-production-invoice-system',
-      description: 'Configuration de production pour vérification des factures',
+      description: 'Configuration de production pour vérification des factures FFNancy',
       isActive: true,
       createdBy: 'admin',
       createdAt: new Date(),

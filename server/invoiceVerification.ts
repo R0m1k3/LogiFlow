@@ -109,12 +109,20 @@ export class InvoiceVerificationService {
           hasToken: !!nocodbConfig.apiToken
         });
 
+        // Utiliser l'ID de table configuré dans le groupe
+        const tableId = group.nocodbTableId || 'mrr733dfb8wtt9b'; // Fallback par défaut
+        console.log('🔧 Utilisation table ID:', { 
+          groupTable: group.nocodbTableName, 
+          configuredId: group.nocodbTableId,
+          resolvedId: tableId 
+        });
+
         // Vérifier d'abord par référence de facture
         let matchResult = await this.searchInNocoDB(
           invoiceReference, 
-          group.invoiceColumnName || 'invoice_reference',
+          group.invoiceColumnName || 'RefFacture',
           nocodbConfig,
-          group.nocodbTableName || 'invoices'
+          tableId
         );
 
         if (matchResult.found) {
@@ -131,9 +139,9 @@ export class InvoiceVerificationService {
         if (group.nocodbBlColumnName) {
           matchResult = await this.searchInNocoDB(
             invoiceReference, 
-            group.nocodbBlColumnName,
+            group.nocodbBlColumnName || 'Numero_BL',
             nocodbConfig,
-            group.nocodbTableName || 'invoices'
+            tableId
           );
 
           if (matchResult.found) {
@@ -180,13 +188,15 @@ export class InvoiceVerificationService {
     searchValue: string, 
     columnName: string, 
     config: any, 
-    tableName: string
+    tableId: string
   ): Promise<{ found: boolean; data?: any }> {
     try {
-      const searchUrl = `${config.baseUrl}/api/v1/db/data/v1/${config.projectId}/${tableName}`;
+      // Utiliser directement l'ID de table fourni  
+      const searchUrl = `${config.baseUrl}/api/v1/db/data/v1/${config.projectId}/${tableId}`;
       
       console.log('🔍 Recherche NocoDB:', {
         url: searchUrl,
+        tableId: tableId,
         column: columnName,
         value: searchValue
       });
