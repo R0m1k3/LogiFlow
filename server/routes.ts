@@ -2352,7 +2352,12 @@ RÉSUMÉ DU SCAN
 
   app.post('/api/backups', isAuthenticated, requireAdmin, async (req: any, res) => {
     try {
-      const backup = await backupService.createBackup('manual');
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const backup = await backupService.createBackup('manual', user.id);
       res.json(backup);
     } catch (error) {
       console.error("Error creating backup:", error);

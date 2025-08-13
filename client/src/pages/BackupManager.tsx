@@ -24,9 +24,13 @@ import { fr } from "date-fns/locale";
 interface BackupFile {
   id: string;
   filename: string;
+  description: string | null;
   size: number;
   createdAt: string;
-  type: 'manual' | 'automatic';
+  createdBy: string;
+  tablesCount: number;
+  status: string;
+  backupType: string;
 }
 
 export default function BackupManager() {
@@ -116,6 +120,19 @@ export default function BackupManager() {
     return type === 'automatic' 
       ? <Badge variant="secondary">Automatique</Badge>
       : <Badge variant="outline">Manuelle</Badge>;
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-green-100 text-green-800">Terminé</Badge>;
+      case 'creating':
+        return <Badge className="bg-blue-100 text-blue-800">En cours</Badge>;
+      case 'failed':
+        return <Badge variant="destructive">Échec</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
   };
 
   if (!canManageBackups) {
@@ -254,7 +271,7 @@ export default function BackupManager() {
                   >
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">
-                        {getTypeIcon(backup.type)}
+                        {getTypeIcon(backup.backupType)}
                         <FileText className="w-5 h-5 text-gray-400" />
                       </div>
                       
@@ -262,12 +279,17 @@ export default function BackupManager() {
                         <div className="font-medium text-gray-900">
                           {backup.filename}
                         </div>
-                        <div className="text-sm text-gray-500 flex items-center space-x-4">
+                        <div className="text-sm text-gray-500">
+                          {backup.description || 'Sauvegarde de base de données'}
+                        </div>
+                        <div className="text-sm text-gray-500 flex items-center space-x-4 mt-1">
                           <span>
                             {format(new Date(backup.createdAt), 'dd/MM/yyyy à HH:mm', { locale: fr })}
                           </span>
                           <span>{formatFileSize(backup.size)}</span>
-                          {getTypeBadge(backup.type)}
+                          <span>{backup.tablesCount} tables</span>
+                          {getTypeBadge(backup.backupType)}
+                          {getStatusBadge(backup.status)}
                         </div>
                       </div>
                     </div>

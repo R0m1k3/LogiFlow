@@ -3,16 +3,13 @@ import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 import cron from 'node-cron';
+import { nanoid } from 'nanoid';
+import { eq, desc } from "drizzle-orm";
+import { db } from "./db";
+import { databaseBackups } from "@shared/schema";
+import type { DatabaseBackup, InsertDatabaseBackup } from "@shared/schema";
 
 const execAsync = promisify(exec);
-
-export interface BackupFile {
-  id: string;
-  filename: string;
-  size: number;
-  createdAt: Date;
-  type: 'manual' | 'automatic';
-}
 
 export class BackupService {
   private backupDir: string;
@@ -48,11 +45,24 @@ export class BackupService {
     };
   }
 
-  async createBackup(type: 'manual' | 'automatic' = 'manual'): Promise<BackupFile> {
+  async createBackup(type: 'manual' | 'automatic' = 'manual', createdBy: string = 'system'): Promise<DatabaseBackup> {
     try {
+      const id = nanoid();
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `backup_${type}_${timestamp}.sql`;
       const filepath = path.join(this.backupDir, filename);
+
+      // Create database record first with "creating" status
+      const [backupRecord] = await db.insert(databaseBackups).values({
+        id,
+        filename,
+        description: `${type === 'manual' ? 'Manuel' : 'Automatique'} backup du ${new Date().toLocaleDateString('fr-FR')}`,
+        size: 0,
+        createdBy,
+        tablesCount: 0,
+        status: 'creating',
+        backupType: type,
+      }).returning();
 
       const dbConfig = this.getDatabaseConfig();
       
@@ -69,56 +79,41 @@ export class BackupService {
       
       await execAsync(command, { env });
 
-      // Get file stats
+      // Get file stats and count tables
       const stats = fs.statSync(filepath);
+      const sqlContent = fs.readFileSync(filepath, 'utf8');
+      const tablesCount = (sqlContent.match(/CREATE TABLE/g) || []).length;
       
-      const backupFile: BackupFile = {
-        id: timestamp,
-        filename,
-        size: stats.size,
-        createdAt: new Date(),
-        type,
-      };
+      // Update database record with completion details
+      const [updatedBackup] = await db.update(databaseBackups)
+        .set({
+          size: stats.size,
+          tablesCount,
+          status: 'completed',
+        })
+        .where(eq(databaseBackups.id, id))
+        .returning();
 
-      console.log(`✅ ${type} backup created: ${filename} (${this.formatFileSize(stats.size)})`);
+      console.log(`✅ ${type} backup created: ${filename} (${this.formatFileSize(stats.size)}, ${tablesCount} tables)`);
 
       // Clean old backups
       await this.cleanOldBackups();
 
-      return backupFile;
+      return updatedBackup;
     } catch (error) {
       console.error('❌ Backup failed:', error);
       throw new Error(`Backup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  async getBackupList(): Promise<BackupFile[]> {
+  async getBackupList(): Promise<DatabaseBackup[]> {
     try {
-      const files = fs.readdirSync(this.backupDir);
-      const backupFiles: BackupFile[] = [];
+      const backups = await db.select()
+        .from(databaseBackups)
+        .orderBy(desc(databaseBackups.createdAt))
+        .limit(this.maxBackups);
 
-      for (const filename of files) {
-        if (filename.endsWith('.sql')) {
-          const filepath = path.join(this.backupDir, filename);
-          const stats = fs.statSync(filepath);
-          
-          // Extract type and timestamp from filename
-          const parts = filename.replace('.sql', '').split('_');
-          const type = parts[1] as 'manual' | 'automatic';
-          const timestamp = parts.slice(2).join('_');
-
-          backupFiles.push({
-            id: timestamp,
-            filename,
-            size: stats.size,
-            createdAt: stats.birthtime,
-            type,
-          });
-        }
-      }
-
-      // Sort by creation date (newest first)
-      return backupFiles.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      return backups;
     } catch (error) {
       console.error('❌ Failed to list backups:', error);
       return [];
@@ -127,13 +122,26 @@ export class BackupService {
 
   async deleteBackup(filename: string): Promise<void> {
     try {
-      const filepath = path.join(this.backupDir, filename);
-      
-      if (!fs.existsSync(filepath)) {
-        throw new Error('Backup file not found');
+      // Find backup record
+      const [backup] = await db.select()
+        .from(databaseBackups)
+        .where(eq(databaseBackups.filename, filename))
+        .limit(1);
+
+      if (!backup) {
+        throw new Error('Backup record not found');
       }
 
-      fs.unlinkSync(filepath);
+      // Delete physical file
+      const filepath = path.join(this.backupDir, filename);
+      if (fs.existsSync(filepath)) {
+        fs.unlinkSync(filepath);
+      }
+
+      // Delete database record
+      await db.delete(databaseBackups)
+        .where(eq(databaseBackups.filename, filename));
+
       console.log(`🗑️ Backup deleted: ${filename}`);
     } catch (error) {
       console.error('❌ Failed to delete backup:', error);
@@ -153,10 +161,12 @@ export class BackupService {
 
   private async cleanOldBackups(): Promise<void> {
     try {
-      const backups = await this.getBackupList();
+      const allBackups = await db.select()
+        .from(databaseBackups)
+        .orderBy(desc(databaseBackups.createdAt));
       
-      if (backups.length > this.maxBackups) {
-        const toDelete = backups.slice(this.maxBackups);
+      if (allBackups.length > this.maxBackups) {
+        const toDelete = allBackups.slice(this.maxBackups);
         
         for (const backup of toDelete) {
           await this.deleteBackup(backup.filename);

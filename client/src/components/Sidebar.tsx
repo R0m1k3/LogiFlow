@@ -147,6 +147,12 @@ export default function Sidebar() {
       roles: ["admin"] 
     },
     { 
+      path: "/backup", 
+      label: "Sauvegardes", 
+      icon: Database, 
+      roles: ["admin"] 
+    },
+    { 
       path: "/nocodb-config", 
       label: "Configuration NocoDB", 
       icon: Database, 

@@ -11,6 +11,7 @@ import {
   date,
   decimal,
   primaryKey,
+  bigint,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -512,8 +513,24 @@ export const insertInvoiceVerificationCacheSchema = createInsertSchema(invoiceVe
   updatedAt: true,
 });
 
+export const databaseBackups = pgTable("database_backups", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  description: text("description"),
+  size: bigint("size", { mode: "number" }).default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  tablesCount: integer("tables_count").default(0),
+  status: varchar("status", { length: 50 }).default("creating"),
+  backupType: varchar("backup_type", { length: 10 }).default("manual"),
+});
+
+export const insertDatabaseBackupSchema = createInsertSchema(databaseBackups);
+
 export type InsertNocodbConfig = z.infer<typeof insertNocodbConfigSchema>;
 export type InsertInvoiceVerificationCache = z.infer<typeof insertInvoiceVerificationCacheSchema>;
+export type DatabaseBackup = typeof databaseBackups.$inferSelect;
+export type InsertDatabaseBackup = z.infer<typeof insertDatabaseBackupSchema>;
 
 // Types
 export type User = typeof users.$inferSelect;
