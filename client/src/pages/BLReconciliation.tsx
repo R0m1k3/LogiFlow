@@ -222,6 +222,18 @@ export default function BLReconciliation() {
     // Et il faut qu'il y ait un magasin assigné avec un webhook
     const hasValidGroup = delivery.group && delivery.group.webhookUrl;
     
+    // Debug temporaire pour diagnostiquer le problème
+    if (delivery && delivery.supplier?.name) {
+      console.log(`🔍 Debug bouton facture pour ${delivery.supplier.name}:`, {
+        isNotValidated,
+        hasNoInvoiceReference,
+        hasValidGroup,
+        group: delivery.group,
+        webhookUrl: delivery.group?.webhookUrl,
+        shouldShow: (isNotValidated || hasNoInvoiceReference) && hasValidGroup
+      });
+    }
+    
     return (isNotValidated || hasNoInvoiceReference) && hasValidGroup;
   };
 
