@@ -39,8 +39,8 @@ export default function BackupManager() {
   const queryClient = useQueryClient();
   const [deletingBackup, setDeletingBackup] = useState<string | null>(null);
 
-  // Check permissions
-  const canManageBackups = hasPermission(user?.role || '', 'admin', 'manage');
+  // Check permissions - Seulement les admins peuvent gérer les sauvegardes
+  const canManageBackups = hasPermission(user?.role || '', 'backups', 'manage');
 
   // Fetch backup list
   const { data: backups = [], isLoading, error } = useQuery({
