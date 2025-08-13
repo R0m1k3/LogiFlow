@@ -1677,11 +1677,25 @@ export class MemStorage implements IStorage {
     const delivery: Delivery = {
       id,
       ...deliveryData,
-      status: 'pending',
+      status: 'planned', // Livraisons créées sont automatiquement planifiées
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     this.deliveries.set(id, delivery);
+    
+    // Si une commande est liée, la marquer comme "planned" (pas delivered!)
+    if (deliveryData.orderId) {
+      try {
+        const order = this.orders.get(deliveryData.orderId);
+        if (order && order.status === 'pending') {
+          console.log(`🔗 Delivery #${id} linked to order #${deliveryData.orderId}, updating order status to 'planned'`);
+          await this.updateOrder(deliveryData.orderId, { status: 'planned' });
+        }
+      } catch (error) {
+        console.error(`❌ Failed to update order #${deliveryData.orderId} status to planned:`, error);
+      }
+    }
+    
     return delivery;
   }
 
