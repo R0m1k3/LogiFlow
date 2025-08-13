@@ -54,6 +54,11 @@ export const getQueryFn: <T>(options: {
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      // Redirection automatique vers la page d'authentification si 401
+      if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
+        console.log('🔄 API 401 - Redirecting to auth page');
+        window.location.href = '/auth';
+      }
       return null;
     }
 
@@ -72,8 +77,12 @@ export const queryClient = new QueryClient({
       staleTime: 30 * 1000, // 30 secondes de cache pour de meilleures performances
       gcTime: 10 * 60 * 1000, // 10 minutes  
       retry: (failureCount, error: any) => {
-        // Ne pas retry les erreurs d'authentification
+        // Ne pas retry les erreurs d'authentification et rediriger
         if (error?.message?.includes('401') || error?.message?.includes('Unauthorized')) {
+          if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
+            console.log('🔄 Query 401 - Redirecting to auth page');
+            window.location.href = '/auth';
+          }
           return false;
         }
         return failureCount < 2;

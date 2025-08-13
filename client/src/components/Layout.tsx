@@ -90,7 +90,7 @@ export default function Layout({ children }: LayoutProps) {
                   <Menu className="h-5 w-5" />
                 </Button>
               )}
-              <h1 className="text-lg font-medium text-gray-800">LogiFlow</h1>
+
             </div>
 
             {/* Store selector for admin - responsive */}

@@ -125,7 +125,13 @@ export default function Sidebar() {
     },
   ];
 
-  const managementItems = [
+  const adminItems = [
+    { 
+      path: "/users", 
+      label: "Utilisateurs", 
+      icon: UserCog, 
+      roles: ["admin"] 
+    },
     { 
       path: "/suppliers", 
       label: "Fournisseurs", 
@@ -136,15 +142,6 @@ export default function Sidebar() {
       path: "/groups", 
       label: "Magasins", 
       icon: Users, 
-      roles: ["admin"] 
-    },
-  ];
-
-  const adminItems = [
-    { 
-      path: "/users", 
-      label: "Utilisateurs", 
-      icon: UserCog, 
       roles: ["admin"] 
     },
     { 
@@ -377,44 +374,7 @@ export default function Sidebar() {
           })}
         </div>
 
-        {/* Management Section */}
-        {managementItems.some(item => hasPermission(item.roles)) && (
-          <>
-            {!sidebarCollapsed && (
-              <div className="mt-6 mb-2">
-                <h3 className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Gestion
-                </h3>
-              </div>
-            )}
-            {sidebarCollapsed && <div className="mt-4 mb-2 border-t border-gray-200"></div>}
-            <div className="space-y-1">
-              {managementItems.map((item) => {
-                if (!hasPermission(item.roles)) return null;
-                
-                const Icon = item.icon;
-                const active = isActive(item.path);
-                
-                return (
-                  <Link key={item.path} href={item.path}>
-                    <div
-                      className={`flex items-center ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 ${
-                        active
-                          ? 'bg-gray-100 text-gray-900 border-r-2 border-gray-700'
-                          : 'text-gray-700'
-                      }`}
-                      title={sidebarCollapsed ? item.label : undefined}
-                      onClick={() => console.log(`Navigating to management: ${item.path}`)}
-                    >
-                      <Icon className={`h-4 w-4 ${sidebarCollapsed ? '' : 'mr-3'}`} />
-                      {!sidebarCollapsed && item.label}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </>
-        )}
+
       </nav>
 
       {/* Administration Section */}
