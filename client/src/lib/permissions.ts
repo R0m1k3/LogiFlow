@@ -1,7 +1,7 @@
 // Système de permissions hardcodé par module
 // Remplace l'ancien système flexible basé sur la base de données
 
-export type Permission = 'view' | 'create' | 'edit' | 'delete' | 'validate';
+export type Permission = 'view' | 'create' | 'edit' | 'delete' | 'validate' | 'manage';
 export type Role = 'admin' | 'directeur' | 'manager' | 'employee';
 export type Module = 
   | 'dashboard' 

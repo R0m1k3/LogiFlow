@@ -264,7 +264,7 @@ export default function BackupManager() {
               </div>
             ) : (
               <div className="space-y-2">
-                {backups.map((backup) => (
+                {backups.map((backup: BackupFile) => (
                   <div 
                     key={backup.id}
                     className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"

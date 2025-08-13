@@ -2340,7 +2340,7 @@ RÉSUMÉ DU SCAN
   });
 
   // Backup management routes (Admin only)
-  app.get('/api/backups', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.get('/api/backups', isAuthenticated, requireAdmin, async (req: any, res: any) => {
     try {
       const backups = await backupService.getBackupList();
       res.json(backups);
@@ -2350,7 +2350,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.post('/api/backups', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.post('/api/backups', isAuthenticated, requireAdmin, async (req: any, res: any) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -2365,7 +2365,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.get('/api/backups/:filename/download', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.get('/api/backups/:filename/download', isAuthenticated, requireAdmin, async (req: any, res: any) => {
     try {
       const { filename } = req.params;
       const filepath = await backupService.downloadBackup(filename);
@@ -2382,7 +2382,7 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.delete('/api/backups/:filename', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.delete('/api/backups/:filename', isAuthenticated, requireAdmin, async (req: any, res: any) => {
     try {
       const { filename } = req.params;
       await backupService.deleteBackup(filename);
