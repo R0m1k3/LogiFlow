@@ -33,8 +33,8 @@ class NocodbVerificationService {
       if (!group) return null;
 
       return {
-        nocodbConfigId: group.nocodbConfigId,
-        nocodbTableName: group.nocodbTableName,
+        nocodbConfigId: group.nocodbConfigId || undefined,
+        nocodbTableName: group.nocodbTableName || undefined,
         invoiceColumnName: group.invoiceColumnName || 'invoice_reference',
         nocodbBlColumnName: group.nocodbBlColumnName || 'bl_number',
         nocodbAmountColumnName: group.nocodbAmountColumnName || 'amount',

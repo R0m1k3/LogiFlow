@@ -259,11 +259,11 @@ export default function BLReconciliation() {
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur vérification:', error);
       toast({
         title: "Erreur de vérification",
-        description: "Impossible de vérifier la référence",
+        description: error.response?.data?.message || error.message || "Configuration NocoDB manquante ou incorrecte",
         variant: "destructive"
       });
     } finally {
@@ -315,11 +315,11 @@ export default function BLReconciliation() {
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur recherche BL:', error);
       toast({
         title: "Erreur de recherche",
-        description: "Impossible de rechercher par BL",
+        description: error.response?.data?.message || error.message || "Configuration NocoDB manquante ou incorrecte",
         variant: "destructive"
       });
     } finally {

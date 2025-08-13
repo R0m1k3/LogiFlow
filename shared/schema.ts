@@ -143,16 +143,16 @@ export const publicityParticipations = pgTable("publicity_participations", {
 
 
 
-// NocoDB configuration globale (une seule instance NocoDB partagée)
+// NocoDB configuration globale - Structure correspondant à la production
 export const nocodbConfig = pgTable("nocodb_config", {
   id: serial("id").primaryKey(),
-  name: varchar("name").notNull(), // Nom de la configuration
-  baseUrl: varchar("base_url").notNull(), // URL de l'instance NocoDB
-  projectId: varchar("project_id").notNull(), // NocoDB Project ID
-  apiToken: varchar("api_token").notNull(), // Personal API Token
+  name: varchar("name", { length: 255 }).notNull(), // Nom de la configuration
+  baseUrl: varchar("base_url", { length: 255 }).notNull(), // URL de l'instance NocoDB
+  projectId: varchar("project_id", { length: 255 }).notNull(), // NocoDB Project ID
+  apiToken: varchar("api_token", { length: 255 }).notNull(), // Personal API Token
   description: text("description"), // Description de la configuration
   isActive: boolean("is_active").default(true), // Configuration active ou non
-  createdBy: varchar("created_by").notNull(),
+  createdBy: varchar("created_by", { length: 255 }), // Créateur (nullable en production)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
