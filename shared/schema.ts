@@ -141,6 +141,37 @@ export const publicityParticipations = pgTable("publicity_participations", {
   pk: primaryKey({ columns: [table.publicityId, table.groupId] })
 }));
 
+// Configuration NocoDB globale pour la vérification des factures
+export const nocodbConfig = pgTable("nocodb_config", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  baseUrl: varchar("base_url").notNull(),
+  projectId: varchar("project_id").notNull(),
+  apiToken: varchar("api_token").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Cache de vérification des factures
+export const invoiceVerificationCache = pgTable("invoice_verification_cache", {
+  id: serial("id").primaryKey(),
+  cacheKey: varchar("cache_key", { length: 255 }).notNull(),
+  groupId: integer("group_id").notNull(),
+  invoiceReference: varchar("invoice_reference", { length: 255 }).notNull(),
+  supplierName: varchar("supplier_name", { length: 255 }),
+  exists: boolean("exists").notNull(),
+  matchType: varchar("match_type", { length: 50 }).notNull(),
+  errorMessage: text("error_message"),
+  cacheHit: boolean("cache_hit").default(false),
+  apiCallTime: integer("api_call_time"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 
 
 
@@ -472,6 +503,21 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   dueDate: z.coerce.date().optional().nullable(), // Convertit automatiquement les chaînes en Date
 });
 
+export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInvoiceVerificationCacheSchema = createInsertSchema(invoiceVerificationCache).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertNocodbConfig = z.infer<typeof insertNocodbConfigSchema>;
+export type InsertInvoiceVerificationCache = z.infer<typeof insertInvoiceVerificationCacheSchema>;
+
 // Types
 export type User = typeof users.$inferSelect;
 export type UpsertUser = z.infer<typeof insertUserSchema>;
@@ -585,6 +631,9 @@ export type PublicityWithRelations = Publicity & {
 
 export type NocodbConfig = typeof nocodbConfig.$inferSelect;
 export type InsertNocodbConfig = z.infer<typeof insertNocodbConfigSchema>;
+
+export type InvoiceVerificationCache = typeof invoiceVerificationCache.$inferSelect;
+export type InsertInvoiceVerificationCache = z.infer<typeof insertInvoiceVerificationCacheSchema>;
 
 export type CustomerOrder = typeof customerOrders.$inferSelect;
 export type InsertCustomerOrder = z.infer<typeof insertCustomerOrderSchema>;

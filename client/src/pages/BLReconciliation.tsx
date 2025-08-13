@@ -142,9 +142,9 @@ export default function BLReconciliation() {
       supplier: delivery.supplier
     });
     
-    if (!delivery.group?.nocodbTableName && !delivery.group?.nocodbConfigId) {
+    if (!delivery.group?.nocodbTableName && !delivery.group?.nocodbConfigId && !delivery.group?.webhookUrl) {
       toast({
-        title: "Vérification non disponible",
+        title: "Vérification non disponible", 
         description: "Ce magasin n'a pas de configuration NocoDB",
         variant: "destructive",
       });
@@ -178,6 +178,11 @@ export default function BLReconciliation() {
       }
       
       const deliveries = await response.json();
+      
+      // Debug : examiner les données des groupes en production
+      console.log('🔍 DEBUG Production - Première livraison:', deliveries[0]);
+      console.log('🔍 DEBUG Production - Groupe de la première livraison:', deliveries[0]?.group);
+      console.log('🔍 DEBUG Production - Champs disponibles dans group:', deliveries[0]?.group ? Object.keys(deliveries[0].group) : 'Pas de groupe');
       const filtered = Array.isArray(deliveries) ? deliveries.filter((d: any) => d.status === 'delivered') : [];
       
       return filtered.sort((a: any, b: any) => new Date(b.deliveredDate || b.updatedAt).getTime() - new Date(a.deliveredDate || a.updatedAt).getTime());
@@ -641,7 +646,7 @@ export default function BLReconciliation() {
                                 </div>
                                 
                                 {/* Icône de vérification de facture */}
-                                {(delivery.group?.nocodbTableName || delivery.group?.nocodbConfigId) && (
+                                {(delivery.group?.nocodbTableName || delivery.group?.nocodbConfigId || delivery.group?.webhookUrl) && (
                                   <div className="flex items-center">
                                     {verifyingDeliveries.has(delivery.id) ? (
                                       <Clock className="h-4 w-4 text-blue-500 animate-spin" title="Vérification en cours..." />

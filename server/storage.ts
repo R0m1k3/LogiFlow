@@ -10,6 +10,8 @@ import {
   customerOrders,
   dlcProducts,
   tasks,
+  nocodbConfig,
+  invoiceVerificationCache,
   type User,
   type UpsertUser,
   type Group,
@@ -42,6 +44,10 @@ import {
   type DlcProductWithRelations,
   type Task,
   type InsertTask,
+  type NocodbConfig,
+  type InsertNocodbConfig,
+  type InvoiceVerificationCache,
+  type InsertInvoiceVerificationCache,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql, gte, lte } from "drizzle-orm";
@@ -120,9 +126,15 @@ export interface IStorage {
   // NocoDB Configuration operations
   getNocodbConfigs(): Promise<NocodbConfig[]>;
   getNocodbConfig(id: number): Promise<NocodbConfig | undefined>;
+  getActiveNocodbConfig(): Promise<NocodbConfig | undefined>;
   createNocodbConfig(config: InsertNocodbConfig): Promise<NocodbConfig>;
   updateNocodbConfig(id: number, config: Partial<InsertNocodbConfig>): Promise<NocodbConfig>;
   deleteNocodbConfig(id: number): Promise<void>;
+  
+  // Invoice Verification Cache operations
+  getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined>;
+  createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache>;
+  clearExpiredCache(): Promise<void>;
   
   // Customer Order operations
   getCustomerOrders(groupIds?: number[]): Promise<CustomerOrderWithRelations[]>;
@@ -1102,6 +1114,26 @@ export class DatabaseStorage implements IStorage {
 
   async deleteNocodbConfig(id: number): Promise<void> {
     await db.delete(nocodbConfig).where(eq(nocodbConfig.id, id));
+  }
+
+  async getActiveNocodbConfig(): Promise<NocodbConfig | undefined> {
+    const [config] = await db.select().from(nocodbConfig).where(eq(nocodbConfig.isActive, true));
+    return config;
+  }
+
+  // Invoice Verification Cache operations
+  async getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined> {
+    const [cache] = await db.select().from(invoiceVerificationCache).where(eq(invoiceVerificationCache.cacheKey, cacheKey));
+    return cache;
+  }
+
+  async createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
+    const [newCache] = await db.insert(invoiceVerificationCache).values(cache).returning();
+    return newCache;
+  }
+
+  async clearExpiredCache(): Promise<void> {
+    await db.delete(invoiceVerificationCache).where(sql`${invoiceVerificationCache.expiresAt} < NOW()`);
   }
 
   // Customer Order operations
