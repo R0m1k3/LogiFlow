@@ -220,18 +220,25 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex-1 space-y-4 sm:space-y-6 p-4 sm:p-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Tableau de Bord</h2>
-          <p className="text-gray-600 mt-1 text-sm sm:text-base">Vue d'ensemble des performances et statistiques</p>
+      <div className="bg-white border-b border-gray-200 p-4 sm:p-6 shadow-sm -m-4 sm:-m-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center">
+              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600" />
+              Tableau de Bord
+            </h2>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
+              Vue d'ensemble des performances et statistiques
+            </p>
+          </div>
+          {selectedStoreId && user?.role === 'admin' && (
+            <Badge variant="outline" className="text-blue-700 border-blue-300 w-fit">
+              Magasin sélectionné
+            </Badge>
+          )}
         </div>
-        {selectedStoreId && user?.role === 'admin' && (
-          <Badge variant="outline" className="text-blue-700 border-blue-300 w-fit">
-            Magasin sélectionné
-          </Badge>
-        )}
       </div>
 
       {/* Alerts */}
