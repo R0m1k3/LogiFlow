@@ -2,7 +2,6 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
-import cron from 'node-cron';
 import { nanoid } from 'nanoid';
 import { eq, desc } from "drizzle-orm";
 import { db } from "./db";
@@ -187,19 +186,35 @@ export class BackupService {
   }
 
   private scheduleAutomaticBackup(): void {
-    // Schedule backup every night at 2:00 AM
-    cron.schedule('0 2 * * *', async () => {
-      try {
-        console.log('🌙 Starting scheduled automatic backup...');
-        await this.createBackup('automatic');
-      } catch (error) {
-        console.error('❌ Scheduled backup failed:', error);
+    // Use native setTimeout instead of node-cron for ESM compatibility
+    const scheduleNextBackup = () => {
+      const now = new Date();
+      const next2AM = new Date(now);
+      next2AM.setHours(2, 0, 0, 0);
+      
+      // If it's already past 2 AM today, schedule for tomorrow
+      if (now.getHours() >= 2) {
+        next2AM.setDate(next2AM.getDate() + 1);
       }
-    }, {
-      timezone: 'Europe/Paris'
-    });
+      
+      const msUntilBackup = next2AM.getTime() - now.getTime();
+      
+      setTimeout(async () => {
+        try {
+          console.log('🔄 Starting automatic backup...');
+          await this.createBackup('automatic', 'system');
+          console.log('✅ Automatic backup completed');
+        } catch (error) {
+          console.error('❌ Automatic backup failed:', error);
+        }
+        
+        // Schedule the next backup (24 hours later)
+        scheduleNextBackup();
+      }, msUntilBackup);
+    };
     
-    console.log('⏰ Automatic backup scheduled for 2:00 AM daily');
+    scheduleNextBackup();
+    console.log('⏰ Automatic backup scheduled for 2:00 AM daily (native timer)');
   }
 }
 

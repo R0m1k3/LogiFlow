@@ -19,6 +19,15 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-13 - Module de sauvegarde PostgreSQL implémenté + correction ESM
+✅ **Module de sauvegarde PostgreSQL complet** :
+- **Interface BackupManager** : Affichage des sauvegardes avec détails (taille, tables, statut)
+- **Fonctions** : Création manuelle, suppression, téléchargement de sauvegardes SQL
+- **Automatisation** : Sauvegardes programmées à 2h du matin avec timer natif
+- **Base de données** : Table `DATABASE_BACKUPS` avec suivi complet des sauvegardes
+- **Navigation** : Ajouté dans la sidebar administration pour les admins
+- **Compatibilité ESM** : Remplacement de `node-cron` par `setTimeout` natif pour résoudre l'erreur production
+
 ### 2025-08-13 - Optimisation performance production + correction calendrier
 ✅ **Résolution latence production** :
 - **Problème** : Console saturée par centaines de logs "API Response" causant latence
