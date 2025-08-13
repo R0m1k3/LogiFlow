@@ -1,0 +1,140 @@
+
+      
+🔗 Database initialization: {
+
+  NODE_ENV: 'production',
+
+  isProduction: true,
+
+  hasDbUrl: true,
+
+  dbHost: 'logiflow-db'
+
+}
+
+🐳 PRODUCTION: Using standard PostgreSQL
+
+✅ PostgreSQL connection test successful
+
+🐳 PRODUCTION: Using PostgreSQL storage
+
+🐳 PRODUCTION: Local auth configured with PostgreSQL sessions
+
+🐳 PRODUCTION: Starting LogiFlow application
+
+🐳 Environment: { NODE_ENV: 'production', DATABASE_URL: 'Present', PORT: '3000' }
+
+🔍 Using development storage and authentication
+
+🔧 Using memory session store for development
+
+Warning: connect.session() MemoryStore is not
+
+designed for a production environment, as it will leak
+
+memory, and will not scale past a single process.
+
+🐳 Serving static files from: /app/dist/public
+
+🐳 PRODUCTION: LogiFlow serving on port 3000
+
+✅ Production admin user found: { id: 'admin_local', username: 'admin', passwordFormat: 'present' }
+
+✅ Admin user exists, preserving current password
+
+HEAD /api/health 200 in 5ms
+
+📄 SPA: Serving index.html for /bl-reconciliation
+
+🔍 PRODUCTION /api/user - req.user: {
+
+  id: 'admin_local',
+
+  role: 'admin',
+
+  hasUserGroups: true,
+
+  userGroupsLength: 0,
+
+  userGroups: []
+
+}
+
+GET /api/user 304 in 10ms
+
+🔍 PRODUCTION /api/user - req.user: {
+
+  id: 'admin_local',
+
+  role: 'admin',
+
+  hasUserGroups: true,
+
+  userGroupsLength: 0,
+
+  userGroups: []
+
+}
+
+GET /api/user 304 in 9ms
+
+GET /api/suppliers 304 in 19ms
+
+🔍 PRODUCTION /api/user - req.user: {
+
+  id: 'admin_local',
+
+  role: 'admin',
+
+  hasUserGroups: true,
+
+  userGroupsLength: 0,
+
+  userGroups: []
+
+}
+
+GET /api/user 304 in 20ms
+
+🔍 PRODUCTION /api/user - req.user: {
+
+  id: 'admin_local',
+
+  role: 'admin',
+
+  hasUserGroups: true,
+
+  userGroupsLength: 0,
+
+  userGroups: []
+
+}
+
+GET /api/user 304 in 8ms
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: undefined,
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering deliveries with groupIds: undefined
+
+Fetching all deliveries
+
+Deliveries returned: 81 items
+
+GET /api/deliveries 304 in 50ms
+
+GET /api/groups 304 in 36ms
+
+HEAD /api/health 200 in 1ms
+
