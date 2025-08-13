@@ -2541,6 +2541,44 @@ class MemStorage implements IStorage {
     return { userId, roleId, assignedBy, assignedAt: new Date() };
   }
   async removeRoleFromUser(): Promise<void> {}
+
+  // NocoDB Configuration methods
+  async getActiveNocodbConfig(): Promise<NocodbConfig | undefined> {
+    // En développement, créer une config de test
+    const testConfig: NocodbConfig = {
+      id: 1,
+      name: 'Configuration Test NocoDB',
+      baseUrl: 'https://nocodb-test.example.com',
+      projectId: 'test-project-id',
+      apiToken: 'test-api-token-123',
+      description: 'Configuration de test pour vérification des factures',
+      isActive: true,
+      createdBy: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    console.log('🔧 Retour config NocoDB test:', testConfig);
+    return testConfig;
+  }
+
+  async getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined> {
+    return undefined; // Pas de cache en développement
+  }
+
+  async createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
+    const newCache: InvoiceVerificationCache = {
+      ...cache,
+      id: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    return newCache;
+  }
+
+  async clearExpiredCache(): Promise<void> {
+    // No-op en développement
+  }
 }
 
 // Use MemStorage in development, DatabaseStorage in production
