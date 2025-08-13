@@ -416,7 +416,52 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(orders.createdBy, users.id))
       .where(eq(orders.id, id));
 
-    return order;
+    if (!order) return undefined;
+
+    // Récupérer les livraisons associées à cette commande (PRODUCTION PostgreSQL)
+    const associatedDeliveries = await db
+      .select({
+        id: deliveries.id,
+        orderId: deliveries.orderId,
+        supplierId: deliveries.supplierId,
+        groupId: deliveries.groupId,
+        scheduledDate: deliveries.scheduledDate,
+        deliveredDate: deliveries.deliveredDate,
+        status: deliveries.status,
+        quantity: deliveries.quantity,
+        unit: deliveries.unit,
+        blNumber: deliveries.blNumber,
+        blAmount: deliveries.blAmount,
+        invoiceReference: deliveries.invoiceReference,
+        invoiceAmount: deliveries.invoiceAmount,
+        reconciled: deliveries.reconciled,
+        validatedAt: deliveries.validatedAt,
+        notes: deliveries.notes,
+        createdBy: deliveries.createdBy,
+        createdAt: deliveries.createdAt,
+        updatedAt: deliveries.updatedAt,
+        supplier: suppliers,
+        group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
+      })
+      .from(deliveries)
+      .leftJoin(suppliers, eq(deliveries.supplierId, suppliers.id))
+      .leftJoin(groups, eq(deliveries.groupId, groups.id))
+      .leftJoin(users, eq(deliveries.createdBy, users.id))
+      .where(eq(deliveries.orderId, id));
+
+    console.log(`🔗 PRODUCTION: getOrder #${id} found ${associatedDeliveries.length} associated deliveries`);
+
+    return {
+      ...order,
+      deliveries: associatedDeliveries
+    } as OrderWithRelations;
   }
 
   async createOrder(orderData: InsertOrder): Promise<Order> {
@@ -587,7 +632,26 @@ export class DatabaseStorage implements IStorage {
       console.log('⚠️ Could not load creator info:', error);
     }
 
-    return { ...delivery, creator } as DeliveryWithRelations;
+    // Récupérer la commande associée si elle existe (PRODUCTION PostgreSQL)
+    let associatedOrder = undefined;
+    if (delivery.orderId) {
+      try {
+        console.log(`🔗 PRODUCTION: getDelivery #${id} retrieving associated order #${delivery.orderId}`);
+        const orderData = await this.getOrder(delivery.orderId);
+        if (orderData) {
+          associatedOrder = orderData;
+          console.log(`✅ PRODUCTION: getDelivery #${id} found associated order #${delivery.orderId} with status: ${orderData.status}`);
+        }
+      } catch (error) {
+        console.error(`❌ PRODUCTION: Failed to retrieve associated order #${delivery.orderId} for delivery #${id}:`, error);
+      }
+    }
+
+    return {
+      ...delivery,
+      creator,
+      order: associatedOrder
+    } as DeliveryWithRelations;
   }
 
   async createDelivery(deliveryData: InsertDelivery): Promise<Delivery> {

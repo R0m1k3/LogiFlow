@@ -19,12 +19,24 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
-### 2025-08-13 - Correction statut commande lors liaison avec livraison (PRODUCTION)
-✅ **Problème production PostgreSQL résolu** :
+### 2025-08-13 - CORRECTION COMPLÈTE PostgreSQL production - Statut et Relations
+✅ **Problème production PostgreSQL entièrement résolu** :
+
+**1. Correction statut commande lors liaison :**
 - **Problème** : Commandes passaient à "delivered" au lieu de "planned" lors liaison avec livraison
 - **Cause** : Méthode createDelivery() dans DatabaseStorage (PostgreSQL) manquait logique status
 - **Solution** : Ajout logique complète dans createDelivery() production identique à développement
 - **Correction** : Commandes liées passent maintenant à "planned" (jaune) et non "delivered"
+
+**2. Correction affichage relations commandes-livraisons :**
+- **Problème** : Liaisons n'apparaissaient pas car relations non récupérées en production
+- **Cause** : getOrder() et getDelivery() PostgreSQL ne récupéraient pas les entités associées
+- **Solution** : getOrder() récupère maintenant les livraisons liées + getDelivery() récupère commande liée
+- **Résultat** : Calendrier affiche maintenant correctement les liaisons avec informations complètes
+
+**3. Cohérence développement-production :**
+- **Avant** : MemStorage (dev) et DatabaseStorage (prod) comportements différents
+- **Après** : Logique identique entre développement et production PostgreSQL
 - **Test** : Synchronisation automatique uniquement lors validation, pas création
 
 ### 2025-08-13 - Interface épurée + redirection automatique + réorganisation navigation
