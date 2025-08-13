@@ -37,9 +37,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// Simple production routes
+// Import all routes for production
+import { registerRoutes } from "./routes.js";
+
 async function registerProductionRoutes(app: Express): Promise<Server> {
-  // Health check endpoint
+  console.log('🔧 Registering all production routes...');
+  
+  // Register ALL API routes (same as development)
+  const server = await registerRoutes(app);
+  console.log('✅ All routes registered successfully for production');
+  
+  // Additional health check endpoint for production monitoring
   app.get('/api/health', (req: Request, res: Response) => {
     res.status(200).json({
       status: 'healthy',
@@ -51,12 +59,12 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
     });
   });
   
-  // Emergency admin reset endpoint (production only)
+  // Emergency admin reset endpoint (production only)  
   app.post('/api/emergency-admin-reset', async (req: Request, res: Response) => {
     try {
       const { secret } = req.body;
       
-      // Require emergency secret (can be set via environment variable)
+      // Require emergency secret
       const emergencySecret = process.env.EMERGENCY_SECRET || 'logiflow-admin-reset-2025';
       if (secret !== emergencySecret) {
         return res.status(403).json({ error: 'Invalid emergency secret' });
@@ -64,17 +72,12 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
       
       console.log('🚨 EMERGENCY: Admin password reset requested');
       
-      // Find existing admin
+      // Find and reset admin
       const existingAdmin = await storage.getUserByUsername('admin');
       if (existingAdmin) {
-        // Generate new password hash
-        const crypto = await import('crypto');
-        const scrypt = await import('util').then(util => util.promisify(crypto.scrypt));
-        const salt = crypto.randomBytes(16).toString("hex");
-        const buf = (await scrypt('admin', salt, 64)) as Buffer;
-        const newPassword = `${buf.toString("hex")}.${salt}`;
+        const { hashPasswordSimple } = await import('./localAuth.production.js');
+        const newPassword = await hashPasswordSimple('admin');
         
-        // Update admin password
         await storage.updateUser(existingAdmin.id, { 
           password: newPassword,
           passwordChanged: false 
@@ -95,75 +98,7 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Setup authentication
-  setupLocalAuth(app);
-  
-  // Import and register all routes from routes.ts instead of having limited routes
-  const { registerRoutes } = await import('./routes.js');
-  await registerRoutes(app);
-  
-  // Additional health check route for Docker compatibility
-  app.get('/api/groups', requireAuth, async (req: Request, res: Response) => {
-    try {
-      const groups = await storage.getGroups();
-      res.json(groups);
-    } catch (error) {
-      console.error('Error fetching groups:', error);
-      res.status(500).json({ error: 'Failed to fetch groups' });
-    }
-  });
-
-  app.get('/api/suppliers', requireAuth, async (req: Request, res: Response) => {
-    try {
-      const suppliers = await storage.getSuppliers();
-      res.json(suppliers);
-    } catch (error) {
-      console.error('Error fetching suppliers:', error);
-      res.status(500).json({ error: 'Failed to fetch suppliers' });
-    }
-  });
-
-  app.get('/api/orders', requireAuth, async (req: Request, res: Response) => {
-    try {
-      const orders = await storage.getOrders();
-      res.json(orders);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      res.status(500).json({ error: 'Failed to fetch orders' });
-    }
-  });
-
-  // Weather API for compatibility
-  app.get('/api/weather', async (req: Request, res: Response) => {
-    try {
-      const weatherData = {
-        today: {
-          date: '2025-08-11',
-          location: 'Nancy, France',
-          tempMax: '30.9',
-          tempMin: '13.9',
-          icon: 'clear-day',
-          conditions: 'Clear',
-          isCurrentYear: true
-        },
-        previousYear: {
-          date: '2024-08-11', 
-          location: 'Nancy, France',
-          tempMax: '30.9',
-          tempMin: '15.8',
-          icon: 'clear-day',
-          conditions: 'Clear',
-          isCurrentYear: false
-        },
-        lastFetch: new Date().toISOString()
-      };
-      
-      res.json(weatherData);
-    } catch (error: any) {
-      console.error('Weather API error:', error);
-      res.status(500).json({ error: 'Failed to fetch weather data' });
-    }
-  });
+  // Pas besoin de setupLocalAuth ici car registerRoutes le fait déjà
 
   const server = createServer(app);
   return server;

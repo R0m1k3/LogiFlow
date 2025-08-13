@@ -259,7 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('✅ Supplier creation successful:', { id: supplier.id, name: supplier.name });
       
       res.json(supplier);
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to create supplier:', {
         error: (error as Error).message,
         stack: error.stack,
@@ -442,7 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json(order);
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Error creating order:", {
         error: (error as Error).message,
         stack: error.stack,
@@ -752,7 +752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Auto-valider le rapprochement
             await storage.updateDelivery(id, {
               reconciled: true,
-              validatedAt: new Date().toISOString()
+              validatedAt: new Date()
             });
             
             console.log(`✅ Auto-reconciliation: Delivery #${id} automatically validated for supplier ${supplier.name}`);
