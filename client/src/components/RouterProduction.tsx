@@ -54,6 +54,20 @@ function RouterProduction() {
   }
 
   if (!isAuthenticated) {
+    // Redirection automatique vers la page d'authentification
+    if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
+      console.log('🔄 User not authenticated, redirecting to auth page');
+      window.location.href = '/auth';
+      return (
+        <div className="min-h-screen w-full flex items-center justify-center bg-surface">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">Redirection...</p>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <Switch>
         <Route path="/auth" component={AuthPage} />
