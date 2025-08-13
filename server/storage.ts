@@ -30,9 +30,8 @@ import {
   type PublicityParticipation,
   type InsertPublicityParticipation,
   type PublicityWithRelations,
-  nocodbConfig,
-  type NocodbConfig,
-  type InsertNocodbConfig,
+
+
   type CustomerOrder,
   type InsertCustomerOrder,
   type CustomerOrderWithRelations,

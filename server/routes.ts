@@ -884,7 +884,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceReference || delivery.invoiceReference || '',
         blNumber || delivery.blNumber || '',
         delivery.supplier.name,
-        delivery.groupId
+        delivery.groupId,
+        delivery.group
       );
 
       res.json(result);
