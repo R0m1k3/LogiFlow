@@ -217,7 +217,24 @@ export default function BLReconciliation() {
     enabled: !!user
   });
 
-  // Plus de vérification automatique - seulement manuelle via bouton
+  // VÉRIFICATION AUTOMATIQUE AU CHARGEMENT avec système de cache
+  useEffect(() => {
+    if (!deliveriesWithBL.length || !suppliers.length) return;
+    
+    console.log('🔄 Déclenchement vérifications automatiques...');
+    
+    deliveriesWithBL.forEach((delivery: any) => {
+      // Vérifier seulement si on a une référence de facture et pas déjà de résultat
+      if (delivery.invoiceReference && !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id)) {
+        console.log(`🔍 Vérification auto pour livraison ${delivery.id}:`, delivery.invoiceReference);
+        
+        // Délai pour éviter de surcharger le serveur - le cache évitera les appels inutiles
+        setTimeout(() => {
+          handleVerifyInvoice(delivery, false); // Pas de force refresh, utilise le cache
+        }, Math.random() * 1000); // Délai aléatoire entre 0 et 1 seconde
+      }
+    });
+  }, [deliveriesWithBL, suppliers, verificationResults, verifyingDeliveries]);
 
   // Séparer les livraisons par mode de rapprochement
   const manualReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
