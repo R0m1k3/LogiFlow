@@ -19,22 +19,20 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
-### 2025-08-13 - Correction complète des statistiques du tableau de bord  
-✅ **Résolution définitive de l'affichage de zéros dans les statistiques** :
+### 2025-08-13 - Correction finale statistiques + affichage BL résolu
+✅ **Résolution définitive des bugs statistiques et affichage BL** :
 
-**Problème identifié et corrigé :**
-- **Statistiques hardcodées** : La méthode `getMonthlyStats()` retournait des zéros fixes
-- **Calculs réels implémentés** : Requêtes PostgreSQL pour vraies statistiques mensuelles
-- **Filtrage par magasin** : Support des filtres par groupes/magasins
-- **Gestion des erreurs** : Fallback en cas d'erreur de base de données
+**1. Statistiques mois corrigées :**
+- **Problème** : Palettes/colis comptées sur scheduledDate au lieu de deliveredDate
+- **Solution** : Filtrage par `deliveredDate` pour vraies stats mensuelles
+- **Impact** : Statistiques reflètent maintenant les livraisons effectives du mois
+- **Calcul** : Seules les livraisons `delivered` dans le mois avec `deliveredDate` valide
 
-**Calculs statistiques implémentés :**
-- **Commandes** : COUNT des commandes du mois par date plannedDate
-- **Livraisons** : COUNT des livraisons du mois par date plannedDate  
-- **Palettes** : SUM des quantités de livraisons
-- **Colis** : COUNT total des livraisons
-- **Délai moyen** : Moyenne des jours entre plannedDate et actualDate
-- **Commandes en attente** : COUNT des commandes sans date ou statut pending
+**2. Affichage BL rapprochement optimisé :**
+- **Problème** : BL numbers n'apparaissaient pas immédiatement après validation
+- **Solution** : Cache invalidation + refetch forcé après modification
+- **Technique** : `staleTime: 0` + `queryClient.invalidateQueries` + `refetch()`
+- **Résultat** : Mise à jour instantanée de l'interface utilisateur
 
 ### 2025-08-13 - Erreurs 502 production entièrement corrigées
 ✅ **Résolution définitive des erreurs Bad Gateway en production** :
