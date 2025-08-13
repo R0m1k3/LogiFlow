@@ -1073,19 +1073,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getNocodbConfig(id: number): Promise<NocodbConfig | undefined> {
-    const configs = await db.select({
-      id: nocodbConfig.id,
-      name: nocodbConfig.name,
-      baseUrl: nocodbConfig.baseUrl,
-      projectId: nocodbConfig.projectId,
-      apiToken: nocodbConfig.apiToken,
-      description: nocodbConfig.description,
-      isActive: nocodbConfig.isActive,
-      createdBy: nocodbConfig.createdBy,
-      createdAt: nocodbConfig.createdAt,
-      updatedAt: nocodbConfig.updatedAt,
-    }).from(nocodbConfig).where(eq(nocodbConfig.id, id));
-    return configs[0];
+    try {
+      const configs = await db.select({
+        id: nocodbConfig.id,
+        name: nocodbConfig.name,
+        baseUrl: nocodbConfig.baseUrl,
+        projectId: nocodbConfig.projectId,
+        apiToken: nocodbConfig.apiToken,
+        description: nocodbConfig.description,
+        isActive: nocodbConfig.isActive,
+        createdBy: nocodbConfig.createdBy,
+        createdAt: nocodbConfig.createdAt,
+        updatedAt: nocodbConfig.updatedAt,
+      }).from(nocodbConfig).where(eq(nocodbConfig.id, id));
+      
+      console.log(`🔍 Production NocoDB Config Query - ID: ${id}, Found: ${configs.length > 0}`);
+      return configs[0];
+    } catch (error) {
+      console.error(`❌ Erreur récupération config NocoDB ${id}:`, error);
+      return undefined;
+    }
   }
 
   async createNocodbConfig(config: InsertNocodbConfig): Promise<NocodbConfig> {

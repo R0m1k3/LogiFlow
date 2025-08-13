@@ -1,212 +1,206 @@
-import { storage } from '../storage';
+import { storage } from "../storage";
 
-export interface InvoiceVerificationResult {
-  found: boolean;
-  invoiceReference?: string;
-  invoiceAmount?: string;
-  supplierMatch: boolean;
-  error?: string;
+interface NocodbConfig {
+  id: number;
+  baseUrl: string;
+  apiToken: string;
+  projectId: string;
+  isActive: boolean;
 }
 
-export interface BLSearchResult {
-  found: boolean;
-  invoiceReference?: string;
-  invoiceAmount?: string;
-  error?: string;
+interface GroupConfig {
+  nocodbConfigId?: number;
+  nocodbTableName?: string;
+  invoiceColumnName?: string;
+  nocodbBlColumnName?: string;
+  nocodbAmountColumnName?: string;
+  nocodbSupplierColumnName?: string;
 }
 
-export class NocoDBVerificationService {
-  
-  /**
-   * Vérifie l'existence d'une référence de facture dans NocoDB pour un magasin donné
-   */
+class NocodbVerificationService {
+  private async getNocodbConfig(configId: number): Promise<NocodbConfig | null> {
+    try {
+      return await storage.getNocodbConfig(configId);
+    } catch (error) {
+      console.error('Erreur récupération config NocoDB:', error);
+      return null;
+    }
+  }
+
+  private async getGroupConfig(groupId: number): Promise<GroupConfig | null> {
+    try {
+      const group = await storage.getGroup(groupId);
+      if (!group) return null;
+
+      return {
+        nocodbConfigId: group.nocodbConfigId || undefined,
+        nocodbTableName: group.nocodbTableName || undefined,
+        invoiceColumnName: group.invoiceColumnName || 'invoice_reference',
+        nocodbBlColumnName: group.nocodbBlColumnName || 'bl_number',
+        nocodbAmountColumnName: group.nocodbAmountColumnName || 'amount',
+        nocodbSupplierColumnName: group.nocodbSupplierColumnName || 'supplier'
+      };
+    } catch (error) {
+      console.error('Erreur récupération config groupe:', error);
+      return null;
+    }
+  }
+
+  private async makeNocodbRequest(
+    config: NocodbConfig,
+    tableName: string,
+    queryParams: Record<string, any>
+  ): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      
+      // Construire les filtres NocoDB
+      Object.entries(queryParams).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          params.append(`where`, `(${key},eq,${value})`);
+        }
+      });
+
+      const url = `${config.baseUrl}/api/v1/db/data/${config.projectId}/${tableName}?${params.toString()}`;
+      
+      console.log('🔍 Requête NocoDB:', { url, table: tableName, filters: queryParams });
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'xc-auth': config.apiToken,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Réponse NocoDB:', { count: data.list?.length || 0 });
+      
+      return data;
+    } catch (error) {
+      console.error('❌ Erreur requête NocoDB:', error);
+      throw error;
+    }
+  }
+
   async verifyInvoiceReference(
     groupId: number,
     invoiceReference: string,
     supplierName: string
-  ): Promise<InvoiceVerificationResult> {
+  ): Promise<{ found: boolean; supplierMatch: boolean; data?: any }> {
     try {
-      console.log(`🔍 Vérification facture ${invoiceReference} pour fournisseur ${supplierName} (magasin ${groupId})`);
+      console.log('🔍 Vérification facture:', { groupId, invoiceReference, supplierName });
+
+      // Récupérer la configuration du groupe
+      const groupConfig = await this.getGroupConfig(groupId);
+      if (!groupConfig?.nocodbConfigId || !groupConfig?.nocodbTableName) {
+        console.log('⚠️ Configuration NocoDB manquante pour le groupe', groupId);
+        return { found: false, supplierMatch: false };
+      }
+
+      // Récupérer la configuration NocoDB
+      const nocodbConfig = await this.getNocodbConfig(groupConfig.nocodbConfigId);
+      if (!nocodbConfig || !nocodbConfig.isActive) {
+        console.log('⚠️ Configuration NocoDB inactive ou manquante');
+        return { found: false, supplierMatch: false };
+      }
+
+      // Effectuer la recherche
+      const queryParams = {
+        [groupConfig.invoiceColumnName!]: invoiceReference
+      };
+
+      const response = await this.makeNocodbRequest(
+        nocodbConfig,
+        groupConfig.nocodbTableName,
+        queryParams
+      );
+
+      const records = response.list || response.rows || [];
       
-      // Récupérer la configuration du magasin
-      const group = await storage.getGroup(groupId);
-      if (!group?.nocodbConfigId || !group.nocodbTableName) {
-        console.log(`❌ Pas de configuration NocoDB pour le magasin ${groupId}`);
-        return {
-          found: false,
-          supplierMatch: false,
-          error: 'Configuration NocoDB manquante pour ce magasin'
-        };
+      if (records.length === 0) {
+        return { found: false, supplierMatch: false };
       }
 
-      // Récupérer la configuration NocoDB globale
-      const nocodbConfig = await storage.getNocodbConfig(group.nocodbConfigId);
-      if (!nocodbConfig) {
-        return {
-          found: false,
-          supplierMatch: false,
-          error: 'Configuration NocoDB introuvable'
-        };
-      }
-
-      // Construire l'URL de l'API NocoDB
-      const apiUrl = `${nocodbConfig.baseUrl}/api/v1/db/data/v1/${nocodbConfig.projectId}/${group.nocodbTableName}`;
+      // Vérifier la correspondance du fournisseur
+      const record = records[0];
+      const recordSupplier = record[groupConfig.nocodbSupplierColumnName!];
       
-      // Construire les paramètres de recherche
-      const searchParams = new URLSearchParams();
-      if (group.invoiceColumnName) {
-        searchParams.append('where', `(${group.invoiceColumnName},eq,${invoiceReference})`);
-      }
-
-      const finalUrl = `${apiUrl}?${searchParams.toString()}`;
-      console.log(`🌐 Requête NocoDB: ${finalUrl}`);
-
-      // Faire la requête à NocoDB
-      const response = await fetch(finalUrl, {
-        headers: {
-          'xc-token': nocodbConfig.apiToken,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        console.error(`❌ Erreur NocoDB (${response.status}):`, await response.text());
-        return {
-          found: false,
-          supplierMatch: false,
-          error: `Erreur NocoDB: ${response.status}`
-        };
-      }
-
-      const data = await response.json();
-      console.log(`📊 Réponse NocoDB:`, { found: data.list?.length > 0, count: data.list?.length });
-
-      if (data.list && data.list.length > 0) {
-        const record = data.list[0];
-        
-        // Vérifier si le fournisseur correspond
-        let supplierMatch = true;
-        if (group.nocodbSupplierColumnName) {
-          const nocodbSupplier = record[group.nocodbSupplierColumnName];
-          supplierMatch = nocodbSupplier === supplierName;
-          console.log(`🏷️ Vérification fournisseur:`, { 
-            expected: supplierName, 
-            found: nocodbSupplier, 
-            match: supplierMatch 
-          });
-        }
-
-        return {
-          found: true,
-          invoiceReference,
-          invoiceAmount: group.nocodbAmountColumnName ? record[group.nocodbAmountColumnName]?.toString() : undefined,
-          supplierMatch
-        };
-      }
+      const supplierMatch = recordSupplier && 
+        recordSupplier.toString().toLowerCase().includes(supplierName.toLowerCase());
 
       return {
-        found: false,
-        supplierMatch: false
+        found: true,
+        supplierMatch: !!supplierMatch,
+        data: record
       };
 
     } catch (error) {
-      console.error('❌ Erreur lors de la vérification facture:', error);
-      return {
-        found: false,
-        supplierMatch: false,
-        error: `Erreur: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
-      };
+      console.error('❌ Erreur vérification facture:', error);
+      return { found: false, supplierMatch: false };
     }
   }
 
-  /**
-   * Recherche une facture par numéro de BL et fournisseur
-   */
   async searchByBLNumber(
     groupId: number,
     blNumber: string,
     supplierName: string
-  ): Promise<BLSearchResult> {
+  ): Promise<{ found: boolean; invoiceReference?: string; invoiceAmount?: number; data?: any }> {
     try {
-      console.log(`🔍 Recherche par BL ${blNumber} pour fournisseur ${supplierName} (magasin ${groupId})`);
+      console.log('🔍 Recherche par BL:', { groupId, blNumber, supplierName });
+
+      // Récupérer la configuration du groupe
+      const groupConfig = await this.getGroupConfig(groupId);
+      if (!groupConfig?.nocodbConfigId || !groupConfig?.nocodbTableName) {
+        console.log('⚠️ Configuration NocoDB manquante pour le groupe', groupId);
+        return { found: false };
+      }
+
+      // Récupérer la configuration NocoDB
+      const nocodbConfig = await this.getNocodbConfig(groupConfig.nocodbConfigId);
+      if (!nocodbConfig || !nocodbConfig.isActive) {
+        console.log('⚠️ Configuration NocoDB inactive ou manquante');
+        return { found: false };
+      }
+
+      // Effectuer la recherche par BL
+      const queryParams = {
+        [groupConfig.nocodbBlColumnName!]: blNumber,
+        [groupConfig.nocodbSupplierColumnName!]: supplierName
+      };
+
+      const response = await this.makeNocodbRequest(
+        nocodbConfig,
+        groupConfig.nocodbTableName,
+        queryParams
+      );
+
+      const records = response.list || response.rows || [];
       
-      // Récupérer la configuration du magasin
-      const group = await storage.getGroup(groupId);
-      if (!group?.nocodbConfigId || !group.nocodbTableName || !group.nocodbBlColumnName) {
-        console.log(`❌ Configuration BL manquante pour le magasin ${groupId}`);
-        return {
-          found: false,
-          error: 'Configuration NocoDB pour recherche BL manquante'
-        };
+      if (records.length === 0) {
+        return { found: false };
       }
 
-      // Récupérer la configuration NocoDB globale
-      const nocodbConfig = await storage.getNocodbConfig(group.nocodbConfigId);
-      if (!nocodbConfig) {
-        return {
-          found: false,
-          error: 'Configuration NocoDB introuvable'
-        };
-      }
-
-      // Construire l'URL de l'API NocoDB pour recherche par BL
-      const apiUrl = `${nocodbConfig.baseUrl}/api/v1/db/data/v1/${nocodbConfig.projectId}/${group.nocodbTableName}`;
-      
-      // Construire les paramètres de recherche par BL et éventuellement fournisseur
-      const searchParams = new URLSearchParams();
-      let whereClause = `(${group.nocodbBlColumnName},eq,${blNumber})`;
-      
-      // Ajouter la condition fournisseur si configurée
-      if (group.nocodbSupplierColumnName) {
-        whereClause += `~and(${group.nocodbSupplierColumnName},eq,${supplierName})`;
-      }
-      
-      searchParams.append('where', whereClause);
-
-      const finalUrl = `${apiUrl}?${searchParams.toString()}`;
-      console.log(`🌐 Requête NocoDB recherche BL: ${finalUrl}`);
-
-      // Faire la requête à NocoDB
-      const response = await fetch(finalUrl, {
-        headers: {
-          'xc-token': nocodbConfig.apiToken,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        console.error(`❌ Erreur NocoDB recherche BL (${response.status}):`, await response.text());
-        return {
-          found: false,
-          error: `Erreur NocoDB: ${response.status}`
-        };
-      }
-
-      const data = await response.json();
-      console.log(`📊 Réponse NocoDB recherche BL:`, { found: data.list?.length > 0, count: data.list?.length });
-
-      if (data.list && data.list.length > 0) {
-        const record = data.list[0];
-        
-        return {
-          found: true,
-          invoiceReference: group.invoiceColumnName ? record[group.invoiceColumnName] : undefined,
-          invoiceAmount: group.nocodbAmountColumnName ? record[group.nocodbAmountColumnName]?.toString() : undefined
-        };
-      }
+      const record = records[0];
+      const invoiceReference = record[groupConfig.invoiceColumnName!];
+      const invoiceAmount = record[groupConfig.nocodbAmountColumnName!];
 
       return {
-        found: false
+        found: true,
+        invoiceReference: invoiceReference?.toString(),
+        invoiceAmount: invoiceAmount ? parseFloat(invoiceAmount.toString()) : undefined,
+        data: record
       };
 
     } catch (error) {
-      console.error('❌ Erreur lors de la recherche par BL:', error);
-      return {
-        found: false,
-        error: `Erreur: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
-      };
+      console.error('❌ Erreur recherche par BL:', error);
+      return { found: false };
     }
   }
 }
 
-export const nocodbVerificationService = new NocoDBVerificationService();
+export const nocodbVerificationService = new NocodbVerificationService();
