@@ -25,8 +25,8 @@ export default function BLReconciliation() {
   // Redirection pour les employés
   if (user?.role === 'employee') {
     return (
-      <div className="p-6">
-        <div className="bg-orange-50 border-l-4 border-orange-400 p-4">
+      <div className="p-4 sm:p-6">
+        <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg">
           <div className="flex">
             <div className="flex-shrink-0">
               <FileText className="h-5 w-5 text-orange-400" />
@@ -253,25 +253,25 @@ export default function BLReconciliation() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-6 shadow-sm -m-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white border-b border-gray-200 p-4 sm:p-6 shadow-sm -m-4 sm:-m-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900 flex items-center">
-              <FileText className="w-6 h-6 mr-3 text-blue-600" />
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center">
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600" />
               Rapprochement BL/Factures
             </h2>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
               Gestion des rapprochements manuels et automatiques
             </p>
           </div>
-          <div className="flex items-center space-x-4">
-            <Badge variant="outline" className="text-sm border border-gray-300">
-              {manualReconciliationDeliveries.length} rapprochements manuels
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <Badge variant="outline" className="text-xs sm:text-sm border border-gray-300">
+              {manualReconciliationDeliveries.length} manuels
             </Badge>
-            <Badge variant="outline" className="text-sm border border-gray-300 bg-blue-50">
-              {automaticReconciliationDeliveries.length} rapprochements automatiques
+            <Badge variant="outline" className="text-xs sm:text-sm border border-gray-300 bg-blue-50">
+              {automaticReconciliationDeliveries.length} automatiques
             </Badge>
           </div>
         </div>
@@ -297,20 +297,22 @@ export default function BLReconciliation() {
         </Tabs>
       </div>
 
-      {/* Filtre de recherche */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Rechercher par fournisseur, BL ou facture..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 border border-gray-300 shadow-sm"
-            />
+      {/* Filters */}
+      <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Rechercher par fournisseur, BL ou facture..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 border border-gray-300 shadow-sm w-full"
+              />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Contenu des onglets */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -326,64 +328,64 @@ export default function BLReconciliation() {
               </p>
             </div>
           ) : (
-            <Card>
-              <CardContent className="pt-6">
+            <div className="flex-1 overflow-y-auto">
+              <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
                 {/* Pagination du haut */}
-                <Pagination
-                  currentPage={manualCurrentPage}
-                  totalPages={manualTotalPages}
-                  totalItems={manualTotalItems}
-                  itemsPerPage={manualItemsPerPage}
-                  onPageChange={setManualCurrentPage}
-                  onItemsPerPageChange={setManualItemsPerPage}
-                  className="mb-4"
-                />
+                <div className="p-4 border-b border-gray-200">
+                  <Pagination
+                    currentPage={manualCurrentPage}
+                    totalPages={manualTotalPages}
+                    totalItems={manualTotalItems}
+                    itemsPerPage={manualItemsPerPage}
+                    onPageChange={setManualCurrentPage}
+                    onItemsPerPageChange={setManualItemsPerPage}
+                  />
+                </div>
                 
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Fournisseur
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            N° BL
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date Livr.
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Montant BL
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Ref. Facture
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Montant Fact.
-                          </th>
-                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Écart
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Magasin
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {paginatedManualDeliveries.map((delivery: any) => (
-                          <tr 
-                            key={delivery.id} 
-                            className={`hover:bg-gray-50 ${
-                              delivery.reconciled === true 
-                                ? 'bg-gray-100 opacity-60 text-gray-500' 
-                                : 'bg-white'
-                            }`}
-                          >
-                            <td className="px-3 py-2 text-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[900px]">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Fournisseur
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          N° BL
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date Livr.
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Montant BL
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Ref. Facture
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Montant Fact.
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Écart
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Magasin
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedManualDeliveries.map((delivery: any) => (
+                        <tr 
+                          key={delivery.id} 
+                          className={`hover:bg-gray-50 ${
+                            delivery.reconciled === true 
+                              ? 'bg-gray-100 opacity-60 text-gray-500' 
+                              : 'bg-white'
+                          }`}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
                               <div className={`truncate max-w-32 ${
                                 delivery.reconciled !== true 
                                   ? 'font-bold text-gray-900' 
@@ -403,35 +405,35 @@ export default function BLReconciliation() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className="text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
                                 {safeFormat(delivery.scheduledDate, 'dd/MM/yy')}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className={delivery.reconciled !== true ? 'font-bold text-gray-900' : 'font-medium text-gray-900'}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
                                 {delivery.blAmount ? 
                                   `${parseFloat(delivery.blAmount).toFixed(2)}€` :
-                                  <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                  <span className="text-gray-400 italic">Non renseigné</span>
                                 }
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className={delivery.reconciled !== true ? 'font-bold text-gray-900' : 'text-gray-900'}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
                                 {delivery.invoiceReference || (
-                                  <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                  <span className="text-gray-400 italic">Non renseigné</span>
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className={delivery.reconciled !== true ? 'font-bold text-gray-900' : 'text-gray-900'}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
                                 {delivery.invoiceAmount ? 
                                   `${parseFloat(delivery.invoiceAmount).toFixed(2)}€` : 
-                                  <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                  <span className="text-gray-400 italic">Non renseigné</span>
                                 }
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-sm text-right">
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
                               {(() => {
                                 const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
                                 const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
@@ -450,64 +452,72 @@ export default function BLReconciliation() {
                                 return <span className="text-gray-400 italic text-xs">-</span>;
                               })()}
                             </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className="text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
                                 {delivery.group?.name}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className="flex items-center space-x-2">
+                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                              <div className="flex items-center justify-end space-x-2">
                                 {!delivery.reconciled ? (
                                   <>
                                     {permissions.canValidate('reconciliation') && (
-                                      <button
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => handleQuickValidate(delivery)}
-                                        className="text-gray-600 hover:text-green-600 transition-colors duration-200 p-1 hover:bg-green-50 rounded"
+                                        className="h-8 w-8 p-0"
                                         title="Valider le rapprochement"
                                       >
-                                        <Check className="w-4 h-4 border border-gray-300 rounded p-0.5" />
-                                      </button>
+                                        <Check className="w-4 h-4" />
+                                      </Button>
                                     )}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleOpenModal(delivery)}
+                                      className="h-8 w-8 p-0"
+                                      title="Modifier les données"
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
                                     {permissions.canDelete('reconciliation') && (
-                                      <button
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => handleDeleteDelivery(delivery.id)}
-                                        className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
+                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
                                         title="Supprimer la livraison"
                                       >
                                         <Trash2 className="w-4 h-4" />
-                                      </button>
+                                      </Button>
                                     )}
                                   </>
                                 ) : (
                                   <>
                                     {user?.role === 'admin' && (
-                                      <button
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => handleDevalidateReconciliation(delivery.id)}
-                                        className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
+                                        className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
                                         title="Dévalider le rapprochement"
                                       >
                                         <Ban className="w-4 h-4" />
-                                      </button>
+                                      </Button>
                                     )}
                                     {permissions.canDelete('reconciliation') && (
-                                      <button
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => handleDeleteDelivery(delivery.id)}
-                                        className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
+                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
                                         title="Supprimer la livraison"
                                       >
                                         <Trash2 className="w-4 h-4" />
-                                      </button>
+                                      </Button>
                                     )}
                                   </>
-                                )}
-                                {!delivery.reconciled && (
-                                  <button
-                                    onClick={() => handleOpenModal(delivery)}
-                                    className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                                    title="Modifier les données de rapprochement"
-                                  >
-                                    <Settings className="w-4 h-4" />
-                                  </button>
                                 )}
                               </div>
                             </td>
@@ -516,20 +526,20 @@ export default function BLReconciliation() {
                       </tbody>
                     </table>
                   </div>
-                </div>
                 
                 {/* Pagination du bas */}
-                <Pagination
-                  currentPage={manualCurrentPage}
-                  totalPages={manualTotalPages}
-                  totalItems={manualTotalItems}
-                  itemsPerPage={manualItemsPerPage}
-                  onPageChange={setManualCurrentPage}
-                  onItemsPerPageChange={setManualItemsPerPage}
-                  className="mt-4"
-                />
-              </CardContent>
-            </Card>
+                <div className="p-4 border-t border-gray-200">
+                  <Pagination
+                    currentPage={manualCurrentPage}
+                    totalPages={manualTotalPages}
+                    totalItems={manualTotalItems}
+                    itemsPerPage={manualItemsPerPage}
+                    onPageChange={setManualCurrentPage}
+                    onItemsPerPageChange={setManualItemsPerPage}
+                  />
+                </div>
+              </div>
+            </div>
           )}
         </TabsContent>
         
@@ -563,51 +573,45 @@ export default function BLReconciliation() {
               </p>
             </div>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
-                  Rapprochements Automatiques
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+            <div className="flex-1 overflow-y-auto">
+              <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
                 {/* Pagination du haut */}
-                <Pagination
-                  currentPage={autoCurrentPage}
-                  totalPages={autoTotalPages}
-                  totalItems={autoTotalItems}
-                  itemsPerPage={autoItemsPerPage}
-                  onPageChange={setAutoCurrentPage}
-                  onItemsPerPageChange={setAutoItemsPerPage}
-                  className="mb-4"
-                />
+                <div className="p-4 border-b border-gray-200">
+                  <Pagination
+                    currentPage={autoCurrentPage}
+                    totalPages={autoTotalPages}
+                    totalItems={autoTotalItems}
+                    itemsPerPage={autoItemsPerPage}
+                    onPageChange={setAutoCurrentPage}
+                    onItemsPerPageChange={setAutoItemsPerPage}
+                  />
+                </div>
                 
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Fournisseur
-                            <Badge variant="secondary" className="ml-2 text-xs">AUTO</Badge>
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            N° BL
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date Livr.
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date Valid.
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Magasin
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[700px]">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Fournisseur
+                          <Badge variant="secondary" className="ml-2 text-xs">AUTO</Badge>
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          N° BL
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date Livr.
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Date Valid.
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Magasin
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {paginatedAutoDeliveries.map((delivery: any) => (
                           <tr key={delivery.id} className="hover:bg-gray-50 bg-green-50">
@@ -675,20 +679,20 @@ export default function BLReconciliation() {
                       </tbody>
                     </table>
                   </div>
-                </div>
                 
                 {/* Pagination du bas */}
-                <Pagination
-                  currentPage={autoCurrentPage}
-                  totalPages={autoTotalPages}
-                  totalItems={autoTotalItems}
-                  itemsPerPage={autoItemsPerPage}
-                  onPageChange={setAutoCurrentPage}
-                  onItemsPerPageChange={setAutoItemsPerPage}
-                  className="mt-4"
-                />
-              </CardContent>
-            </Card>
+                <div className="p-4 border-t border-gray-200">
+                  <Pagination
+                    currentPage={autoCurrentPage}
+                    totalPages={autoTotalPages}
+                    totalItems={autoTotalItems}
+                    itemsPerPage={autoItemsPerPage}
+                    onPageChange={setAutoCurrentPage}
+                    onItemsPerPageChange={setAutoItemsPerPage}
+                  />
+                </div>
+              </div>
+            </div>
           )}
         </TabsContent>
       </Tabs>
@@ -698,7 +702,7 @@ export default function BLReconciliation() {
         <ReconciliationModal
           isOpen={isModalOpen}
           delivery={selectedDelivery}
-          onSave={() => handleSaveReconciliation(selectedDelivery)}
+          onSave={handleSaveReconciliation}
           onClose={handleCloseModal}
         />
       )}

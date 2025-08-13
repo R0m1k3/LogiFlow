@@ -19,25 +19,25 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-13 - Uniformisation complète des interfaces utilisateur
+✅ **Harmonisation du design des tableaux** terminée pour une expérience utilisateur cohérente :
+
+**Pages uniformisées :**
+- `Orders.tsx` - Page des commandes avec design responsive optimisé
+- `Deliveries.tsx` - Page des livraisons avec structure identique
+- `BLReconciliation.tsx` - Page de rapprochement BL/Factures harmonisée
+- `Dashboard.tsx` - Tableau de bord avec erreurs TypeScript corrigées
+
+**Améliorations appliquées :**
+- Headers responsifs adaptés mobile/tablette
+- Filtres restructurés avec style cohérent
+- Tableaux standardisés : `px-6 py-4` et `whitespace-nowrap`
+- Boutons d'actions modernisés avec composants Button shadcn/ui
+- Pagination repositionnée avec bordures uniformisées
+- Espacement et typographie harmonisés
+
 ### 2025-08-12 - Nettoyage des fichiers inutiles
-✅ **Suppression complète des fichiers inutiles** effectuée pour optimiser le projet :
-
-**Fichiers supprimés :**
-- Fichiers de sauvegarde/cassés : `*_broken.tsx`, `*_backup.tsx`, `*.backup.*`
-- Dossier `attached_assets/` complet (captures d'écran et logs de débogage)
-- Documentation de débogage : tous les fichiers `*.md` de correction temporaire
-- Scripts de débogage : `debug-*.js`, `fix-*.sql`, `apply-production-fixes.js`
-- Scripts de test temporaires : `test-*.js`, `reset-admin.js`
-- Fichiers de production/debug : `production-*.txt`, `production-*.sh`, `production-*.patch`
-- Fichiers de cookies de test : `cookies.txt`, `cookies_employee.txt`
-
-**Fichiers conservés (essentiels) :**
-- `client/` - Frontend React complet
-- `server/` - Backend Express complet
-- `shared/` - Schémas partagés
-- `migrations/` - Migrations de base de données
-- Configuration : `package.json`, `vite.config.ts`, `tailwind.config.ts`, etc.
-- Déploiement : `Dockerfile`, `docker-compose.yml`
+✅ **Suppression complète des fichiers inutiles** effectuée pour optimiser le projet
 
 ## Project Architecture
 
