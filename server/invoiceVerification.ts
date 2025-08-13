@@ -20,17 +20,30 @@ interface NocodbInvoice {
 
 class InvoiceVerificationService {
   private async getNocodbConfig(): Promise<any> {
-    const [config] = await db
-      .select()
-      .from(nocodbConfig)
-      .where(eq(nocodbConfig.isActive, true))
-      .limit(1);
-    
-    if (!config) {
-      throw new Error('Aucune configuration NocoDB active trouvée');
+    try {
+      const [config] = await db
+        .select()
+        .from(nocodbConfig)
+        .where(eq(nocodbConfig.isActive, true))
+        .limit(1);
+      
+      if (!config) {
+        console.log('⚠️ Aucune configuration NocoDB active trouvée dans la table nocodb_config');
+        throw new Error('Aucune configuration NocoDB active trouvée');
+      }
+      
+      console.log('✅ Configuration NocoDB trouvée:', {
+        id: config.id,
+        name: config.name,
+        baseUrl: config.baseUrl,
+        projectId: config.projectId
+      });
+      
+      return config;
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération de la configuration NocoDB:', error);
+      throw error;
     }
-    
-    return config;
   }
 
   private generateCacheKey(groupId: number, invoiceRef: string, supplierName: string): string {

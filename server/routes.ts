@@ -862,8 +862,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { invoiceReference, blNumber } = req.body;
       
       if (!delivery.supplier || !delivery.group) {
+        console.log('❌ Livraison manque informations:', {
+          deliveryId,
+          hasSupplier: !!delivery.supplier,
+          hasGroup: !!delivery.group,
+          delivery: delivery
+        });
         return res.status(400).json({ message: "Delivery missing supplier or group information" });
       }
+
+      console.log('🔍 Tentative de vérification facture:', {
+        deliveryId,
+        invoiceReference: invoiceReference || delivery.invoiceReference,
+        blNumber: blNumber || delivery.blNumber,
+        supplierName: delivery.supplier.name,
+        groupId: delivery.groupId,
+        groupData: delivery.group
+      });
 
       const result = await invoiceVerificationService.verifyInvoiceReference(
         invoiceReference || delivery.invoiceReference || '',

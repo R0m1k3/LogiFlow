@@ -132,7 +132,15 @@ export default function BLReconciliation() {
 
   // Fonction pour déclencher la vérification
   const handleVerifyInvoice = (delivery: any) => {
-    if (!delivery.group?.webhookUrl) {
+    console.log('🔍 Debug vérification:', {
+      delivery: delivery,
+      group: delivery.group,
+      webhookUrl: delivery.group?.webhookUrl,
+      nocodbTableName: delivery.group?.nocodbTableName,
+      supplier: delivery.supplier
+    });
+    
+    if (!delivery.group?.nocodbTableName && !delivery.group?.webhookUrl) {
       toast({
         title: "Vérification non disponible",
         description: "Ce magasin n'a pas de configuration NocoDB",
@@ -631,7 +639,7 @@ export default function BLReconciliation() {
                                 </div>
                                 
                                 {/* Icône de vérification de facture */}
-                                {delivery.group?.webhookUrl && (
+                                {(delivery.group?.webhookUrl || delivery.group?.nocodbTableName) && (
                                   <div className="flex items-center">
                                     {verifyingDeliveries.has(delivery.id) ? (
                                       <Clock className="h-4 w-4 text-blue-500 animate-spin" title="Vérification en cours..." />
