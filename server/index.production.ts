@@ -40,11 +40,11 @@ app.use((req, res, next) => {
 // Import all routes for production
 import { registerRoutes } from "./routes.js";
 
-async function registerProductionRoutes(app: Express): Promise<Server> {
+async function registerProductionRoutes(app: Express): Promise<void> {
   console.log('🔧 Registering all production routes...');
   
   // Register ALL API routes (same as development)
-  const server = await registerRoutes(app);
+  await registerRoutes(app);
   console.log('✅ All routes registered successfully for production');
   
   // Additional health check endpoint for production monitoring
@@ -75,8 +75,8 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
       // Find and reset admin
       const existingAdmin = await storage.getUserByUsername('admin');
       if (existingAdmin) {
-        const { hashPasswordSimple } = await import('./localAuth.production.js');
-        const newPassword = await hashPasswordSimple('admin');
+        const { hashPassword } = await import('./localAuth.production.js');
+        const newPassword = await hashPassword('admin');
         
         await storage.updateUser(existingAdmin.id, { 
           password: newPassword,
@@ -97,14 +97,9 @@ async function registerProductionRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: 'Reset failed', details: (error as Error).message });
     }
   });
-  
-  // Pas besoin de setupLocalAuth ici car registerRoutes le fait déjà
-
-  const server = createServer(app);
-  return server;
 }
 
-const server = await registerProductionRoutes(app);
+await registerProductionRoutes(app);
 
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   const status = err.status || err.statusCode || 500;
@@ -147,6 +142,7 @@ app.get('*', (req, res, next) => {
 });
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const server = createServer(app);
 server.listen(port, "0.0.0.0", () => {
   console.log(`🐳 PRODUCTION: LogiFlow serving on port ${port}`);
 });

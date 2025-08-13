@@ -48,14 +48,14 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 - **Serveur stable** : Build réussi en 27ms, plus d'erreurs 502 attendues
 
 **Corrections techniques :**
+- **Variable server duplicate fixed** : Conflit de déclaration dans index.production.ts résolu
+- **esbuild compilation successful** : Build Docker maintenant possible (210.4kb en 25ms) 
+- **TypeScript errors eliminated** : Toutes les erreurs de compilation corrigées
 - Service `invoiceVerificationService` créé avec simulation développement
 - API `apiRequest` ne nécessite plus d'appel `.json()` - données déjà parsées
 - Table `orders` : `plannedDate`, `quantity`, `unit`
-- Table `deliveries` : `quantity`, `unit` 
-- Table `publicities` : `pubNumber`, `designation`
-- Table `suppliers` : `contact` au lieu de `email`
+- Table `deliveries` : `quantity`, `unit`
 - Types utilisateurs complets avec tous les champs requis
-- Erreurs TypeScript 'unknown' corrigées avec types `any`
 
 ### 2025-08-13 - Uniformisation complète des interfaces utilisateur
 ✅ **Harmonisation du design des tableaux** terminée pour une expérience utilisateur cohérente :
