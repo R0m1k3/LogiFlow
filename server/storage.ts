@@ -613,12 +613,12 @@ export class DatabaseStorage implements IStorage {
 
       // Construire les conditions pour le filtrage par groupe
       let ordersWhereCondition = and(
-        gte(orders.plannedDate, new Date(startDate)),
-        lt(orders.plannedDate, new Date(endDate))
+        gte(orders.plannedDate, startDate),
+        lt(orders.plannedDate, endDate)
       );
       let deliveriesWhereCondition = and(
-        gte(deliveries.plannedDate, new Date(startDate)), 
-        lt(deliveries.plannedDate, new Date(endDate))
+        gte(deliveries.scheduledDate, startDate), 
+        lt(deliveries.scheduledDate, endDate)
       );
 
       // Ajouter le filtre par groupe si spécifié
@@ -640,12 +640,9 @@ export class DatabaseStorage implements IStorage {
         .where(deliveriesWhereCondition);
 
       // Commandes en attente (sans date de livraison ou pas encore livrées)
-      let pendingWhereCondition = or(
-        isNull(orders.plannedDate),
-        eq(orders.status, 'pending')
-      );
+      let pendingWhereCondition = eq(orders.status, 'pending');
       if (groupIds && groupIds.length > 0) {
-        pendingWhereCondition = and(pendingWhereCondition, inArray(orders.groupId, groupIds));
+        pendingWhereCondition = and(pendingWhereCondition, inArray(orders.groupId, groupIds)) as any;
       }
 
       const pendingResult = await db
@@ -658,12 +655,12 @@ export class DatabaseStorage implements IStorage {
         .select({
           totalPalettes: sql<number>`COALESCE(SUM(CAST(${deliveries.quantity} as INTEGER)), 0)`,
           totalPackages: sql<number>`COALESCE(COUNT(*), 0)`,
-          avgDelay: sql<number>`COALESCE(AVG(EXTRACT(DAY FROM (${deliveries.actualDate} - ${deliveries.plannedDate}))), 0)`
+          avgDelay: sql<number>`COALESCE(AVG(EXTRACT(DAY FROM (${deliveries.deliveredDate} - ${deliveries.scheduledDate}))), 0)`
         })
         .from(deliveries)
         .where(and(
           deliveriesWhereCondition,
-          isNotNull(deliveries.actualDate)
+          isNotNull(deliveries.deliveredDate)
         ));
 
       const ordersCount = Number(ordersResult[0]?.count || 0);
@@ -743,8 +740,8 @@ export class DatabaseStorage implements IStorage {
     return results.map((publicity: any) => ({
       ...publicity,
       participations: participations
-        .filter((p) => p.publicityId === publicity.id)
-        .map((p) => ({
+        .filter((p: any) => p.publicityId === publicity.id)
+        .map((p: any) => ({
           publicityId: p.publicityId,
           groupId: p.groupId,
           group: p.group!,
@@ -768,7 +765,7 @@ export class DatabaseStorage implements IStorage {
 
     return {
       ...publicity,
-      participations: participations.map(p => ({
+      participations: participations.map((p: any) => ({
         publicityId: p.publicityId,
         groupId: p.groupId,
         group: p.group!,
@@ -1015,7 +1012,7 @@ export class MemStorage implements IStorage {
       lastName: userData.lastName || null,
       profileImageUrl: userData.profileImageUrl || null,
       password: userData.password || null,
-      role: userData.role,
+      role: userData.role || 'user',
       passwordChanged: userData.passwordChanged || false,
       createdAt: existingUser?.createdAt || new Date(),
       updatedAt: new Date(),
