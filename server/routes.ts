@@ -38,7 +38,7 @@ import {
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
-import { invoiceVerificationService } from "./invoiceVerification.js";
+import { invoiceVerificationService } from "./invoiceVerification";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for Docker
@@ -134,16 +134,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('✅ Group creation successful:', { id: group.id, name: group.name });
       
       res.json(group);
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to create group:', {
-        error: (error as Error).message,
-        stack: error.stack,
+        error: error?.message || 'Unknown error',
+        stack: error?.stack,
         body: req.body,
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
       });
       
       // Erreur de validation Zod
-      if (error.name === 'ZodError') {
+      if (error?.name === 'ZodError') {
         console.error('❌ Validation error details:', error.errors);
         return res.status(400).json({ 
           message: "Validation failed", 
@@ -166,7 +166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = insertGroupSchema.partial().parse(req.body);
       const group = await storage.updateGroup(id, data);
       res.json(group);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating group:", error);
       res.status(500).json({ message: "Failed to update group" });
     }
