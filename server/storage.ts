@@ -2053,11 +2053,43 @@ class MemStorage implements IStorage {
     this.users.set('admin_dev', adminUser);
     this.users.set('admin', adminUser); // Also set by username for easy lookup
     
-    // Add test groups
+    // Add test groups with NocoDB configuration
     const testGroups = [
-      { id: 1, name: 'Magasin A', color: '#FF5733', webhookUrl: 'https://webhook.site/test-facture-magasin-a', createdAt: new Date(), updatedAt: new Date() },
-      { id: 2, name: 'Magasin B', color: '#33FF57', webhookUrl: 'https://webhook.site/test-facture-magasin-b', createdAt: new Date(), updatedAt: new Date() },
-      { id: 3, name: 'Magasin C', color: '#3357FF', createdAt: new Date(), updatedAt: new Date() }
+      { 
+        id: 1, 
+        name: 'Magasin A', 
+        color: '#FF5733', 
+        webhookUrl: 'https://webhook.site/test-facture-magasin-a',
+        nocodbConfigId: 1,
+        nocodbTableName: 'factures_magasin_a',
+        invoiceColumnName: 'reference_facture',
+        nocodbBlColumnName: 'numero_bl',
+        nocodbAmountColumnName: 'montant',
+        nocodbSupplierColumnName: 'fournisseur',
+        createdAt: new Date(), 
+        updatedAt: new Date() 
+      },
+      { 
+        id: 2, 
+        name: 'Magasin B', 
+        color: '#33FF57', 
+        webhookUrl: 'https://webhook.site/test-facture-magasin-b',
+        nocodbConfigId: 1,
+        nocodbTableName: 'factures_magasin_b',
+        invoiceColumnName: 'ref_facture',
+        nocodbBlColumnName: 'bl_number',
+        nocodbAmountColumnName: 'amount',
+        nocodbSupplierColumnName: 'supplier_name',
+        createdAt: new Date(), 
+        updatedAt: new Date() 
+      },
+      { 
+        id: 3, 
+        name: 'Magasin C', 
+        color: '#3357FF', 
+        createdAt: new Date(), 
+        updatedAt: new Date() 
+      }
     ];
     testGroups.forEach(group => this.groups.set(group.id, group as Group));
     
@@ -2221,7 +2253,9 @@ class MemStorage implements IStorage {
   async getGroups(): Promise<Group[]> { 
     return Array.from(this.groups.values());
   }
-  async getGroup(id: number): Promise<Group | undefined> { return undefined; }
+  async getGroup(id: number): Promise<Group | undefined> { 
+    return this.groups.get(id);
+  }
   async createGroup(group: InsertGroup): Promise<Group> { return {} as Group; }
   async updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group> { return {} as Group; }
   async deleteGroup(id: number): Promise<void> {}
@@ -2449,7 +2483,20 @@ class MemStorage implements IStorage {
   async removeUserFromGroup(): Promise<void> {}
   async getMonthlyStats(): Promise<any> { return {}; }
   async getNocodbConfigs(): Promise<any[]> { return []; }
-  async getNocodbConfig(): Promise<any> { return null; }
+  async getNocodbConfig(id: number): Promise<any> { 
+    // Retourner une configuration de test pour le développement
+    if (id === 1) {
+      return {
+        id: 1,
+        name: 'Config Test NocoDB',
+        baseUrl: 'https://nocodb-test.example.com',
+        projectId: 'test-project',
+        apiToken: 'test-token-123',
+        isActive: true
+      };
+    }
+    return null;
+  }
   async createNocodbConfig(): Promise<any> { return {}; }
   async updateNocodbConfig(): Promise<any> { return {}; }
   async deleteNocodbConfig(): Promise<void> {}
