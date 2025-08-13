@@ -51,6 +51,7 @@ export const groups = pgTable("groups", {
   // Configuration NocoDB pour vérification automatique des factures
   nocodbConfigId: integer("nocodb_config_id"), // Référence vers la configuration NocoDB globale
   nocodbTableName: varchar("nocodb_table_name"), // Nom de la table spécifique au magasin
+  nocodbTableId: varchar("nocodb_table_id"), // ID réel de la table dans NocoDB (ex: mrr733dfb8wtt9b)
   // Mapping des colonnes par magasin dans leur table NocoDB
   invoiceColumnName: varchar("invoice_column_name"), // Nom de la colonne facture dans leur table
   nocodbBlColumnName: varchar("nocodb_bl_column_name"), // Nom de la colonne BL dans leur table
@@ -578,9 +579,7 @@ export type UserWithGroups = User & {
 };
 
 export type NocodbConfig = typeof nocodbConfig.$inferSelect;
-export type InsertNocodbConfig = z.infer<typeof insertNocodbConfigSchema>;
 export type InvoiceVerificationCache = typeof invoiceVerificationCache.$inferSelect;
-export type InsertInvoiceVerificationCache = z.infer<typeof insertInvoiceVerificationCacheSchema>;
 
 // Task with relations type
 export type TaskWithRelations = Task & {
