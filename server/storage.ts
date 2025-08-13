@@ -1563,11 +1563,23 @@ export class MemStorage implements IStorage {
   async getOrder(id: number): Promise<OrderWithRelations | undefined> {
     const order = this.orders.get(id);
     if (!order) return undefined;
+    
+    // Récupérer les livraisons associées à cette commande
+    const associatedDeliveries = Array.from(this.deliveries.values())
+      .filter(delivery => delivery.orderId === id)
+      .map(delivery => ({
+        ...delivery,
+        supplier: this.suppliers.get(delivery.supplierId),
+        group: this.groups.get(delivery.groupId),
+        creator: this.users.get(delivery.createdBy || '')
+      }));
+    
     return {
       ...order,
       supplier: this.suppliers.get(order.supplierId),
       group: this.groups.get(order.groupId),
-      creator: this.users.get(order.createdBy)
+      creator: this.users.get(order.createdBy),
+      deliveries: associatedDeliveries
     };
   }
 
@@ -1636,11 +1648,27 @@ export class MemStorage implements IStorage {
   async getDelivery(id: number): Promise<DeliveryWithRelations | undefined> {
     const delivery = this.deliveries.get(id);
     if (!delivery) return undefined;
+    
+    // Récupérer la commande associée si elle existe
+    let associatedOrder = undefined;
+    if (delivery.orderId) {
+      const order = this.orders.get(delivery.orderId);
+      if (order) {
+        associatedOrder = {
+          ...order,
+          supplier: this.suppliers.get(order.supplierId),
+          group: this.groups.get(order.groupId),
+          creator: this.users.get(order.createdBy)
+        };
+      }
+    }
+    
     return {
       ...delivery,
       supplier: this.suppliers.get(delivery.supplierId),
       group: this.groups.get(delivery.groupId),
-      creator: this.users.get(delivery.createdBy || '')
+      creator: this.users.get(delivery.createdBy || ''),
+      order: associatedOrder
     };
   }
 

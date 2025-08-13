@@ -564,13 +564,14 @@ export type OrderWithRelations = Order & {
   supplier: Supplier;
   group: Group;
   creator: User;
+  deliveries?: DeliveryWithRelations[];
 };
 
 export type DeliveryWithRelations = Delivery & {
   supplier: Supplier;
   group: Group;
   creator: User;
-  order?: Order;
+  order?: OrderWithRelations;
 };
 
 export type PublicityWithRelations = Publicity & {
