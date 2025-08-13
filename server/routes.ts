@@ -730,15 +730,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('✅ Delivery updated successfully:', { id, updatedDelivery });
       
       // SYNCHRONISATION AUTOMATIQUE : Si livraison devient "delivered", marquer la commande associée comme "delivered"
-      if (data.status === 'delivered' && updatedDelivery.orderId) {
-        try {
-          console.log(`🔄 Auto-sync: Delivery #${id} marked as delivered, updating order #${updatedDelivery.orderId}`);
-          await storage.updateOrder(updatedDelivery.orderId, { status: 'delivered' });
-          console.log(`✅ Auto-sync: Order #${updatedDelivery.orderId} automatically marked as delivered`);
-        } catch (error) {
-          console.error(`❌ Auto-sync failed for order #${updatedDelivery.orderId}:`, error);
-        }
-      }
+      // MAIS seulement après validation explicite (pas juste mise à jour status)
+      // Cette sync sera gérée dans validateDelivery endpoint uniquement
 
       // AUTO-VALIDATION RAPPROCHEMENT AUTOMATIQUE : Si fournisseur en mode automatique, livraison delivered + BL → auto-valider
       if (data.status === 'delivered' || data.blNumber) {
@@ -780,10 +773,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log('🚛 Creating delivery with data:', req.body);
+
+      // Traiter les données pour orderId - "none" devient null
+      const processedBody = { ...req.body };
+      if (processedBody.orderId === "none" || processedBody.orderId === "") {
+        processedBody.orderId = null;
+      } else if (processedBody.orderId) {
+        processedBody.orderId = parseInt(processedBody.orderId);
+      }
+
       const data = insertDeliverySchema.parse({
-        ...req.body,
+        ...processedBody,
         createdBy: user.id,
       });
+
+      console.log('🚛 Processed delivery data:', data);
 
       // Check if user has access to the group
       if (user.role !== 'admin') {
@@ -794,6 +799,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const delivery = await storage.createDelivery(data);
+      
+      // Log de liaison avec commande
+      if (data.orderId) {
+        console.log(`🔗 Delivery #${delivery.id} linked to order #${data.orderId}`);
+      } else {
+        console.log(`🚛 Delivery #${delivery.id} created without order link`);
+      }
+      
       res.json(delivery);
     } catch (error) {
       console.error("Error creating delivery:", error);
