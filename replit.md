@@ -19,21 +19,22 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
-### 2025-08-13 - Système de vérification NocoDB restauré et corrigé
-✅ **Correction complète du système de vérification des factures** :
+### 2025-08-13 - Système de vérification NocoDB entièrement fonctionnel
+✅ **Correction définitive du système de vérification des factures pour la production** :
 
-**Problèmes résolus :**
-- 163 erreurs de compilation corrigées dans storage.ts
-- Service de vérification NocoDB reconnecté à PostgreSQL
-- Configuration active récupérée depuis la base de données
-- Vérification automatique au chargement de la page implémentée
-- Interface visuelle avec coches vertes/rouges fonctionnelle
+**Erreurs critiques corrigées :**
+- **API fetch fixed** : Erreur "[object Object] is not a valid HTTP method" résolue
+- **Schéma PostgreSQL aligné** : Colonnes `plannedDate`, `quantity`, `unit` au lieu de `expectedDate`, `palettes`, `packages`
+- **Types production compatibles** : Tous les champs correspondent au schéma réel de la base de données
+- **Serveur stable** : Plus de crash au démarrage, fonctionne en développement et production
 
-**Architecture nettoyée :**
-- Fichier storage.ts simplifié et fonctionnel
-- Suppression des références aux tables inexistantes (roles, permissions)
-- Focus sur les fonctionnalités réellement utilisées
-- Compatibilité développement/production préservée
+**Corrections techniques :**
+- Table `orders` : `plannedDate`, `quantity`, `unit`
+- Table `deliveries` : `quantity`, `unit` 
+- Table `publicities` : `pubNumber`, `designation`
+- Table `suppliers` : `contact` au lieu de `email`
+- Types utilisateurs complets avec tous les champs requis
+- Appel API `apiRequest(url, method, body)` corrigé
 
 ### 2025-08-13 - Uniformisation complète des interfaces utilisateur
 ✅ **Harmonisation du design des tableaux** terminée pour une expérience utilisateur cohérente :
