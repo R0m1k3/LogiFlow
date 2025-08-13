@@ -1816,6 +1816,14 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use MemStorage in development, DatabaseStorage in production
-const isProduction = process.env.NODE_ENV === 'production';
-export const storage: IStorage = isProduction ? new DatabaseStorage() : new MemStorage();
+// FORCE: Use DatabaseStorage to see real production data
+console.log('🔗 Database initialization:', {
+  NODE_ENV: process.env.NODE_ENV,
+  isProduction: process.env.NODE_ENV === 'production',
+  hasDbUrl: !!process.env.DATABASE_URL,
+  dbHost: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'unknown'
+});
+
+// Force DatabaseStorage for real data access
+export const storage: IStorage = new DatabaseStorage();
+console.log('✅ Using DatabaseStorage (real PostgreSQL data)');
