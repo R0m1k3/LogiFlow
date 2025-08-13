@@ -19,27 +19,29 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
-### 2025-08-13 - Système de Vérification de Factures NocoDB
+### 2025-08-13 - Système de Vérification de Factures NocoDB avec Cache Production
 ✅ **Implémentation complète du système de vérification automatique des factures** :
 
 **Fonctionnalités développées :**
-- Service de vérification NocoDB (`server/services/nocodbVerification.ts`)
+- Service de vérification production (`server/services/productionInvoiceVerification.ts`)
+- Utilise les tables existantes de cache (`INVOICE_VERIFICATION_CACHE`, `INVOICE_VERIFICATIONS`)
 - API endpoints pour vérification factures et recherche par BL
 - Interface utilisateur avec coches vertes de validation
 - Auto-remplissage des champs facture/montant depuis NocoDB
 - Support multi-magasin avec configurations NocoDB spécifiques
 
 **Logique de fonctionnement :**
-- Vérification références factures existantes avec validation fournisseur
-- Recherche automatique par numéro BL pour lignes sans référence
-- Auto-remplissage automatique des données trouvées
-- Indicateurs visuels : coche verte (succès), cercle rouge (erreur)
+- Vérification d'abord dans le cache (tables production)
+- Si pas trouvé, appel réel à NocoDB pour récupérer les données
+- Sauvegarde automatique des résultats dans le cache (1h expiration)
+- Indicateurs visuels : coche verte (succès), rouge (erreur)
 
 **Configuration technique :**
-- Intégration avec configurations NocoDB par magasin
+- Intégration avec tables cache existantes en production
+- Appels API NocoDB authentifiés avec tokens personnels
 - Mapping flexible des colonnes (facture, BL, montant, fournisseur)
-- Gestion d'erreurs et notifications utilisateur
-- Interface responsive et accessible
+- Gestion d'erreurs et notifications utilisateur améliorées
+- Guide complet de configuration production fourni
 
 ### 2025-08-13 - Uniformisation complète des interfaces utilisateur
 ✅ **Harmonisation du design des tableaux** terminée pour une expérience utilisateur cohérente

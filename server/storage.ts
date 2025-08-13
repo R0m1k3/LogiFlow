@@ -2622,6 +2622,52 @@ class MemStorage implements IStorage {
     return { userId, roleId, assignedBy, assignedAt: new Date() };
   }
   async removeRoleFromUser(): Promise<void> {}
+
+  // Invoice Verification operations - Stubs pour développement
+  async getInvoiceVerifications(deliveryId?: number): Promise<InvoiceVerification[]> {
+    console.log('📋 MemStorage - getInvoiceVerifications called (development mode)');
+    return [];
+  }
+
+  async createInvoiceVerification(verification: InsertInvoiceVerification): Promise<InvoiceVerification> {
+    console.log('📋 MemStorage - createInvoiceVerification called (development mode)');
+    return {
+      id: 1,
+      deliveryId: verification.deliveryId,
+      groupId: verification.groupId,
+      invoiceReference: verification.invoiceReference,
+      supplierName: verification.supplierName,
+      exists: verification.exists,
+      matchType: verification.matchType,
+      verifiedAt: new Date(),
+      isValid: true,
+      lastCheckedAt: new Date()
+    };
+  }
+
+  async getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined> {
+    console.log('📋 MemStorage - getInvoiceVerificationCache called (development mode)');
+    return undefined;
+  }
+
+  async createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
+    console.log('📋 MemStorage - createInvoiceVerificationCache called (development mode)');
+    return {
+      id: 1,
+      cacheKey: cache.cacheKey,
+      groupId: cache.groupId,
+      invoiceReference: cache.invoiceReference,
+      supplierName: cache.supplierName,
+      exists: cache.exists,
+      matchType: cache.matchType,
+      errorMessage: cache.errorMessage,
+      cacheHit: cache.cacheHit,
+      apiCallTime: cache.apiCallTime,
+      expiresAt: cache.expiresAt,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
 }
 
 // Use MemStorage in development, DatabaseStorage in production

@@ -263,7 +263,7 @@ export default function BLReconciliation() {
       console.error('Erreur vérification:', error);
       toast({
         title: "Erreur de vérification",
-        description: error.response?.data?.message || error.message || "Configuration NocoDB manquante ou incorrecte",
+        description: error.response?.data?.message || error.message || "Erreur de vérification - vérifiez la configuration NocoDB",
         variant: "destructive"
       });
     } finally {
@@ -319,7 +319,7 @@ export default function BLReconciliation() {
       console.error('Erreur recherche BL:', error);
       toast({
         title: "Erreur de recherche",
-        description: error.response?.data?.message || error.message || "Configuration NocoDB manquante ou incorrecte",
+        description: error.response?.data?.message || error.message || "Erreur de recherche BL - vérifiez la configuration NocoDB",
         variant: "destructive"
       });
     } finally {
