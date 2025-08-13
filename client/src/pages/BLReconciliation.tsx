@@ -12,7 +12,7 @@ import { useStore } from "@/components/Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { usePermissions } from "@shared/permissions";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload } from "lucide-react";
+import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload, CheckCircle, XCircle, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -57,11 +57,98 @@ export default function BLReconciliation() {
   const [invoiceType, setInvoiceType] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // État pour le système de vérification de facture
+  const [verificationResults, setVerificationResults] = useState<Record<number, any>>({});
+  const [verifyingDeliveries, setVerifyingDeliveries] = useState<Set<number>>(new Set());
 
   // Récupérer les fournisseurs pour la logique automatique
   const { data: suppliers = [] } = useQuery<any[]>({
     queryKey: ['/api/suppliers'],
   });
+
+  // Fonction de vérification de facture
+  const verifyInvoiceMutation = useMutation({
+    mutationFn: async ({ deliveryId, invoiceReference, blNumber }: { deliveryId: number; invoiceReference?: string; blNumber?: string }) => {
+      const response = await apiRequest(`/api/deliveries/${deliveryId}/verify-invoice`, {
+        method: 'POST',
+        body: JSON.stringify({ invoiceReference, blNumber }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur de vérification');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (result, variables) => {
+      setVerificationResults(prev => ({
+        ...prev,
+        [variables.deliveryId]: result
+      }));
+      
+      // Auto-remplissage si facture trouvée via BL
+      if (result.exists && result.matchType === 'bl_number' && result.invoiceReference) {
+        // Auto-remplir les champs dans la livraison
+        updateDeliveryMutation.mutate({
+          id: variables.deliveryId,
+          invoiceReference: result.invoiceReference,
+          invoiceAmount: result.invoiceAmount
+        });
+      }
+      
+      setVerifyingDeliveries(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variables.deliveryId);
+        return newSet;
+      });
+    },
+    onError: (error, variables) => {
+      console.error('Erreur vérification facture:', error);
+      setVerificationResults(prev => ({
+        ...prev,
+        [variables.deliveryId]: {
+          exists: false,
+          matchType: 'none',
+          errorMessage: error instanceof Error ? error.message : 'Erreur inconnue'
+        }
+      }));
+      
+      setVerifyingDeliveries(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variables.deliveryId);
+        return newSet;
+      });
+      
+      toast({
+        title: "Erreur de vérification",
+        description: error instanceof Error ? error.message : 'Erreur inconnue',
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Fonction pour déclencher la vérification
+  const handleVerifyInvoice = (delivery: any) => {
+    if (!delivery.group?.webhookUrl) {
+      toast({
+        title: "Vérification non disponible",
+        description: "Ce magasin n'a pas de configuration NocoDB",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setVerifyingDeliveries(prev => new Set(prev).add(delivery.id));
+    
+    verifyInvoiceMutation.mutate({
+      deliveryId: delivery.id,
+      invoiceReference: delivery.invoiceReference,
+      blNumber: delivery.blNumber
+    });
+  };
 
   // Récupérer les livraisons validées avec BL
   const { data: deliveriesWithBL = [], isLoading } = useQuery({
@@ -536,9 +623,40 @@ export default function BLReconciliation() {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
-                                {delivery.invoiceReference || (
-                                  <span className="text-gray-400 italic">Non renseigné</span>
+                              <div className="flex items-center space-x-2">
+                                <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
+                                  {delivery.invoiceReference || (
+                                    <span className="text-gray-400 italic">Non renseigné</span>
+                                  )}
+                                </div>
+                                
+                                {/* Icône de vérification de facture */}
+                                {delivery.group?.webhookUrl && (
+                                  <div className="flex items-center">
+                                    {verifyingDeliveries.has(delivery.id) ? (
+                                      <Clock className="h-4 w-4 text-blue-500 animate-spin" title="Vérification en cours..." />
+                                    ) : verificationResults[delivery.id] ? (
+                                      verificationResults[delivery.id].exists ? (
+                                        <CheckCircle 
+                                          className="h-4 w-4 text-green-500 cursor-help" 
+                                          title={`Facture vérifiée (${verificationResults[delivery.id].matchType === 'invoice_ref' ? 'référence directe' : 'via BL'})`}
+                                        />
+                                      ) : (
+                                        <XCircle 
+                                          className="h-4 w-4 text-red-500 cursor-help" 
+                                          title={`Facture non trouvée: ${verificationResults[delivery.id].errorMessage || 'Aucune correspondance'}`}
+                                        />
+                                      )
+                                    ) : (
+                                      <button
+                                        onClick={() => handleVerifyInvoice(delivery)}
+                                        className="h-4 w-4 text-gray-400 hover:text-blue-500 transition-colors"
+                                        title="Cliquer pour vérifier la facture"
+                                      >
+                                        <Search className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </td>
