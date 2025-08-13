@@ -40,8 +40,8 @@ export default function Orders() {
   // Redirection pour les employés
   if (user?.role === 'employee') {
     return (
-      <div className="p-6">
-        <div className="bg-orange-50 border-l-4 border-orange-400 p-4">
+      <div className="p-4 sm:p-6">
+        <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg">
           <div className="flex">
             <div className="flex-shrink-0">
               <Package className="h-5 w-5 text-orange-400" />
@@ -226,23 +226,23 @@ export default function Orders() {
   const canDelete = permissions.canDelete('orders');
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-6 shadow-sm -m-6 mb-6">
-        <div className="flex items-center justify-between">
+      <div className="bg-white border-b border-gray-200 p-4 sm:p-6 shadow-sm -m-4 sm:-m-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900 flex items-center">
-              <Package className="w-6 h-6 mr-3 text-blue-600" />
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center">
+              <Package className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600" />
               Gestion des Commandes
             </h2>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
               {filteredOrders.length} commande{filteredOrders.length !== 1 ? 's' : ''}
             </p>
           </div>
           {canCreate && (
             <Button
               onClick={() => setShowCreateModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-md w-full sm:w-auto"
             >
               <Plus className="w-4 h-4 mr-2" />
               Nouvelle Commande
@@ -253,21 +253,21 @@ export default function Orders() {
 
       {/* Filters */}
       <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex-1 min-w-64">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="flex-1 min-w-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="Rechercher par fournisseur, groupe ou commentaire..."
+                placeholder="Rechercher par fournisseur, groupe..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 border border-gray-300 shadow-sm"
+                className="pl-10 border border-gray-300 shadow-sm w-full"
               />
             </div>
           </div>
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48 border border-gray-300 shadow-sm">
+            <SelectTrigger className="w-full sm:w-48 border border-gray-300 shadow-sm">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Filtrer par statut" />
             </SelectTrigger>
@@ -307,10 +307,10 @@ export default function Orders() {
             )}
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto">
             <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[700px]">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">

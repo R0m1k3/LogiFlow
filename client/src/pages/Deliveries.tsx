@@ -42,8 +42,8 @@ export default function Deliveries() {
   // Redirection pour les employés
   if (user?.role === 'employee') {
     return (
-      <div className="p-6">
-        <div className="bg-orange-50 border-l-4 border-orange-400 p-4">
+      <div className="p-4 sm:p-6">
+        <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg">
           <div className="flex">
             <div className="flex-shrink-0">
               <Truck className="h-5 w-5 text-orange-400" />
