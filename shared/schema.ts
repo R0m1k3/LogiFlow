@@ -384,10 +384,6 @@ export const dlcProductsRelations = relations(dlcProducts, ({ one }) => ({
 }));
 
 export const tasksRelations = relations(tasks, ({ one }) => ({
-  assignedUser: one(users, {
-    fields: [tasks.assignedTo],
-    references: [users.id],
-  }),
   creator: one(users, {
     fields: [tasks.createdBy],
     references: [users.id],
@@ -577,88 +573,9 @@ export type DlcProductWithRelations = DlcProduct & {
   validator?: User;
 };
 
-// Types
-export type UpsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
-
-export type Group = typeof groups.$inferSelect;
-export type InsertGroup = z.infer<typeof insertGroupSchema>;
-
-export type Supplier = typeof suppliers.$inferSelect;
-export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
-
-export type Order = typeof orders.$inferSelect;
-export type InsertOrder = z.infer<typeof insertOrderSchema>;
-
-export type Delivery = typeof deliveries.$inferSelect;
-export type InsertDelivery = z.infer<typeof insertDeliverySchema>;
-
-export type UserGroup = typeof userGroups.$inferSelect;
-export type InsertUserGroup = z.infer<typeof insertUserGroupSchema>;
-
-export type Task = typeof tasks.$inferSelect;
-export type InsertTask = z.infer<typeof insertTaskSchema>;
-
-// Extended types with relations
-export type OrderWithRelations = Order & {
-  supplier: Supplier;
-  group: Group;
-  creator: User;
-  deliveries?: Delivery[];
-};
-
-export type DeliveryWithRelations = Delivery & {
-  supplier: Supplier;
-  group: Group;
-  creator: User;
-  order?: Order | null;
-};
-
 export type UserWithGroups = User & {
   userGroups: (UserGroup & { group: Group })[];
 };
 
-export type Publicity = typeof publicities.$inferSelect;
-export type InsertPublicity = z.infer<typeof insertPublicitySchema>;
-
-export type PublicityParticipation = typeof publicityParticipations.$inferSelect;
-export type InsertPublicityParticipation = z.infer<typeof insertPublicityParticipationSchema>;
-
-export type PublicityWithRelations = Publicity & {
-  creator: User;
-  participations: (PublicityParticipation & { group: Group })[];
-};
-
 export type NocodbConfig = typeof nocodbConfig.$inferSelect;
-export type InsertNocodbConfig = z.infer<typeof insertNocodbConfigSchema>;
-
 export type InvoiceVerificationCache = typeof invoiceVerificationCache.$inferSelect;
-export type InsertInvoiceVerificationCache = z.infer<typeof insertInvoiceVerificationCacheSchema>;
-
-export type CustomerOrder = typeof customerOrders.$inferSelect;
-export type InsertCustomerOrder = z.infer<typeof insertCustomerOrderSchema>;
-
-export type CustomerOrderWithRelations = CustomerOrder & {
-  group: Group;
-  creator: User;
-  supplier: Supplier;
-};
-
-export type DlcProduct = typeof dlcProducts.$inferSelect;
-export type InsertDlcProduct = z.infer<typeof insertDlcProductSchema>;
-
-// Frontend-compatible types with dlcDate field
-export type DlcProductFrontend = Omit<DlcProduct, 'expiryDate'> & {
-  dlcDate: Date;
-};
-
-export type InsertDlcProductFrontend = Omit<InsertDlcProduct, 'expiryDate'> & {
-  dlcDate: Date;
-};
-
-export type DlcProductWithRelations = DlcProductFrontend & {
-  supplier: Supplier;
-  group: Group;
-  creator: User;
-  validator?: User | null;
-};

@@ -643,8 +643,8 @@ export class DatabaseStorage implements IStorage {
     return results.map((publicity: any) => ({
       ...publicity,
       participations: participations
-        .filter((p: any) => p.publicityId === publicity.id)
-        .map((p: any) => ({
+        .filter((p) => p.publicityId === publicity.id)
+        .map((p) => ({
           publicityId: p.publicityId,
           groupId: p.groupId,
           group: p.group!,
@@ -907,7 +907,16 @@ export class MemStorage implements IStorage {
   async upsertUser(userData: UpsertUser): Promise<User> {
     const existingUser = this.users.get(userData.id);
     const user: User = {
-      ...userData,
+      id: userData.id,
+      username: userData.username,
+      email: userData.email || null,
+      name: userData.name || null,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      profileImageUrl: userData.profileImageUrl || null,
+      password: userData.password || null,
+      role: userData.role,
+      passwordChanged: userData.passwordChanged || false,
       createdAt: existingUser?.createdAt || new Date(),
       updatedAt: new Date(),
     };
@@ -962,8 +971,16 @@ export class MemStorage implements IStorage {
   async createGroup(groupData: InsertGroup): Promise<Group> {
     const id = this.idCounters.group++;
     const group: Group = {
-      ...groupData,
       id,
+      name: groupData.name,
+      color: groupData.color || null,
+      nocodbConfigId: groupData.nocodbConfigId || null,
+      nocodbTableName: groupData.nocodbTableName || null,
+      invoiceColumnName: groupData.invoiceColumnName || null,
+      nocodbBlColumnName: groupData.nocodbBlColumnName || null,
+      nocodbAmountColumnName: groupData.nocodbAmountColumnName || null,
+      nocodbSupplierColumnName: groupData.nocodbSupplierColumnName || null,
+      webhookUrl: groupData.webhookUrl || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -992,8 +1009,12 @@ export class MemStorage implements IStorage {
   async createSupplier(supplierData: InsertSupplier): Promise<Supplier> {
     const id = this.idCounters.supplier++;
     const supplier: Supplier = {
-      ...supplierData,
       id,
+      name: supplierData.name,
+      contact: supplierData.contact || null,
+      phone: supplierData.phone || null,
+      hasDlc: supplierData.hasDlc || null,
+      automaticReconciliation: supplierData.automaticReconciliation || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

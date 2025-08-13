@@ -70,10 +70,9 @@ export default function BLReconciliation() {
   // Fonction de vérification de facture
   const verifyInvoiceMutation = useMutation({
     mutationFn: async ({ deliveryId, invoiceReference, blNumber }: { deliveryId: number; invoiceReference?: string; blNumber?: string }) => {
-      const response = await apiRequest(`/api/deliveries/${deliveryId}/verify-invoice`, {
-        method: 'POST',
-        body: JSON.stringify({ invoiceReference, blNumber }),
-        headers: { 'Content-Type': 'application/json' }
+      const response = await apiRequest(`/api/deliveries/${deliveryId}/verify-invoice`, 'POST', { 
+        invoiceReference, 
+        blNumber 
       });
       
       if (!response.ok) {
