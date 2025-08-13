@@ -19,12 +19,18 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
-### 2025-08-13 - Optimisation performance production + suppression fonctionnelle
+### 2025-08-13 - Optimisation performance production + correction calendrier
 ✅ **Résolution latence production** :
 - **Problème** : Console saturée par centaines de logs "API Response" causant latence
 - **Solution** : Logging conditionnel - seulement en développement pour requêtes normales
 - **Production** : Seules les erreurs API sont loggées pour debugging
 - **Impact** : Réduction drastique de la charge console et amélioration performances
+
+✅ **Problème calendrier résolu** :
+- **Problème** : Fermeture carte commande/livraison faisait disparaître toutes les données
+- **Cause** : Invalidation aggressive du cache React Query + invalidation à l'ouverture
+- **Solution** : Cache timing optimisé (5min staleTime) + invalidation sélective seulement
+- **Résultat** : Calendrier stable, plus de disparition des données au jour actuel
 
 ✅ **Fonctionnalité suppression complètement opérationnelle** :
 - **Cache NocoDB** : Fonction `saveInvoiceVerificationCache` ajoutée aux deux systèmes stockage
