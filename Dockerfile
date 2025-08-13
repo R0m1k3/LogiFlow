@@ -84,8 +84,8 @@ COPY --from=build --chown=nextjs:nodejs /app/shared ./shared
 # Create symlink for public files to be accessible from dist
 RUN ln -sf /app/dist/public /app/dist/public
 
-# Create uploads directory with proper permissions
-RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads
+# Create uploads and backups directories with proper permissions
+RUN mkdir -p /app/uploads /app/backups && chown -R nextjs:nodejs /app/uploads /app/backups
 
 # Switch to non-root user
 USER nextjs
@@ -94,9 +94,9 @@ USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 
-# Install wget for health check
+# Install wget for health check and postgresql-client for pg_dump
 USER root
-RUN apk add --no-cache wget
+RUN apk add --no-cache wget postgresql-client
 USER nextjs
 
 # Health check

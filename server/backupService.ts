@@ -15,15 +15,40 @@ export class BackupService {
   private maxBackups = 10;
 
   constructor() {
-    this.backupDir = path.join(process.cwd(), 'backups');
+    // Use /app/backups in production (with proper permissions), or use env variable
+    const isProduction = process.env.NODE_ENV === 'production';
+    this.backupDir = isProduction 
+      ? process.env.BACKUP_DIR || '/app/backups'
+      : path.join(process.cwd(), 'backups');
+    
     this.ensureBackupDirectory();
     this.scheduleAutomaticBackup();
   }
 
   private ensureBackupDirectory(): void {
-    if (!fs.existsSync(this.backupDir)) {
-      fs.mkdirSync(this.backupDir, { recursive: true });
-      console.log('📁 Backup directory created:', this.backupDir);
+    try {
+      if (!fs.existsSync(this.backupDir)) {
+        fs.mkdirSync(this.backupDir, { recursive: true });
+        console.log('📁 Backup directory created:', this.backupDir);
+      }
+    } catch (error) {
+      console.error('❌ Failed to create backup directory:', error);
+      // Fallback to /tmp if current directory fails
+      if (this.backupDir !== '/tmp/backups') {
+        this.backupDir = '/tmp/backups';
+        console.log('🔄 Falling back to /tmp/backups');
+        try {
+          if (!fs.existsSync(this.backupDir)) {
+            fs.mkdirSync(this.backupDir, { recursive: true });
+            console.log('📁 Fallback backup directory created:', this.backupDir);
+          }
+        } catch (fallbackError) {
+          console.error('❌ Failed to create fallback directory:', fallbackError);
+          throw fallbackError;
+        }
+      } else {
+        throw error;
+      }
     }
   }
 
