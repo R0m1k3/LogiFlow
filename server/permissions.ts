@@ -7,11 +7,7 @@ import type { Permission, Module } from '@shared/permissions';
 
 // Interface pour les requêtes authentifiées
 interface AuthRequest extends Request {
-  user: {
-    id: string;
-    role: string;
-    claims?: { sub: string };
-  };
+  user: any;
 }
 
 // Middleware pour vérifier l'accès à un module

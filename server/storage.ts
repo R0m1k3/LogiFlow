@@ -129,6 +129,7 @@ export interface IStorage {
   
   // Invoice Verification Cache operations
   getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined>;
+  saveInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache>;
   createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache>;
   clearExpiredCache(): Promise<void>;
   
@@ -940,6 +941,10 @@ export class DatabaseStorage implements IStorage {
     return cache;
   }
 
+  async saveInvoiceVerificationCache(cacheData: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
+    return this.createInvoiceVerificationCache(cacheData);
+  }
+
   async clearExpiredCache(): Promise<void> {
     await db.delete(invoiceVerificationCache).where(
       sql`expires_at < NOW()`
@@ -1228,6 +1233,12 @@ export class MemStorage implements IStorage {
     };
     this.users.set(adminUser.id, adminUser);
 
+    // Initialize group counter
+    this.idCounters.group = 2;
+    
+    // Initialize supplier counter  
+    this.idCounters.supplier = 2;
+
     // Create test groups
     const testGroup: Group = {
       id: 1,
@@ -1507,25 +1518,176 @@ export class MemStorage implements IStorage {
     return newCache;
   }
 
+  async saveInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
+    return this.createInvoiceVerificationCache(cache);
+  }
+
   async clearExpiredCache(): Promise<void> {
     // No-op en développement
   }
 
-  // Placeholder implementations for remaining methods
-  async getOrders(): Promise<OrderWithRelations[]> { return []; }
-  async getOrdersByDateRange(): Promise<OrderWithRelations[]> { return []; }
-  async getOrder(): Promise<OrderWithRelations | undefined> { return undefined; }
-  async createOrder(): Promise<Order> { return {} as Order; }
-  async updateOrder(): Promise<Order> { return {} as Order; }
-  async deleteOrder(): Promise<void> {}
+  // MemStorage implementations with actual data handling
+  async getOrders(groupIds?: number[]): Promise<OrderWithRelations[]> {
+    let orders = Array.from(this.orders.values());
+    if (groupIds && groupIds.length > 0) {
+      orders = orders.filter(order => groupIds.includes(order.groupId));
+    }
+    return orders.map(order => ({
+      ...order,
+      supplier: this.suppliers.get(order.supplierId),
+      group: this.groups.get(order.groupId),
+      creator: this.users.get(order.createdBy)
+    }));
+  }
 
-  async getDeliveries(): Promise<DeliveryWithRelations[]> { return []; }
-  async getDeliveriesByDateRange(): Promise<DeliveryWithRelations[]> { return []; }
-  async getDelivery(): Promise<DeliveryWithRelations | undefined> { return undefined; }
-  async createDelivery(): Promise<Delivery> { return {} as Delivery; }
-  async updateDelivery(): Promise<Delivery> { return {} as Delivery; }
-  async deleteDelivery(): Promise<void> {}
-  async validateDelivery(): Promise<void> {}
+  async getOrdersByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<OrderWithRelations[]> {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    let orders = Array.from(this.orders.values()).filter(order => {
+      const orderDate = new Date(order.plannedDate);
+      return orderDate >= start && orderDate <= end;
+    });
+    
+    if (groupIds && groupIds.length > 0) {
+      orders = orders.filter(order => groupIds.includes(order.groupId));
+    }
+    
+    return orders.map(order => ({
+      ...order,
+      supplier: this.suppliers.get(order.supplierId),
+      group: this.groups.get(order.groupId),
+      creator: this.users.get(order.createdBy)
+    }));
+  }
+
+  async getOrder(id: number): Promise<OrderWithRelations | undefined> {
+    const order = this.orders.get(id);
+    if (!order) return undefined;
+    return {
+      ...order,
+      supplier: this.suppliers.get(order.supplierId),
+      group: this.groups.get(order.groupId),
+      creator: this.users.get(order.createdBy)
+    };
+  }
+
+  async createOrder(orderData: InsertOrder): Promise<Order> {
+    const id = this.idCounters.order++;
+    const order: Order = {
+      id,
+      ...orderData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.orders.set(id, order);
+    return order;
+  }
+
+  async updateOrder(id: number, orderData: Partial<InsertOrder>): Promise<Order> {
+    const existingOrder = this.orders.get(id);
+    if (!existingOrder) throw new Error('Order not found');
+    
+    const updatedOrder = {
+      ...existingOrder,
+      ...orderData,
+      updatedAt: new Date(),
+    };
+    this.orders.set(id, updatedOrder);
+    return updatedOrder;
+  }
+
+  async deleteOrder(id: number): Promise<void> {
+    this.orders.delete(id);
+  }
+
+  async getDeliveries(groupIds?: number[]): Promise<DeliveryWithRelations[]> {
+    let deliveries = Array.from(this.deliveries.values());
+    if (groupIds && groupIds.length > 0) {
+      deliveries = deliveries.filter(delivery => groupIds.includes(delivery.groupId));
+    }
+    return deliveries.map(delivery => ({
+      ...delivery,
+      supplier: this.suppliers.get(delivery.supplierId),
+      group: this.groups.get(delivery.groupId),
+      creator: this.users.get(delivery.createdBy || '')
+    }));
+  }
+
+  async getDeliveriesByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<DeliveryWithRelations[]> {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    let deliveries = Array.from(this.deliveries.values()).filter(delivery => {
+      const deliveryDate = new Date(delivery.scheduledDate);
+      return deliveryDate >= start && deliveryDate <= end;
+    });
+    
+    if (groupIds && groupIds.length > 0) {
+      deliveries = deliveries.filter(delivery => groupIds.includes(delivery.groupId));
+    }
+    
+    return deliveries.map(delivery => ({
+      ...delivery,
+      supplier: this.suppliers.get(delivery.supplierId),
+      group: this.groups.get(delivery.groupId),
+      creator: this.users.get(delivery.createdBy || '')
+    }));
+  }
+
+  async getDelivery(id: number): Promise<DeliveryWithRelations | undefined> {
+    const delivery = this.deliveries.get(id);
+    if (!delivery) return undefined;
+    return {
+      ...delivery,
+      supplier: this.suppliers.get(delivery.supplierId),
+      group: this.groups.get(delivery.groupId),
+      creator: this.users.get(delivery.createdBy || '')
+    };
+  }
+
+  async createDelivery(deliveryData: InsertDelivery): Promise<Delivery> {
+    const id = this.idCounters.delivery++;
+    const delivery: Delivery = {
+      id,
+      ...deliveryData,
+      status: 'pending',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.deliveries.set(id, delivery);
+    return delivery;
+  }
+
+  async updateDelivery(id: number, deliveryData: Partial<InsertDelivery>): Promise<Delivery> {
+    const existingDelivery = this.deliveries.get(id);
+    if (!existingDelivery) throw new Error('Delivery not found');
+    
+    const updatedDelivery = {
+      ...existingDelivery,
+      ...deliveryData,
+      updatedAt: new Date(),
+    };
+    this.deliveries.set(id, updatedDelivery);
+    return updatedDelivery;
+  }
+
+  async deleteDelivery(id: number): Promise<void> {
+    this.deliveries.delete(id);
+  }
+
+  async validateDelivery(id: number, blData?: { blNumber: string; blAmount: number }): Promise<void> {
+    const delivery = this.deliveries.get(id);
+    if (!delivery) throw new Error('Delivery not found');
+    
+    const updatedDelivery = {
+      ...delivery,
+      status: 'delivered' as const,
+      deliveredDate: new Date(),
+      blNumber: blData?.blNumber || delivery.blNumber,
+      blAmount: blData?.blAmount || delivery.blAmount,
+      updatedAt: new Date(),
+    };
+    this.deliveries.set(id, updatedDelivery);
+  }
 
   async getUserGroups(): Promise<UserGroup[]> { return []; }
   async assignUserToGroup(): Promise<UserGroup> { return {} as UserGroup; }
