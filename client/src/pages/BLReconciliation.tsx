@@ -187,8 +187,8 @@ export default function BLReconciliation() {
     });
   };
 
-  // Récupérer les livraisons validées avec BL
-  const { data: deliveriesWithBL = [], isLoading } = useQuery({
+  // Récupérer les livraisons validées avec BL - CACHE INVALIDÉ après modifications
+  const { data: deliveriesWithBL = [], isLoading, refetch } = useQuery({
     queryKey: ['/api/deliveries/bl', selectedStoreId],
     queryFn: async () => {
       const params = new URLSearchParams({});
@@ -214,7 +214,8 @@ export default function BLReconciliation() {
       
       return filtered.sort((a: any, b: any) => new Date(b.deliveredDate || b.updatedAt).getTime() - new Date(a.deliveredDate || a.updatedAt).getTime());
     },
-    enabled: !!user
+    enabled: !!user,
+    staleTime: 0 // Éviter la mise en cache pour toujours avoir les dernières données BL
   });
 
   // VÉRIFICATION AUTOMATIQUE AU CHARGEMENT avec système de cache
@@ -267,7 +268,9 @@ export default function BLReconciliation() {
         description: "Données de rapprochement mises à jour",
       });
       
+      // Invalidation cache + refetch forcé pour mise à jour immédiate
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      refetch();
       handleCloseModal();
     } catch (error) {
       toast({
@@ -397,7 +400,10 @@ export default function BLReconciliation() {
         description: "Rapprochement validé avec succès",
       });
       
+      // Invalidation cache + refetch forcé pour mise à jour immédiate
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+      refetch(); // Force recharge immédiate des données BL
     } catch (error) {
       toast({
         title: "Erreur",
@@ -432,7 +438,9 @@ export default function BLReconciliation() {
         description: "Rapprochement dévalidé avec succès",
       });
       
+      // Invalidation cache + refetch forcé pour mise à jour immédiate
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      refetch();
     } catch (error) {
       toast({
         title: "Erreur",

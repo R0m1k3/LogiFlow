@@ -612,11 +612,12 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('📊 Calcul statistiques mensuelles:', { year, month, startDate, endDate, groupIds });
 
-      // Construire les conditions pour le filtrage par groupe
+      // Construire les conditions pour le filtrage par groupe - UTILISER LE BON CHAMP DE DATE
       let ordersWhereCondition = and(
         gte(orders.plannedDate, startDate),
         lt(orders.plannedDate, endDate)
       );
+      // Pour les livraisons, utiliser deliveredDate pour celles livrées, sinon scheduledDate
       let deliveriesWhereCondition = and(
         gte(deliveries.scheduledDate, startDate), 
         lt(deliveries.scheduledDate, endDate)
@@ -652,11 +653,18 @@ export class DatabaseStorage implements IStorage {
         .where(pendingWhereCondition);
 
       // Calculer les totaux de palettes et colis du mois (SEULEMENT livraisons delivered)
+      // IMPORTANT: Utiliser deliveredDate pour filtrer par le mois de livraison effective
       let deliveredWhereCondition = and(
-        deliveriesWhereCondition,
+        gte(deliveries.deliveredDate, startDate),
+        lt(deliveries.deliveredDate, endDate),
         eq(deliveries.status, 'delivered'),
         isNotNull(deliveries.deliveredDate)
       );
+
+      // Ajouter le filtre par groupe pour les livraisons delivered
+      if (groupIds && groupIds.length > 0) {
+        deliveredWhereCondition = and(deliveredWhereCondition, inArray(deliveries.groupId, groupIds));
+      }
 
       const deliveriesStatsResult = await db
         .select({
