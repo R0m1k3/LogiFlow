@@ -21,7 +21,8 @@ import {
   ListTodo,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Settings
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -147,21 +148,9 @@ export default function Sidebar() {
       roles: ["admin"] 
     },
     { 
-      path: "/backup", 
-      label: "Sauvegardes", 
-      icon: Database, 
-      roles: ["admin"] 
-    },
-    { 
-      path: "/nocodb-config", 
-      label: "Configuration NocoDB", 
-      icon: Database, 
-      roles: ["admin"] 
-    },
-    { 
-      path: "/database-debug", 
-      label: "Debug Base de Données", 
-      icon: Database, 
+      path: "/utilities", 
+      label: "Utilitaires", 
+      icon: Settings, 
       roles: ["admin"] 
     },
   ];
