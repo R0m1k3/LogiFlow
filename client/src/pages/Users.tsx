@@ -79,13 +79,6 @@ export default function UsersPage() {
 
 
   // Protection React Error #310 - Vérification Array pour users et groups
-  console.log('👥 Users page data:', { 
-    usersLoading, 
-    usersCount: Array.isArray(users) ? users.length : 'NOT_ARRAY',
-    groupsCount: Array.isArray(groups) ? groups.length : 'NOT_ARRAY',
-    usersType: typeof users,
-    groupsType: typeof groups 
-  });
   
   // Protection: s'assurer que users et groups sont des arrays
   const safeUsers = Array.isArray(users) ? users : [];
@@ -125,8 +118,6 @@ export default function UsersPage() {
 
   const updateUserMutation = useMutation({
     mutationFn: async (data: { id: string; updates: any }) => {
-      console.log('🔄 Frontend updateUser mutation:', data);
-      
       // Nettoyer les données côté frontend avant envoi
       const cleanedUpdates: any = {};
       for (const [key, value] of Object.entries(data.updates)) {
@@ -137,8 +128,6 @@ export default function UsersPage() {
           cleanedUpdates[key] = value;
         }
       }
-      
-      console.log('📤 Sending cleaned data:', cleanedUpdates);
       
       const response = await apiRequest(`/api/users/${data.id}`, "PUT", cleanedUpdates);
       return response;
