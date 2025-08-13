@@ -174,6 +174,18 @@ export const invoiceVerificationCache = pgTable("invoice_verification_cache", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInvoiceVerificationCacheSchema = createInsertSchema(invoiceVerificationCache).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Customer Orders (Commandes Client)
 export const customerOrders = pgTable("customer_orders", {
   id: serial("id").primaryKey(),
