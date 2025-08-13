@@ -19,32 +19,22 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
-### 2025-08-13 - Système de Vérification de Factures NocoDB avec Cache Production
-✅ **Implémentation complète du système de vérification automatique des factures** :
-
-**Fonctionnalités développées :**
-- Service de vérification production (`server/services/productionInvoiceVerification.ts`)
-- Utilise les tables existantes de cache (`INVOICE_VERIFICATION_CACHE`, `INVOICE_VERIFICATIONS`)
-- API endpoints pour vérification factures et recherche par BL
-- Interface utilisateur avec coches vertes de validation
-- Auto-remplissage des champs facture/montant depuis NocoDB
-- Support multi-magasin avec configurations NocoDB spécifiques
-
-**Logique de fonctionnement :**
-- Vérification d'abord dans le cache (tables production)
-- Si pas trouvé, appel réel à NocoDB pour récupérer les données
-- Sauvegarde automatique des résultats dans le cache (1h expiration)
-- Indicateurs visuels : coche verte (succès), rouge (erreur)
-
-**Configuration technique :**
-- Intégration avec tables cache existantes en production
-- Appels API NocoDB authentifiés avec tokens personnels
-- Mapping flexible des colonnes (facture, BL, montant, fournisseur)
-- Gestion d'erreurs et notifications utilisateur améliorées
-- Guide complet de configuration production fourni
-
 ### 2025-08-13 - Uniformisation complète des interfaces utilisateur
-✅ **Harmonisation du design des tableaux** terminée pour une expérience utilisateur cohérente
+✅ **Harmonisation du design des tableaux** terminée pour une expérience utilisateur cohérente :
+
+**Pages uniformisées :**
+- `Orders.tsx` - Page des commandes avec design responsive optimisé
+- `Deliveries.tsx` - Page des livraisons avec structure identique
+- `BLReconciliation.tsx` - Page de rapprochement BL/Factures harmonisée
+- `Dashboard.tsx` - Tableau de bord avec erreurs TypeScript corrigées
+
+**Améliorations appliquées :**
+- Headers responsifs adaptés mobile/tablette
+- Filtres restructurés avec style cohérent
+- Tableaux standardisés : `px-6 py-4` et `whitespace-nowrap`
+- Boutons d'actions modernisés avec composants Button shadcn/ui
+- Pagination repositionnée avec bordures uniformisées
+- Espacement et typographie harmonisés
 
 ### 2025-08-12 - Nettoyage des fichiers inutiles
 ✅ **Suppression complète des fichiers inutiles** effectuée pour optimiser le projet
