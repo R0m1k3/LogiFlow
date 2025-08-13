@@ -10,8 +10,6 @@ import {
   customerOrders,
   dlcProducts,
   tasks,
-  invoiceVerificationCache,
-  invoiceVerifications,
   type User,
   type UpsertUser,
   type Group,
@@ -43,10 +41,6 @@ import {
   type DlcProductFrontend,
   type InsertDlcProductFrontend,
   type DlcProductWithRelations,
-  type InvoiceVerificationCache,
-  type InsertInvoiceVerificationCache,
-  type InvoiceVerification,
-  type InsertInvoiceVerification,
   type Task,
   type InsertTask,
 } from "@shared/schema";
@@ -158,12 +152,6 @@ export interface IStorage {
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
   deleteTask(id: number): Promise<void>;
   completeTask(id: number, completedBy?: string): Promise<void>;
-
-  // Invoice Verification operations - Tables existantes en production
-  getInvoiceVerifications(deliveryId?: number): Promise<InvoiceVerification[]>;
-  createInvoiceVerification(verification: InsertInvoiceVerification): Promise<InvoiceVerification>;
-  getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined>;
-  createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1085,26 +1073,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getNocodbConfig(id: number): Promise<NocodbConfig | undefined> {
-    try {
-      const configs = await db.select({
-        id: nocodbConfig.id,
-        name: nocodbConfig.name,
-        baseUrl: nocodbConfig.baseUrl,
-        projectId: nocodbConfig.projectId,
-        apiToken: nocodbConfig.apiToken,
-        description: nocodbConfig.description,
-        isActive: nocodbConfig.isActive,
-        createdBy: nocodbConfig.createdBy,
-        createdAt: nocodbConfig.createdAt,
-        updatedAt: nocodbConfig.updatedAt,
-      }).from(nocodbConfig).where(eq(nocodbConfig.id, id));
-      
-      console.log(`🔍 Production NocoDB Config Query - ID: ${id}, Found: ${configs.length > 0}`);
-      return configs[0];
-    } catch (error) {
-      console.error(`❌ Erreur récupération config NocoDB ${id}:`, error);
-      return undefined;
-    }
+    const configs = await db.select({
+      id: nocodbConfig.id,
+      name: nocodbConfig.name,
+      baseUrl: nocodbConfig.baseUrl,
+      projectId: nocodbConfig.projectId,
+      apiToken: nocodbConfig.apiToken,
+      description: nocodbConfig.description,
+      isActive: nocodbConfig.isActive,
+      createdBy: nocodbConfig.createdBy,
+      createdAt: nocodbConfig.createdAt,
+      updatedAt: nocodbConfig.updatedAt,
+    }).from(nocodbConfig).where(eq(nocodbConfig.id, id));
+    return configs[0];
   }
 
   async createNocodbConfig(config: InsertNocodbConfig): Promise<NocodbConfig> {
@@ -2038,52 +2019,6 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(tasks.id, id));
   }
-
-  // Invoice Verification operations - Utilise les tables existantes en production
-  async getInvoiceVerifications(deliveryId?: number): Promise<InvoiceVerification[]> {
-    const query = db.select().from(invoiceVerifications);
-    if (deliveryId) {
-      return await query.where(eq(invoiceVerifications.deliveryId, deliveryId));
-    }
-    return await query.orderBy(desc(invoiceVerifications.verifiedAt));
-  }
-
-  async createInvoiceVerification(verification: InsertInvoiceVerification): Promise<InvoiceVerification> {
-    const [newVerification] = await db
-      .insert(invoiceVerifications)
-      .values({
-        ...verification,
-        verifiedAt: new Date(),
-        lastCheckedAt: new Date(),
-      })
-      .returning();
-    return newVerification;
-  }
-
-  async getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined> {
-    const [cache] = await db
-      .select()
-      .from(invoiceVerificationCache)
-      .where(
-        and(
-          eq(invoiceVerificationCache.cacheKey, cacheKey),
-          sql`expires_at > NOW()`
-        )
-      );
-    return cache;
-  }
-
-  async createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
-    const [newCache] = await db
-      .insert(invoiceVerificationCache)
-      .values({
-        ...cache,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
-    return newCache;
-  }
 }
 
 // Simple in-memory storage for development
@@ -2118,43 +2053,11 @@ class MemStorage implements IStorage {
     this.users.set('admin_dev', adminUser);
     this.users.set('admin', adminUser); // Also set by username for easy lookup
     
-    // Add test groups with NocoDB configuration
+    // Add test groups
     const testGroups = [
-      { 
-        id: 1, 
-        name: 'Magasin A', 
-        color: '#FF5733', 
-        webhookUrl: 'https://webhook.site/test-facture-magasin-a',
-        nocodbConfigId: 1,
-        nocodbTableName: 'factures_magasin_a',
-        invoiceColumnName: 'reference_facture',
-        nocodbBlColumnName: 'numero_bl',
-        nocodbAmountColumnName: 'montant',
-        nocodbSupplierColumnName: 'fournisseur',
-        createdAt: new Date(), 
-        updatedAt: new Date() 
-      },
-      { 
-        id: 2, 
-        name: 'Magasin B', 
-        color: '#33FF57', 
-        webhookUrl: 'https://webhook.site/test-facture-magasin-b',
-        nocodbConfigId: 1,
-        nocodbTableName: 'factures_magasin_b',
-        invoiceColumnName: 'ref_facture',
-        nocodbBlColumnName: 'bl_number',
-        nocodbAmountColumnName: 'amount',
-        nocodbSupplierColumnName: 'supplier_name',
-        createdAt: new Date(), 
-        updatedAt: new Date() 
-      },
-      { 
-        id: 3, 
-        name: 'Magasin C', 
-        color: '#3357FF', 
-        createdAt: new Date(), 
-        updatedAt: new Date() 
-      }
+      { id: 1, name: 'Magasin A', color: '#FF5733', webhookUrl: 'https://webhook.site/test-facture-magasin-a', createdAt: new Date(), updatedAt: new Date() },
+      { id: 2, name: 'Magasin B', color: '#33FF57', webhookUrl: 'https://webhook.site/test-facture-magasin-b', createdAt: new Date(), updatedAt: new Date() },
+      { id: 3, name: 'Magasin C', color: '#3357FF', createdAt: new Date(), updatedAt: new Date() }
     ];
     testGroups.forEach(group => this.groups.set(group.id, group as Group));
     
@@ -2318,9 +2221,7 @@ class MemStorage implements IStorage {
   async getGroups(): Promise<Group[]> { 
     return Array.from(this.groups.values());
   }
-  async getGroup(id: number): Promise<Group | undefined> { 
-    return this.groups.get(id);
-  }
+  async getGroup(id: number): Promise<Group | undefined> { return undefined; }
   async createGroup(group: InsertGroup): Promise<Group> { return {} as Group; }
   async updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group> { return {} as Group; }
   async deleteGroup(id: number): Promise<void> {}
@@ -2548,20 +2449,7 @@ class MemStorage implements IStorage {
   async removeUserFromGroup(): Promise<void> {}
   async getMonthlyStats(): Promise<any> { return {}; }
   async getNocodbConfigs(): Promise<any[]> { return []; }
-  async getNocodbConfig(id: number): Promise<any> { 
-    // Retourner une configuration de test pour le développement
-    if (id === 1) {
-      return {
-        id: 1,
-        name: 'Config Test NocoDB',
-        baseUrl: 'https://nocodb-test.example.com',
-        projectId: 'test-project',
-        apiToken: 'test-token-123',
-        isActive: true
-      };
-    }
-    return null;
-  }
+  async getNocodbConfig(): Promise<any> { return null; }
   async createNocodbConfig(): Promise<any> { return {}; }
   async updateNocodbConfig(): Promise<any> { return {}; }
   async deleteNocodbConfig(): Promise<void> {}
@@ -2622,52 +2510,6 @@ class MemStorage implements IStorage {
     return { userId, roleId, assignedBy, assignedAt: new Date() };
   }
   async removeRoleFromUser(): Promise<void> {}
-
-  // Invoice Verification operations - Stubs pour développement
-  async getInvoiceVerifications(deliveryId?: number): Promise<InvoiceVerification[]> {
-    console.log('📋 MemStorage - getInvoiceVerifications called (development mode)');
-    return [];
-  }
-
-  async createInvoiceVerification(verification: InsertInvoiceVerification): Promise<InvoiceVerification> {
-    console.log('📋 MemStorage - createInvoiceVerification called (development mode)');
-    return {
-      id: 1,
-      deliveryId: verification.deliveryId,
-      groupId: verification.groupId,
-      invoiceReference: verification.invoiceReference,
-      supplierName: verification.supplierName,
-      exists: verification.exists,
-      matchType: verification.matchType,
-      verifiedAt: new Date(),
-      isValid: true,
-      lastCheckedAt: new Date()
-    };
-  }
-
-  async getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined> {
-    console.log('📋 MemStorage - getInvoiceVerificationCache called (development mode)');
-    return undefined;
-  }
-
-  async createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
-    console.log('📋 MemStorage - createInvoiceVerificationCache called (development mode)');
-    return {
-      id: 1,
-      cacheKey: cache.cacheKey,
-      groupId: cache.groupId,
-      invoiceReference: cache.invoiceReference,
-      supplierName: cache.supplierName,
-      exists: cache.exists,
-      matchType: cache.matchType,
-      errorMessage: cache.errorMessage,
-      cacheHit: cache.cacheHit,
-      apiCallTime: cache.apiCallTime,
-      expiresAt: cache.expiresAt,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-  }
 }
 
 // Use MemStorage in development, DatabaseStorage in production

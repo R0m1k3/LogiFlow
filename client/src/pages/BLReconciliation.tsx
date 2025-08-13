@@ -12,7 +12,7 @@ import { useStore } from "@/components/Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { usePermissions } from "@shared/permissions";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload, CheckCircle, AlertCircle } from "lucide-react";
+import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -57,10 +57,6 @@ export default function BLReconciliation() {
   const [invoiceType, setInvoiceType] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-
-  // État pour la vérification des factures
-  const [verificationResults, setVerificationResults] = useState<Record<number, any>>({});
-  const [isVerifying, setIsVerifying] = useState<Record<number, boolean>>({});
 
   // Récupérer les fournisseurs pour la logique automatique
   const { data: suppliers = [] } = useQuery<any[]>({
@@ -214,116 +210,6 @@ export default function BLReconciliation() {
       });
     } finally {
       setIsUploading(false);
-    }
-  };
-
-  // Fonction pour vérifier une référence de facture
-  const verifyInvoiceReference = async (delivery: any) => {
-    if (!delivery.invoiceReference || !delivery.supplier?.name || !delivery.group?.id) {
-      return;
-    }
-
-    setIsVerifying(prev => ({ ...prev, [delivery.id]: true }));
-
-    try {
-      const response = await apiRequest('/api/deliveries/verify-invoice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          groupId: delivery.group.id,
-          invoiceReference: delivery.invoiceReference,
-          supplierName: delivery.supplier.name
-        })
-      });
-
-      setVerificationResults(prev => ({
-        ...prev,
-        [delivery.id]: response
-      }));
-
-      if (response.found && response.supplierMatch) {
-        toast({
-          title: "✅ Facture vérifiée",
-          description: `Référence ${delivery.invoiceReference} trouvée et fournisseur correct`,
-        });
-      } else if (response.found && !response.supplierMatch) {
-        toast({
-          title: "⚠️ Fournisseur incorrect",
-          description: `Référence trouvée mais fournisseur ne correspond pas`,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "❌ Référence non trouvée",
-          description: `Référence ${delivery.invoiceReference} introuvable`,
-          variant: "destructive"
-        });
-      }
-    } catch (error: any) {
-      console.error('Erreur vérification:', error);
-      toast({
-        title: "Erreur de vérification",
-        description: error.response?.data?.message || error.message || "Erreur de vérification - vérifiez la configuration NocoDB",
-        variant: "destructive"
-      });
-    } finally {
-      setIsVerifying(prev => ({ ...prev, [delivery.id]: false }));
-    }
-  };
-
-  // Fonction pour rechercher par numéro de BL et auto-remplir
-  const searchByBLAndFill = async (delivery: any) => {
-    if (!delivery.blNumber || !delivery.supplier?.name || !delivery.group?.id) {
-      return;
-    }
-
-    setIsVerifying(prev => ({ ...prev, [delivery.id]: true }));
-
-    try {
-      const response = await apiRequest('/api/deliveries/search-by-bl', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          groupId: delivery.group.id,
-          blNumber: delivery.blNumber,
-          supplierName: delivery.supplier.name
-        })
-      });
-
-      if (response.found && response.invoiceReference) {
-        // Auto-remplir les champs facture
-        const updateData: any = {
-          invoiceReference: response.invoiceReference
-        };
-        
-        if (response.invoiceAmount) {
-          updateData.invoiceAmount = response.invoiceAmount;
-        }
-
-        await apiRequest(`/api/deliveries/${delivery.id}`, "PUT", updateData);
-
-        queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-        
-        toast({
-          title: "✅ Auto-remplissage réussi",
-          description: `Référence ${response.invoiceReference} trouvée et ajoutée`,
-        });
-      } else {
-        toast({
-          title: "❌ BL non trouvé",
-          description: `Aucune facture trouvée pour le BL ${delivery.blNumber}`,
-          variant: "destructive"
-        });
-      }
-    } catch (error: any) {
-      console.error('Erreur recherche BL:', error);
-      toast({
-        title: "Erreur de recherche",
-        description: error.response?.data?.message || error.message || "Erreur de recherche BL - vérifiez la configuration NocoDB",
-        variant: "destructive"
-      });
-    } finally {
-      setIsVerifying(prev => ({ ...prev, [delivery.id]: false }));
     }
   };
 
@@ -650,57 +536,9 @@ export default function BLReconciliation() {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center space-x-2">
-                                {/* Coche verte si vérification réussie */}
-                                {verificationResults[delivery.id]?.found && verificationResults[delivery.id]?.supplierMatch && (
-                                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" title="Facture vérifiée avec succès" />
-                                )}
-                                {/* Indicateur d'erreur si vérification échouée */}
-                                {verificationResults[delivery.id]?.found && !verificationResults[delivery.id]?.supplierMatch && (
-                                  <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" title="Fournisseur ne correspond pas" />
-                                )}
-                                
-                                {/* Référence de facture */}
-                                <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
-                                  {delivery.invoiceReference || (
-                                    <span className="text-gray-400 italic">Non renseigné</span>
-                                  )}
-                                </div>
-
-                                {/* Bouton de vérification si référence existe */}
-                                {delivery.invoiceReference && delivery.group?.nocodbConfigId && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => verifyInvoiceReference(delivery)}
-                                    disabled={isVerifying[delivery.id]}
-                                    className="h-6 w-6 p-0 ml-1 flex-shrink-0"
-                                    title="Vérifier la référence facture dans NocoDB"
-                                  >
-                                    {isVerifying[delivery.id] ? (
-                                      <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                    ) : (
-                                      <Search className="w-3 h-3 text-blue-600" />
-                                    )}
-                                  </Button>
-                                )}
-
-                                {/* Bouton d'auto-remplissage si pas de référence mais BL existe */}
-                                {!delivery.invoiceReference && delivery.blNumber && delivery.group?.nocodbConfigId && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => searchByBLAndFill(delivery)}
-                                    disabled={isVerifying[delivery.id]}
-                                    className="h-6 w-6 p-0 ml-1 flex-shrink-0"
-                                    title="Rechercher et auto-remplir par numéro BL"
-                                  >
-                                    {isVerifying[delivery.id] ? (
-                                      <div className="w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-                                    ) : (
-                                      <CheckCircle className="w-3 h-3 text-green-600" />
-                                    )}
-                                  </Button>
+                              <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
+                                {delivery.invoiceReference || (
+                                  <span className="text-gray-400 italic">Non renseigné</span>
                                 )}
                               </div>
                             </td>

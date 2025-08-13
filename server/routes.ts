@@ -37,7 +37,6 @@ import {
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
-import { ProductionInvoiceVerificationService } from "./services/productionInvoiceVerification";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for Docker
@@ -887,81 +886,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error validating delivery:", error);
       res.status(500).json({ message: "Failed to validate delivery" });
-    }
-  });
-
-  // Routes de vérification NocoDB pour les factures
-  app.post('/api/deliveries/verify-invoice', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const { groupId, invoiceReference, supplierName } = req.body;
-
-      if (!groupId || !invoiceReference || !supplierName) {
-        return res.status(400).json({ 
-          message: "groupId, invoiceReference et supplierName sont requis" 
-        });
-      }
-
-      // Vérifier les permissions d'accès au groupe
-      if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
-        if (!userGroupIds.includes(parseInt(groupId))) {
-          return res.status(403).json({ message: "Access denied to this group" });
-        }
-      }
-
-      const productionVerificationService = new ProductionInvoiceVerificationService(storage);
-      const result = await productionVerificationService.verifyInvoiceReference(
-        parseInt(groupId),
-        invoiceReference,
-        supplierName
-      );
-
-      res.json(result);
-    } catch (error) {
-      console.error("Error verifying invoice:", error);
-      res.status(500).json({ message: "Failed to verify invoice" });
-    }
-  });
-
-  app.post('/api/deliveries/search-by-bl', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const { groupId, blNumber, supplierName } = req.body;
-
-      if (!groupId || !blNumber || !supplierName) {
-        return res.status(400).json({ 
-          message: "groupId, blNumber et supplierName sont requis" 
-        });
-      }
-
-      // Vérifier les permissions d'accès au groupe
-      if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
-        if (!userGroupIds.includes(parseInt(groupId))) {
-          return res.status(403).json({ message: "Access denied to this group" });
-        }
-      }
-
-      const productionVerificationService = new ProductionInvoiceVerificationService(storage);
-      const result = await productionVerificationService.searchByBLNumber(
-        parseInt(groupId),
-        blNumber,
-        supplierName
-      );
-
-      res.json(result);
-    } catch (error) {
-      console.error("Error searching by BL:", error);
-      res.status(500).json({ message: "Failed to search by BL number" });
     }
   });
 
