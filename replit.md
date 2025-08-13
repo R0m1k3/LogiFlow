@@ -19,6 +19,23 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-13 - Correction complète des statistiques du tableau de bord  
+✅ **Résolution définitive de l'affichage de zéros dans les statistiques** :
+
+**Problème identifié et corrigé :**
+- **Statistiques hardcodées** : La méthode `getMonthlyStats()` retournait des zéros fixes
+- **Calculs réels implémentés** : Requêtes PostgreSQL pour vraies statistiques mensuelles
+- **Filtrage par magasin** : Support des filtres par groupes/magasins
+- **Gestion des erreurs** : Fallback en cas d'erreur de base de données
+
+**Calculs statistiques implémentés :**
+- **Commandes** : COUNT des commandes du mois par date plannedDate
+- **Livraisons** : COUNT des livraisons du mois par date plannedDate  
+- **Palettes** : SUM des quantités de livraisons
+- **Colis** : COUNT total des livraisons
+- **Délai moyen** : Moyenne des jours entre plannedDate et actualDate
+- **Commandes en attente** : COUNT des commandes sans date ou statut pending
+
 ### 2025-08-13 - Système de vérification NocoDB entièrement fonctionnel
 ✅ **Correction définitive du système de vérification des factures pour la production** :
 
