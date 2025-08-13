@@ -187,18 +187,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserWithGroups(id: string): Promise<UserWithGroups | undefined> {
-    console.log(`🔍 getUserWithGroups called for user: ${id}`);
-    
     // Get the user first
     const user = await this.getUser(id);
     if (!user) {
-      console.log(`❌ User ${id} not found`);
       return undefined;
     }
 
     // Fixed: Use manual SQL to avoid userGroups.createdAt column that doesn't exist
     try {
-      console.log(`🔍 Querying user_groups for user: ${id}`);
       const result = await db.execute(sql`
         SELECT 
           ug.user_id,
@@ -217,9 +213,6 @@ export class DatabaseStorage implements IStorage {
         WHERE ug.user_id = ${id}
       `);
 
-      console.log(`🔍 Found ${result.rows.length} group assignments for user ${id}`);
-      console.log(`🔍 Raw query result:`, result.rows);
-
       const userGroupsData = result.rows.map((row: any) => ({
         userId: row.user_id,
         groupId: row.group_id,
@@ -237,15 +230,12 @@ export class DatabaseStorage implements IStorage {
         }
       }));
 
-      console.log(`✅ Processed ${userGroupsData.length} groups for user ${id}`);
-
       return {
         ...user,
         userGroups: userGroupsData,
       };
     } catch (error) {
       console.error('❌ getUserWithGroups error:', error);
-      console.error('❌ Error details:', error?.code, error?.message);
       // Fallback: return user with empty groups
       return {
         ...user,
@@ -270,17 +260,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUsersWithRolesAndGroups(): Promise<(UserWithRoles & { userGroups: any[] })[]> {
-    console.log('🔍 getUsersWithRolesAndGroups called');
     const baseUsers = await this.getUsers();
-    console.log('📊 Base users found:', baseUsers.length);
     
     const usersWithRolesAndGroups = await Promise.all(
       baseUsers.map(async (user) => {
-        console.log(`🔍 Processing user: ${user.username}`);
         const userWithRoles = await this.getUserWithRoles(user.id);
         const userWithGroups = await this.getUserWithGroups(user.id);
-        
-        console.log(`📊 User ${user.username} groups:`, userWithGroups?.userGroups?.length || 0);
         
         return {
           ...user,
@@ -291,12 +276,10 @@ export class DatabaseStorage implements IStorage {
       })
     );
     
-    console.log('🔍 Final users with roles and groups:', usersWithRolesAndGroups.length);
     return usersWithRolesAndGroups;
   }
 
   async createUser(userData: UpsertUser): Promise<User> {
-    console.log('🔍 Storage createUser called with:', userData.username);
     try {
       const [user] = await db
         .insert(users)
@@ -306,19 +289,14 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date(),
         })
         .returning();
-      console.log('✅ Storage createUser successful:', user.username);
       return user;
     } catch (error) {
       console.error('❌ Storage createUser error:', error);
-      console.error('❌ Storage error code:', error.code);
-      console.error('❌ Storage error constraint:', error.constraint);
       throw error;
     }
   }
 
   async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {
-    console.log('🔍 Storage updateUser called for:', id);
-    console.log('🔍 Update data:', userData);
     try {
       const [user] = await db
         .update(users)
@@ -328,12 +306,9 @@ export class DatabaseStorage implements IStorage {
         })
         .where(eq(users.id, id))
         .returning();
-      console.log('✅ Storage updateUser successful:', user.username);
       return user;
     } catch (error) {
       console.error('❌ Storage updateUser error:', error);
-      console.error('❌ Storage error code:', error.code);
-      console.error('❌ Storage error constraint:', error.constraint);
       throw error;
     }
   }

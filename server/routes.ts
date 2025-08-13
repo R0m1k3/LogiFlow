@@ -974,11 +974,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      console.log('🔍 GET /api/users - Fetching users with simplified approach');
-      
       // Get all basic users first
       const baseUsers = await storage.getUsers();
-      console.log(`📊 Found ${baseUsers.length} base users`);
       
       // Add userGroups and userRoles to each user individually with error handling
       const usersWithData = await Promise.all(
@@ -1002,12 +999,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      console.log('🔐 API /api/users - Returning:', { 
-        isArray: Array.isArray(usersWithData), 
-        length: usersWithData.length,
-        totalGroups: usersWithData.reduce((sum, u) => sum + (u.userGroups?.length || 0), 0)
-      });
-      
       res.json(usersWithData);
     } catch (error) {
       console.error("❌ Critical error fetching users:", error);
@@ -1019,13 +1010,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/users', isAuthenticated, async (req: any, res) => {
     try {
-      console.log('🔍 POST /api/users - Creating new user');
-      console.log('📥 Request body:', JSON.stringify(req.body, null, 2));
-      
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       const currentUser = await storage.getUserWithGroups(userId);
       if (!currentUser || currentUser.role !== 'admin') {
-        console.log('❌ Access denied - user not admin');
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -1040,17 +1027,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: z.enum(['admin', 'directeur', 'manager', 'employee']).optional(),
       });
 
-      console.log('🔍 Parsing user data...');
       const userData = createUserSchema.parse(req.body);
-      console.log('✅ User data parsed successfully');
       
       // Hash password with improved error handling
       let hashedPassword = userData.password;
       if (userData.password) {
         try {
-          console.log('🔒 Hashing password...');
           hashedPassword = await hashPasswordSimple(userData.password);
-          console.log('✅ Password hashed successfully');
         } catch (hashError) {
           console.error('❌ Password hashing failed:', hashError);
           return res.status(500).json({ message: "Failed to secure password" });
@@ -1059,21 +1042,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generate unique ID
       const newUserId = userData.id || `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log('🔍 Generated user ID:', newUserId);
       
       const userToCreate = {
         id: newUserId,
         username: userData.username,
-        email: userData.email && userData.email.trim() !== '' ? userData.email : null, // Use NULL instead of empty string
+        email: userData.email && userData.email.trim() !== '' ? userData.email : undefined,
         firstName: userData.firstName || '',
         lastName: userData.lastName || '',
         password: hashedPassword,
         role: userData.role || 'employee',
       };
       
-      console.log('🔍 Creating user in database...');
       const newUser = await storage.createUser(userToCreate);
-      console.log('✅ User created successfully:', newUser.username);
 
       res.json(newUser);
     } catch (error) {
@@ -1113,12 +1093,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
-      console.log('🔍 PUT /api/users/:id - Updating user:', req.params.id);
-      console.log('📥 Update data:', JSON.stringify(req.body, null, 2));
-      
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user || user.role !== 'admin') {
-        console.log('❌ Access denied - user not admin');
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -1132,36 +1108,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: z.string().optional(),
       });
 
-      console.log('🔍 Parsing update data...');
       const userData = updateUserSchema.parse(req.body);
-      console.log('✅ Update data parsed successfully');
       
       // Clean up the data - handle empty emails properly
       const cleanUserData: any = { ...userData };
       
-      // Handle email field - convert empty string to null
+      // Handle email field - convert empty string to undefined
       if (cleanUserData.email !== undefined) {
-        cleanUserData.email = cleanUserData.email && cleanUserData.email.trim() !== '' ? cleanUserData.email : null;
-        console.log('🔍 Email field processed:', cleanUserData.email === null ? 'NULL' : cleanUserData.email);
+        cleanUserData.email = cleanUserData.email && cleanUserData.email.trim() !== '' ? cleanUserData.email : undefined;
       }
       
       // Hash password if provided
       if (cleanUserData.password) {
         try {
-          console.log('🔒 Hashing password...');
           cleanUserData.password = await hashPasswordSimple(cleanUserData.password);
           cleanUserData.passwordChanged = true;
-          console.log('✅ Password hashed successfully');
         } catch (hashError) {
           console.error('❌ Password hashing failed:', hashError);
           return res.status(500).json({ message: "Failed to secure password" });
         }
       }
       
-      console.log('🔍 Updating user in database...');
       const updatedUser = await storage.updateUser(req.params.id, cleanUserData);
-      console.log('✅ User updated successfully:', updatedUser.username);
-
       res.json(updatedUser);
     } catch (error: any) {
       console.error("❌ Error updating user:", error);
