@@ -143,36 +143,7 @@ export const publicityParticipations = pgTable("publicity_participations", {
 
 
 
-// NocoDB configuration globale (une seule instance NocoDB partagée)
-export const nocodbConfig = pgTable("nocodb_config", {
-  id: serial("id").primaryKey(),
-  name: varchar("name").notNull(), // Nom de la configuration
-  baseUrl: varchar("base_url").notNull(), // URL de l'instance NocoDB
-  projectId: varchar("project_id").notNull(), // NocoDB Project ID
-  apiToken: varchar("api_token").notNull(), // Personal API Token
-  description: text("description"), // Description de la configuration
-  isActive: boolean("is_active").default(true), // Configuration active ou non
-  createdBy: varchar("created_by"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
 
-// Cache de vérification des factures pour éviter les re-vérifications
-export const invoiceVerificationCache = pgTable("invoice_verification_cache", {
-  id: serial("id").primaryKey(),
-  cacheKey: varchar("cache_key", { length: 255 }).notNull(), // Clé unique de cache
-  groupId: integer("group_id").notNull(), // ID du magasin
-  invoiceReference: varchar("invoice_reference", { length: 255 }).notNull(), // Référence facture
-  supplierName: varchar("supplier_name", { length: 255 }), // Nom du fournisseur
-  exists: boolean("exists").notNull(), // Facture trouvée ou non
-  matchType: varchar("match_type", { length: 50 }).notNull(), // Type de correspondance (invoice_ref, bl_number)
-  errorMessage: text("error_message"), // Message d'erreur si applicable
-  cacheHit: boolean("cache_hit").default(false), // Cache hit ou non
-  apiCallTime: integer("api_call_time"), // Temps d'appel API en ms
-  expiresAt: timestamp("expires_at").notNull(), // Date d'expiration du cache
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
 
 // Customer Orders (Commandes Client)
 export const customerOrders = pgTable("customer_orders", {
@@ -271,10 +242,7 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   customerOrders: many(customerOrders),
   dlcProducts: many(dlcProducts),
   tasks: many(tasks),
-  nocodbConfig: one(nocodbConfig, {
-    fields: [groups.nocodbConfigId],
-    references: [nocodbConfig.id],
-  }),
+
 }));
 
 export const userGroupsRelations = relations(userGroups, ({ one }) => ({
@@ -455,17 +423,7 @@ export const insertPublicityParticipationSchema = createInsertSchema(publicityPa
 
 
 
-export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
-export const insertInvoiceVerificationCacheSchema = createInsertSchema(invoiceVerificationCache).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
 
 export const insertCustomerOrderSchema = createInsertSchema(customerOrders).omit({
   id: true,
@@ -531,8 +489,6 @@ export type Publicity = typeof publicities.$inferSelect;
 export type InsertPublicity = z.infer<typeof insertPublicitySchema>;
 export type PublicityParticipation = typeof publicityParticipations.$inferSelect;
 export type InsertPublicityParticipation = z.infer<typeof insertPublicityParticipationSchema>;
-export type NocodbConfig = typeof nocodbConfig.$inferSelect;
-export type InsertNocodbConfig = z.infer<typeof insertNocodbConfigSchema>;
 export type CustomerOrder = typeof customerOrders.$inferSelect;
 export type InsertCustomerOrder = z.infer<typeof insertCustomerOrderSchema>;
 export type DlcProduct = typeof dlcProducts.$inferSelect;

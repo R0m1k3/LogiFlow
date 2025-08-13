@@ -1,6 +1,6 @@
 import { db } from './db.js';
-import { nocodbConfig, invoiceVerificationCache, groups } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { groups } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 interface InvoiceVerificationResult {
   exists: boolean;
@@ -19,80 +19,17 @@ interface NocodbInvoice {
 }
 
 class InvoiceVerificationService {
-  private async getNocodbConfig(): Promise<any> {
-    const [config] = await db
-      .select()
-      .from(nocodbConfig)
-      .where(eq(nocodbConfig.isActive, true))
-      .limit(1);
-    
-    if (!config) {
-      throw new Error('Aucune configuration NocoDB active trouvée');
-    }
-    
-    return config;
+  private getNocodbConfigFromGroup(group: any): any {
+    // Configuration NocoDB stockée directement dans le groupe
+    // Vous devez renseigner ces valeurs dans votre table groups en production
+    return {
+      baseUrl: process.env.NOCODB_BASE_URL || 'https://your-nocodb-instance.com',
+      apiToken: process.env.NOCODB_API_TOKEN || '',
+      projectId: process.env.NOCODB_PROJECT_ID || ''
+    };
   }
 
-  private generateCacheKey(groupId: number, invoiceRef: string, supplierName: string): string {
-    return `${groupId}:${invoiceRef}:${supplierName}`.toLowerCase();
-  }
 
-  private async getCachedResult(cacheKey: string): Promise<InvoiceVerificationResult | null> {
-    try {
-      const [cached] = await db
-        .select()
-        .from(invoiceVerificationCache)
-        .where(and(
-          eq(invoiceVerificationCache.cacheKey, cacheKey),
-          // Cache valide pour 24 heures
-          eq(invoiceVerificationCache.expiresAt, new Date(Date.now() + 24 * 60 * 60 * 1000))
-        ))
-        .limit(1);
-
-      if (cached && new Date() < new Date(cached.expiresAt)) {
-        console.log('🎯 Cache hit pour:', cacheKey);
-        return {
-          exists: cached.exists,
-          matchType: cached.matchType as any,
-          invoiceReference: cached.invoiceReference,
-          supplierMatch: !!cached.supplierName,
-          cacheHit: true,
-          apiCallTime: cached.apiCallTime || 0
-        };
-      }
-    } catch (error) {
-      console.error('❌ Erreur lors de la lecture du cache:', error);
-    }
-    
-    return null;
-  }
-
-  private async setCachedResult(
-    cacheKey: string, 
-    groupId: number, 
-    result: InvoiceVerificationResult,
-    invoiceRef: string,
-    supplierName: string
-  ): Promise<void> {
-    try {
-      await db.insert(invoiceVerificationCache).values({
-        cacheKey,
-        groupId,
-        invoiceReference: invoiceRef,
-        supplierName,
-        exists: result.exists,
-        matchType: result.matchType,
-        errorMessage: result.errorMessage,
-        cacheHit: false,
-        apiCallTime: result.apiCallTime || 0,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
-      });
-      
-      console.log('💾 Résultat mis en cache:', cacheKey);
-    } catch (error) {
-      console.error('❌ Erreur lors de la mise en cache:', error);
-    }
-  }
 
   private async searchInNocodb(
     config: any, 
@@ -153,31 +90,30 @@ class InvoiceVerificationService {
     invoiceRef: string,
     blNumber: string,
     supplierName: string,
-    groupId: number
+    groupId: number,
+    groupConfig?: any
   ): Promise<InvoiceVerificationResult> {
     const startTime = Date.now();
     
     try {
-      // 1. Vérifier le cache d'abord
-      const cacheKey = this.generateCacheKey(groupId, invoiceRef, supplierName);
-      const cachedResult = await this.getCachedResult(cacheKey);
-      if (cachedResult) {
-        return cachedResult;
-      }
 
-      // 2. Récupérer la configuration NocoDB
-      const config = await this.getNocodbConfig();
-      
-      // 3. Récupérer les informations du groupe
-      const [group] = await db
-        .select()
-        .from(groups)
-        .where(eq(groups.id, groupId))
-        .limit(1);
+      // 2. Utiliser la configuration du groupe passée en paramètre ou la récupérer
+      let group = groupConfig;
+      if (!group) {
+        const [groupFromDb] = await db
+          .select()
+          .from(groups)
+          .where(eq(groups.id, groupId))
+          .limit(1);
+        group = groupFromDb;
+      }
       
       if (!group || !group.nocodbTableName) {
         throw new Error('Configuration NocoDB manquante pour ce magasin');
       }
+
+      // 3. Récupérer la configuration NocoDB à partir des variables d'environnement
+      const config = this.getNocodbConfigFromGroup(group);
 
       let result: InvoiceVerificationResult = {
         exists: false,
@@ -255,8 +191,7 @@ class InvoiceVerificationService {
         result.errorMessage = result.errorMessage || 'Aucune correspondance trouvée';
       }
 
-      // 6. Mettre en cache le résultat
-      await this.setCachedResult(cacheKey, groupId, result, invoiceRef, supplierName);
+
 
       return result;
 
