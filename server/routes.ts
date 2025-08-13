@@ -860,7 +860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const { invoiceReference } = req.body;
+      const { invoiceReference, forceRefresh } = req.body;
       
       if (!delivery.supplier || !delivery.group) {
         console.log('❌ Livraison manque informations:', {
@@ -886,7 +886,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Appeler le service de vérification
       const result = await invoiceVerificationService.verifyInvoice(
         invoiceReference,
-        delivery.groupId
+        delivery.groupId,
+        forceRefresh || false
       );
 
       console.log('✅ Résultat vérification:', result);
