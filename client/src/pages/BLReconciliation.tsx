@@ -656,12 +656,6 @@ export default function BLReconciliation() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center space-x-2">
-                                <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
-                                  {delivery.invoiceReference || (
-                                    <span className="text-gray-400 italic">Non renseigné</span>
-                                  )}
-                                </div>
-                                
                                 {/* Icône de vérification de facture */}
                                 {(delivery.group?.nocodbTableName || delivery.group?.nocodbConfigId || delivery.group?.webhookUrl) && (
                                   <div className="flex items-center">
@@ -690,6 +684,12 @@ export default function BLReconciliation() {
                                     )}
                                   </div>
                                 )}
+                                
+                                <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
+                                  {delivery.invoiceReference || (
+                                    <span className="text-gray-400 italic">Non renseigné</span>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
