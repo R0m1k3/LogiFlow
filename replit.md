@@ -27,6 +27,7 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 - **Base de données** : Table `DATABASE_BACKUPS` avec suivi complet des sauvegardes
 - **Navigation** : Ajouté dans la sidebar administration pour les admins
 - **Compatibilité ESM** : Remplacement de `node-cron` par `setTimeout` natif pour résoudre l'erreur production
+- **Permissions Docker** : Correction permissions `/app/backups` et installation `postgresql-client` pour `pg_dump`
 
 ### 2025-08-13 - Optimisation performance production + correction calendrier
 ✅ **Résolution latence production** :
