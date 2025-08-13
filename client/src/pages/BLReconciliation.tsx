@@ -12,7 +12,10 @@ import { useStore } from "@/components/Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { usePermissions } from "@shared/permissions";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter } from "lucide-react";
+import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import ReconciliationModal from "@/components/modals/ReconciliationModal";
 
 export default function BLReconciliation() {
@@ -47,6 +50,13 @@ export default function BLReconciliation() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // État pour le modal d'envoi de facture
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [selectedDeliveryForInvoice, setSelectedDeliveryForInvoice] = useState<any>(null);
+  const [invoiceType, setInvoiceType] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Récupérer les fournisseurs pour la logique automatique
   const { data: suppliers = [] } = useQuery<any[]>({
@@ -118,6 +128,101 @@ export default function BLReconciliation() {
         variant: "destructive",
       });
     }
+  };
+
+  // Nouvelles fonctions pour le modal d'envoi de facture
+  const handleOpenInvoiceModal = (delivery: any) => {
+    setSelectedDeliveryForInvoice(delivery);
+    setInvoiceType("");
+    setSelectedFile(null);
+    setShowInvoiceModal(true);
+  };
+
+  const handleCloseInvoiceModal = () => {
+    setShowInvoiceModal(false);
+    setSelectedDeliveryForInvoice(null);
+    setInvoiceType("");
+    setSelectedFile(null);
+    setIsUploading(false);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+    } else {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un fichier PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSendInvoice = async () => {
+    if (!selectedDeliveryForInvoice || !invoiceType || !selectedFile) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedDeliveryForInvoice.group?.webhookUrl) {
+      toast({
+        title: "Erreur",
+        description: "Aucun webhook configuré pour ce magasin",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('supplier', selectedDeliveryForInvoice.supplier?.name || '');
+      formData.append('blNumber', selectedDeliveryForInvoice.blNumber || '');
+      formData.append('type', invoiceType);
+
+      const response = await fetch(selectedDeliveryForInvoice.group.webhookUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      toast({
+        title: "Succès",
+        description: `${invoiceType} envoyée avec succès via le webhook`,
+      });
+
+      handleCloseInvoiceModal();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: `Impossible d'envoyer la ${invoiceType.toLowerCase()}: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Fonction pour déterminer si le bouton "Envoyer Facture" doit être affiché
+  const shouldShowInvoiceButton = (delivery: any) => {
+    // Conditions : ligne non validée OU pas de RefFacture renseignée
+    const isNotValidated = !delivery.reconciled;
+    const hasNoInvoiceReference = !delivery.invoiceReference;
+    
+    // Et il faut qu'il y ait un magasin assigné avec un webhook
+    const hasValidGroup = delivery.group && delivery.group.webhookUrl;
+    
+    return (isNotValidated || hasNoInvoiceReference) && hasValidGroup;
   };
 
   const handleQuickValidate = async (delivery: any) => {
@@ -459,6 +564,17 @@ export default function BLReconciliation() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
                               <div className="flex items-center justify-end space-x-2">
+                                {shouldShowInvoiceButton(delivery) && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleOpenInvoiceModal(delivery)}
+                                    className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                                    title="Envoyer Facture/Avoir"
+                                  >
+                                    <Upload className="w-4 h-4" />
+                                  </Button>
+                                )}
                                 {!delivery.reconciled ? (
                                   <>
                                     {permissions.canValidate('reconciliation') && (
@@ -647,6 +763,15 @@ export default function BLReconciliation() {
                             </td>
                             <td className="px-3 py-2 text-sm">
                               <div className="flex items-center space-x-2">
+                                {shouldShowInvoiceButton(delivery) && (
+                                  <button
+                                    onClick={() => handleOpenInvoiceModal(delivery)}
+                                    className="text-green-600 hover:text-green-700 transition-colors duration-200 p-1 hover:bg-green-50 rounded"
+                                    title="Envoyer Facture/Avoir"
+                                  >
+                                    <Upload className="w-4 h-4" />
+                                  </button>
+                                )}
                                 {user?.role === 'admin' && (
                                   <button
                                     onClick={() => handleDevalidateReconciliation(delivery.id)}
@@ -706,6 +831,77 @@ export default function BLReconciliation() {
           onClose={handleCloseModal}
         />
       )}
+
+      {/* Modal d'envoi de facture */}
+      <Dialog open={showInvoiceModal} onOpenChange={setShowInvoiceModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Envoyer Facture/Avoir</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {selectedDeliveryForInvoice && (
+              <div className="bg-gray-50 p-3 rounded-md">
+                <div className="text-sm">
+                  <div className="font-medium">{selectedDeliveryForInvoice.supplier?.name}</div>
+                  <div className="text-gray-600">
+                    BL: {selectedDeliveryForInvoice.blNumber || 'Non renseigné'}
+                  </div>
+                  <div className="text-gray-600">
+                    Magasin: {selectedDeliveryForInvoice.group?.name}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="grid gap-2">
+              <Label htmlFor="invoice-type">Type de document</Label>
+              <Select value={invoiceType} onValueChange={setInvoiceType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionnez le type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Facture">Facture</SelectItem>
+                  <SelectItem value="Avoir">Avoir</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="pdf-file">Fichier PDF</Label>
+              <input
+                id="pdf-file"
+                type="file"
+                accept=".pdf"
+                onChange={handleFileChange}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+              {selectedFile && (
+                <div className="text-sm text-green-600">
+                  Fichier sélectionné: {selectedFile.name}
+                </div>
+              )}
+            </div>
+
+            {selectedDeliveryForInvoice?.group?.webhookUrl && (
+              <div className="text-xs text-gray-500">
+                Envoi via: {selectedDeliveryForInvoice.group.webhookUrl}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseInvoiceModal}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleSendInvoice}
+              disabled={!invoiceType || !selectedFile || isUploading}
+            >
+              {isUploading ? "Envoi..." : "Envoyer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
