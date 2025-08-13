@@ -434,25 +434,23 @@ export default function BLReconciliation() {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <div className="flex justify-center">
-                                {(() => {
-                                  const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
-                                  const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
-                                  if (blAmount && invoiceAmount) {
-                                    const diff = blAmount - invoiceAmount;
-                                    const diffAbs = Math.abs(diff);
-                                    return (
-                                      <div className={`font-medium text-right ${
-                                        diff === 0 ? 'text-green-600' : 
-                                        diffAbs > 10 ? 'text-red-600' : 'text-orange-600'
-                                      }`}>
-                                        {diff > 0 ? '+' : ''}{diff.toFixed(2)}€
-                                      </div>
-                                    );
-                                  }
-                                  return <span className="text-gray-400 italic text-xs">-</span>;
-                                })()}
-                              </div>
+                              {(() => {
+                                const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
+                                const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
+                                if (blAmount && invoiceAmount) {
+                                  const diff = blAmount - invoiceAmount;
+                                  const diffAbs = Math.abs(diff);
+                                  return (
+                                    <div className={`font-medium text-center ${
+                                      diff === 0 ? 'text-green-600' : 
+                                      diffAbs > 10 ? 'text-red-600' : 'text-orange-600'
+                                    }`}>
+                                      {diff > 0 ? '+' : ''}{diff.toFixed(2)}€
+                                    </div>
+                                  );
+                                }
+                                return <span className="text-gray-400 italic text-xs">-</span>;
+                              })()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">
