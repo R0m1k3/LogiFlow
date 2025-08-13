@@ -19,6 +19,22 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-13 - Système de vérification NocoDB restauré et corrigé
+✅ **Correction complète du système de vérification des factures** :
+
+**Problèmes résolus :**
+- 163 erreurs de compilation corrigées dans storage.ts
+- Service de vérification NocoDB reconnecté à PostgreSQL
+- Configuration active récupérée depuis la base de données
+- Vérification automatique au chargement de la page implémentée
+- Interface visuelle avec coches vertes/rouges fonctionnelle
+
+**Architecture nettoyée :**
+- Fichier storage.ts simplifié et fonctionnel
+- Suppression des références aux tables inexistantes (roles, permissions)
+- Focus sur les fonctionnalités réellement utilisées
+- Compatibilité développement/production préservée
+
 ### 2025-08-13 - Uniformisation complète des interfaces utilisateur
 ✅ **Harmonisation du design des tableaux** terminée pour une expérience utilisateur cohérente :
 
