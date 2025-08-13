@@ -543,7 +543,14 @@ export class DatabaseStorage implements IStorage {
     const results = await db.query.deliveries.findMany({
       with: {
         supplier: true,
-        group: true,
+        group: {
+          columns: {
+            id: true,
+            name: true,
+            color: true,
+            webhookUrl: true,
+          }
+        },
         creator: true,
         order: true,
       },
@@ -572,7 +579,14 @@ export class DatabaseStorage implements IStorage {
     const results = await db.query.deliveries.findMany({
       with: {
         supplier: true,
-        group: true,
+        group: {
+          columns: {
+            id: true,
+            name: true,
+            color: true,
+            webhookUrl: true,
+          }
+        },
         creator: true,
         order: true,
       },
@@ -591,7 +605,14 @@ export class DatabaseStorage implements IStorage {
       where: eq(deliveries.id, id),
       with: {
         supplier: true,
-        group: true,
+        group: {
+          columns: {
+            id: true,
+            name: true,
+            color: true,
+            webhookUrl: true,
+          }
+        },
         creator: true,
         order: true,
       },
@@ -2034,8 +2055,8 @@ class MemStorage implements IStorage {
     
     // Add test groups
     const testGroups = [
-      { id: 1, name: 'Magasin A', color: '#FF5733', createdAt: new Date(), updatedAt: new Date() },
-      { id: 2, name: 'Magasin B', color: '#33FF57', createdAt: new Date(), updatedAt: new Date() },
+      { id: 1, name: 'Magasin A', color: '#FF5733', webhookUrl: 'https://webhook.site/test-facture-magasin-a', createdAt: new Date(), updatedAt: new Date() },
+      { id: 2, name: 'Magasin B', color: '#33FF57', webhookUrl: 'https://webhook.site/test-facture-magasin-b', createdAt: new Date(), updatedAt: new Date() },
       { id: 3, name: 'Magasin C', color: '#3357FF', createdAt: new Date(), updatedAt: new Date() }
     ];
     testGroups.forEach(group => this.groups.set(group.id, group as Group));
@@ -2075,6 +2096,63 @@ class MemStorage implements IStorage {
       { publicityId: 2, groupId: 2, createdAt: new Date() },
       { publicityId: 2, groupId: 3, createdAt: new Date() }
     );
+    
+    // Add test suppliers
+    const testSuppliers = [
+      { id: 1, name: 'Fournisseur Test A', automaticReconciliation: false, createdAt: new Date(), updatedAt: new Date() },
+      { id: 2, name: 'Fournisseur Test B', automaticReconciliation: true, createdAt: new Date(), updatedAt: new Date() }
+    ];
+    testSuppliers.forEach(supplier => this.suppliers.set(supplier.id, supplier as Supplier));
+    
+    // Add test deliveries
+    const testDeliveries = [
+      { 
+        id: 1, 
+        supplierId: 1, 
+        groupId: 1, 
+        blNumber: 'BL001', 
+        status: 'delivered',
+        scheduledDate: '2025-08-10',
+        deliveredDate: '2025-08-10',
+        blAmount: '150.50',
+        reconciled: false,
+        createdBy: 'admin_dev',
+        createdAt: new Date(), 
+        updatedAt: new Date() 
+      },
+      { 
+        id: 2, 
+        supplierId: 2, 
+        groupId: 2, 
+        blNumber: 'BL002', 
+        status: 'delivered',
+        scheduledDate: '2025-08-11',
+        deliveredDate: '2025-08-11',
+        blAmount: '89.99',
+        invoiceReference: 'FACT202',
+        invoiceAmount: '89.99',
+        reconciled: false,
+        createdBy: 'admin_dev',
+        createdAt: new Date(), 
+        updatedAt: new Date() 
+      },
+      { 
+        id: 3, 
+        supplierId: 1, 
+        groupId: 3, 
+        blNumber: 'BL003', 
+        status: 'delivered',
+        scheduledDate: '2025-08-12',
+        deliveredDate: '2025-08-12',
+        blAmount: '234.75',
+        reconciled: true,
+        validatedAt: new Date(),
+        createdBy: 'admin_dev',
+        createdAt: new Date(), 
+        updatedAt: new Date() 
+      }
+    ];
+    testDeliveries.forEach(delivery => this.deliveries.set(delivery.id, delivery as Delivery));
     
     console.log('✅ MemStorage initialized with admin user (admin/admin)');
     console.log('📢 Test publicities and groups added for development');
@@ -2147,7 +2225,9 @@ class MemStorage implements IStorage {
   async createGroup(group: InsertGroup): Promise<Group> { return {} as Group; }
   async updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group> { return {} as Group; }
   async deleteGroup(id: number): Promise<void> {}
-  async getSuppliers(): Promise<Supplier[]> { return []; }
+  async getSuppliers(): Promise<Supplier[]> { 
+    return Array.from(this.suppliers.values());
+  }
   async createSupplier(supplier: InsertSupplier): Promise<Supplier> { return {} as Supplier; }
   async updateSupplier(id: number, supplier: Partial<InsertSupplier>): Promise<Supplier> { return {} as Supplier; }
   async deleteSupplier(id: number): Promise<void> {}
@@ -2156,7 +2236,40 @@ class MemStorage implements IStorage {
   async createOrder(order: InsertOrder): Promise<Order> { return {} as Order; }
   async updateOrder(id: number, order: Partial<InsertOrder>): Promise<Order> { return {} as Order; }
   async deleteOrder(id: number): Promise<void> {}
-  async getDeliveries(groupIds?: number[]): Promise<DeliveryWithRelations[]> { return []; }
+  async getDeliveries(groupIds?: number[]): Promise<DeliveryWithRelations[]> { 
+    console.log('🚚 MemStorage getDeliveries called with:', { groupIds });
+    
+    let deliveriesArray = Array.from(this.deliveries.values());
+    
+    // Filter by groups if provided
+    if (groupIds && groupIds.length > 0) {
+      deliveriesArray = deliveriesArray.filter(d => groupIds.includes(d.groupId));
+    }
+    
+    // Add relations (supplier, group, creator)
+    const deliveriesWithRelations = deliveriesArray.map(delivery => ({
+      ...delivery,
+      supplier: this.suppliers.get(delivery.supplierId!),
+      group: this.groups.get(delivery.groupId!),
+      creator: this.users.get(delivery.createdBy!),
+      order: undefined // No orders in test data for now
+    }));
+    
+    console.log('🚚 MemStorage returning deliveries:', { 
+      total: deliveriesWithRelations.length,
+      sample: deliveriesWithRelations[0] ? {
+        id: deliveriesWithRelations[0].id,
+        blNumber: deliveriesWithRelations[0].blNumber,
+        supplier: deliveriesWithRelations[0].supplier?.name,
+        group: {
+          name: deliveriesWithRelations[0].group?.name,
+          hasWebhook: !!deliveriesWithRelations[0].group?.webhookUrl
+        }
+      } : null
+    });
+    
+    return deliveriesWithRelations as DeliveryWithRelations[];
+  }
   async getDeliveriesByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<DeliveryWithRelations[]> { return []; }
   async createDelivery(delivery: InsertDelivery): Promise<Delivery> { return {} as Delivery; }
   async updateDelivery(id: number, delivery: Partial<InsertDelivery>): Promise<Delivery> { return {} as Delivery; }
