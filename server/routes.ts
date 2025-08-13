@@ -2213,12 +2213,16 @@ RÉSUMÉ DU SCAN
         return res.status(400).json({ message: "groupId and invoiceReference are required" });
       }
 
-      const { verifyInvoiceReference } = await import('./nocodbService.js');
-      const result = await verifyInvoiceReference(groupId, invoiceReference);
+      console.log('🔍 Vérification facture demandée:', { groupId, invoiceReference });
+
+      const { InvoiceVerificationService } = await import('./invoiceVerification.js');
+      const verificationService = new InvoiceVerificationService();
+      const result = await verificationService.verifyInvoice(invoiceReference, groupId);
       
+      console.log('✅ Résultat vérification:', result);
       res.json(result);
     } catch (error) {
-      console.error("Error verifying invoice:", error);
+      console.error("❌ Error verifying invoice:", error);
       res.status(500).json({ message: "Failed to verify invoice" });
     }
   });

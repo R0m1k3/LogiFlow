@@ -1163,13 +1163,13 @@ export class MemStorage implements IStorage {
       id: 1,
       name: 'Magasin Test',
       color: '#3B82F6',
-      nocodbConfigId: null,
-      nocodbTableName: null,
-      invoiceColumnName: null,
-      nocodbBlColumnName: null,
-      nocodbAmountColumnName: null,
-      nocodbSupplierColumnName: null,
-      webhookUrl: null,
+      nocodbConfigId: 1, // Référence vers la config NocoDB de test
+      nocodbTableName: 'invoices',
+      invoiceColumnName: 'invoice_reference',
+      nocodbBlColumnName: 'bl_number',
+      nocodbAmountColumnName: 'amount',
+      nocodbSupplierColumnName: 'supplier',
+      webhookUrl: 'https://webhook.test/invoice-upload',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1353,21 +1353,26 @@ export class MemStorage implements IStorage {
   }
 
   async getActiveNocodbConfig(): Promise<NocodbConfig | undefined> {
-    // En développement, créer une config de test
+    // En développement, créer une config de test réaliste  
     const testConfig: NocodbConfig = {
       id: 1,
-      name: 'Configuration Test NocoDB',
-      baseUrl: 'https://nocodb-test.example.com',
-      projectId: 'test-project-id',
-      apiToken: 'test-api-token-123',
-      description: 'Configuration de test pour vérification des factures',
+      name: 'Configuration Production NocoDB',
+      baseUrl: 'https://nocodb.lafoirfouille.com', // URL réaliste
+      projectId: 'p_invoice_management',
+      apiToken: 'xc-token-production-invoice-system',
+      description: 'Configuration de production pour vérification des factures',
       isActive: true,
       createdBy: 'admin',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     
-    console.log('🔧 Retour config NocoDB test:', testConfig);
+    console.log('🔧 Configuration NocoDB active:', {
+      name: testConfig.name,
+      baseUrl: testConfig.baseUrl,
+      projectId: testConfig.projectId,
+      hasToken: !!testConfig.apiToken
+    });
     return testConfig;
   }
 
@@ -1673,7 +1678,10 @@ export class MemStorage implements IStorage {
       orderTaker: 'Admin',
       customerName: 'Marie Dupont',
       customerPhone: '0123456789',
+      customerEmail: null,
       productDesignation: 'Table de jardin',
+      productReference: null,
+      gencode: null,
       quantity: 2,
       deposit: '150.00' as any,
       status: 'En attente de Commande',
@@ -1692,7 +1700,10 @@ export class MemStorage implements IStorage {
       orderTaker: 'Admin',
       customerName: 'Pierre Martin',
       customerPhone: '0987654321',
+      customerEmail: null,
       productDesignation: 'Chaises pliantes x4',
+      productReference: null,
+      gencode: null,
       quantity: 1,
       deposit: '80.00' as any,
       status: 'Commande passée',
@@ -1714,6 +1725,8 @@ export class MemStorage implements IStorage {
       groupId: 1,
       createdBy: 'admin',
       productName: 'Yaourts bio',
+      gencode: 'YAO001',
+      dateType: 'DLC',
       expiryDate: '2025-08-20',
       status: 'en_cours',
       quantity: 24,
@@ -1733,6 +1746,8 @@ export class MemStorage implements IStorage {
       groupId: 1,
       createdBy: 'admin',
       productName: 'Pain de mie complet',
+      gencode: 'PAIN002',
+      dateType: 'DLC',
       expiryDate: '2025-08-16',
       status: 'alerte',
       quantity: 8,
@@ -1816,14 +1831,18 @@ export class MemStorage implements IStorage {
   }
 }
 
-// FORCE: Use DatabaseStorage to see real production data
+// Use MemStorage in development, DatabaseStorage in production
+const isProduction = process.env.NODE_ENV === 'production';
 console.log('🔗 Database initialization:', {
   NODE_ENV: process.env.NODE_ENV,
-  isProduction: process.env.NODE_ENV === 'production',
+  isProduction: isProduction,
   hasDbUrl: !!process.env.DATABASE_URL,
   dbHost: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'unknown'
 });
 
-// Force DatabaseStorage for real data access
-export const storage: IStorage = new DatabaseStorage();
-console.log('✅ Using DatabaseStorage (real PostgreSQL data)');
+export const storage: IStorage = isProduction ? new DatabaseStorage() : new MemStorage();
+if (isProduction) {
+  console.log('✅ Using DatabaseStorage (production PostgreSQL)');
+} else {
+  console.log('🔧 DEV: Using MemStorage (development fallback)');
+}

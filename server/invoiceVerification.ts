@@ -1,10 +1,10 @@
-import { storage } from "./storage";
+import { storage } from "./storage.js";
 
 /**
  * Service de vérification des factures avec NocoDB
  * Gère la vérification automatique des références de factures
  */
-class InvoiceVerificationService {
+export class InvoiceVerificationService {
   
   /**
    * Vérifie une référence de facture pour un groupe donné
@@ -87,14 +87,81 @@ class InvoiceVerificationService {
         };
       }
 
-      // En production, on devrait faire l'appel réel à NocoDB
-      // Pour l'instant, retourner un résultat par défaut
-      console.log('⚠️ Vérification NocoDB non implémentée en production');
-      return {
-        exists: false,
-        matchType: 'none',
-        errorMessage: 'Service de vérification NocoDB en cours de configuration'
-      };
+      // En production, faire l'appel réel à NocoDB
+      console.log('🔍 Vérification NocoDB en production...');
+      
+      try {
+        // Récupérer la configuration NocoDB active
+        const nocodbConfig = await storage.getActiveNocodbConfig();
+        if (!nocodbConfig) {
+          console.log('⚠️ Pas de configuration NocoDB active');
+          return {
+            exists: false,
+            matchType: 'none',
+            errorMessage: 'Configuration NocoDB non trouvée'
+          };
+        }
+
+        console.log('🔧 Configuration NocoDB trouvée:', {
+          configName: nocodbConfig.name,
+          baseUrl: nocodbConfig.baseUrl,
+          projectId: nocodbConfig.projectId,
+          hasToken: !!nocodbConfig.apiToken
+        });
+
+        // Vérifier d'abord par référence de facture
+        let matchResult = await this.searchInNocoDB(
+          invoiceReference, 
+          group.invoiceColumnName || 'invoice_reference',
+          nocodbConfig,
+          group.nocodbTableName || 'invoices'
+        );
+
+        if (matchResult.found) {
+          return {
+            exists: true,
+            matchType: 'invoice_reference',
+            invoiceReference: matchResult.data.invoice_reference || invoiceReference,
+            invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
+            supplierName: matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || 'Inconnu'
+          };
+        }
+
+        // Si pas trouvé par référence de facture, chercher par numéro de BL
+        if (group.nocodbBlColumnName) {
+          matchResult = await this.searchInNocoDB(
+            invoiceReference, 
+            group.nocodbBlColumnName,
+            nocodbConfig,
+            group.nocodbTableName || 'invoices'
+          );
+
+          if (matchResult.found) {
+            return {
+              exists: true,
+              matchType: 'bl_number',
+              invoiceReference: matchResult.data.invoice_reference || `BL_${invoiceReference}`,
+              invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
+              supplierName: matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || 'Inconnu'
+            };
+          }
+        }
+
+        // Aucune correspondance trouvée
+        return {
+          exists: false,
+          matchType: 'none',
+          errorMessage: 'Aucune correspondance trouvée dans NocoDB'
+        };
+
+      } catch (error) {
+        console.error('❌ Erreur lors de la vérification NocoDB:', error);
+        return {
+          exists: false,
+          matchType: 'none',
+          errorMessage: `Erreur NocoDB: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
+        };
+      }
 
     } catch (error) {
       console.error('❌ Erreur vérification facture:', error);
@@ -103,6 +170,55 @@ class InvoiceVerificationService {
         matchType: 'none',
         errorMessage: error instanceof Error ? error.message : 'Erreur inconnue'
       };
+    }
+  }
+
+  /**
+   * Recherche dans NocoDB
+   */
+  private async searchInNocoDB(
+    searchValue: string, 
+    columnName: string, 
+    config: any, 
+    tableName: string
+  ): Promise<{ found: boolean; data?: any }> {
+    try {
+      const searchUrl = `${config.baseUrl}/api/v1/db/data/v1/${config.projectId}/${tableName}`;
+      
+      console.log('🔍 Recherche NocoDB:', {
+        url: searchUrl,
+        column: columnName,
+        value: searchValue
+      });
+
+      const response = await fetch(`${searchUrl}?where=(${columnName},eq,${encodeURIComponent(searchValue)})`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'xc-token': config.apiToken
+        }
+      });
+
+      if (!response.ok) {
+        console.error('❌ Erreur réponse NocoDB:', response.status, response.statusText);
+        return { found: false };
+      }
+
+      const result = await response.json();
+      console.log('✅ Réponse NocoDB:', result);
+
+      if (result.list && result.list.length > 0) {
+        return {
+          found: true,
+          data: result.list[0]
+        };
+      }
+
+      return { found: false };
+
+    } catch (error) {
+      console.error('❌ Erreur appel NocoDB:', error);
+      return { found: false };
     }
   }
 
