@@ -306,10 +306,10 @@ export class DatabaseStorage implements IStorage {
         id: orders.id,
         supplierId: orders.supplierId,
         groupId: orders.groupId,
-        expectedDate: orders.expectedDate,
+        plannedDate: orders.plannedDate,
         status: orders.status,
-        palettes: orders.palettes,
-        packages: orders.packages,
+        quantity: orders.quantity,
+        unit: orders.unit,
         notes: orders.notes,
         createdBy: orders.createdBy,
         createdAt: orders.createdAt,
@@ -334,10 +334,10 @@ export class DatabaseStorage implements IStorage {
         id: orders.id,
         supplierId: orders.supplierId,
         groupId: orders.groupId,
-        expectedDate: orders.expectedDate,
+        plannedDate: orders.plannedDate,
         status: orders.status,
-        palettes: orders.palettes,
-        packages: orders.packages,
+        quantity: orders.quantity,
+        unit: orders.unit,
         notes: orders.notes,
         createdBy: orders.createdBy,
         createdAt: orders.createdAt,
@@ -350,22 +350,22 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(groups, eq(orders.groupId, groups.id))
       .where(
         and(
-          gte(orders.expectedDate, startDate),
-          lte(orders.expectedDate, endDate)
+          gte(orders.plannedDate, startDate),
+          lte(orders.plannedDate, endDate)
         )
       );
 
     if (groupIds && groupIds.length > 0) {
       query = query.where(
         and(
-          gte(orders.expectedDate, startDate),
-          lte(orders.expectedDate, endDate),
+          gte(orders.plannedDate, startDate),
+          lte(orders.plannedDate, endDate),
           inArray(orders.groupId, groupIds)
         )
       );
     }
 
-    return await query.orderBy(desc(orders.expectedDate));
+    return await query.orderBy(desc(orders.plannedDate));
   }
 
   async getOrder(id: number): Promise<OrderWithRelations | undefined> {
@@ -374,10 +374,10 @@ export class DatabaseStorage implements IStorage {
         id: orders.id,
         supplierId: orders.supplierId,
         groupId: orders.groupId,
-        expectedDate: orders.expectedDate,
+        plannedDate: orders.plannedDate,
         status: orders.status,
-        palettes: orders.palettes,
-        packages: orders.packages,
+        quantity: orders.quantity,
+        unit: orders.unit,
         notes: orders.notes,
         createdBy: orders.createdBy,
         createdAt: orders.createdAt,
@@ -422,8 +422,8 @@ export class DatabaseStorage implements IStorage {
         scheduledDate: deliveries.scheduledDate,
         deliveredDate: deliveries.deliveredDate,
         status: deliveries.status,
-        palettes: deliveries.palettes,
-        packages: deliveries.packages,
+        quantity: deliveries.quantity,
+        unit: deliveries.unit,
         blNumber: deliveries.blNumber,
         blAmount: deliveries.blAmount,
         invoiceReference: deliveries.invoiceReference,
@@ -458,8 +458,8 @@ export class DatabaseStorage implements IStorage {
         scheduledDate: deliveries.scheduledDate,
         deliveredDate: deliveries.deliveredDate,
         status: deliveries.status,
-        palettes: deliveries.palettes,
-        packages: deliveries.packages,
+        quantity: deliveries.quantity,
+        unit: deliveries.unit,
         blNumber: deliveries.blNumber,
         blAmount: deliveries.blAmount,
         invoiceReference: deliveries.invoiceReference,
@@ -506,8 +506,8 @@ export class DatabaseStorage implements IStorage {
         scheduledDate: deliveries.scheduledDate,
         deliveredDate: deliveries.deliveredDate,
         status: deliveries.status,
-        palettes: deliveries.palettes,
-        packages: deliveries.packages,
+        quantity: deliveries.quantity,
+        unit: deliveries.unit,
         blNumber: deliveries.blNumber,
         blAmount: deliveries.blAmount,
         invoiceReference: deliveries.invoiceReference,
@@ -610,11 +610,10 @@ export class DatabaseStorage implements IStorage {
     let query = db
       .select({
         id: publicities.id,
-        name: publicities.name,
-        description: publicities.description,
+        pubNumber: publicities.pubNumber,
+        designation: publicities.designation,
         startDate: publicities.startDate,
         endDate: publicities.endDate,
-        imageUrl: publicities.imageUrl,
         year: publicities.year,
         createdBy: publicities.createdBy,
         createdAt: publicities.createdAt,
@@ -628,7 +627,7 @@ export class DatabaseStorage implements IStorage {
 
     const results = await query.orderBy(desc(publicities.createdAt));
 
-    const publicityIds = results.map(p => p.id);
+    const publicityIds = results.map((p: any) => p.id);
     const participations = publicityIds.length > 0 
       ? await db
           .select({
@@ -641,11 +640,11 @@ export class DatabaseStorage implements IStorage {
           .where(inArray(publicityParticipations.publicityId, publicityIds))
       : [];
 
-    return results.map(publicity => ({
+    return results.map((publicity: any) => ({
       ...publicity,
       participations: participations
-        .filter(p => p.publicityId === publicity.id)
-        .map(p => ({
+        .filter((p: any) => p.publicityId === publicity.id)
+        .map((p: any) => ({
           publicityId: p.publicityId,
           groupId: p.groupId,
           group: p.group!,
@@ -839,8 +838,13 @@ export class MemStorage implements IStorage {
       id: 'admin',
       username: 'admin',
       email: 'admin@example.com',
-      passwordHash: 'admin', // In real app, this would be hashed
+      name: 'Admin',
+      firstName: 'Admin',
+      lastName: 'User',
+      profileImageUrl: null,
+      password: 'admin', // In real app, this would be hashed
       role: 'admin',
+      passwordChanged: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -851,6 +855,13 @@ export class MemStorage implements IStorage {
       id: 1,
       name: 'Magasin Test',
       color: '#3B82F6',
+      nocodbConfigId: null,
+      nocodbTableName: null,
+      invoiceColumnName: null,
+      nocodbBlColumnName: null,
+      nocodbAmountColumnName: null,
+      nocodbSupplierColumnName: null,
+      webhookUrl: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -861,9 +872,9 @@ export class MemStorage implements IStorage {
     const testSupplier: Supplier = {
       id: 1,
       name: 'Fournisseur Test',
-      email: 'test@supplier.com',
+      contact: 'test@supplier.com',
       phone: '0123456789',
-      address: '123 Rue Test',
+      hasDlc: false,
       automaticReconciliation: false,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -1033,8 +1044,14 @@ export class MemStorage implements IStorage {
 
   async createNocodbConfig(config: InsertNocodbConfig): Promise<NocodbConfig> {
     const newConfig: NocodbConfig = {
-      ...config,
       id: 1,
+      name: config.name,
+      baseUrl: config.baseUrl,
+      projectId: config.projectId,
+      apiToken: config.apiToken,
+      description: config.description || null,
+      isActive: config.isActive ?? true,
+      createdBy: config.createdBy || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1048,9 +1065,9 @@ export class MemStorage implements IStorage {
       baseUrl: config.baseUrl || 'https://nocodb.example.com',
       projectId: config.projectId || 'test-project',
       apiToken: config.apiToken || 'test-token',
-      description: config.description || 'Development configuration',
+      description: config.description || null,
       isActive: config.isActive ?? true,
-      createdBy: config.createdBy || 'admin',
+      createdBy: config.createdBy || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1067,8 +1084,17 @@ export class MemStorage implements IStorage {
 
   async createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
     const newCache: InvoiceVerificationCache = {
-      ...cache,
       id: 1,
+      cacheKey: cache.cacheKey,
+      groupId: cache.groupId,
+      invoiceReference: cache.invoiceReference,
+      supplierName: cache.supplierName || null,
+      exists: cache.exists,
+      matchType: cache.matchType,
+      errorMessage: cache.errorMessage || null,
+      cacheHit: cache.cacheHit || false,
+      apiCallTime: cache.apiCallTime || null,
+      expiresAt: cache.expiresAt,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
