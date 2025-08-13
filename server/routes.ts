@@ -37,7 +37,7 @@ import {
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
-import { nocodbVerificationService } from "./services/nocodbVerification";
+import { ProductionInvoiceVerificationService } from "./services/productionInvoiceVerification";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for Docker
@@ -914,7 +914,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const result = await nocodbVerificationService.verifyInvoiceReference(
+      const productionVerificationService = new ProductionInvoiceVerificationService(storage);
+      const result = await productionVerificationService.verifyInvoiceReference(
         parseInt(groupId),
         invoiceReference,
         supplierName
@@ -950,7 +951,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const result = await nocodbVerificationService.searchByBLNumber(
+      const productionVerificationService = new ProductionInvoiceVerificationService(storage);
+      const result = await productionVerificationService.searchByBLNumber(
         parseInt(groupId),
         blNumber,
         supplierName
