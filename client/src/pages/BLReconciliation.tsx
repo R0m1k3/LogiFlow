@@ -69,11 +69,12 @@ export default function BLReconciliation() {
 
   // Fonction de vérification de facture
   const verifyInvoiceMutation = useMutation({
-    mutationFn: async ({ deliveryId, invoiceReference, blNumber }: { deliveryId: number; invoiceReference?: string; blNumber?: string }) => {
+    mutationFn: async ({ deliveryId, invoiceReference, blNumber, forceRefresh }: { deliveryId: number; invoiceReference?: string; blNumber?: string; forceRefresh?: boolean }) => {
       try {
         const result = await apiRequest(`/api/deliveries/${deliveryId}/verify-invoice`, 'POST', { 
           invoiceReference, 
-          blNumber 
+          blNumber,
+          forceRefresh: forceRefresh || false
         });
         return result;
       } catch (error: any) {
@@ -129,17 +130,16 @@ export default function BLReconciliation() {
   });
 
   // Fonction pour déclencher la vérification
-  const handleVerifyInvoice = (delivery: any) => {
-    console.log('🔍 Debug vérification:', {
-      delivery: delivery,
-      group: delivery.group,
-      webhookUrl: delivery.group?.webhookUrl,
-      nocodbTableName: delivery.group?.nocodbTableName,
-      invoiceColumnName: delivery.group?.invoiceColumnName,
-      nocodbConfigId: delivery.group?.nocodbConfigId,
-      supplier: delivery.supplier
-    });
-    
+  const handleVerifyInvoice = (delivery: any, forceRefresh: boolean = false) => {
+    if (!delivery.invoiceReference?.trim()) {
+      toast({
+        title: "Référence manquante",
+        description: "Veuillez saisir une référence de facture avant la vérification",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!delivery.group?.nocodbTableName && !delivery.group?.nocodbConfigId && !delivery.group?.webhookUrl) {
       toast({
         title: "Vérification non disponible", 
@@ -154,7 +154,36 @@ export default function BLReconciliation() {
     verifyInvoiceMutation.mutate({
       deliveryId: delivery.id,
       invoiceReference: delivery.invoiceReference,
-      blNumber: delivery.blNumber
+      blNumber: delivery.blNumber,
+      forceRefresh
+    });
+  };
+
+  // Fonction pour vérifier toutes les factures avec un bouton
+  const handleVerifyAllInvoices = () => {
+    const deliveriesToVerify = manualReconciliationDeliveries.filter(delivery => 
+      delivery.invoiceReference?.trim() && 
+      (delivery.group?.nocodbTableName || delivery.group?.nocodbConfigId || delivery.group?.webhookUrl)
+    );
+
+    if (deliveriesToVerify.length === 0) {
+      toast({
+        title: "Aucune facture à vérifier",
+        description: "Aucune livraison avec référence de facture trouvée",
+      });
+      return;
+    }
+
+    deliveriesToVerify.forEach((delivery, index) => {
+      // Délai échelonné pour éviter la surcharge
+      setTimeout(() => {
+        handleVerifyInvoice(delivery, true); // Force refresh pour toutes
+      }, index * 200); // 200ms entre chaque vérification
+    });
+
+    toast({
+      title: "Vérification lancée",
+      description: `Vérification de ${deliveriesToVerify.length} facture(s) en cours...`,
     });
   };
 
@@ -188,7 +217,7 @@ export default function BLReconciliation() {
     enabled: !!user
   });
 
-  // VÉRIFICATION AUTOMATIQUE AU CHARGEMENT
+  // VÉRIFICATION AUTOMATIQUE AU CHARGEMENT avec système de cache
   useEffect(() => {
     if (!deliveriesWithBL.length || !suppliers.length) return;
     
@@ -199,10 +228,10 @@ export default function BLReconciliation() {
       if (delivery.invoiceReference && !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id)) {
         console.log(`🔍 Vérification auto pour livraison ${delivery.id}:`, delivery.invoiceReference);
         
-        // Délai pour éviter de surcharger le serveur
+        // Délai pour éviter de surcharger le serveur - le cache évitera les appels inutiles
         setTimeout(() => {
-          handleVerifyInvoice(delivery);
-        }, Math.random() * 2000); // Délai aléatoire entre 0 et 2 secondes
+          handleVerifyInvoice(delivery, false); // Pas de force refresh, utilise le cache
+        }, Math.random() * 1000); // Délai aléatoire entre 0 et 1 seconde
       }
     });
   }, [deliveriesWithBL, suppliers, verificationResults, verifyingDeliveries]);
@@ -509,6 +538,15 @@ export default function BLReconciliation() {
             <Badge variant="outline" className="text-xs sm:text-sm border border-gray-300 bg-blue-50">
               {automaticReconciliationDeliveries.length} automatiques
             </Badge>
+            <Button
+              onClick={handleVerifyAllInvoices}
+              variant="outline"
+              size="sm"
+              className="text-xs sm:text-sm bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+            >
+              <Search className="w-4 h-4 mr-1" />
+              Vérifier toutes les factures
+            </Button>
           </div>
         </div>
 

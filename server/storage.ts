@@ -651,7 +651,13 @@ export class DatabaseStorage implements IStorage {
         .from(orders)
         .where(pendingWhereCondition);
 
-      // Calculer les totaux de palettes et colis du mois
+      // Calculer les totaux de palettes et colis du mois (SEULEMENT livraisons delivered)
+      let deliveredWhereCondition = and(
+        deliveriesWhereCondition,
+        eq(deliveries.status, 'delivered'),
+        isNotNull(deliveries.deliveredDate)
+      );
+
       const deliveriesStatsResult = await db
         .select({
           totalPalettes: sql<number>`COALESCE(SUM(CAST(${deliveries.quantity} as INTEGER)), 0)`,
@@ -659,10 +665,7 @@ export class DatabaseStorage implements IStorage {
           avgDelay: sql<number>`COALESCE(AVG(EXTRACT(DAY FROM (${deliveries.deliveredDate} - ${deliveries.scheduledDate}))), 0)`
         })
         .from(deliveries)
-        .where(and(
-          deliveriesWhereCondition,
-          isNotNull(deliveries.deliveredDate)
-        ));
+        .where(deliveredWhereCondition);
 
       const ordersCount = Number(ordersResult[0]?.count || 0);
       const deliveriesCount = Number(deliveriesResult[0]?.count || 0);

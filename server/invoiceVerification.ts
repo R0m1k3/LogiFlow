@@ -7,18 +7,81 @@ import { storage } from "./storage.js";
 export class InvoiceVerificationService {
   
   /**
+   * Générer une clé de cache unique
+   */
+  private generateCacheKey(invoiceReference: string, groupId: number): string {
+    return `${groupId}_${invoiceReference.trim().toLowerCase()}`;
+  }
+
+  /**
+   * Vérifier dans le cache d'abord
+   */
+  async checkCache(invoiceReference: string, groupId: number): Promise<any | null> {
+    try {
+      const cacheKey = this.generateCacheKey(invoiceReference, groupId);
+      const cached = await storage.getInvoiceVerificationCache(cacheKey);
+      
+      if (cached && new Date() < new Date(cached.expiresAt)) {
+        console.log('💾 Cache hit pour:', { invoiceReference, groupId });
+        return {
+          exists: cached.exists,
+          matchType: cached.matchType,
+          errorMessage: cached.errorMessage,
+          invoiceReference: cached.invoiceReference,
+          supplierName: cached.supplierName,
+          fromCache: true
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('❌ Erreur lecture cache:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Sauvegarder dans le cache
+   */
+  async saveToCache(invoiceReference: string, groupId: number, result: any, supplierName?: string): Promise<void> {
+    try {
+      const cacheKey = this.generateCacheKey(invoiceReference, groupId);
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24); // Cache pendant 24h
+      
+      await storage.saveInvoiceVerificationCache({
+        cacheKey,
+        groupId,
+        invoiceReference,
+        supplierName: supplierName || null,
+        exists: result.exists,
+        matchType: result.matchType,
+        errorMessage: result.errorMessage || null,
+        cacheHit: false,
+        apiCallTime: null,
+        expiresAt
+      });
+      
+      console.log('💾 Résultat sauvé en cache:', { invoiceReference, groupId, exists: result.exists });
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde cache:', error);
+    }
+  }
+
+  /**
    * Vérifie une référence de facture pour un groupe donné
    */
-  async verifyInvoice(invoiceReference: string, groupId: number): Promise<{
+  async verifyInvoice(invoiceReference: string, groupId: number, forceRefresh: boolean = false): Promise<{
     exists: boolean;
     matchType: 'invoice_reference' | 'bl_number' | 'none';
     errorMessage?: string;
     invoiceReference?: string;
     invoiceAmount?: number;
     supplierName?: string;
+    fromCache?: boolean;
   }> {
     try {
-      console.log('🔍 Début vérification facture:', { invoiceReference, groupId });
+      console.log('🔍 Début vérification facture:', { invoiceReference, groupId, forceRefresh });
       
       if (!invoiceReference || !invoiceReference.trim()) {
         return {
@@ -26,6 +89,14 @@ export class InvoiceVerificationService {
           matchType: 'none',
           errorMessage: 'Référence de facture vide'
         };
+      }
+
+      // Vérifier le cache d'abord (sauf si refresh forcé)
+      if (!forceRefresh) {
+        const cachedResult = await this.checkCache(invoiceReference, groupId);
+        if (cachedResult) {
+          return cachedResult;
+        }
       }
 
       // Récupérer la configuration du groupe
@@ -126,13 +197,17 @@ export class InvoiceVerificationService {
         );
 
         if (matchResult.found) {
-          return {
+          const result = {
             exists: true,
-            matchType: 'invoice_reference',
+            matchType: 'invoice_reference' as const,
             invoiceReference: matchResult.data.invoice_reference || invoiceReference,
             invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
             supplierName: matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || 'Inconnu'
           };
+          
+          // Sauvegarder en cache si succès
+          await this.saveToCache(invoiceReference, groupId, result, result.supplierName);
+          return result;
         }
 
         // Si pas trouvé par référence de facture, chercher par numéro de BL
@@ -145,13 +220,17 @@ export class InvoiceVerificationService {
           );
 
           if (matchResult.found) {
-            return {
+            const result = {
               exists: true,
-              matchType: 'bl_number',
+              matchType: 'bl_number' as const,
               invoiceReference: matchResult.data.invoice_reference || `BL_${invoiceReference}`,
               invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
               supplierName: matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || 'Inconnu'
             };
+            
+            // Sauvegarder en cache si succès
+            await this.saveToCache(invoiceReference, groupId, result, result.supplierName);
+            return result;
           }
         }
 
