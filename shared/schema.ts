@@ -578,4 +578,12 @@ export type UserWithGroups = User & {
 };
 
 export type NocodbConfig = typeof nocodbConfig.$inferSelect;
+export type InsertNocodbConfig = z.infer<typeof insertNocodbConfigSchema>;
 export type InvoiceVerificationCache = typeof invoiceVerificationCache.$inferSelect;
+export type InsertInvoiceVerificationCache = z.infer<typeof insertInvoiceVerificationCacheSchema>;
+
+// Task with relations type
+export type TaskWithRelations = Task & {
+  creator: User;
+  group: Group;
+};
