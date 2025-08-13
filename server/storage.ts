@@ -317,10 +317,18 @@ export class DatabaseStorage implements IStorage {
         updatedAt: orders.updatedAt,
         supplier: suppliers,
         group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
       })
       .from(orders)
       .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
-      .leftJoin(groups, eq(orders.groupId, groups.id));
+      .leftJoin(groups, eq(orders.groupId, groups.id))
+      .leftJoin(users, eq(orders.createdBy, users.id));
 
     if (groupIds && groupIds.length > 0) {
       query = query.where(inArray(orders.groupId, groupIds));
@@ -345,10 +353,18 @@ export class DatabaseStorage implements IStorage {
         updatedAt: orders.updatedAt,
         supplier: suppliers,
         group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
       })
       .from(orders)
       .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
       .leftJoin(groups, eq(orders.groupId, groups.id))
+      .leftJoin(users, eq(orders.createdBy, users.id))
       .where(
         and(
           gte(orders.plannedDate, startDate),
@@ -385,10 +401,18 @@ export class DatabaseStorage implements IStorage {
         updatedAt: orders.updatedAt,
         supplier: suppliers,
         group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
       })
       .from(orders)
       .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
       .leftJoin(groups, eq(orders.groupId, groups.id))
+      .leftJoin(users, eq(orders.createdBy, users.id))
       .where(eq(orders.id, id));
 
     return order;
@@ -437,10 +461,18 @@ export class DatabaseStorage implements IStorage {
         updatedAt: deliveries.updatedAt,
         supplier: suppliers,
         group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
       })
       .from(deliveries)
       .leftJoin(suppliers, eq(deliveries.supplierId, suppliers.id))
-      .leftJoin(groups, eq(deliveries.groupId, groups.id));
+      .leftJoin(groups, eq(deliveries.groupId, groups.id))
+      .leftJoin(users, eq(deliveries.createdBy, users.id));
 
     if (groupIds && groupIds.length > 0) {
       query = query.where(inArray(deliveries.groupId, groupIds));
@@ -473,10 +505,18 @@ export class DatabaseStorage implements IStorage {
         updatedAt: deliveries.updatedAt,
         supplier: suppliers,
         group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
       })
       .from(deliveries)
       .leftJoin(suppliers, eq(deliveries.supplierId, suppliers.id))
       .leftJoin(groups, eq(deliveries.groupId, groups.id))
+      .leftJoin(users, eq(deliveries.createdBy, users.id))
       .where(
         and(
           gte(deliveries.scheduledDate, startDate),
@@ -521,10 +561,18 @@ export class DatabaseStorage implements IStorage {
         updatedAt: deliveries.updatedAt,
         supplier: suppliers,
         group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
       })
       .from(deliveries)
       .leftJoin(suppliers, eq(deliveries.supplierId, suppliers.id))
       .leftJoin(groups, eq(deliveries.groupId, groups.id))
+      .leftJoin(users, eq(deliveries.createdBy, users.id))
       .where(eq(deliveries.id, id));
 
     return delivery;
@@ -655,8 +703,8 @@ export class DatabaseStorage implements IStorage {
       // Calculer les totaux de palettes et colis du mois (SEULEMENT livraisons delivered)
       // IMPORTANT: Utiliser deliveredDate pour filtrer par le mois de livraison effective
       let deliveredWhereCondition = and(
-        gte(deliveries.deliveredDate, startDate),
-        lt(deliveries.deliveredDate, endDate),
+        gte(deliveries.deliveredDate, sql`${startDate}::timestamp`),
+        lt(deliveries.deliveredDate, sql`${endDate}::timestamp`),
         eq(deliveries.status, 'delivered'),
         isNotNull(deliveries.deliveredDate)
       );
@@ -1514,6 +1562,7 @@ export class MemStorage implements IStorage {
     const order: CustomerOrder = {
       id,
       ...orderData,
+      notes: orderData.notes || null,
       status: orderData.status || 'En attente de Commande',
       quantity: orderData.quantity || 1,
       deposit: orderData.deposit || "0.00" as any,
@@ -1580,6 +1629,7 @@ export class MemStorage implements IStorage {
     const product: DlcProduct = {
       id,
       ...productData,
+      notes: productData.notes || null,
       status: productData.status || 'en_cours',
       quantity: productData.quantity || 1,
       unit: productData.unit || 'unité',
@@ -1670,6 +1720,7 @@ export class MemStorage implements IStorage {
     const task: Task = {
       id,
       ...taskData,
+      description: taskData.description || null,
       status: taskData.status || 'pending',
       priority: taskData.priority || 'medium',
       completedAt: null,
@@ -1694,7 +1745,7 @@ export class MemStorage implements IStorage {
       customerEmail: null,
       productDesignation: 'Table de jardin',
       productReference: null,
-      gencode: null,
+      gencode: null as string | null,
       quantity: 2,
       deposit: '150.00' as any,
       status: 'En attente de Commande',
@@ -1716,7 +1767,7 @@ export class MemStorage implements IStorage {
       customerEmail: null,
       productDesignation: 'Chaises pliantes x4',
       productReference: null,
-      gencode: null,
+      gencode: null as string | null,
       quantity: 1,
       deposit: '80.00' as any,
       status: 'Commande passée',
