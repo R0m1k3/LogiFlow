@@ -152,7 +152,24 @@ export const nocodbConfig = pgTable("nocodb_config", {
   apiToken: varchar("api_token").notNull(), // Personal API Token
   description: text("description"), // Description de la configuration
   isActive: boolean("is_active").default(true), // Configuration active ou non
-  createdBy: varchar("created_by").notNull(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Cache de vérification des factures pour éviter les re-vérifications
+export const invoiceVerificationCache = pgTable("invoice_verification_cache", {
+  id: serial("id").primaryKey(),
+  cacheKey: varchar("cache_key", { length: 255 }).notNull(), // Clé unique de cache
+  groupId: integer("group_id").notNull(), // ID du magasin
+  invoiceReference: varchar("invoice_reference", { length: 255 }).notNull(), // Référence facture
+  supplierName: varchar("supplier_name", { length: 255 }), // Nom du fournisseur
+  exists: boolean("exists").notNull(), // Facture trouvée ou non
+  matchType: varchar("match_type", { length: 50 }).notNull(), // Type de correspondance (invoice_ref, bl_number)
+  errorMessage: text("error_message"), // Message d'erreur si applicable
+  cacheHit: boolean("cache_hit").default(false), // Cache hit ou non
+  apiCallTime: integer("api_call_time"), // Temps d'appel API en ms
+  expiresAt: timestamp("expires_at").notNull(), // Date d'expiration du cache
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -439,6 +456,12 @@ export const insertPublicityParticipationSchema = createInsertSchema(publicityPa
 
 
 export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInvoiceVerificationCacheSchema = createInsertSchema(invoiceVerificationCache).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

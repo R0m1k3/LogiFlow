@@ -37,6 +37,7 @@ import {
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
+import { invoiceVerificationService } from "./invoiceVerification.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for Docker
@@ -828,6 +829,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting delivery:", error);
       res.status(500).json({ message: "Failed to delete delivery" });
+    }
+  });
+
+  // Route de vérification de facture NocoDB
+  app.post('/api/deliveries/:id/verify-invoice', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const deliveryId = parseInt(req.params.id);
+      const delivery = await storage.getDelivery(deliveryId);
+      
+      if (!delivery) {
+        return res.status(404).json({ message: "Delivery not found" });
+      }
+
+      // Check permissions
+      if (!hasPermission(user.role, 'deliveries', 'view')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
+        if (!userGroupIds.includes(delivery.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      const { invoiceReference, blNumber } = req.body;
+      
+      if (!delivery.supplier || !delivery.group) {
+        return res.status(400).json({ message: "Delivery missing supplier or group information" });
+      }
+
+      const result = await invoiceVerificationService.verifyInvoiceReference(
+        invoiceReference || delivery.invoiceReference || '',
+        blNumber || delivery.blNumber || '',
+        delivery.supplier.name,
+        delivery.groupId
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error verifying invoice:", error);
+      res.status(500).json({ 
+        message: "Failed to verify invoice",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
