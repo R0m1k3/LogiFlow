@@ -75,8 +75,13 @@ async function registerProductionRoutes(app: Express): Promise<void> {
       // Find and reset admin
       const existingAdmin = await storage.getUserByUsername('admin');
       if (existingAdmin) {
-        const { hashPassword } = await import('./localAuth.production.js');
-        const newPassword = await hashPassword('admin');
+        // Use simple hash for admin reset
+        const crypto = await import('crypto');
+        const { promisify } = await import('util');
+        const scryptAsync = promisify(crypto.scrypt);
+        const salt = crypto.randomBytes(16).toString("hex");
+        const buf = (await scryptAsync('admin', salt, 64)) as Buffer;
+        const newPassword = `${buf.toString("hex")}.${salt}`;
         
         await storage.updateUser(existingAdmin.id, { 
           password: newPassword,

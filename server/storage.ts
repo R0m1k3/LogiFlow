@@ -560,22 +560,33 @@ export class DatabaseStorage implements IStorage {
         createdAt: deliveries.createdAt,
         updatedAt: deliveries.updatedAt,
         supplier: suppliers,
-        group: groups,
-        creator: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          username: users.username,
-          email: users.email
-        }
+        group: groups
       })
       .from(deliveries)
       .leftJoin(suppliers, eq(deliveries.supplierId, suppliers.id))
       .leftJoin(groups, eq(deliveries.groupId, groups.id))
-      .leftJoin(users, eq(deliveries.createdBy, users.id))
       .where(eq(deliveries.id, id));
 
-    return delivery;
+    if (!delivery) return undefined;
+
+    // Add creator info separately to avoid complex JOIN issues in production
+    let creator = null;
+    try {
+      const user = await this.getUser(delivery.createdBy);
+      if (user) {
+        creator = {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          username: user.username,
+          email: user.email
+        };
+      }
+    } catch (error) {
+      console.log('⚠️ Could not load creator info:', error);
+    }
+
+    return { ...delivery, creator } as DeliveryWithRelations;
   }
 
   async createDelivery(deliveryData: InsertDelivery): Promise<Delivery> {
@@ -1745,13 +1756,13 @@ export class MemStorage implements IStorage {
       customerEmail: null,
       productDesignation: 'Table de jardin',
       productReference: null,
-      gencode: null as string | null,
+      gencode: null,
       quantity: 2,
       deposit: '150.00' as any,
       status: 'En attente de Commande',
       isPromotionalPrice: false,
       customerNotified: false,
-      notes: 'Livraison urgente demandée' as string | null,
+      notes: 'Livraison urgente demandée',
       createdAt: new Date('2025-01-15'),
       updatedAt: new Date('2025-01-15'),
     };
@@ -1767,13 +1778,13 @@ export class MemStorage implements IStorage {
       customerEmail: null,
       productDesignation: 'Chaises pliantes x4',
       productReference: null,
-      gencode: null as string | null,
+      gencode: null,
       quantity: 1,
       deposit: '80.00' as any,
       status: 'Commande passée',
       isPromotionalPrice: true,
       customerNotified: true,
-      notes: null as string | null,
+      notes: null,
       createdAt: new Date('2025-01-10'),
       updatedAt: new Date('2025-01-12'),
     };

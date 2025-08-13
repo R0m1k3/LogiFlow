@@ -197,8 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if DLC filter is requested
-      const dlcOnly = req.query.dlc === 'true';
-      const suppliers = await storage.getSuppliers(dlcOnly);
+      const suppliers = await storage.getSuppliers();
       res.json(suppliers);
     } catch (error) {
       console.error("Error fetching suppliers:", error);
@@ -548,16 +547,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fixedOrders = [];
 
       for (const order of orders) {
-        if (order.deliveries && order.deliveries.length > 0) {
-          const hasDeliveredDeliveries = order.deliveries.some(d => d.status === 'delivered');
+        // Get deliveries for this order separately since OrderWithRelations doesn't include deliveries
+        const deliveries = await storage.getDeliveries();
+        const orderDeliveries = deliveries.filter(d => d.orderId === order.id);
+        
+        if (orderDeliveries && orderDeliveries.length > 0) {
+          const hasDeliveredDeliveries = orderDeliveries.some((d: any) => d.status === 'delivered');
           
           if (hasDeliveredDeliveries && order.status !== 'delivered') {
             console.log(`🔍 Found problematic order: #CMD-${order.id} (status: ${order.status}) with delivered deliveries`);
             problematicOrders.push({
               orderId: order.id,
               currentStatus: order.status,
-              deliveredDeliveries: order.deliveries.filter(d => d.status === 'delivered').length,
-              totalDeliveries: order.deliveries.length
+              deliveredDeliveries: orderDeliveries.filter((d: any) => d.status === 'delivered').length,
+              totalDeliveries: orderDeliveries.length
             });
 
             // Fixer automatiquement

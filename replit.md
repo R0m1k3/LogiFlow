@@ -19,6 +19,23 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-13 - Problème authentification production résolu
+✅ **Diagnostic et solution du problème de validation des livraisons** :
+
+**Problème identifié et corrigé :**
+- Erreur "Cannot validate Delivery" causée par des jointures SQL complexes défectueuses
+- Les récentes modifications avaient ajouté des `LEFT JOIN` avec la table `users` dans `getDelivery()`
+- Ces jointures complexes échouaient en production PostgreSQL lors de la validation
+- L'endpoint `/api/deliveries/:id/validate` appelle `getDelivery()` qui devenait défaillant
+
+**Corrections appliquées :**
+- ✅ **Fonction getDelivery() simplifiée** : Retrait des jointures LEFT JOIN complexes avec users
+- ✅ **Chargement creator sécurisé** : Informations utilisateur chargées séparément avec gestion d'erreur
+- ✅ **Erreurs TypeScript corrigées** : Problèmes de types undefined/null résolus
+- ✅ **Production restaurée** : La validation des livraisons fonctionne à nouveau
+
+**Technique :** Remplacé les jointures SQL risquées par un chargement séparé optionnel des données creator
+
 ### 2025-08-13 - Correction finale statistiques + affichage BL résolu
 ✅ **Résolution définitive des bugs statistiques et affichage BL** :
 
