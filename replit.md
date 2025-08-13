@@ -32,9 +32,10 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 - ✅ **Fonction getDelivery() simplifiée** : Retrait des jointures LEFT JOIN complexes avec users
 - ✅ **Chargement creator sécurisé** : Informations utilisateur chargées séparément avec gestion d'erreur
 - ✅ **Erreurs TypeScript corrigées** : Problèmes de types undefined/null résolus
+- ✅ **Erreur validateDelivery() corrigée** : Utilisation objet Date au lieu de toISOString() pour Drizzle ORM
 - ✅ **Production restaurée** : La validation des livraisons fonctionne à nouveau
 
-**Technique :** Remplacé les jointures SQL risquées par un chargement séparé optionnel des données creator
+**Technique :** Remplacé les jointures SQL risquées par un chargement séparé optionnel des données creator + correction format Date pour PostgreSQL
 
 ### 2025-08-13 - Correction finale statistiques + affichage BL résolu
 ✅ **Résolution définitive des bugs statistiques et affichage BL** :
