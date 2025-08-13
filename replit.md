@@ -19,6 +19,20 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-13 - Interface épurée + redirection automatique + réorganisation navigation
+✅ **Redirection automatique vers authentification** :
+- RouterProduction redirige immédiatement si utilisateur non connecté
+- Query client gère les erreurs 401 avec redirection automatique
+- Gestion centralisée des sessions expirées pour meilleure UX
+- Plus de pages d'erreur, redirection transparente vers /auth
+
+✅ **Interface épurée et navigation optimisée** :
+- Titre LogiFlow supprimé du header principal (évite redondance)
+- Seul titre dans la sidebar conservé pour navigation centralisée
+- Fournisseurs et Magasins déplacés dans Administration
+- Catégorie "Gestion" supprimée (consolidation menu)
+- Interface plus propre et logique
+
 ### 2025-08-13 - Module de sauvegarde PostgreSQL implémenté + correction ESM
 ✅ **Module de sauvegarde PostgreSQL complet** :
 - **Interface BackupManager** : Affichage des sauvegardes avec détails (taille, tables, statut)
