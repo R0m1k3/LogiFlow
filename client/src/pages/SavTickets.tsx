@@ -57,6 +57,9 @@ export default function SavTickets() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [supplierFilter, setSupplierFilter] = useState("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<SavTicketWithRelations | null>(null);
   const [formData, setFormData] = useState({
     supplierId: "",
     groupId: "",
@@ -207,6 +210,31 @@ export default function SavTickets() {
 
     console.log('Creating ticket with data:', ticketData);
     createTicketMutation.mutate(ticketData);
+  };
+
+  // Handle viewing ticket details
+  const handleViewTicket = (ticket: SavTicketWithRelations) => {
+    setSelectedTicket(ticket);
+    setShowDetailModal(true);
+  };
+
+  // Handle editing ticket
+  const handleEditTicket = (ticket: SavTicketWithRelations) => {
+    setSelectedTicket(ticket);
+    // Pre-fill form with ticket data
+    setFormData({
+      supplierId: ticket.supplierId.toString(),
+      groupId: ticket.groupId.toString(),
+      productGencode: ticket.productGencode,
+      productReference: ticket.productReference || "",
+      productDesignation: ticket.productDesignation,
+      problemType: ticket.problemType,
+      problemDescription: ticket.problemDescription,
+      priority: ticket.priority,
+      clientName: ticket.clientName || "",
+      clientPhone: ticket.clientPhone || ""
+    });
+    setShowEditModal(true);
   };
 
   // Handle permission check without early return
@@ -681,12 +709,12 @@ export default function SavTickets() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={() => handleViewTicket(ticket)}>
                               <Eye className="h-4 w-4" />
                             </Button>
                             {canModify && (
                               <>
-                                <Button variant="ghost" size="sm">
+                                <Button variant="ghost" size="sm" onClick={() => handleEditTicket(ticket)}>
                                   <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button variant="ghost" size="sm">
@@ -710,6 +738,239 @@ export default function SavTickets() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail Modal */}
+      {selectedTicket && (
+        <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Détails du ticket {selectedTicket.ticketNumber}</DialogTitle>
+              <DialogDescription>
+                Informations complètes du ticket SAV
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6">
+              {/* Product Info */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Informations produit</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Code-barres:</span>
+                    <p>{selectedTicket.productGencode}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Référence:</span>
+                    <p>{selectedTicket.productReference || "Non renseignée"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-medium">Désignation:</span>
+                    <p>{selectedTicket.productDesignation}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Problem Info */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Problème</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Type:</span>
+                    <p>{selectedTicket.problemType}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Priorité:</span>
+                    <Badge className={priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.color}>
+                      {priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.label}
+                    </Badge>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-medium">Description:</span>
+                    <p className="mt-1 p-2 bg-gray-50 rounded">{selectedTicket.problemDescription}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Client Info */}
+              {(selectedTicket.clientName || selectedTicket.clientPhone) && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Client</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Nom:</span>
+                      <p>{selectedTicket.clientName || "Non renseigné"}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">Téléphone:</span>
+                      <p>{selectedTicket.clientPhone || "Non renseigné"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Ticket Info */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Informations ticket</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Statut:</span>
+                    <Badge className={statusConfig[selectedTicket.status as keyof typeof statusConfig]?.color}>
+                      {statusConfig[selectedTicket.status as keyof typeof statusConfig]?.label}
+                    </Badge>
+                  </div>
+                  <div>
+                    <span className="font-medium">Fournisseur:</span>
+                    <p>{selectedTicket.supplier?.name}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Magasin:</span>
+                    <p>{selectedTicket.group?.name}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Créé le:</span>
+                    <p>{safeFormat(selectedTicket.createdAt, 'dd/MM/yyyy HH:mm')}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Edit Modal */}
+      {selectedTicket && (
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Modifier le ticket {selectedTicket.ticketNumber}</DialogTitle>
+              <DialogDescription>
+                Modifier les informations du ticket SAV
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6">
+              {/* Same form structure as create modal but for editing */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Product Info */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Informations produit</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-productGencode">Code-barres produit *</Label>
+                    <Input
+                      id="edit-productGencode"
+                      value={formData.productGencode}
+                      onChange={(e) => setFormData({...formData, productGencode: e.target.value})}
+                      placeholder="Code-barres du produit"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-productReference">Référence produit</Label>
+                    <Input
+                      id="edit-productReference"
+                      value={formData.productReference}
+                      onChange={(e) => setFormData({...formData, productReference: e.target.value})}
+                      placeholder="Référence du produit"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-productDesignation">Désignation produit *</Label>
+                    <Input
+                      id="edit-productDesignation"
+                      value={formData.productDesignation}
+                      onChange={(e) => setFormData({...formData, productDesignation: e.target.value})}
+                      placeholder="Nom/désignation du produit"
+                    />
+                  </div>
+                </div>
+
+                {/* Problem and Client Info */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Problème et client</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-problemType">Type de problème</Label>
+                    <Select value={formData.problemType} onValueChange={(value) => setFormData({...formData, problemType: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="defectueux">Défectueux</SelectItem>
+                        <SelectItem value="pieces_manquantes">Pièces manquantes</SelectItem>
+                        <SelectItem value="non_conforme">Non conforme</SelectItem>
+                        <SelectItem value="autre">Autre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-priority">Priorité</Label>
+                    <Select value={formData.priority} onValueChange={(value) => setFormData({...formData, priority: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="faible">Faible</SelectItem>
+                        <SelectItem value="normale">Normale</SelectItem>
+                        <SelectItem value="haute">Haute</SelectItem>
+                        <SelectItem value="critique">Critique</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-clientName">Nom du client</Label>
+                    <Input
+                      id="edit-clientName"
+                      value={formData.clientName}
+                      onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                      placeholder="Nom du client"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-clientPhone">Téléphone client</Label>
+                    <Input
+                      id="edit-clientPhone"
+                      value={formData.clientPhone}
+                      onChange={(e) => setFormData({...formData, clientPhone: e.target.value})}
+                      placeholder="Numéro de téléphone"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-problemDescription">Description du problème *</Label>
+                <Textarea
+                  id="edit-problemDescription"
+                  value={formData.problemDescription}
+                  onChange={(e) => setFormData({...formData, problemDescription: e.target.value})}
+                  placeholder="Décrivez le problème en détail..."
+                  rows={4}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 mt-6">
+                <Button variant="outline" onClick={() => setShowEditModal(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={() => {
+                    // TODO: Implement update ticket functionality
+                    toast({
+                      title: "Fonction en développement",
+                      description: "La modification de tickets sera bientôt disponible.",
+                    });
+                  }}
+                >
+                  Sauvegarder
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
