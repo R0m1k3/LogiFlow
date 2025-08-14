@@ -82,9 +82,9 @@ export function CustomerOrderForm({
       return selectedStoreId;
     }
     
-    // FALLBACK: Default to 1
-    console.log("🚨 CustomerOrderForm defaultValue: Using fallback groupId 1");
-    return 1;
+    // FALLBACK: Return null to force proper assignment later
+    console.log("🚨 CustomerOrderForm defaultValue: No group found, will be set dynamically");
+    return null;
   };
 
   const form = useForm<CustomerOrderFormData>({
@@ -135,8 +135,8 @@ export function CustomerOrderForm({
       fullUserObject: user
     });
     
-    // Override groupId if needed (defaultValues might be calculated before userGroups is loaded)
-    if (!groupId || groupId === 1) {
+    // Ensure correct groupId assignment for non-admin users
+    if (!groupId || (user?.role !== 'admin' && !user?.userGroups?.some(ug => ug.groupId === groupId))) {
       if (user?.userGroups?.[0]?.groupId) {
         groupId = user.userGroups[0].groupId;
         console.log("🔧 Customer Order Override: Using user's assigned group:", groupId);
@@ -265,7 +265,38 @@ export function CustomerOrderForm({
               )}
             />
 
-            {/* Magasin automatiquement sélectionné - pas de champ visible */}
+            {/* Sélection du magasin/groupe avec restrictions de permissions */}
+            <FormField
+              control={form.control}
+              name="groupId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Magasin</FormLabel>
+                  <Select 
+                    onValueChange={(value) => {
+                      const numValue = parseInt(value);
+                      field.onChange(numValue);
+                      console.log("🏪 Group selected:", numValue);
+                    }} 
+                    value={field.value?.toString()}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un magasin" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableGroups.map((group) => (
+                        <SelectItem key={group.id} value={group.id.toString()}>
+                          {group.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           
             <h3 className="text-lg font-medium">Informations produit</h3>
             

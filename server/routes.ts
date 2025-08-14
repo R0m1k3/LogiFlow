@@ -1384,7 +1384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: user.id,
       };
 
-      // Check if user has access to the group
+      // Check if user has access to the group - PRODUCTION DEBUG
       console.log('🔍 CUSTOMER ORDER PERMISSION DEBUG:', {
         userRole: user.role,
         userId: user.id,
@@ -1398,15 +1398,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('🔍 CUSTOMER ORDER - User group IDs:', userGroupIds);
         console.log('🔍 CUSTOMER ORDER - Requested group ID:', data.groupId);
         
+        // Convert data.groupId to number if it's a string
+        const requestedGroupId = typeof data.groupId === 'string' ? parseInt(data.groupId) : data.groupId;
+        console.log('🔍 CUSTOMER ORDER - Converted group ID:', requestedGroupId);
+        
         // Allow managers, directeurs, and employees to create orders in their assigned groups
         if (!['manager', 'directeur', 'employee'].includes(user.role)) {
           console.log('❌ CUSTOMER ORDER - Access denied: Invalid role for customer orders');
           return res.status(403).json({ message: "Insufficient permissions to create customer orders" });
         }
         
-        if (!userGroupIds.includes(data.groupId)) {
+        if (!userGroupIds.includes(requestedGroupId)) {
           console.log('❌ CUSTOMER ORDER - Access denied: User not in requested group');
-          console.log('🔍 Available groups:', userGroupIds, 'Requested:', data.groupId);
+          console.log('🔍 Available groups:', userGroupIds, 'Requested:', requestedGroupId);
+          console.log('🔍 Type check - userGroupIds types:', userGroupIds.map(id => typeof id));
+          console.log('🔍 Type check - requestedGroupId type:', typeof requestedGroupId);
           return res.status(403).json({ message: "Access denied to this group" });
         }
         
