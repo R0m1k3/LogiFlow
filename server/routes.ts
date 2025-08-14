@@ -34,7 +34,9 @@ import {
   insertDlcProductSchema,
   insertDlcProductFrontendSchema,
   insertTaskSchema,
-  insertNocodbConfigSchema
+  insertNocodbConfigSchema,
+  insertSavTicketSchema,
+  insertSavTicketHistorySchema
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
@@ -2403,6 +2405,281 @@ RÉSUMÉ DU SCAN
     } catch (error) {
       console.error("Error deleting backup:", error);
       res.status(500).json({ message: "Failed to delete backup" });
+    }
+  });
+
+  // SAV (Service Après-Vente) routes
+  app.get('/api/sav/tickets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get user's group IDs for filtering
+      let groupIds: number[] = [];
+      if (user.role === 'admin') {
+        // Admin can see all tickets
+        groupIds = [];
+      } else {
+        // Other roles see only their assigned groups
+        const userGroups = (user as any).userGroups;
+        groupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+      }
+
+      // Parse query filters
+      const filters = {
+        groupIds: groupIds.length > 0 ? groupIds : undefined,
+        status: req.query.status as string,
+        supplierId: req.query.supplierId ? parseInt(req.query.supplierId) : undefined,
+        priority: req.query.priority as string,
+        startDate: req.query.startDate as string,
+        endDate: req.query.endDate as string,
+      };
+
+      const tickets = await storage.getSavTickets(filters);
+      res.json(tickets);
+    } catch (error) {
+      console.error("Error fetching SAV tickets:", error);
+      res.status(500).json({ message: "Failed to fetch tickets" });
+    }
+  });
+
+  app.get('/api/sav/tickets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const ticketId = parseInt(req.params.id);
+      const ticket = await storage.getSavTicket(ticketId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Check if user can access this ticket
+      if (user.role !== 'admin') {
+        const userGroups = (user as any).userGroups;
+        const userGroupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+        if (!userGroupIds.includes(ticket.groupId)) {
+          return res.status(403).json({ message: "Access denied to this ticket" });
+        }
+      }
+
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error fetching SAV ticket:", error);
+      res.status(500).json({ message: "Failed to fetch ticket" });
+    }
+  });
+
+  app.post('/api/sav/tickets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check permissions: admin, manager, directeur can create
+      if (!['admin', 'manager', 'directeur'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions to create tickets" });
+      }
+
+      // Get user's groups for automatic assignment
+      let availableGroupIds: number[] = [];
+      if (user.role === 'admin') {
+        const allGroups = await storage.getGroups();
+        availableGroupIds = allGroups.map(g => g.id);
+      } else {
+        const userGroups = (user as any).userGroups;
+        availableGroupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+      }
+
+      if (availableGroupIds.length === 0) {
+        return res.status(400).json({ message: "No groups available for ticket creation" });
+      }
+
+      // Parse and validate request body
+      const ticketData = insertSavTicketSchema.parse({
+        ...req.body,
+        groupId: req.body.groupId || availableGroupIds[0], // Use first available group if not specified
+        createdBy: user.id,
+      });
+
+      // Validate that the specified group is accessible to the user
+      if (!availableGroupIds.includes(ticketData.groupId)) {
+        return res.status(403).json({ message: "Access denied to the specified group" });
+      }
+
+      const ticket = await storage.createSavTicket(ticketData);
+      res.status(201).json(ticket);
+    } catch (error) {
+      console.error("Error creating SAV ticket:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create ticket" });
+    }
+  });
+
+  app.patch('/api/sav/tickets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check permissions: admin, manager, directeur can modify
+      if (!['admin', 'manager', 'directeur'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions to modify tickets" });
+      }
+
+      const ticketId = parseInt(req.params.id);
+      const existingTicket = await storage.getSavTicket(ticketId);
+      
+      if (!existingTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Check if user can access this ticket
+      if (user.role !== 'admin') {
+        const userGroups = (user as any).userGroups;
+        const userGroupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+        if (!userGroupIds.includes(existingTicket.groupId)) {
+          return res.status(403).json({ message: "Access denied to modify this ticket" });
+        }
+      }
+
+      // Parse and validate partial update data
+      const updateData = insertSavTicketSchema.partial().parse(req.body);
+      const updatedTicket = await storage.updateSavTicket(ticketId, updateData);
+
+      // Add history entry for status change if status was modified
+      if (req.body.status && req.body.status !== existingTicket.status) {
+        await storage.addSavTicketHistory({
+          ticketId: ticketId,
+          action: 'status_change',
+          description: `Statut changé de "${existingTicket.status}" vers "${req.body.status}"`,
+          createdBy: user.id,
+        });
+      }
+
+      res.json(updatedTicket);
+    } catch (error) {
+      console.error("Error updating SAV ticket:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update ticket" });
+    }
+  });
+
+  app.delete('/api/sav/tickets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check permissions: only admin and directeur can delete
+      if (!['admin', 'directeur'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions to delete tickets" });
+      }
+
+      const ticketId = parseInt(req.params.id);
+      const existingTicket = await storage.getSavTicket(ticketId);
+      
+      if (!existingTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      await storage.deleteSavTicket(ticketId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting SAV ticket:", error);
+      res.status(500).json({ message: "Failed to delete ticket" });
+    }
+  });
+
+  app.post('/api/sav/tickets/:id/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check permissions: admin, manager, directeur can add comments
+      if (!['admin', 'manager', 'directeur'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions to add comments" });
+      }
+
+      const ticketId = parseInt(req.params.id);
+      const ticket = await storage.getSavTicket(ticketId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Check if user can access this ticket
+      if (user.role !== 'admin') {
+        const userGroups = (user as any).userGroups;
+        const userGroupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+        if (!userGroupIds.includes(ticket.groupId)) {
+          return res.status(403).json({ message: "Access denied to add comments to this ticket" });
+        }
+      }
+
+      // Parse and validate history entry
+      const historyData = insertSavTicketHistorySchema.parse({
+        ticketId: ticketId,
+        action: 'comment',
+        description: req.body.description,
+        createdBy: user.id,
+      });
+
+      const history = await storage.addSavTicketHistory(historyData);
+      res.status(201).json(history);
+    } catch (error) {
+      console.error("Error adding SAV ticket history:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to add comment" });
+    }
+  });
+
+  app.get('/api/sav/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get user's group IDs for filtering
+      let groupIds: number[] = [];
+      if (user.role === 'admin') {
+        // Admin can see all stats
+        groupIds = [];
+      } else {
+        // Other roles see only their assigned groups
+        const userGroups = (user as any).userGroups;
+        groupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+      }
+
+      const stats = await storage.getSavTicketStats(groupIds.length > 0 ? groupIds : undefined);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching SAV stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
     }
   });
 

@@ -22,7 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Settings
+  Settings,
+  Wrench
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -121,6 +122,12 @@ export default function Sidebar() {
       path: "/tasks", 
       label: "Tâches", 
       icon: ListTodo, 
+      roles: ["admin", "directeur", "manager", "employee"] 
+    },
+    { 
+      path: "/sav", 
+      label: "SAV", 
+      icon: Wrench, 
       roles: ["admin", "directeur", "manager", "employee"] 
     },
   ];
