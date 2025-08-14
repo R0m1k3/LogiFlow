@@ -1,0 +1,201 @@
+
+      
+  dbHost: 'logiflow-db'
+
+}
+
+🐳 PRODUCTION: Using standard PostgreSQL
+
+✅ PostgreSQL connection test successful
+
+🔗 Database initialization: {
+
+  NODE_ENV: 'production',
+
+  isProduction: true,
+
+  hasDbUrl: true,
+
+  dbHost: 'logiflow-db:5432'
+
+}
+
+✅ Using DatabaseStorage (production PostgreSQL)
+
+⏰ Automatic backup scheduled for 2:00 AM daily (native timer)
+
+🔍 Using development storage and authentication
+
+🐳 PRODUCTION: Starting LogiFlow application
+
+🐳 Environment: { NODE_ENV: 'production', DATABASE_URL: 'Present', PORT: '3000' }
+
+🔧 Registering all production routes...
+
+🔄 Running automatic production migrations...
+
+🔄 MIGRATION: Starting SAV production migrations...
+
+🔄 MIGRATION: Database URL configured: postgresql://logiflow_admin:Lo...
+
+✅ MIGRATION: Connected to PostgreSQL database
+
+🔄 MIGRATION: Checking if priority column exists...
+
+🔄 MIGRATION: Priority column check result: 1
+
+✅ MIGRATION: Priority column already exists, skipping migration
+
+🔌 MIGRATION: Database connection closed
+
+🔧 Using memory session store for development
+
+Warning: connect.session() MemoryStore is not
+
+designed for a production environment, as it will leak
+
+memory, and will not scale past a single process.
+
+✅ All routes registered successfully for production
+
+🐳 Serving static files from: /app/dist/public
+
+🐳 PRODUCTION: LogiFlow serving on port 3000
+
+HEAD /api/health 200 in 4ms
+
+📄 SPA: Serving index.html for /customer-orders
+
+GET /api/user 401 in 1ms
+
+📄 SPA: Serving index.html for /auth
+
+GET /api/user 401 in 1ms
+
+GET /api/user 401 in 1ms
+
+GET /api/default-credentials-check 304 in 4ms
+
+🔐 comparePasswords: {
+
+  supplied: 'HIDDEN',
+
+  stored: 'b23ec450a63faf3957a1...',
+
+  hasFormat: true
+
+}
+
+🔐 Password comparison result: true
+
+POST /api/login 200 in 53ms
+
+GET /api/user 304 in 4ms
+
+GET /api/user 304 in 12ms
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: undefined,
+
+  withBL: undefined,
+
+  userRole: 'employee'
+
+}
+
+Non-admin filtering deliveries with groupIds: [ 2 ]
+
+Orders API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: undefined,
+
+  userRole: 'employee'
+
+}
+
+Non-admin filtering with groupIds: [ 2 ]
+
+GET /api/user 304 in 43ms
+
+📊 Calcul statistiques mensuelles: {
+
+  year: 2025,
+
+  month: 8,
+
+  startDate: '2025-08-01',
+
+  endDate: '2025-09-01',
+
+  groupIds: [ 2 ]
+
+}
+
+GET /api/user 304 in 24ms
+
+Tasks API called with: { groupIds: [ 2 ], userRole: 'employee' }
+
+🔗 PRODUCTION: getOrders() récupéré 18 commandes avec relations
+
+Orders returned: 18 items
+
+GET /api/orders 304 in 221ms
+
+Customer Orders API called with: { groupIds: [ 2 ], userRole: 'employee' }
+
+GET /api/publicities 304 in 218ms
+
+GET /api/dlc-products/stats 304 in 216ms
+
+Customer Orders returned: 25 items
+
+GET /api/customer-orders 304 in 228ms
+
+Tasks returned: 9 items
+
+GET /api/tasks 304 in 220ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 38 livraisons avec relations
+
+Deliveries returned: 38 items
+
+GET /api/deliveries 304 in 236ms
+
+📊 Statistiques calculées: {
+
+  ordersCount: 8,
+
+  deliveriesCount: 21,
+
+  pendingOrdersCount: 4,
+
+  averageDeliveryTime: 0.17647058823529413,
+
+  totalPalettes: 57,
+
+  totalPackages: 17
+
+}
+
+GET /api/stats/monthly 304 in 246ms
+
+GET /api/groups 304 in 4ms
+
+GET /api/publicities 304 in 11ms
+
+GET /api/user 304 in 5ms
+
+GET /api/suppliers 304 in 8ms
+
+GET /api/user 304 in 3ms
+
+HEAD /api/health 200 in 1ms
