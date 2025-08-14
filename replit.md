@@ -19,6 +19,19 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-14 - Correction permissions employés commandes clients + modals SAV
+✅ **Problème permissions employés résolu** :
+- **Problème** : Employés ne pouvaient pas créer de commandes clients (erreur "Access denied to this group")
+- **Cause** : Vérification permissions trop restrictive dans `/api/customer-orders`
+- **Solution** : Autorisation pour rôles 'manager', 'directeur', 'employee' dans leurs groupes assignés
+- **Logs ajoutés** : Debug complet des permissions pour diagnostic production
+
+✅ **Boutons SAV "Détail" et "Éditer" opérationnels** :
+- **Bouton Détail** : Modal complet avec toutes informations ticket
+- **Bouton Éditer** : Formulaire pré-rempli pour modification
+- **Interface responsive** : Affichage optimisé tous écrans
+- **Permissions** : Boutons visibles selon rôles utilisateur
+
 ### 2025-08-14 - Correction critique SAV production + route d'urgence
 🔧 **Problème production SAV entièrement résolu** :
 - **Problème** : Tables SAV en production manquaient colonnes essentielles (priority, problem_type, etc.)

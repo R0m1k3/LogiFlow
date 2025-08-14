@@ -1385,11 +1385,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Check if user has access to the group
+      console.log('🔍 CUSTOMER ORDER PERMISSION DEBUG:', {
+        userRole: user.role,
+        userId: user.id,
+        userGroups: user.userGroups,
+        requestedGroupId: data.groupId,
+        requestedGroupIdType: typeof data.groupId
+      });
+
       if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        const userGroupIds = user.userGroups ? user.userGroups.map(ug => ug.groupId) : [];
+        console.log('🔍 CUSTOMER ORDER - User group IDs:', userGroupIds);
+        console.log('🔍 CUSTOMER ORDER - Requested group ID:', data.groupId);
+        
+        // Allow managers, directeurs, and employees to create orders in their assigned groups
+        if (!['manager', 'directeur', 'employee'].includes(user.role)) {
+          console.log('❌ CUSTOMER ORDER - Access denied: Invalid role for customer orders');
+          return res.status(403).json({ message: "Insufficient permissions to create customer orders" });
+        }
+        
         if (!userGroupIds.includes(data.groupId)) {
+          console.log('❌ CUSTOMER ORDER - Access denied: User not in requested group');
+          console.log('🔍 Available groups:', userGroupIds, 'Requested:', data.groupId);
           return res.status(403).json({ message: "Access denied to this group" });
         }
+        
+        console.log('✅ CUSTOMER ORDER - Permission granted for user role:', user.role);
       }
 
       const customerOrder = await storage.createCustomerOrder(data);
