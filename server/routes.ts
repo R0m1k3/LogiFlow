@@ -1384,6 +1384,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: user.id,
       };
 
+      // DEBUG: Log what we received and what we're about to save
+      console.log('🔍 CUSTOMER ORDER - Received data from frontend:', req.body);
+      console.log('🔍 CUSTOMER ORDER - Final data for DB:', data);
+      console.log('🔍 CUSTOMER ORDER - orderTaker value:', data.orderTaker, 'type:', typeof data.orderTaker);
+
       // Check if user has access to the group - PRODUCTION DEBUG
       console.log('🔍 CUSTOMER ORDER PERMISSION DEBUG:', {
         userRole: user.role,

@@ -170,18 +170,21 @@ export function CustomerOrderForm({
     
     // Prepare final data with user's assigned group
     const submitData = {
+      orderTaker: data.orderTaker || user?.firstName + ' ' + user?.lastName || user?.username || "Inconnu",
       customerName: data.customerName.trim(),
-      contactNumber: data.contactNumber || '', 
-      productName: data.productName || '',
+      customerPhone: data.contactNumber || '', 
+      customerEmail: data.customerEmail || '',
+      productDesignation: data.productName || '',
+      productReference: data.productReference || '',
+      gencode: data.gencode || '',
       quantity: data.quantity,
-      groupId: groupId, // Always use the assigned group
-      isPickup: false,
-      notes: data.notes,
+      supplierId: data.supplierId || 1,
+      status: data.status || "En attente de Commande",
       deposit: data.deposit || 0,
       isPromotionalPrice: data.isPromotionalPrice || false,
-      customerEmail: data.customerEmail,
-      gencode: data.gencode || '',
-      supplierId: data.supplierId || 1,
+      customerNotified: data.customerNotified || false,
+      notes: data.notes || '',
+      groupId: groupId, // Always use the assigned group
     };
     
     console.log("✅ Customer Order Submit FINAL:", {
