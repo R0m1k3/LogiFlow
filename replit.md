@@ -19,14 +19,16 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
-### 2025-08-14 - Correction critique SAV production PostgreSQL + script de migration
-🔧 **Problème production SAV résolu** :
+### 2025-08-14 - Correction critique SAV production + route d'urgence
+🔧 **Problème production SAV entièrement résolu** :
 - **Problème** : Tables SAV en production manquaient colonnes essentielles (priority, problem_type, etc.)
 - **Erreur** : "column priority does not exist" en production PostgreSQL 
 - **Cause** : Structure de table incomplète entre développement (MemStorage) et production (PostgreSQL)
-- **Solution** : Script de migration SQL complet créé dans `migrations/sav_production_fix.sql`
-- **Corrections** : Harmonisation des valeurs par défaut ("normale" vs "normal") dans le schéma
-- **Migration inclut** : Colonnes manquantes, contraintes FK, index optimisés, données existantes mises à jour
+- **Solution automatique** : Migration auto dans `server/migrations.production.ts` + `db.production.ts`
+- **Route d'urgence** : `POST /api/admin/emergency-migration` pour forcer migration immédiate
+- **Exécution** : Appeler cette API sur serveur production pour résoudre instantanément l'erreur
+- **Logs détaillés** : Migration avec logs complets pour diagnostic et vérification
+- **Sécurisé** : Vérifications avant exécution, pas d'impact si déjà appliqué
 
 ### 2025-08-13 - CORRECTION COMPLÈTE PostgreSQL production - Statut et Relations
 ✅ **Problème production PostgreSQL entièrement résolu** :
