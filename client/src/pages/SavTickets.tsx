@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { usePermissions } from "@shared/permissions";
 import { 
   Plus, 
   Search, 
@@ -49,37 +48,11 @@ export default function SavTickets() {
   const { user } = useAuthUnified();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const permissions = usePermissions(user?.role);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [supplierFilter, setSupplierFilter] = useState("all");
-
-  // Redirection pour les employés sans permission
-  const canView = ['admin', 'directeur', 'manager', 'employee'].includes(user?.role || '');
-  const canModify = ['admin', 'directeur', 'manager'].includes(user?.role || '');
-  const canDelete = ['admin', 'directeur'].includes(user?.role || '');
-
-  if (!canView) {
-    return (
-      <div className="p-4 sm:p-6">
-        <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <Wrench className="h-5 w-5 text-orange-400" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-orange-700">
-                <strong>Accès restreint</strong><br />
-                Vous n'avez pas les permissions nécessaires pour accéder au module SAV.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Build query parameters
   const queryParams = new URLSearchParams();
@@ -109,6 +82,32 @@ export default function SavTickets() {
     queryKey: ['/api/sav/stats'],
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
+
+  // Check permissions AFTER all hooks are called
+  const canView = ['admin', 'directeur', 'manager', 'employee'].includes(user?.role || '');
+  const canModify = ['admin', 'directeur', 'manager'].includes(user?.role || '');
+  const canDelete = ['admin', 'directeur'].includes(user?.role || '');
+
+  // Handle permission check without early return
+  if (!canView) {
+    return (
+      <div className="p-4 sm:p-6">
+        <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <Wrench className="h-5 w-5 text-orange-400" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-orange-700">
+                <strong>Accès restreint</strong><br />
+                Vous n'avez pas les permissions nécessaires pour accéder au module SAV.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Filter tickets by search term
   const filteredTickets = ticketsData.filter(ticket => {
