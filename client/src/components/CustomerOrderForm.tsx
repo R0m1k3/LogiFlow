@@ -25,9 +25,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { insertCustomerOrderFrontendSchema, type CustomerOrderWithRelations, type Group, type Supplier } from "@shared/schema";
 import { useStore } from "@/components/Layout";
 
-const customerOrderFormSchema = insertCustomerOrderFrontendSchema.extend({
-  groupId: z.coerce.number().int().positive().optional(),
-  createdBy: z.string().optional(),
+const customerOrderFormSchema = z.object({
+  orderTaker: z.string().min(1, "Qui a pris la commande est requis"),
+  customerName: z.string().min(1, "Nom du client est requis"),
+  contactNumber: z.string().optional(),
+  productName: z.string().min(1, "Désignation du produit est requise"),
+  productReference: z.string().optional(),
+  gencode: z.string().optional(),
+  quantity: z.coerce.number().int().positive().default(1),
+  supplierId: z.coerce.number().int().positive().default(1),
+  groupId: z.coerce.number().int().positive(),
+  deposit: z.coerce.number().default(0),
+  isPromotionalPrice: z.boolean().default(false),
+  customerNotified: z.boolean().default(false),
+  notes: z.string().optional(),
+  customerEmail: z.string().optional(),
 });
 
 type CustomerOrderFormData = z.infer<typeof customerOrderFormSchema>;
@@ -96,12 +108,12 @@ export function CustomerOrderForm({
       productReference: order?.productReference || "",
       gencode: order?.gencode || "",
       quantity: order?.quantity || 1,
-      supplierId: order?.supplierId || undefined,
+      supplierId: order?.supplierId || 1,
       status: "En attente de Commande", // Statut fixe
       deposit: order?.deposit || 0,
       isPromotionalPrice: order?.isPromotionalPrice || false,
       customerNotified: order?.customerNotified || false,
-      groupId: order?.groupId || getUserAssignedGroupId(),
+      groupId: order?.groupId || getUserAssignedGroupId() || 1,
     },
   });
 
@@ -223,7 +235,7 @@ export function CustomerOrderForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Fournisseur</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value?.toString()}>
+                  <Select onValueChange={field.onChange} value={field.value?.toString() || "1"}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un fournisseur" />
