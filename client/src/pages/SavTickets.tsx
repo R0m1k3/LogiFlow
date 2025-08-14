@@ -59,10 +59,12 @@ export default function SavTickets() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showCommentModal, setShowCommentModal] = useState(false);
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SavTicketWithRelations | null>(null);
   const [newComment, setNewComment] = useState("");
+  const [tempPriority, setTempPriority] = useState("");
+  const [tempStatus, setTempStatus] = useState("");
   const [formData, setFormData] = useState({
     supplierId: "",
     groupId: "",
@@ -162,14 +164,17 @@ export default function SavTickets() {
   // Add comment mutation
   const addCommentMutation = useMutation({
     mutationFn: async (data: { ticketId: number; comment: string }) => {
-      const response = await apiRequest(`/api/sav-tickets/${data.ticketId}/comments`, "POST", {
-        comment: data.comment
+      const response = await apiRequest(`/api/sav/tickets/${data.ticketId}/history`, "POST", {
+        description: data.comment  // ✅ Utilise 'description' selon le schéma API
       });
       return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sav/tickets'] });
-      setShowCommentModal(false);
+      // ✅ Invalider aussi les détails du ticket pour rafraîchir l'historique
+      if (selectedTicket) {
+        queryClient.invalidateQueries({ queryKey: [`/api/sav/tickets/${selectedTicket.id}`] });
+      }
       setNewComment("");
       toast({
         title: "Commentaire ajouté",
@@ -188,7 +193,7 @@ export default function SavTickets() {
   // Delete ticket mutation
   const deleteTicketMutation = useMutation({
     mutationFn: async (ticketId: number) => {
-      const response = await apiRequest(`/api/sav-tickets/${ticketId}`, "DELETE");
+      const response = await apiRequest(`/api/sav/tickets/${ticketId}`, "DELETE");
       return response;
     },
     onSuccess: () => {
@@ -271,6 +276,13 @@ export default function SavTickets() {
     setShowDetailModal(true);
   };
 
+  // Query pour récupérer les détails complets du ticket avec historique
+  const { data: ticketDetails } = useQuery({
+    queryKey: [`/api/sav/tickets/${selectedTicket?.id}`],
+    enabled: !!selectedTicket && showDetailModal,
+    staleTime: 0, // Toujours récupérer les derniers commentaires
+  });
+
   // Handle editing ticket
   const handleEditTicket = (ticket: SavTicketWithRelations) => {
     setSelectedTicket(ticket);
@@ -290,12 +302,7 @@ export default function SavTickets() {
     setShowEditModal(true);
   };
 
-  // Handle commenting on ticket
-  const handleCommentTicket = (ticket: SavTicketWithRelations) => {
-    setSelectedTicket(ticket);
-    setNewComment("");
-    setShowCommentModal(true);
-  };
+
 
   // Handle deleting ticket
   const handleDeleteTicket = (ticket: SavTicketWithRelations) => {
@@ -779,14 +786,9 @@ export default function SavTickets() {
                               <Eye className="h-4 w-4" />
                             </Button>
                             {canModify && (
-                              <>
-                                <Button variant="ghost" size="sm" onClick={() => handleEditTicket(ticket)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleCommentTicket(ticket)}>
-                                  <MessageCircle className="h-4 w-4" />
-                                </Button>
-                              </>
+                              <Button variant="ghost" size="sm" onClick={() => handleEditTicket(ticket)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
                             )}
                             {canDelete && (
                               <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-900" onClick={() => handleDeleteTicket(ticket)}>
@@ -808,16 +810,18 @@ export default function SavTickets() {
       {/* Detail Modal */}
       {selectedTicket && (
         <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle>Détails du ticket {selectedTicket.ticketNumber}</DialogTitle>
               <DialogDescription>
-                Informations complètes du ticket SAV
+                Informations complètes du ticket SAV et suivi
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-6">
-              {/* Product Info */}
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
+              {/* Colonne de gauche - Détails et Actions */}
+              <div className="space-y-6 overflow-y-auto max-h-[70vh] pr-2">
+                {/* Product Info */}
+                <div className="space-y-4">
                 <h3 className="text-lg font-medium">Informations produit</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -833,10 +837,9 @@ export default function SavTickets() {
                     <p>{selectedTicket.productDesignation}</p>
                   </div>
                 </div>
-              </div>
 
-              {/* Problem Info */}
-              <div className="space-y-4">
+                {/* Problem Info */}
+                <div className="space-y-4">
                 <h3 className="text-lg font-medium">Problème</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -854,11 +857,10 @@ export default function SavTickets() {
                     <p className="mt-1 p-2 bg-gray-50 rounded">{selectedTicket.problemDescription}</p>
                   </div>
                 </div>
-              </div>
 
-              {/* Client Info */}
-              {(selectedTicket.clientName || selectedTicket.clientPhone) && (
-                <div className="space-y-4">
+                {/* Client Info */}
+                {(selectedTicket.clientName || selectedTicket.clientPhone) && (
+                  <div className="space-y-4">
                   <h3 className="text-lg font-medium">Client</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
@@ -870,11 +872,10 @@ export default function SavTickets() {
                       <p>{selectedTicket.clientPhone || "Non renseigné"}</p>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Ticket Info */}
-              <div className="space-y-4">
+                {/* Ticket Info */}
+                <div className="space-y-4">
                 <h3 className="text-lg font-medium">Informations ticket</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -896,6 +897,123 @@ export default function SavTickets() {
                     <p>{safeFormat(selectedTicket.createdAt, 'dd/MM/yyyy HH:mm')}</p>
                   </div>
                 </div>
+
+                {/* Actions rapides */}
+                {canModify && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Actions rapides</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="quick-priority">Priorité</Label>
+                        <Select value={selectedTicket.priority} onValueChange={(value) => {
+                          // TODO: Implement priority update
+                          toast({
+                            title: "Fonction en développement",
+                            description: "La modification de priorité sera bientôt disponible.",
+                          });
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="faible">Faible</SelectItem>
+                            <SelectItem value="normale">Normale</SelectItem>
+                            <SelectItem value="haute">Haute</SelectItem>
+                            <SelectItem value="critique">Critique</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="quick-status">Statut</Label>
+                        <Select value={selectedTicket.status} onValueChange={(value) => {
+                          // TODO: Implement status update
+                          toast({
+                            title: "Fonction en développement",
+                            description: "La modification de statut sera bientôt disponible.",
+                          });
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nouveau">Nouveau</SelectItem>
+                            <SelectItem value="en_cours">En cours</SelectItem>
+                            <SelectItem value="attente_pieces">Attente pièces</SelectItem>
+                            <SelectItem value="attente_echange">Attente échange</SelectItem>
+                            <SelectItem value="resolu">Résolu</SelectItem>
+                            <SelectItem value="ferme">Fermé</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Colonne de droite - Commentaires et Suivi */}
+              <div className="space-y-4 overflow-y-auto max-h-[70vh] pl-2 border-l">
+                <h3 className="text-lg font-medium">Historique et commentaires</h3>
+                
+                {/* Affichage de l'historique existant */}
+                {ticketDetails?.history && ticketDetails.history.length > 0 ? (
+                  <div className="space-y-3 flex-1 overflow-y-auto">
+                    {ticketDetails.history.map((entry: any, index: number) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-3 text-sm">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-medium text-gray-900">
+                            {entry.action === 'comment' ? 'Commentaire' : entry.action}
+                          </span>
+                          <span className="text-gray-500 text-xs">
+                            {safeFormat(entry.createdAt, 'dd/MM/yyyy HH:mm')}
+                          </span>
+                        </div>
+                        <p className="text-gray-700">{entry.description}</p>
+                        {entry.creator && (
+                          <p className="text-gray-500 text-xs mt-1">Par: {entry.creator.username}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 text-sm text-center py-8">
+                    Aucun commentaire pour le moment
+                  </div>
+                )}
+                
+                {/* Champ d'ajout de commentaire */}
+                {canModify && (
+                  <div className="border-t pt-4 space-y-3">
+                    <Label htmlFor="new-comment">Ajouter un commentaire</Label>
+                    <Textarea
+                      id="new-comment"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Entrez votre commentaire..."
+                      rows={3}
+                      className="resize-none"
+                    />
+                    <div className="flex justify-end">
+                      <Button 
+                        size="sm"
+                        onClick={() => {
+                          if (!newComment.trim()) {
+                            toast({
+                              title: "Erreur",
+                              description: "Le commentaire ne peut pas être vide.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          addCommentMutation.mutate({ ticketId: selectedTicket.id, comment: newComment.trim() });
+                        }}
+                        disabled={addCommentMutation.isPending}
+                      >
+                        {addCommentMutation.isPending ? "Ajout..." : "Ajouter commentaire"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </DialogContent>
@@ -1038,53 +1156,7 @@ export default function SavTickets() {
         </Dialog>
       )}
 
-      {/* Comment Modal */}
-      {selectedTicket && (
-        <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Ajouter un commentaire</DialogTitle>
-              <DialogDescription>
-                Ajouter un commentaire au ticket {selectedTicket.ticketNumber}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="comment">Commentaire</Label>
-                <Textarea
-                  id="comment"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Entrez votre commentaire..."
-                  rows={4}
-                />
-              </div>
-              
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setShowCommentModal(false)}>
-                  Annuler
-                </Button>
-                <Button 
-                  onClick={() => {
-                    if (!newComment.trim()) {
-                      toast({
-                        title: "Erreur",
-                        description: "Le commentaire ne peut pas être vide.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    addCommentMutation.mutate({ ticketId: selectedTicket.id, comment: newComment.trim() });
-                  }}
-                  disabled={addCommentMutation.isPending}
-                >
-                  {addCommentMutation.isPending ? "Ajout..." : "Ajouter"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+
 
       {/* Delete Confirmation Modal */}
       {selectedTicket && (
