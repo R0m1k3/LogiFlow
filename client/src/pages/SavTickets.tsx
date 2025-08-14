@@ -822,26 +822,27 @@ export default function SavTickets() {
               <div className="space-y-6 overflow-y-auto max-h-[70vh] pr-2">
                 {/* Product Info */}
                 <div className="space-y-4">
-                <h3 className="text-lg font-medium">Informations produit</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Code-barres:</span>
-                    <p>{selectedTicket.productGencode}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Référence:</span>
-                    <p>{selectedTicket.productReference || "Non renseignée"}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="font-medium">Désignation:</span>
-                    <p>{selectedTicket.productDesignation}</p>
+                  <h3 className="text-lg font-medium">Informations produit</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Code-barres:</span>
+                      <p>{selectedTicket.productGencode}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">Référence:</span>
+                      <p>{selectedTicket.productReference || "Non renseignée"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="font-medium">Désignation:</span>
+                      <p>{selectedTicket.productDesignation}</p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Problem Info */}
                 <div className="space-y-4">
-                <h3 className="text-lg font-medium">Problème</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <h3 className="text-lg font-medium">Problème</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="font-medium">Type:</span>
                     <p>{selectedTicket.problemType}</p>
@@ -852,32 +853,34 @@ export default function SavTickets() {
                       {priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.label}
                     </Badge>
                   </div>
-                  <div className="col-span-2">
-                    <span className="font-medium">Description:</span>
-                    <p className="mt-1 p-2 bg-gray-50 rounded">{selectedTicket.problemDescription}</p>
+                    <div className="col-span-2">
+                      <span className="font-medium">Description:</span>
+                      <p className="mt-1 p-2 bg-gray-50 rounded">{selectedTicket.problemDescription}</p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Client Info */}
                 {(selectedTicket.clientName || selectedTicket.clientPhone) && (
                   <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Client</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium">Nom:</span>
-                      <p>{selectedTicket.clientName || "Non renseigné"}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium">Téléphone:</span>
-                      <p>{selectedTicket.clientPhone || "Non renseigné"}</p>
+                    <h3 className="text-lg font-medium">Client</h3>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium">Nom:</span>
+                        <p>{selectedTicket.clientName || "Non renseigné"}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium">Téléphone:</span>
+                        <p>{selectedTicket.clientPhone || "Non renseigné"}</p>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Ticket Info */}
                 <div className="space-y-4">
-                <h3 className="text-lg font-medium">Informations ticket</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <h3 className="text-lg font-medium">Informations ticket</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="font-medium">Statut:</span>
                     <Badge className={statusConfig[selectedTicket.status as keyof typeof statusConfig]?.color}>
@@ -946,6 +949,71 @@ export default function SavTickets() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Colonne de droite - Commentaires et Suivi */}
+              <div className="space-y-4 overflow-y-auto max-h-[70vh] pl-2 border-l">
+                <h3 className="text-lg font-medium">Historique et commentaires</h3>
+                
+                {/* Affichage de l'historique existant */}
+                {ticketDetails?.history && ticketDetails.history.length > 0 ? (
+                  <div className="space-y-3 flex-1 overflow-y-auto">
+                    {ticketDetails.history.map((entry: any, index: number) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-3 text-sm">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-medium text-gray-900">
+                            {entry.action === 'comment' ? 'Commentaire' : entry.action}
+                          </span>
+                          <span className="text-gray-500 text-xs">
+                            {safeFormat(entry.createdAt, 'dd/MM/yyyy HH:mm')}
+                          </span>
+                        </div>
+                        <p className="text-gray-700">{entry.description}</p>
+                        {entry.creator && (
+                          <p className="text-gray-500 text-xs mt-1">Par: {entry.creator.username}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 text-sm text-center py-8">
+                    Aucun commentaire pour le moment
+                  </div>
+                )}
+                
+                {/* Champ d'ajout de commentaire */}
+                {canModify && (
+                  <div className="border-t pt-4 space-y-3">
+                    <Label htmlFor="new-comment">Ajouter un commentaire</Label>
+                    <Textarea
+                      id="new-comment"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Entrez votre commentaire..."
+                      rows={3}
+                      className="resize-none"
+                    />
+                    <div className="flex justify-end">
+                      <Button 
+                        size="sm"
+                        onClick={() => {
+                          if (!newComment.trim()) {
+                            toast({
+                              title: "Erreur",
+                              description: "Le commentaire ne peut pas être vide.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          addCommentMutation.mutate({ ticketId: selectedTicket.id, comment: newComment.trim() });
+                        }}
+                        disabled={addCommentMutation.isPending}
+                      >
+                        {addCommentMutation.isPending ? "Ajout..." : "Ajouter commentaire"}
+                      </Button>
                     </div>
                   </div>
                 )}
