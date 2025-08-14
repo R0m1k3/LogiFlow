@@ -68,6 +68,16 @@ export function CustomerOrderForm({
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
 
+  // DEBUG: Log user data to see what we actually receive
+  console.log("🔍 FRONTEND USER DEBUG:", {
+    user: user,
+    userRole: user?.role,
+    userGroups: user?.userGroups,
+    userGroupsType: typeof user?.userGroups,
+    userGroupsLength: user?.userGroups?.length,
+    fullUserObject: JSON.stringify(user, null, 2)
+  });
+
   // Fetch groups for store selection
   const { data: groups = [] } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
