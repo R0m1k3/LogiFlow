@@ -107,11 +107,20 @@ export default function SavTickets() {
   // Create ticket mutation
   const createTicketMutation = useMutation({
     mutationFn: async (data: InsertSavTicket) => {
-      const response = await apiRequest('/api/sav/tickets', {
+      const response = await fetch('/api/sav/tickets', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(data),
       });
-      return response;
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la création du ticket');
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sav/tickets'] });
@@ -149,6 +158,21 @@ export default function SavTickets() {
   const canModify = ['admin', 'directeur', 'manager'].includes(user?.role || '');
   const canDelete = ['admin', 'directeur'].includes(user?.role || '');
 
+  // Get user's available groups for auto-assignment
+  const getUserGroups = () => {
+    if (!user || user.role === 'admin') {
+      return groupsData; // Admin can access all groups
+    }
+    
+    // For other users, get their assigned groups
+    const userGroups = (user as any).userGroups || [];
+    return groupsData.filter(group => 
+      userGroups.some((ug: any) => ug.groupId === group.id)
+    );
+  };
+
+  const availableGroups = getUserGroups();
+
   // Handle form submission
   const handleCreateTicket = () => {
     if (!formData.supplierId || !formData.productGencode || !formData.productDesignation || !formData.problemDescription) {
@@ -160,9 +184,17 @@ export default function SavTickets() {
       return;
     }
 
+    // Auto-assign group if user has only one group or if admin didn't select one
+    let selectedGroupId = formData.groupId ? parseInt(formData.groupId) : null;
+    
+    if (!selectedGroupId && availableGroups.length > 0) {
+      // Auto-assign first available group
+      selectedGroupId = availableGroups[0].id;
+    }
+
     const ticketData: InsertSavTicket = {
       supplierId: parseInt(formData.supplierId),
-      groupId: formData.groupId ? parseInt(formData.groupId) : undefined,
+      groupId: selectedGroupId || undefined,
       productGencode: formData.productGencode,
       productReference: formData.productReference || undefined,
       productDesignation: formData.productDesignation,
@@ -173,6 +205,7 @@ export default function SavTickets() {
       clientPhone: formData.clientPhone || undefined,
     };
 
+    console.log('Creating ticket with data:', ticketData);
     createTicketMutation.mutate(ticketData);
   };
 
@@ -285,21 +318,42 @@ export default function SavTickets() {
                     </Select>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="groupId">Magasin</Label>
-                    <Select value={formData.groupId} onValueChange={(value) => setFormData({...formData, groupId: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un magasin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {groupsData.map((group) => (
-                          <SelectItem key={group.id} value={group.id.toString()}>
-                            {group.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {availableGroups.length > 1 && (
+                    <div className="space-y-2">
+                      <Label htmlFor="groupId">Magasin</Label>
+                      <Select value={formData.groupId} onValueChange={(value) => setFormData({...formData, groupId: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un magasin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableGroups.map((group) => (
+                            <SelectItem key={group.id} value={group.id.toString()}>
+                              {group.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  {availableGroups.length === 1 && (
+                    <div className="space-y-2">
+                      <Label>Magasin assigné</Label>
+                      <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
+                        <Building className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-700">{availableGroups[0].name}</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {availableGroups.length === 0 && (
+                    <div className="space-y-2">
+                      <Label>Magasin</Label>
+                      <div className="p-2 bg-orange-50 border border-orange-200 rounded text-sm text-orange-700">
+                        Aucun magasin assigné. Contactez un administrateur.
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Informations problème et client */}
@@ -375,7 +429,7 @@ export default function SavTickets() {
                 </Button>
                 <Button 
                   onClick={handleCreateTicket}
-                  disabled={createTicketMutation.isPending}
+                  disabled={createTicketMutation.isPending || availableGroups.length === 0}
                 >
                   {createTicketMutation.isPending ? "Création..." : "Créer le ticket"}
                 </Button>
