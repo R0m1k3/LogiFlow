@@ -106,13 +106,19 @@ export function CustomerOrderForm({
   });
 
   const handleSubmit = (data: CustomerOrderFormData) => {
-    console.log("Form submission data:", data);
-    console.log("Form errors:", form.formState.errors);
-    console.log("Form is valid:", form.formState.isValid);
+    console.log("🚀 FORM SUBMIT STARTED");
+    console.log("📝 Form submission data:", data);
+    console.log("🔍 Form errors:", form.formState.errors);
+    console.log("✅ Form is valid:", form.formState.isValid);
+    console.log("👤 User context:", {
+      role: user?.role,
+      userGroups: user?.userGroups,
+      selectedStoreId
+    });
     
     // Validate required fields
     if (!data.customerName || data.customerName.trim() === '') {
-      console.error("Customer name is required but empty");
+      console.error("❌ Customer name is required but empty");
       return;
     }
     
@@ -142,13 +148,15 @@ export function CustomerOrderForm({
       supplierId: data.supplierId || 1,
     };
     
-    console.log("✅ Customer Order Submit:", {
+    console.log("✅ Customer Order Submit FINAL:", {
       userRole: user?.role,
       assignedGroupId: groupId,
       submitData: submitData
     });
     
+    console.log("🔥 CALLING onSubmit with data:", submitData);
     onSubmit(submitData);
+    console.log("🔥 onSubmit CALLED");
   };
 
   // Auto-ensure groupId is always set to user's assigned group
