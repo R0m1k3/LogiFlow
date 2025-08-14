@@ -122,10 +122,17 @@ export function CustomerOrderForm({
     console.log("📝 Form submission data:", data);
     console.log("🔍 Form errors:", form.formState.errors);
     console.log("✅ Form is valid:", form.formState.isValid);
-    console.log("👤 User context:", {
+    console.log("👤 User context DETAILED:", {
       role: user?.role,
       userGroups: user?.userGroups,
-      selectedStoreId
+      userGroupsLength: user?.userGroups?.length,
+      userGroupsData: user?.userGroups?.map(ug => ({
+        groupId: ug.groupId,
+        group: ug.group,
+        fullObject: ug
+      })),
+      selectedStoreId,
+      fullUser: user
     });
     
     // Validate required fields
@@ -138,7 +145,14 @@ export function CustomerOrderForm({
     const groupId = getUserAssignedGroupId();
     
     if (!groupId) {
-      console.error("❌ No group available for user:", user?.role, user?.userGroups);
+      console.error("❌❌❌ CRITICAL: No group available for user:", {
+        role: user?.role, 
+        userGroups: user?.userGroups,
+        userGroupsCount: user?.userGroups?.length,
+        selectedStoreId,
+        getUserAssignedGroupIdResult: groupId
+      });
+      alert("ERREUR: Votre utilisateur n'a pas de magasin assigné. Contactez l'administrateur.");
       return;
     }
     
