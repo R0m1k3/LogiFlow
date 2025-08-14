@@ -604,3 +604,98 @@ export type TaskWithRelations = Task & {
   creator: User;
   group: Group;
 };
+
+// SAV (Service Après-Vente) Tables
+export const savTickets = pgTable("sav_tickets", {
+  id: serial("id").primaryKey(),
+  ticketNumber: varchar("ticket_number", { length: 50 }).notNull(),
+  supplierId: integer("supplier_id").notNull(),
+  groupId: integer("group_id").notNull(),
+  productGencode: varchar("product_gencode", { length: 255 }).notNull(),
+  productReference: varchar("product_reference", { length: 255 }),
+  productDesignation: varchar("product_designation", { length: 500 }).notNull(),
+  problemType: varchar("problem_type", { length: 100 }).notNull(),
+  problemDescription: text("problem_description").notNull(),
+  resolutionDescription: text("resolution_description"),
+  status: varchar("status", { length: 50 }).notNull().default("nouveau"),
+  priority: varchar("priority", { length: 50 }).notNull().default("normal"), // normal, urgent, critique
+  clientName: varchar("client_name", { length: 255 }),
+  clientPhone: varchar("client_phone", { length: 255 }),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  closedAt: timestamp("closed_at"),
+});
+
+export const savTicketHistory = pgTable("sav_ticket_history", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id").notNull(),
+  action: varchar("action", { length: 100 }).notNull(), // status_change, comment, resolution, etc.
+  description: text("description"),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// SAV Relations
+export const savTicketRelations = relations(savTickets, ({ one, many }) => ({
+  supplier: one(suppliers, {
+    fields: [savTickets.supplierId],
+    references: [suppliers.id],
+  }),
+  group: one(groups, {
+    fields: [savTickets.groupId],
+    references: [groups.id],
+  }),
+  creator: one(users, {
+    fields: [savTickets.createdBy],
+    references: [users.id],
+  }),
+  history: many(savTicketHistory),
+}));
+
+export const savTicketHistoryRelations = relations(savTicketHistory, ({ one }) => ({
+  ticket: one(savTickets, {
+    fields: [savTicketHistory.ticketId],
+    references: [savTickets.id],
+  }),
+  creator: one(users, {
+    fields: [savTicketHistory.createdBy],
+    references: [users.id],
+  }),
+}));
+
+// SAV Zod Schemas
+export const insertSavTicketSchema = createInsertSchema(savTickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  resolvedAt: true,
+  closedAt: true,
+}).extend({
+  priority: z.enum(["normal", "urgent", "critique"]).default("normal"),
+  status: z.enum(["nouveau", "en_cours", "attente_pieces", "attente_echange", "resolu", "ferme"]).default("nouveau"),
+  problemType: z.enum(["defectueux", "pieces_manquantes", "non_conforme", "autre"]).default("defectueux"),
+});
+
+export const insertSavTicketHistorySchema = createInsertSchema(savTicketHistory).omit({
+  id: true,
+  createdAt: true,
+});
+
+// SAV Types
+export type SavTicket = typeof savTickets.$inferSelect;
+export type InsertSavTicket = z.infer<typeof insertSavTicketSchema>;
+export type SavTicketHistory = typeof savTicketHistory.$inferSelect;
+export type InsertSavTicketHistory = z.infer<typeof insertSavTicketHistorySchema>;
+
+export type SavTicketWithRelations = SavTicket & {
+  supplier: Supplier;
+  group: Group;
+  creator: User;
+  history: (SavTicketHistory & { creator: User })[];
+};
+
+export type SavTicketHistoryWithCreator = SavTicketHistory & {
+  creator: User;
+};

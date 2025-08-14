@@ -12,6 +12,8 @@ import {
   tasks,
   nocodbConfig,
   invoiceVerificationCache,
+  savTickets,
+  savTicketHistory,
   type User,
   type UpsertUser,
   type Group,
@@ -47,6 +49,12 @@ import {
   type InsertNocodbConfig,
   type InvoiceVerificationCache,
   type InsertInvoiceVerificationCache,
+  type SavTicket,
+  type InsertSavTicket,
+  type SavTicketHistory,
+  type InsertSavTicketHistory,
+  type SavTicketWithRelations,
+  type SavTicketHistoryWithCreator,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql, gte, lte, lt, or, isNull, isNotNull, asc } from "drizzle-orm";
@@ -156,6 +164,29 @@ export interface IStorage {
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
   deleteTask(id: number): Promise<void>;
   completeTask(id: number, completedBy?: string): Promise<void>;
+  
+  // SAV operations
+  getSavTickets(filters?: { 
+    groupIds?: number[]; 
+    status?: string; 
+    supplierId?: number; 
+    priority?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<SavTicketWithRelations[]>;
+  getSavTicket(id: number): Promise<SavTicketWithRelations | undefined>;
+  createSavTicket(ticket: InsertSavTicket): Promise<SavTicket>;
+  updateSavTicket(id: number, ticket: Partial<InsertSavTicket>): Promise<SavTicket>;
+  deleteSavTicket(id: number): Promise<void>;
+  getSavTicketHistory(ticketId: number): Promise<SavTicketHistoryWithCreator[]>;
+  addSavTicketHistory(history: InsertSavTicketHistory): Promise<SavTicketHistory>;
+  getSavTicketStats(groupIds?: number[]): Promise<{
+    totalTickets: number;
+    newTickets: number;
+    inProgressTickets: number;
+    resolvedTickets: number;
+    criticalTickets: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1487,6 +1518,211 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(tasks.id, id));
   }
+
+  // SAV operations
+  async getSavTickets(filters?: { 
+    groupIds?: number[]; 
+    status?: string; 
+    supplierId?: number; 
+    priority?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<SavTicketWithRelations[]> {
+    let query = db
+      .select({
+        ticket: savTickets,
+        supplier: suppliers,
+        group: groups,
+        creator: users,
+      })
+      .from(savTickets)
+      .leftJoin(suppliers, eq(savTickets.supplierId, suppliers.id))
+      .leftJoin(groups, eq(savTickets.groupId, groups.id))
+      .leftJoin(users, eq(savTickets.createdBy, users.id));
+
+    const conditions = [];
+    
+    if (filters?.groupIds?.length) {
+      conditions.push(inArray(savTickets.groupId, filters.groupIds));
+    }
+    if (filters?.status) {
+      conditions.push(eq(savTickets.status, filters.status));
+    }
+    if (filters?.supplierId) {
+      conditions.push(eq(savTickets.supplierId, filters.supplierId));
+    }
+    if (filters?.priority) {
+      conditions.push(eq(savTickets.priority, filters.priority));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(savTickets.createdAt, new Date(filters.startDate)));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(savTickets.createdAt, new Date(filters.endDate)));
+    }
+
+    if (conditions.length) {
+      query = query.where(and(...conditions));
+    }
+
+    const results = await query.orderBy(desc(savTickets.createdAt));
+
+    // Get history for each ticket
+    const ticketsWithHistory = await Promise.all(
+      results.map(async (result) => {
+        const history = await this.getSavTicketHistory(result.ticket.id);
+        return {
+          ...result.ticket,
+          supplier: result.supplier!,
+          group: result.group!,
+          creator: result.creator!,
+          history,
+        };
+      })
+    );
+
+    return ticketsWithHistory;
+  }
+
+  async getSavTicket(id: number): Promise<SavTicketWithRelations | undefined> {
+    const [result] = await db
+      .select({
+        ticket: savTickets,
+        supplier: suppliers,
+        group: groups,
+        creator: users,
+      })
+      .from(savTickets)
+      .leftJoin(suppliers, eq(savTickets.supplierId, suppliers.id))
+      .leftJoin(groups, eq(savTickets.groupId, groups.id))
+      .leftJoin(users, eq(savTickets.createdBy, users.id))
+      .where(eq(savTickets.id, id));
+
+    if (!result) return undefined;
+
+    const history = await this.getSavTicketHistory(id);
+
+    return {
+      ...result.ticket,
+      supplier: result.supplier!,
+      group: result.group!,
+      creator: result.creator!,
+      history,
+    };
+  }
+
+  async createSavTicket(ticketData: InsertSavTicket): Promise<SavTicket> {
+    // Generate ticket number
+    const currentYear = new Date().getFullYear();
+    const count = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(savTickets)
+      .where(sql`EXTRACT(year from created_at) = ${currentYear}`);
+      
+    const ticketNumber = `SAV-${currentYear}-${String((count[0]?.count || 0) + 1).padStart(4, '0')}`;
+
+    const [ticket] = await db
+      .insert(savTickets)
+      .values({ ...ticketData, ticketNumber })
+      .returning();
+
+    // Add initial history entry
+    await this.addSavTicketHistory({
+      ticketId: ticket.id,
+      action: 'ticket_created',
+      description: `Ticket créé avec le statut "${ticket.status}"`,
+      createdBy: ticket.createdBy,
+    });
+
+    return ticket;
+  }
+
+  async updateSavTicket(id: number, ticketData: Partial<InsertSavTicket>): Promise<SavTicket> {
+    const [ticket] = await db
+      .update(savTickets)
+      .set({ ...ticketData, updatedAt: new Date() })
+      .where(eq(savTickets.id, id))
+      .returning();
+    
+    return ticket;
+  }
+
+  async deleteSavTicket(id: number): Promise<void> {
+    // Delete history first
+    await db.delete(savTicketHistory).where(eq(savTicketHistory.ticketId, id));
+    // Delete ticket
+    await db.delete(savTickets).where(eq(savTickets.id, id));
+  }
+
+  async getSavTicketHistory(ticketId: number): Promise<SavTicketHistoryWithCreator[]> {
+    const results = await db
+      .select({
+        history: savTicketHistory,
+        creator: users,
+      })
+      .from(savTicketHistory)
+      .leftJoin(users, eq(savTicketHistory.createdBy, users.id))
+      .where(eq(savTicketHistory.ticketId, ticketId))
+      .orderBy(desc(savTicketHistory.createdAt));
+
+    return results.map(result => ({
+      ...result.history,
+      creator: result.creator!,
+    }));
+  }
+
+  async addSavTicketHistory(historyData: InsertSavTicketHistory): Promise<SavTicketHistory> {
+    const [history] = await db
+      .insert(savTicketHistory)
+      .values(historyData)
+      .returning();
+    
+    return history;
+  }
+
+  async getSavTicketStats(groupIds?: number[]): Promise<{
+    totalTickets: number;
+    newTickets: number;
+    inProgressTickets: number;
+    resolvedTickets: number;
+    criticalTickets: number;
+  }> {
+    let query = db.select({ count: sql<number>`count(*)`, status: savTickets.status, priority: savTickets.priority })
+      .from(savTickets);
+
+    if (groupIds?.length) {
+      query = query.where(inArray(savTickets.groupId, groupIds));
+    }
+
+    const results = await query.groupBy(savTickets.status, savTickets.priority);
+
+    const stats = {
+      totalTickets: 0,
+      newTickets: 0,
+      inProgressTickets: 0,
+      resolvedTickets: 0,
+      criticalTickets: 0,
+    };
+
+    results.forEach(result => {
+      const count = result.count || 0;
+      stats.totalTickets += count;
+      
+      if (result.status === 'nouveau') {
+        stats.newTickets += count;
+      } else if (['en_cours', 'attente_pieces', 'attente_echange'].includes(result.status)) {
+        stats.inProgressTickets += count;
+      } else if (['resolu', 'ferme'].includes(result.status)) {
+        stats.resolvedTickets += count;
+      }
+
+      if (result.priority === 'critique') {
+        stats.criticalTickets += count;
+      }
+    });
+
+    return stats;
+  }
 }
 
 // MemStorage class for development
@@ -1502,6 +1738,8 @@ export class MemStorage implements IStorage {
   private customerOrders = new Map<number, CustomerOrder>();
   private dlcProducts = new Map<number, DlcProduct>();
   private tasks = new Map<number, Task>();
+  private savTickets = new Map<number, SavTicket>();
+  private savTicketHistories = new Map<number, SavTicketHistory[]>();
 
   private idCounters = {
     group: 1,
@@ -1512,6 +1750,8 @@ export class MemStorage implements IStorage {
     customerOrder: 1,
     dlcProduct: 1,
     task: 1,
+    savTicket: 1,
+    savTicketHistory: 1,
   };
 
   constructor() {
@@ -2444,6 +2684,9 @@ export class MemStorage implements IStorage {
     this.tasks.set(1, testTask1);
     this.tasks.set(2, testTask2);
     this.idCounters.task = 3;
+
+    // Initialize test SAV data
+    this.initializeSavTestData();
   }
 
   async updateTask(id: number, taskData: Partial<InsertTask>): Promise<Task> {
@@ -2471,6 +2714,367 @@ export class MemStorage implements IStorage {
       updatedAt: new Date() 
     };
     this.tasks.set(id, updatedTask);
+  }
+
+  // SAV operations
+  async getSavTickets(filters?: { 
+    groupIds?: number[]; 
+    status?: string; 
+    supplierId?: number; 
+    priority?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<SavTicketWithRelations[]> {
+    const tickets = Array.from(this.savTickets.values());
+    
+    let filteredTickets = tickets;
+    
+    if (filters?.groupIds?.length) {
+      filteredTickets = filteredTickets.filter(ticket => filters.groupIds!.includes(ticket.groupId));
+    }
+    if (filters?.status) {
+      filteredTickets = filteredTickets.filter(ticket => ticket.status === filters.status);
+    }
+    if (filters?.supplierId) {
+      filteredTickets = filteredTickets.filter(ticket => ticket.supplierId === filters.supplierId);
+    }
+    if (filters?.priority) {
+      filteredTickets = filteredTickets.filter(ticket => ticket.priority === filters.priority);
+    }
+    if (filters?.startDate) {
+      const startDate = new Date(filters.startDate);
+      filteredTickets = filteredTickets.filter(ticket => 
+        ticket.createdAt && ticket.createdAt >= startDate
+      );
+    }
+    if (filters?.endDate) {
+      const endDate = new Date(filters.endDate);
+      filteredTickets = filteredTickets.filter(ticket => 
+        ticket.createdAt && ticket.createdAt <= endDate
+      );
+    }
+
+    // Sort by creation date (newest first)
+    filteredTickets.sort((a, b) => {
+      const dateA = a.createdAt || new Date(0);
+      const dateB = b.createdAt || new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    // Add relations for each ticket
+    const ticketsWithRelations = await Promise.all(
+      filteredTickets.map(async (ticket) => {
+        const supplier = this.suppliers.get(ticket.supplierId);
+        const group = this.groups.get(ticket.groupId);
+        const creator = this.users.get(ticket.createdBy);
+        const history = await this.getSavTicketHistory(ticket.id);
+        
+        return {
+          ...ticket,
+          supplier: supplier!,
+          group: group!,
+          creator: creator!,
+          history,
+        };
+      })
+    );
+
+    return ticketsWithRelations;
+  }
+
+  async getSavTicket(id: number): Promise<SavTicketWithRelations | undefined> {
+    const ticket = this.savTickets.get(id);
+    if (!ticket) return undefined;
+
+    const supplier = this.suppliers.get(ticket.supplierId);
+    const group = this.groups.get(ticket.groupId);
+    const creator = this.users.get(ticket.createdBy);
+    const history = await this.getSavTicketHistory(id);
+
+    return {
+      ...ticket,
+      supplier: supplier!,
+      group: group!,
+      creator: creator!,
+      history,
+    };
+  }
+
+  async createSavTicket(ticketData: InsertSavTicket): Promise<SavTicket> {
+    const id = this.idCounters.savTicket++;
+    
+    // Generate ticket number
+    const currentYear = new Date().getFullYear();
+    const ticketNumber = `SAV-${currentYear}-${String(id).padStart(4, '0')}`;
+
+    const ticket: SavTicket = {
+      id,
+      ticketNumber,
+      ...ticketData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      resolvedAt: null,
+      closedAt: null,
+    };
+
+    this.savTickets.set(id, ticket);
+
+    // Add initial history entry
+    await this.addSavTicketHistory({
+      ticketId: id,
+      action: 'ticket_created',
+      description: `Ticket créé avec le statut "${ticket.status}"`,
+      createdBy: ticket.createdBy,
+    });
+
+    return ticket;
+  }
+
+  async updateSavTicket(id: number, ticketData: Partial<InsertSavTicket>): Promise<SavTicket> {
+    const existingTicket = this.savTickets.get(id);
+    if (!existingTicket) throw new Error('SAV ticket not found');
+    
+    const updatedTicket = { 
+      ...existingTicket, 
+      ...ticketData, 
+      updatedAt: new Date() 
+    };
+    
+    // Set resolved/closed dates based on status
+    if (ticketData.status === 'resolu' && !updatedTicket.resolvedAt) {
+      updatedTicket.resolvedAt = new Date();
+    }
+    if (ticketData.status === 'ferme' && !updatedTicket.closedAt) {
+      updatedTicket.closedAt = new Date();
+    }
+
+    this.savTickets.set(id, updatedTicket);
+    return updatedTicket;
+  }
+
+  async deleteSavTicket(id: number): Promise<void> {
+    // Delete history first
+    this.savTicketHistories.delete(id);
+    // Delete ticket
+    this.savTickets.delete(id);
+  }
+
+  async getSavTicketHistory(ticketId: number): Promise<SavTicketHistoryWithCreator[]> {
+    const histories = this.savTicketHistories.get(ticketId) || [];
+    
+    const historiesWithCreators = histories.map(history => {
+      const creator = this.users.get(history.createdBy);
+      return {
+        ...history,
+        creator: creator!,
+      };
+    });
+
+    // Sort by creation date (newest first)
+    return historiesWithCreators.sort((a, b) => {
+      const dateA = a.createdAt || new Date(0);
+      const dateB = b.createdAt || new Date(0);
+      return dateB.getTime() - dateA.getTime();
+    });
+  }
+
+  async addSavTicketHistory(historyData: InsertSavTicketHistory): Promise<SavTicketHistory> {
+    const id = this.idCounters.savTicketHistory++;
+    
+    const history: SavTicketHistory = {
+      id,
+      ...historyData,
+      createdAt: new Date(),
+    };
+
+    const existingHistories = this.savTicketHistories.get(historyData.ticketId) || [];
+    existingHistories.push(history);
+    this.savTicketHistories.set(historyData.ticketId, existingHistories);
+
+    return history;
+  }
+
+  async getSavTicketStats(groupIds?: number[]): Promise<{
+    totalTickets: number;
+    newTickets: number;
+    inProgressTickets: number;
+    resolvedTickets: number;
+    criticalTickets: number;
+  }> {
+    let tickets = Array.from(this.savTickets.values());
+    
+    if (groupIds?.length) {
+      tickets = tickets.filter(ticket => groupIds.includes(ticket.groupId));
+    }
+
+    const stats = {
+      totalTickets: tickets.length,
+      newTickets: tickets.filter(t => t.status === 'nouveau').length,
+      inProgressTickets: tickets.filter(t => 
+        ['en_cours', 'attente_pieces', 'attente_echange'].includes(t.status)
+      ).length,
+      resolvedTickets: tickets.filter(t => 
+        ['resolu', 'ferme'].includes(t.status)
+      ).length,
+      criticalTickets: tickets.filter(t => t.priority === 'critique').length,
+    };
+
+    return stats;
+  }
+
+  private initializeSavTestData() {
+    // Test SAV tickets
+    const testTicket1: SavTicket = {
+      id: 1,
+      ticketNumber: 'SAV-2025-0001',
+      groupId: 1,
+      supplierId: 1,
+      clientName: 'Jean Dupont',
+      clientPhone: '03 83 12 34 56',
+      problemDescription: 'Produit défaillant après 2 jours d\'utilisation. Écran cassé et boutons non fonctionnels.',
+      productGencode: '12345678901234',
+      productReference: 'REF-ABC-123',
+      productDesignation: 'Tablette Samsung Galaxy Tab A7',
+      status: 'nouveau',
+      priority: 'haute',
+      createdBy: 'admin',
+      createdAt: new Date('2025-08-10T08:30:00'),
+      updatedAt: new Date('2025-08-10T08:30:00'),
+      resolvedAt: null,
+      closedAt: null,
+    };
+
+    const testTicket2: SavTicket = {
+      id: 2,
+      ticketNumber: 'SAV-2025-0002',
+      groupId: 1,
+      supplierId: 2,
+      clientName: 'Marie Martin',
+      clientPhone: '06 12 34 56 78',
+      problemDescription: 'Pièces manquantes dans le colis. Manque le chargeur et les écouteurs.',
+      productGencode: '23456789012345',
+      productReference: 'REF-XYZ-456',
+      productDesignation: 'Smartphone iPhone 14',
+      status: 'en_cours',
+      priority: 'normale',
+      createdBy: 'admin',
+      createdAt: new Date('2025-08-09T14:15:00'),
+      updatedAt: new Date('2025-08-12T10:20:00'),
+      resolvedAt: null,
+      closedAt: null,
+    };
+
+    const testTicket3: SavTicket = {
+      id: 3,
+      ticketNumber: 'SAV-2025-0003',
+      groupId: 1,
+      supplierId: 1,
+      clientName: 'Pierre Durand',
+      clientPhone: '03 83 98 76 54',
+      problemDescription: 'En attente de la pièce de rechange. Écran de remplacement commandé chez le fournisseur.',
+      productGencode: '34567890123456',
+      productReference: 'REF-DEF-789',
+      productDesignation: 'Ordinateur portable Dell Inspiron',
+      status: 'attente_pieces',
+      priority: 'normale',
+      createdBy: 'admin',
+      createdAt: new Date('2025-08-08T09:45:00'),
+      updatedAt: new Date('2025-08-13T16:30:00'),
+      resolvedAt: null,
+      closedAt: null,
+    };
+
+    const testTicket4: SavTicket = {
+      id: 4,
+      ticketNumber: 'SAV-2025-0004',
+      groupId: 1,
+      supplierId: 3,
+      clientName: 'Sophie Moreau',
+      clientPhone: '06 98 76 54 32',
+      problemDescription: 'Problème résolu. Produit réparé et testé. Prêt pour le retour client.',
+      productGencode: '45678901234567',
+      productReference: 'REF-GHI-012',
+      productDesignation: 'Casque Sony WH-1000XM4',
+      status: 'resolu',
+      priority: 'faible',
+      createdBy: 'admin',
+      createdAt: new Date('2025-08-05T11:20:00'),
+      updatedAt: new Date('2025-08-14T08:00:00'),
+      resolvedAt: new Date('2025-08-14T08:00:00'),
+      closedAt: null,
+    };
+
+    const testTicket5: SavTicket = {
+      id: 5,
+      ticketNumber: 'SAV-2025-0005',
+      groupId: 1,
+      supplierId: 2,
+      clientName: 'Luc Bernard',
+      clientPhone: '03 83 45 67 89',
+      problemDescription: 'URGENT - Produit en panne critique pour activité professionnelle. Besoin intervention rapide.',
+      productGencode: '56789012345678',
+      productReference: 'REF-JKL-345',
+      productDesignation: 'Imprimante HP LaserJet Pro',
+      status: 'en_cours',
+      priority: 'critique',
+      createdBy: 'admin',
+      createdAt: new Date('2025-08-14T07:30:00'),
+      updatedAt: new Date('2025-08-14T07:30:00'),
+      resolvedAt: null,
+      closedAt: null,
+    };
+
+    // Store the tickets
+    this.savTickets.set(1, testTicket1);
+    this.savTickets.set(2, testTicket2);
+    this.savTickets.set(3, testTicket3);
+    this.savTickets.set(4, testTicket4);
+    this.savTickets.set(5, testTicket5);
+
+    // Add history entries for each ticket
+    const histories = [
+      // Ticket 1 history
+      { ticketId: 1, action: 'ticket_created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-10T08:30:00') },
+      
+      // Ticket 2 history
+      { ticketId: 2, action: 'ticket_created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-09T14:15:00') },
+      { ticketId: 2, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-12T10:20:00') },
+      { ticketId: 2, action: 'comment', description: 'Contact avec le client pour confirmer les pièces manquantes. Commande des accessoires en cours.', createdBy: 'admin', createdAt: new Date('2025-08-12T10:25:00') },
+      
+      // Ticket 3 history
+      { ticketId: 3, action: 'ticket_created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-08T09:45:00') },
+      { ticketId: 3, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-10T14:00:00') },
+      { ticketId: 3, action: 'status_change', description: 'Statut changé de "en_cours" vers "attente_pieces"', createdBy: 'admin', createdAt: new Date('2025-08-13T16:30:00') },
+      { ticketId: 3, action: 'comment', description: 'Écran de remplacement commandé. Délai annoncé de 5-7 jours ouvrables.', createdBy: 'admin', createdAt: new Date('2025-08-13T16:35:00') },
+      
+      // Ticket 4 history  
+      { ticketId: 4, action: 'ticket_created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-05T11:20:00') },
+      { ticketId: 4, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-06T09:00:00') },
+      { ticketId: 4, action: 'comment', description: 'Diagnostic effectué : problème de connectivité Bluetooth. Réparation en cours.', createdBy: 'admin', createdAt: new Date('2025-08-07T15:30:00') },
+      { ticketId: 4, action: 'status_change', description: 'Statut changé de "en_cours" vers "resolu"', createdBy: 'admin', createdAt: new Date('2025-08-14T08:00:00') },
+      { ticketId: 4, action: 'comment', description: 'Casque réparé avec succès. Module Bluetooth remplacé. Tests complets effectués.', createdBy: 'admin', createdAt: new Date('2025-08-14T08:05:00') },
+      
+      // Ticket 5 history
+      { ticketId: 5, action: 'ticket_created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-14T07:30:00') },
+      { ticketId: 5, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-14T07:30:00') },
+      { ticketId: 5, action: 'comment', description: 'Priorité critique - Intervention d\'urgence programmée pour ce matin.', createdBy: 'admin', createdAt: new Date('2025-08-14T07:35:00') },
+    ];
+
+    // Initialize history for each ticket
+    histories.forEach((historyEntry) => {
+      const id = this.idCounters.savTicketHistory++;
+      const history: SavTicketHistory = {
+        id,
+        ...historyEntry,
+      };
+      
+      const existingHistories = this.savTicketHistories.get(historyEntry.ticketId) || [];
+      existingHistories.push(history);
+      this.savTicketHistories.set(historyEntry.ticketId, existingHistories);
+    });
+
+    this.idCounters.savTicket = 6;
+    console.log('✅ SAV test data initialized with 5 tickets and comprehensive history');
   }
 }
 

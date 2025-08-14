@@ -21,6 +21,7 @@ import BackupManager from "@/pages/BackupManager";
 import Utilities from "@/pages/Utilities";
 import Tasks from "@/pages/Tasks";
 import TasksSimplified from "@/pages/TasksSimplified";
+import SavTickets from "@/pages/SavTickets";
 import Layout from "@/components/Layout";
 
 function RouterProduction() {
@@ -94,6 +95,7 @@ function RouterProduction() {
         <Route path="/dlc" component={DlcPage} />
         <Route path="/utilities" component={Utilities} />
         <Route path="/tasks" component={Tasks} />
+        <Route path="/sav" component={SavTickets} />
         
         {/* Routes de compatibilité - redirection vers utilities */}
         <Route path="/backup" component={Utilities} />
