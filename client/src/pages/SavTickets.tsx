@@ -162,13 +162,17 @@ export default function SavTickets() {
   // Add comment mutation
   const addCommentMutation = useMutation({
     mutationFn: async (data: { ticketId: number; comment: string }) => {
-      const response = await apiRequest(`/api/sav-tickets/${data.ticketId}/comments`, "POST", {
-        comment: data.comment
+      const response = await apiRequest(`/api/sav/tickets/${data.ticketId}/history`, "POST", {
+        description: data.comment  // ✅ Utilise 'description' selon le schéma API
       });
       return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/sav/tickets'] });
+      // ✅ Invalider aussi les détails du ticket pour rafraîchir l'historique
+      if (selectedTicket) {
+        queryClient.invalidateQueries({ queryKey: [`/api/sav/tickets/${selectedTicket.id}`] });
+      }
       setShowCommentModal(false);
       setNewComment("");
       toast({
@@ -188,7 +192,7 @@ export default function SavTickets() {
   // Delete ticket mutation
   const deleteTicketMutation = useMutation({
     mutationFn: async (ticketId: number) => {
-      const response = await apiRequest(`/api/sav-tickets/${ticketId}`, "DELETE");
+      const response = await apiRequest(`/api/sav/tickets/${ticketId}`, "DELETE");
       return response;
     },
     onSuccess: () => {
@@ -270,6 +274,13 @@ export default function SavTickets() {
     setSelectedTicket(ticket);
     setShowDetailModal(true);
   };
+
+  // Query pour récupérer les détails complets du ticket avec historique
+  const { data: ticketDetails } = useQuery({
+    queryKey: [`/api/sav/tickets/${selectedTicket?.id}`],
+    enabled: !!selectedTicket && showDetailModal,
+    staleTime: 0, // Toujours récupérer les derniers commentaires
+  });
 
   // Handle editing ticket
   const handleEditTicket = (ticket: SavTicketWithRelations) => {
@@ -897,6 +908,31 @@ export default function SavTickets() {
                   </div>
                 </div>
               </div>
+
+              {/* Historique et commentaires */}
+              {ticketDetails?.history && ticketDetails.history.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Historique et commentaires</h3>
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {ticketDetails.history.map((entry: any, index: number) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-3 text-sm">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-medium text-gray-900">
+                            {entry.action === 'comment' ? 'Commentaire' : entry.action}
+                          </span>
+                          <span className="text-gray-500 text-xs">
+                            {safeFormat(entry.createdAt, 'dd/MM/yyyy HH:mm')}
+                          </span>
+                        </div>
+                        <p className="text-gray-700">{entry.description}</p>
+                        {entry.creator && (
+                          <p className="text-gray-500 text-xs mt-1">Par: {entry.creator.username}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>
