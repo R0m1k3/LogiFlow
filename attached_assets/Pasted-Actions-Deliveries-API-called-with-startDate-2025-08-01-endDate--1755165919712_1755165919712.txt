@@ -1,0 +1,204 @@
+Actions
+ 
+ 
+ 
+      
+Deliveries API called with: {
+
+  startDate: '2025-08-01',
+
+  endDate: '2025-08-31',
+
+  storeId: '2',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering deliveries with groupIds: [ 2 ]
+
+Fetching deliveries by date range: 2025-08-01 to 2025-08-31
+
+Orders returned: 8 items
+
+GET /api/orders 304 in 170ms
+
+📊 Statistiques calculées: {
+
+  ordersCount: 8,
+
+  deliveriesCount: 21,
+
+  pendingOrdersCount: 4,
+
+  averageDeliveryTime: 0.17647058823529413,
+
+  totalPalettes: 57,
+
+  totalPackages: 17
+
+}
+
+GET /api/stats/monthly 304 in 183ms
+
+GET /api/publicities 200 in 171ms
+
+Deliveries returned: 21 items
+
+GET /api/deliveries 304 in 186ms
+
+Orders returned: 10 items
+
+GET /api/orders 304 in 201ms
+
+GET /api/user 304 in 4ms
+
+GET /api/groups 304 in 10ms
+
+GET /api/publicities 200 in 15ms
+
+HEAD /api/health 200 in 1ms
+
+HEAD /api/health 200 in 1ms
+
+GET /api/user 304 in 42ms
+
+GET /api/groups 304 in 49ms
+
+Customer Orders API called with: { groupIds: undefined, userRole: 'admin' }
+
+GET /api/suppliers 304 in 52ms
+
+Customer Orders returned: 34 items
+
+GET /api/customer-orders 200 in 56ms
+
+Customer Orders API called with: { groupIds: [ 2 ], userRole: 'admin' }
+
+Customer Orders returned: 25 items
+
+GET /api/customer-orders 200 in 12ms
+
+HEAD /api/health 200 in 0ms
+
+HEAD /api/health 200 in 1ms
+
+GET /api/user 304 in 25ms
+
+GET /api/groups 304 in 26ms
+
+DLC Products API called with: { groupIds: [ 2 ], filters: {}, userRole: 'admin' }
+
+GET /api/suppliers 200 in 61ms
+
+GET /api/dlc-products/stats 304 in 66ms
+
+DLC Products returned: 154 items
+
+GET /api/dlc-products 200 in 81ms
+
+HEAD /api/health 200 in 1ms
+
+HEAD /api/health 200 in 1ms
+
+GET /api/user 304 in 20ms
+
+Tasks API called with: { groupIds: [ 2 ], userRole: 'admin' }
+
+Tasks returned: 9 items
+
+GET /api/tasks 304 in 11ms
+
+GET /api/users 200 in 137ms
+
+GET /api/user 304 in 3ms
+
+GET /api/groups 304 in 8ms
+
+GET /api/user 304 in 6ms
+
+GET /api/sav/stats 304 in 25ms
+
+GET /api/sav/tickets 304 in 30ms
+
+HEAD /api/health 200 in 1ms
+
+Error creating SAV ticket: ZodError: [
+
+  {
+
+    "code": "invalid_type",
+
+    "expected": "string",
+
+    "received": "undefined",
+
+    "path": [
+
+      "ticketNumber"
+
+    ],
+
+    "message": "Required"
+
+  }
+
+]
+
+    at get error [as error] (file:///app/node_modules/zod/v3/types.js:39:31)
+
+    at ZodObject.parse (file:///app/node_modules/zod/v3/types.js:114:22)
+
+    at file:///app/dist/index.js:6137:48
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+
+  issues: [
+
+    {
+
+      code: 'invalid_type',
+
+      expected: 'string',
+
+      received: 'undefined',
+
+      path: [Array],
+
+      message: 'Required'
+
+    }
+
+  ],
+
+  addIssue: [Function (anonymous)],
+
+  addIssues: [Function (anonymous)],
+
+  errors: [
+
+    {
+
+      code: 'invalid_type',
+
+      expected: 'string',
+
+      received: 'undefined',
+
+      path: [Array],
+
+      message: 'Required'
+
+    }
+
+  ]
+
+}
+
+POST /api/sav/tickets 400 in 36ms
+
+HEAD /api/health 200 in 0ms
+
+HEAD /api/health 200 in 1ms
