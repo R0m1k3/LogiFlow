@@ -1629,7 +1629,7 @@ export class DatabaseStorage implements IStorage {
     // Add initial history entry
     await this.addSavTicketHistory({
       ticketId: ticket.id,
-      action: 'ticket_created',
+      action: 'created',
       description: `Ticket créé avec le statut "${ticket.status}"`,
       createdBy: ticket.createdBy,
     });
@@ -2822,7 +2822,7 @@ export class MemStorage implements IStorage {
     // Add initial history entry
     await this.addSavTicketHistory({
       ticketId: id,
-      action: 'ticket_created',
+      action: 'created',
       description: `Ticket créé avec le statut "${ticket.status}"`,
       createdBy: ticket.createdBy,
     });
@@ -3034,28 +3034,28 @@ export class MemStorage implements IStorage {
     // Add history entries for each ticket
     const histories = [
       // Ticket 1 history
-      { ticketId: 1, action: 'ticket_created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-10T08:30:00') },
+      { ticketId: 1, action: 'created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-10T08:30:00') },
       
       // Ticket 2 history
-      { ticketId: 2, action: 'ticket_created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-09T14:15:00') },
+      { ticketId: 2, action: 'created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-09T14:15:00') },
       { ticketId: 2, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-12T10:20:00') },
       { ticketId: 2, action: 'comment', description: 'Contact avec le client pour confirmer les pièces manquantes. Commande des accessoires en cours.', createdBy: 'admin', createdAt: new Date('2025-08-12T10:25:00') },
       
       // Ticket 3 history
-      { ticketId: 3, action: 'ticket_created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-08T09:45:00') },
+      { ticketId: 3, action: 'created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-08T09:45:00') },
       { ticketId: 3, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-10T14:00:00') },
       { ticketId: 3, action: 'status_change', description: 'Statut changé de "en_cours" vers "attente_pieces"', createdBy: 'admin', createdAt: new Date('2025-08-13T16:30:00') },
       { ticketId: 3, action: 'comment', description: 'Écran de remplacement commandé. Délai annoncé de 5-7 jours ouvrables.', createdBy: 'admin', createdAt: new Date('2025-08-13T16:35:00') },
       
       // Ticket 4 history  
-      { ticketId: 4, action: 'ticket_created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-05T11:20:00') },
+      { ticketId: 4, action: 'created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-05T11:20:00') },
       { ticketId: 4, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-06T09:00:00') },
       { ticketId: 4, action: 'comment', description: 'Diagnostic effectué : problème de connectivité Bluetooth. Réparation en cours.', createdBy: 'admin', createdAt: new Date('2025-08-07T15:30:00') },
       { ticketId: 4, action: 'status_change', description: 'Statut changé de "en_cours" vers "resolu"', createdBy: 'admin', createdAt: new Date('2025-08-14T08:00:00') },
       { ticketId: 4, action: 'comment', description: 'Casque réparé avec succès. Module Bluetooth remplacé. Tests complets effectués.', createdBy: 'admin', createdAt: new Date('2025-08-14T08:05:00') },
       
       // Ticket 5 history
-      { ticketId: 5, action: 'ticket_created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-14T07:30:00') },
+      { ticketId: 5, action: 'created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-14T07:30:00') },
       { ticketId: 5, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-14T07:30:00') },
       { ticketId: 5, action: 'comment', description: 'Priorité critique - Intervention d\'urgence programmée pour ce matin.', createdBy: 'admin', createdAt: new Date('2025-08-14T07:35:00') },
     ];
