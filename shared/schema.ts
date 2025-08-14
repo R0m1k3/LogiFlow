@@ -618,7 +618,7 @@ export const savTickets = pgTable("sav_tickets", {
   problemDescription: text("problem_description").notNull(),
   resolutionDescription: text("resolution_description"),
   status: varchar("status", { length: 50 }).notNull().default("nouveau"),
-  priority: varchar("priority", { length: 50 }).notNull().default("normal"), // normal, urgent, critique
+  priority: varchar("priority", { length: 50 }).notNull().default("normale"), // normale, haute, critique
   clientName: varchar("client_name", { length: 255 }),
   clientPhone: varchar("client_phone", { length: 255 }),
   createdBy: varchar("created_by", { length: 255 }).notNull(),
@@ -673,7 +673,7 @@ export const insertSavTicketSchema = createInsertSchema(savTickets).omit({
   resolvedAt: true,
   closedAt: true,
 }).extend({
-  priority: z.enum(["normal", "urgent", "critique"]).default("normal"),
+  priority: z.enum(["faible", "normale", "haute", "critique"]).default("normale"),
   status: z.enum(["nouveau", "en_cours", "attente_pieces", "attente_echange", "resolu", "ferme"]).default("nouveau"),
   problemType: z.enum(["defectueux", "pieces_manquantes", "non_conforme", "autre"]).default("defectueux"),
 });
