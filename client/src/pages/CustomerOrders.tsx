@@ -77,8 +77,12 @@ export default function CustomerOrders() {
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/customer-orders', 'POST', data),
-    onSuccess: () => {
+    mutationFn: (data: any) => {
+      console.log("🔥 CREATE MUTATION STARTED with data:", data);
+      return apiRequest('/api/customer-orders', 'POST', data);
+    },
+    onSuccess: (result) => {
+      console.log("✅ CREATE MUTATION SUCCESS:", result);
       // Force refresh of the query with store context
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
       queryClient.refetchQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
@@ -89,6 +93,7 @@ export default function CustomerOrders() {
       });
     },
     onError: (error: any) => {
+      console.error("❌ CREATE MUTATION ERROR:", error);
       toast({
         title: "Erreur",
         description: error.message || "Erreur lors de la création de la commande",
@@ -204,7 +209,15 @@ export default function CustomerOrders() {
   };
 
   const handleCreateOrder = (data: any) => {
+    console.log("🎯 HANDLE CREATE ORDER CALLED with data:", data);
+    console.log("🎯 createMutation state:", { 
+      isIdle: createMutation.isIdle,
+      isPending: createMutation.isPending,
+      isError: createMutation.isError,
+      isSuccess: createMutation.isSuccess
+    });
     createMutation.mutate(data);
+    console.log("🎯 createMutation.mutate CALLED");
   };
 
   const handleEditOrder = (data: any) => {
