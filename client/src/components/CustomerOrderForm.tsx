@@ -66,24 +66,23 @@ export function CustomerOrderForm({
     queryKey: ['/api/suppliers'],
   });
 
-  // Calculate correct groupId with PRIORITY for user's assigned group
-  const getDefaultGroupId = () => {
-    if (order?.groupId) return order.groupId;
-    
-    // PRIORITY 1: User's assigned group (works for employees assigned to specific stores)
+  // Get user's assigned group automatically - no selection needed
+  const getUserAssignedGroupId = () => {
+    // Priority 1: User's first assigned group (employees have exactly one group)
     if (user?.userGroups?.[0]?.groupId) {
-      console.log("🎯 CustomerOrderForm defaultValue: Using user's assigned group:", user.userGroups[0].groupId);
       return user.userGroups[0].groupId;
     }
     
-    // PRIORITY 2: Admin selected store (only if no assigned group)
+    // Priority 2: Admin can use selected store
     if (user?.role === 'admin' && selectedStoreId) {
-      console.log("🎯 CustomerOrderForm defaultValue: Using admin selected store:", selectedStoreId);
       return selectedStoreId;
     }
     
-    // FALLBACK: Return null to force proper assignment later
-    console.log("🚨 CustomerOrderForm defaultValue: No group found, will be set dynamically");
+    // Priority 3: Admin gets first available group if no store selected
+    if (user?.role === 'admin' && groups.length > 0) {
+      return groups[0].id;
+    }
+    
     return null;
   };
 
@@ -102,7 +101,7 @@ export function CustomerOrderForm({
       deposit: order?.deposit || 0,
       isPromotionalPrice: order?.isPromotionalPrice || false,
       customerNotified: order?.customerNotified || false,
-      groupId: getDefaultGroupId(), // ✅ PRIORITÉ CORRECTE APPLIQUÉE
+      groupId: order?.groupId || getUserAssignedGroupId(),
     },
   });
 
@@ -117,46 +116,23 @@ export function CustomerOrderForm({
       return;
     }
     
-    // Ensure groupId is set - force assignment for ALL users
-    let groupId = data.groupId;
+    // Always use user's assigned group - no override needed
+    const groupId = getUserAssignedGroupId();
     
-    console.log("🔍 CUSTOMER ORDER FRONTEND DEBUG - Complete user data:", {
-      userRole: user?.role,
-      selectedStoreId,
-      userHasGroups: !!user?.userGroups,
-      userGroupsLength: user?.userGroups?.length,
-      userGroups: user?.userGroups?.map(ug => ({
-        groupId: ug.groupId || ug.group?.id, 
-        groupName: ug.group?.name,
-        fullGroupData: ug
-      })),
-      initialGroupId: groupId,
-      availableGroups: groups.map(g => ({id: g.id, name: g.name})),
-      fullUserObject: user
-    });
-    
-    // Ensure correct groupId assignment for non-admin users
-    if (!groupId || (user?.role !== 'admin' && !user?.userGroups?.some(ug => ug.groupId === groupId))) {
-      if (user?.userGroups?.[0]?.groupId) {
-        groupId = user.userGroups[0].groupId;
-        console.log("🔧 Customer Order Override: Using user's assigned group:", groupId);
-      } else if (user?.role === 'admin' && selectedStoreId) {
-        groupId = selectedStoreId;
-        console.log("🔧 Customer Order Override: Using admin selected store:", groupId);
-      }
+    if (!groupId) {
+      console.error("❌ No group available for user:", user?.role, user?.userGroups);
+      return;
     }
     
-    console.log("✅ Customer Order: Final groupId after override check:", groupId);
+    console.log("✅ Customer Order: Using assigned group:", groupId, "for user:", user?.role);
     
-    console.log("✅ CUSTOMER ORDER - Final groupId selected:", groupId, typeof groupId);
-    
-    // Prepare data with proper types for frontend schema
+    // Prepare final data with user's assigned group
     const submitData = {
       customerName: data.customerName.trim(),
       contactNumber: data.contactNumber || '', 
       productName: data.productName || '',
       quantity: data.quantity,
-      groupId: typeof groupId === 'number' ? groupId : parseInt(groupId.toString()),
+      groupId: groupId, // Always use the assigned group
       isPickup: false,
       notes: data.notes,
       deposit: data.deposit || 0,
@@ -165,30 +141,23 @@ export function CustomerOrderForm({
       gencode: data.gencode || '',
       supplierId: data.supplierId || 1,
     };
-    console.log("🔍 CUSTOMER ORDER - Frontend submit data final:", submitData);
-    console.log("🔍 CUSTOMER ORDER - Submit data groupId:", submitData.groupId, typeof submitData.groupId);
+    
+    console.log("✅ Customer Order Submit:", {
+      userRole: user?.role,
+      assignedGroupId: groupId,
+      submitData: submitData
+    });
+    
     onSubmit(submitData);
   };
 
-  // Get available groups for the user
-  const availableGroups = user?.role === 'admin' 
-    ? groups 
-    : user?.userGroups?.map(ug => ug.group) || [];
-
-  // Auto-select group for users respecting admin store selection
+  // Auto-ensure groupId is always set to user's assigned group
   const currentGroupId = form.getValues('groupId');
-  if (!currentGroupId) {
-    if (user?.role === 'admin' && selectedStoreId) {
-      // Admin has selected a specific store - use it
-      form.setValue('groupId', selectedStoreId);
-      console.log("🏪 Auto-selecting admin store:", selectedStoreId);
-    } else if (user?.userGroups?.[0]?.groupId) {
-      // User has assigned groups - use first one
-      form.setValue('groupId', user.userGroups[0].groupId);
-    } else if (user?.role === 'admin' && groups.length > 0) {
-      // Admin with no specific groups - use first available group
-      form.setValue('groupId', groups[0].id);
-    }
+  const userGroupId = getUserAssignedGroupId();
+  
+  if (!currentGroupId && userGroupId) {
+    form.setValue('groupId', userGroupId);
+    console.log("🏪 Auto-setting user's assigned group:", userGroupId);
   }
 
   return (
@@ -265,38 +234,7 @@ export function CustomerOrderForm({
               )}
             />
 
-            {/* Sélection du magasin/groupe avec restrictions de permissions */}
-            <FormField
-              control={form.control}
-              name="groupId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Magasin</FormLabel>
-                  <Select 
-                    onValueChange={(value) => {
-                      const numValue = parseInt(value);
-                      field.onChange(numValue);
-                      console.log("🏪 Group selected:", numValue);
-                    }} 
-                    value={field.value?.toString()}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un magasin" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {availableGroups.map((group) => (
-                        <SelectItem key={group.id} value={group.id.toString()}>
-                          {group.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Magasin automatiquement assigné selon l'utilisateur */}
           
             <h3 className="text-lg font-medium">Informations produit</h3>
             
