@@ -40,11 +40,16 @@ pool.on('error', (err) => {
 // Run migrations automatically when database is configured
 (async () => {
   try {
-    console.log('🔄 Running automatic database migrations...');
+    console.log('🔄 DB: Running automatic database migrations...');
     await runProductionMigrations();
-    console.log('✅ Database migrations completed');
+    console.log('✅ DB: Database migrations completed successfully');
   } catch (error) {
-    console.error('❌ Database migrations failed:', error);
+    console.error('❌ DB: Database migrations failed with error:', error);
+    console.error('❌ DB: Migration failure details:', {
+      name: error?.name,
+      message: error?.message,
+      code: error?.code
+    });
     // Don't fail the application startup for migration errors
   }
 })();

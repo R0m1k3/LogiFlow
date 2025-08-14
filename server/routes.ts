@@ -2683,6 +2683,35 @@ RÉSUMÉ DU SCAN
     }
   });
 
+  // Emergency migration route for SAV priority column
+  app.post('/api/admin/emergency-migration', async (req, res) => {
+    try {
+      console.log('🚨 EMERGENCY: Forcing SAV migration execution...');
+      
+      // Import migration function
+      const { runProductionMigrations } = await import('./migrations.production.js');
+      
+      // Force run the migration
+      await runProductionMigrations();
+      
+      console.log('✅ EMERGENCY: Migration executed successfully');
+      res.json({ 
+        success: true, 
+        message: 'Emergency migration executed successfully',
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('❌ EMERGENCY: Migration failed:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Emergency migration failed', 
+        details: (error as Error).message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Create server instance
   const httpServer = createServer(app);
 
