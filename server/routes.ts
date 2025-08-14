@@ -2504,6 +2504,10 @@ RÉSUMÉ DU SCAN
         return res.status(400).json({ message: "No groups available for ticket creation" });
       }
 
+      // Generate unique ticket number
+      const now = new Date();
+      const ticketNumber = `SAV-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${Date.now().toString().slice(-6)}`;
+
       // Parse and validate request body
       const ticketData = insertSavTicketSchema.parse({
         ...req.body,
@@ -2511,12 +2515,18 @@ RÉSUMÉ DU SCAN
         createdBy: user.id,
       });
 
+      // Add the generated ticket number
+      const ticketDataWithNumber = {
+        ...ticketData,
+        ticketNumber,
+      };
+
       // Validate that the specified group is accessible to the user
       if (!availableGroupIds.includes(ticketData.groupId)) {
         return res.status(403).json({ message: "Access denied to the specified group" });
       }
 
-      const ticket = await storage.createSavTicket(ticketData);
+      const ticket = await storage.createSavTicket(ticketDataWithNumber);
       res.status(201).json(ticket);
     } catch (error) {
       console.error("Error creating SAV ticket:", error);

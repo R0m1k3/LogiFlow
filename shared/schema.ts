@@ -668,6 +668,7 @@ export const savTicketHistoryRelations = relations(savTicketHistory, ({ one }) =
 // SAV Zod Schemas
 export const insertSavTicketSchema = createInsertSchema(savTickets).omit({
   id: true,
+  ticketNumber: true, // Auto-generated server-side
   createdAt: true,
   updatedAt: true,
   resolvedAt: true,
