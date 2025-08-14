@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -26,7 +29,7 @@ import {
   Ban
 } from "lucide-react";
 import { safeFormat } from "@/lib/dateUtils";
-import type { SavTicketWithRelations, Supplier } from "@shared/schema";
+import type { SavTicketWithRelations, Supplier, Group, InsertSavTicket } from "@shared/schema";
 
 const statusConfig = {
   nouveau: { label: "Nouveau", color: "bg-blue-100 text-blue-800", icon: AlertTriangle },
@@ -53,6 +56,19 @@ export default function SavTickets() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [supplierFilter, setSupplierFilter] = useState("all");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [formData, setFormData] = useState({
+    supplierId: "",
+    groupId: "",
+    productGencode: "",
+    productReference: "",
+    productDesignation: "",
+    problemType: "defectueux",
+    problemDescription: "",
+    priority: "normale",
+    clientName: "",
+    clientPhone: ""
+  });
 
   // Build query parameters
   const queryParams = new URLSearchParams();
@@ -72,6 +88,11 @@ export default function SavTickets() {
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
 
+  const { data: groupsData = [] } = useQuery<Group[]>({
+    queryKey: ['/api/groups'],
+    staleTime: 1000 * 60 * 10, // 10 minutes
+  });
+
   const { data: statsData } = useQuery<{
     totalTickets: number;
     newTickets: number;
@@ -83,10 +104,77 @@ export default function SavTickets() {
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 
+  // Create ticket mutation
+  const createTicketMutation = useMutation({
+    mutationFn: async (data: InsertSavTicket) => {
+      const response = await apiRequest('/api/sav/tickets', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sav/tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sav/stats'] });
+      setShowCreateModal(false);
+      setFormData({
+        supplierId: "",
+        groupId: "",
+        productGencode: "",
+        productReference: "",
+        productDesignation: "",
+        problemType: "defectueux",
+        problemDescription: "",
+        priority: "normale",
+        clientName: "",
+        clientPhone: ""
+      });
+      toast({
+        title: "Ticket créé",
+        description: "Le ticket SAV a été créé avec succès.",
+      });
+    },
+    onError: (error: any) => {
+      console.error('Error creating ticket:', error);
+      toast({
+        title: "Erreur",
+        description: error?.message || "Impossible de créer le ticket.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Check permissions AFTER all hooks are called
   const canView = ['admin', 'directeur', 'manager', 'employee'].includes(user?.role || '');
   const canModify = ['admin', 'directeur', 'manager'].includes(user?.role || '');
   const canDelete = ['admin', 'directeur'].includes(user?.role || '');
+
+  // Handle form submission
+  const handleCreateTicket = () => {
+    if (!formData.supplierId || !formData.productGencode || !formData.productDesignation || !formData.problemDescription) {
+      toast({
+        title: "Erreur de validation",
+        description: "Veuillez remplir tous les champs obligatoires.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const ticketData: InsertSavTicket = {
+      supplierId: parseInt(formData.supplierId),
+      groupId: formData.groupId ? parseInt(formData.groupId) : undefined,
+      productGencode: formData.productGencode,
+      productReference: formData.productReference || undefined,
+      productDesignation: formData.productDesignation,
+      problemType: formData.problemType as "defectueux" | "pieces_manquantes" | "non_conforme" | "autre",
+      problemDescription: formData.problemDescription,
+      priority: formData.priority as "faible" | "normale" | "haute" | "critique",
+      clientName: formData.clientName || undefined,
+      clientPhone: formData.clientPhone || undefined,
+    };
+
+    createTicketMutation.mutate(ticketData);
+  };
 
   // Handle permission check without early return
   if (!canView) {
@@ -131,10 +219,169 @@ export default function SavTickets() {
           <p className="text-gray-600 mt-1">Gestion des tickets SAV et suivi des réparations</p>
         </div>
         {canModify && (
-          <Button className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Nouveau Ticket
-          </Button>
+          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+            <DialogTrigger asChild>
+              <Button className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-2" />
+                Nouveau Ticket
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Créer un nouveau ticket SAV</DialogTitle>
+                <DialogDescription>
+                  Remplissez les informations pour créer un nouveau ticket de service après-vente.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Informations produit */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Informations produit</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="productGencode">Code-barres produit *</Label>
+                    <Input
+                      id="productGencode"
+                      value={formData.productGencode}
+                      onChange={(e) => setFormData({...formData, productGencode: e.target.value})}
+                      placeholder="Code-barres du produit"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="productReference">Référence produit</Label>
+                    <Input
+                      id="productReference"
+                      value={formData.productReference}
+                      onChange={(e) => setFormData({...formData, productReference: e.target.value})}
+                      placeholder="Référence du produit"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="productDesignation">Désignation produit *</Label>
+                    <Input
+                      id="productDesignation"
+                      value={formData.productDesignation}
+                      onChange={(e) => setFormData({...formData, productDesignation: e.target.value})}
+                      placeholder="Nom/désignation du produit"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="supplierId">Fournisseur *</Label>
+                    <Select value={formData.supplierId} onValueChange={(value) => setFormData({...formData, supplierId: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un fournisseur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suppliersData.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                            {supplier.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="groupId">Magasin</Label>
+                    <Select value={formData.groupId} onValueChange={(value) => setFormData({...formData, groupId: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un magasin" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {groupsData.map((group) => (
+                          <SelectItem key={group.id} value={group.id.toString()}>
+                            {group.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Informations problème et client */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Problème et client</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="problemType">Type de problème</Label>
+                    <Select value={formData.problemType} onValueChange={(value) => setFormData({...formData, problemType: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="defectueux">Défectueux</SelectItem>
+                        <SelectItem value="pieces_manquantes">Pièces manquantes</SelectItem>
+                        <SelectItem value="non_conforme">Non conforme</SelectItem>
+                        <SelectItem value="autre">Autre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="priority">Priorité</Label>
+                    <Select value={formData.priority} onValueChange={(value) => setFormData({...formData, priority: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="faible">Faible</SelectItem>
+                        <SelectItem value="normale">Normale</SelectItem>
+                        <SelectItem value="haute">Haute</SelectItem>
+                        <SelectItem value="critique">Critique</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="problemDescription">Description du problème *</Label>
+                    <Textarea
+                      id="problemDescription"
+                      value={formData.problemDescription}
+                      onChange={(e) => setFormData({...formData, problemDescription: e.target.value})}
+                      placeholder="Décrivez le problème en détail..."
+                      rows={4}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="clientName">Nom du client</Label>
+                    <Input
+                      id="clientName"
+                      value={formData.clientName}
+                      onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                      placeholder="Nom du client"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="clientPhone">Téléphone client</Label>
+                    <Input
+                      id="clientPhone"
+                      value={formData.clientPhone}
+                      onChange={(e) => setFormData({...formData, clientPhone: e.target.value})}
+                      placeholder="Numéro de téléphone"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2 mt-6">
+                <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={handleCreateTicket}
+                  disabled={createTicketMutation.isPending}
+                >
+                  {createTicketMutation.isPending ? "Création..." : "Créer le ticket"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
 

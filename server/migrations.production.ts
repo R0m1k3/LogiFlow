@@ -62,9 +62,9 @@ export async function runProductionMigrations() {
   } catch (error) {
     console.error('❌ MIGRATION ERROR: Failed to run SAV production migrations:', error);
     console.error('❌ MIGRATION ERROR: Error details:', {
-      message: error?.message,
-      code: error?.code,
-      stack: error?.stack
+      message: (error as any)?.message,
+      code: (error as any)?.code,
+      stack: (error as any)?.stack
     });
     // Ne pas faire échouer le démarrage du serveur pour les erreurs de migration
   } finally {
