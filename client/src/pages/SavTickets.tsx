@@ -63,6 +63,8 @@ export default function SavTickets() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SavTicketWithRelations | null>(null);
   const [newComment, setNewComment] = useState("");
+  const [tempPriority, setTempPriority] = useState("");
+  const [tempStatus, setTempStatus] = useState("");
   const [formData, setFormData] = useState({
     supplierId: "",
     groupId: "",
@@ -808,16 +810,18 @@ export default function SavTickets() {
       {/* Detail Modal */}
       {selectedTicket && (
         <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle>Détails du ticket {selectedTicket.ticketNumber}</DialogTitle>
               <DialogDescription>
-                Informations complètes du ticket SAV
+                Informations complètes du ticket SAV et suivi
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-6">
-              {/* Product Info */}
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
+              {/* Colonne de gauche - Détails et Actions */}
+              <div className="space-y-6 overflow-y-auto max-h-[70vh] pr-2">
+                {/* Product Info */}
+                <div className="space-y-4">
                 <h3 className="text-lg font-medium">Informations produit</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -833,10 +837,9 @@ export default function SavTickets() {
                     <p>{selectedTicket.productDesignation}</p>
                   </div>
                 </div>
-              </div>
 
-              {/* Problem Info */}
-              <div className="space-y-4">
+                {/* Problem Info */}
+                <div className="space-y-4">
                 <h3 className="text-lg font-medium">Problème</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -854,11 +857,10 @@ export default function SavTickets() {
                     <p className="mt-1 p-2 bg-gray-50 rounded">{selectedTicket.problemDescription}</p>
                   </div>
                 </div>
-              </div>
 
-              {/* Client Info */}
-              {(selectedTicket.clientName || selectedTicket.clientPhone) && (
-                <div className="space-y-4">
+                {/* Client Info */}
+                {(selectedTicket.clientName || selectedTicket.clientPhone) && (
+                  <div className="space-y-4">
                   <h3 className="text-lg font-medium">Client</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
@@ -870,11 +872,10 @@ export default function SavTickets() {
                       <p>{selectedTicket.clientPhone || "Non renseigné"}</p>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Ticket Info */}
-              <div className="space-y-4">
+                {/* Ticket Info */}
+                <div className="space-y-4">
                 <h3 className="text-lg font-medium">Informations ticket</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -896,15 +897,67 @@ export default function SavTickets() {
                     <p>{safeFormat(selectedTicket.createdAt, 'dd/MM/yyyy HH:mm')}</p>
                   </div>
                 </div>
+
+                {/* Actions rapides */}
+                {canModify && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Actions rapides</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="quick-priority">Priorité</Label>
+                        <Select value={selectedTicket.priority} onValueChange={(value) => {
+                          // TODO: Implement priority update
+                          toast({
+                            title: "Fonction en développement",
+                            description: "La modification de priorité sera bientôt disponible.",
+                          });
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="faible">Faible</SelectItem>
+                            <SelectItem value="normale">Normale</SelectItem>
+                            <SelectItem value="haute">Haute</SelectItem>
+                            <SelectItem value="critique">Critique</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="quick-status">Statut</Label>
+                        <Select value={selectedTicket.status} onValueChange={(value) => {
+                          // TODO: Implement status update
+                          toast({
+                            title: "Fonction en développement",
+                            description: "La modification de statut sera bientôt disponible.",
+                          });
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nouveau">Nouveau</SelectItem>
+                            <SelectItem value="en_cours">En cours</SelectItem>
+                            <SelectItem value="attente_pieces">Attente pièces</SelectItem>
+                            <SelectItem value="attente_echange">Attente échange</SelectItem>
+                            <SelectItem value="resolu">Résolu</SelectItem>
+                            <SelectItem value="ferme">Fermé</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Historique et commentaires */}
-              <div className="space-y-4">
+              {/* Colonne de droite - Commentaires et Suivi */}
+              <div className="space-y-4 overflow-y-auto max-h-[70vh] pl-2 border-l">
                 <h3 className="text-lg font-medium">Historique et commentaires</h3>
                 
                 {/* Affichage de l'historique existant */}
-                {ticketDetails?.history && ticketDetails.history.length > 0 && (
-                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                {ticketDetails?.history && ticketDetails.history.length > 0 ? (
+                  <div className="space-y-3 flex-1 overflow-y-auto">
                     {ticketDetails.history.map((entry: any, index: number) => (
                       <div key={index} className="bg-gray-50 rounded-lg p-3 text-sm">
                         <div className="flex justify-between items-start mb-2">
@@ -921,6 +974,10 @@ export default function SavTickets() {
                         )}
                       </div>
                     ))}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 text-sm text-center py-8">
+                    Aucun commentaire pour le moment
                   </div>
                 )}
                 
