@@ -19,12 +19,14 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
-### 2025-08-14 - Correction permissions employés commandes clients + modals SAV
-✅ **Problème permissions employés résolu** :
+### 2025-08-14 - Correction finale permissions employés commandes clients
+✅ **Problème permissions employés entièrement résolu** :
 - **Problème** : Employés ne pouvaient pas créer de commandes clients (erreur "Access denied to this group")
-- **Cause** : Vérification permissions trop restrictive dans `/api/customer-orders`
-- **Solution** : Autorisation pour rôles 'manager', 'directeur', 'employee' dans leurs groupes assignés
-- **Logs ajoutés** : Debug complet des permissions pour diagnostic production
+- **Cause racine** : Formulaire utilisait groupe 1 par défaut au lieu du groupe assigné à l'employé
+- **Solution complète** : Formulaire utilise automatiquement le groupe assigné à l'utilisateur
+- **Simplification** : Suppression du sélecteur de magasin (inutile car utilisateurs ont un magasin assigné)
+- **Code nettoyé** : Logique simplifiée pour utiliser uniquement `user.userGroups[0].groupId`
+- **Production ready** : Code optimisé pour fonctionner sur serveur privé
 
 ✅ **Boutons SAV "Détail" et "Éditer" opérationnels** :
 - **Bouton Détail** : Modal complet avec toutes informations ticket
