@@ -59,7 +59,10 @@ export default function SavTickets() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SavTicketWithRelations | null>(null);
+  const [newComment, setNewComment] = useState("");
   const [formData, setFormData] = useState({
     supplierId: "",
     groupId: "",
@@ -156,6 +159,56 @@ export default function SavTickets() {
     },
   });
 
+  // Add comment mutation
+  const addCommentMutation = useMutation({
+    mutationFn: async (data: { ticketId: number; comment: string }) => {
+      const response = await apiRequest(`/api/sav-tickets/${data.ticketId}/comments`, "POST", {
+        comment: data.comment
+      });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sav/tickets'] });
+      setShowCommentModal(false);
+      setNewComment("");
+      toast({
+        title: "Commentaire ajouté",
+        description: "Le commentaire a été ajouté avec succès.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error?.message || "Impossible d'ajouter le commentaire.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete ticket mutation
+  const deleteTicketMutation = useMutation({
+    mutationFn: async (ticketId: number) => {
+      const response = await apiRequest(`/api/sav-tickets/${ticketId}`, "DELETE");
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sav/tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sav/stats'] });
+      setShowDeleteModal(false);
+      toast({
+        title: "Ticket supprimé",
+        description: "Le ticket a été supprimé avec succès.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error?.message || "Impossible de supprimer le ticket.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Check permissions AFTER all hooks are called
   const canView = ['admin', 'directeur', 'manager', 'employee'].includes(user?.role || '');
   const canModify = ['admin', 'directeur', 'manager'].includes(user?.role || '');
@@ -235,6 +288,19 @@ export default function SavTickets() {
       clientPhone: ticket.clientPhone || ""
     });
     setShowEditModal(true);
+  };
+
+  // Handle commenting on ticket
+  const handleCommentTicket = (ticket: SavTicketWithRelations) => {
+    setSelectedTicket(ticket);
+    setNewComment("");
+    setShowCommentModal(true);
+  };
+
+  // Handle deleting ticket
+  const handleDeleteTicket = (ticket: SavTicketWithRelations) => {
+    setSelectedTicket(ticket);
+    setShowDeleteModal(true);
   };
 
   // Handle permission check without early return
@@ -717,13 +783,13 @@ export default function SavTickets() {
                                 <Button variant="ghost" size="sm" onClick={() => handleEditTicket(ticket)}>
                                   <Edit className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm">
+                                <Button variant="ghost" size="sm" onClick={() => handleCommentTicket(ticket)}>
                                   <MessageCircle className="h-4 w-4" />
                                 </Button>
                               </>
                             )}
                             {canDelete && (
-                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-900">
+                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-900" onClick={() => handleDeleteTicket(ticket)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             )}
@@ -965,6 +1031,94 @@ export default function SavTickets() {
                   }}
                 >
                   Sauvegarder
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Comment Modal */}
+      {selectedTicket && (
+        <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Ajouter un commentaire</DialogTitle>
+              <DialogDescription>
+                Ajouter un commentaire au ticket {selectedTicket.ticketNumber}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="comment">Commentaire</Label>
+                <Textarea
+                  id="comment"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Entrez votre commentaire..."
+                  rows={4}
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setShowCommentModal(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={() => {
+                    if (!newComment.trim()) {
+                      toast({
+                        title: "Erreur",
+                        description: "Le commentaire ne peut pas être vide.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    addCommentMutation.mutate({ ticketId: selectedTicket.id, comment: newComment.trim() });
+                  }}
+                  disabled={addCommentMutation.isPending}
+                >
+                  {addCommentMutation.isPending ? "Ajout..." : "Ajouter"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {selectedTicket && (
+        <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Confirmer la suppression</DialogTitle>
+              <DialogDescription>
+                Êtes-vous sûr de vouloir supprimer le ticket {selectedTicket.ticketNumber} ? Cette action est irréversible.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex">
+                  <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5 mr-3" />
+                  <div>
+                    <h4 className="text-sm font-medium text-red-800">Attention</h4>
+                    <p className="mt-1 text-sm text-red-700">
+                      Toutes les données du ticket seront définitivement supprimées.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  variant="destructive"
+                  onClick={() => deleteTicketMutation.mutate(selectedTicket.id)}
+                  disabled={deleteTicketMutation.isPending}
+                >
+                  {deleteTicketMutation.isPending ? "Suppression..." : "Supprimer"}
                 </Button>
               </div>
             </div>
