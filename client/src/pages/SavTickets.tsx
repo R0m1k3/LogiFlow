@@ -255,13 +255,15 @@ export default function SavTickets() {
 
     const ticketData: InsertSavTicket = {
       supplierId: parseInt(formData.supplierId),
-      groupId: selectedGroupId || undefined,
+      groupId: selectedGroupId || 1, // Default group if none available
       productGencode: formData.productGencode,
       productReference: formData.productReference || undefined,
       productDesignation: formData.productDesignation,
       problemType: formData.problemType as "defectueux" | "pieces_manquantes" | "non_conforme" | "autre",
       problemDescription: formData.problemDescription,
       priority: formData.priority as "faible" | "normale" | "haute" | "critique",
+      status: "nouveau" as const,
+      createdBy: 1, // Will be set by the backend from session
       clientName: formData.clientName || undefined,
       clientPhone: formData.clientPhone || undefined,
     };
@@ -843,16 +845,16 @@ export default function SavTickets() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Problème</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Type:</span>
-                    <p>{selectedTicket.problemType}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Priorité:</span>
-                    <Badge className={priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.color}>
-                      {priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.label}
-                    </Badge>
-                  </div>
+                    <div>
+                      <span className="font-medium">Type:</span>
+                      <p>{selectedTicket.problemType}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">Priorité:</span>
+                      <Badge className={priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.color}>
+                        {priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.label}
+                      </Badge>
+                    </div>
                     <div className="col-span-2">
                       <span className="font-medium">Description:</span>
                       <p className="mt-1 p-2 bg-gray-50 rounded">{selectedTicket.problemDescription}</p>
@@ -881,23 +883,24 @@ export default function SavTickets() {
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Informations ticket</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Statut:</span>
-                    <Badge className={statusConfig[selectedTicket.status as keyof typeof statusConfig]?.color}>
-                      {statusConfig[selectedTicket.status as keyof typeof statusConfig]?.label}
-                    </Badge>
-                  </div>
-                  <div>
-                    <span className="font-medium">Fournisseur:</span>
-                    <p>{selectedTicket.supplier?.name}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Magasin:</span>
-                    <p>{selectedTicket.group?.name}</p>
-                  </div>
-                  <div>
-                    <span className="font-medium">Créé le:</span>
-                    <p>{safeFormat(selectedTicket.createdAt, 'dd/MM/yyyy HH:mm')}</p>
+                    <div>
+                      <span className="font-medium">Statut:</span>
+                      <Badge className={statusConfig[selectedTicket.status as keyof typeof statusConfig]?.color}>
+                        {statusConfig[selectedTicket.status as keyof typeof statusConfig]?.label}
+                      </Badge>
+                    </div>
+                    <div>
+                      <span className="font-medium">Fournisseur:</span>
+                      <p>{selectedTicket.supplier?.name}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">Magasin:</span>
+                      <p>{selectedTicket.group?.name}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium">Créé le:</span>
+                      <p>{safeFormat(selectedTicket.createdAt, 'dd/MM/yyyy HH:mm')}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -959,74 +962,9 @@ export default function SavTickets() {
                 <h3 className="text-lg font-medium">Historique et commentaires</h3>
                 
                 {/* Affichage de l'historique existant */}
-                {ticketDetails?.history && ticketDetails.history.length > 0 ? (
+                {(ticketDetails as any)?.history && (ticketDetails as any).history.length > 0 ? (
                   <div className="space-y-3 flex-1 overflow-y-auto">
-                    {ticketDetails.history.map((entry: any, index: number) => (
-                      <div key={index} className="bg-gray-50 rounded-lg p-3 text-sm">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="font-medium text-gray-900">
-                            {entry.action === 'comment' ? 'Commentaire' : entry.action}
-                          </span>
-                          <span className="text-gray-500 text-xs">
-                            {safeFormat(entry.createdAt, 'dd/MM/yyyy HH:mm')}
-                          </span>
-                        </div>
-                        <p className="text-gray-700">{entry.description}</p>
-                        {entry.creator && (
-                          <p className="text-gray-500 text-xs mt-1">Par: {entry.creator.username}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-gray-500 text-sm text-center py-8">
-                    Aucun commentaire pour le moment
-                  </div>
-                )}
-                
-                {/* Champ d'ajout de commentaire */}
-                {canModify && (
-                  <div className="border-t pt-4 space-y-3">
-                    <Label htmlFor="new-comment">Ajouter un commentaire</Label>
-                    <Textarea
-                      id="new-comment"
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Entrez votre commentaire..."
-                      rows={3}
-                      className="resize-none"
-                    />
-                    <div className="flex justify-end">
-                      <Button 
-                        size="sm"
-                        onClick={() => {
-                          if (!newComment.trim()) {
-                            toast({
-                              title: "Erreur",
-                              description: "Le commentaire ne peut pas être vide.",
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          addCommentMutation.mutate({ ticketId: selectedTicket.id, comment: newComment.trim() });
-                        }}
-                        disabled={addCommentMutation.isPending}
-                      >
-                        {addCommentMutation.isPending ? "Ajout..." : "Ajouter commentaire"}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Colonne de droite - Commentaires et Suivi */}
-              <div className="space-y-4 overflow-y-auto max-h-[70vh] pl-2 border-l">
-                <h3 className="text-lg font-medium">Historique et commentaires</h3>
-                
-                {/* Affichage de l'historique existant */}
-                {ticketDetails?.history && ticketDetails.history.length > 0 ? (
-                  <div className="space-y-3 flex-1 overflow-y-auto">
-                    {ticketDetails.history.map((entry: any, index: number) => (
+                    {(ticketDetails as any).history.map((entry: any, index: number) => (
                       <div key={index} className="bg-gray-50 rounded-lg p-3 text-sm">
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-medium text-gray-900">
