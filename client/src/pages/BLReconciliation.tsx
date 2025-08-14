@@ -685,7 +685,13 @@ export default function BLReconciliation() {
                                   : 'text-gray-900'
                               }`}>
                                 {delivery.blNumber || (
-                                  <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                  <span 
+                                    className="text-gray-400 italic text-xs hover:text-blue-500 cursor-pointer hover:underline transition-colors"
+                                    onClick={() => handleOpenModal(delivery)}
+                                    title="Cliquer pour modifier"
+                                  >
+                                    Non renseigné
+                                  </span>
                                 )}
                               </div>
                             </td>
@@ -698,7 +704,13 @@ export default function BLReconciliation() {
                               <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
                                 {delivery.blAmount ? 
                                   `${parseFloat(delivery.blAmount).toFixed(2)}€` :
-                                  <span className="text-gray-400 italic">Non renseigné</span>
+                                  <span 
+                                    className="text-gray-400 italic hover:text-blue-500 cursor-pointer hover:underline transition-colors"
+                                    onClick={() => handleOpenModal(delivery)}
+                                    title="Cliquer pour modifier"
+                                  >
+                                    Non renseigné
+                                  </span>
                                 }
                               </div>
                             </td>
@@ -735,7 +747,13 @@ export default function BLReconciliation() {
                                 
                                 <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
                                   {delivery.invoiceReference || (
-                                    <span className="text-gray-400 italic">Non renseigné</span>
+                                    <span 
+                                      className="text-gray-400 italic hover:text-blue-500 cursor-pointer hover:underline transition-colors"
+                                      onClick={() => handleOpenModal(delivery)}
+                                      title="Cliquer pour modifier"
+                                    >
+                                      Non renseigné
+                                    </span>
                                   )}
                                 </div>
                               </div>
@@ -744,7 +762,13 @@ export default function BLReconciliation() {
                               <div className={`text-sm ${delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
                                 {delivery.invoiceAmount ? 
                                   `${parseFloat(delivery.invoiceAmount).toFixed(2)}€` : 
-                                  <span className="text-gray-400 italic">Non renseigné</span>
+                                  <span 
+                                    className="text-gray-400 italic hover:text-blue-500 cursor-pointer hover:underline transition-colors"
+                                    onClick={() => handleOpenModal(delivery)}
+                                    title="Cliquer pour modifier"
+                                  >
+                                    Non renseigné
+                                  </span>
                                 }
                               </div>
                             </td>
@@ -949,7 +973,13 @@ export default function BLReconciliation() {
                             <td className="px-3 py-2 text-sm">
                               <div className="text-gray-900">
                                 {delivery.blNumber || (
-                                  <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                  <span 
+                                    className="text-gray-400 italic text-xs hover:text-blue-500 cursor-pointer hover:underline transition-colors"
+                                    onClick={() => handleOpenModal(delivery)}
+                                    title="Cliquer pour modifier"
+                                  >
+                                    Non renseigné
+                                  </span>
                                 )}
                               </div>
                             </td>
