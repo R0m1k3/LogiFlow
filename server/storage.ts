@@ -1368,6 +1368,7 @@ export class DatabaseStorage implements IStorage {
     const results = await query.orderBy(asc(dlcProducts.expiryDate));
     return results.map((row: any) => ({
       ...row.dlcProduct,
+      dlcDate: row.dlcProduct.expiryDate, // ✅ Mapping expiryDate vers dlcDate pour frontend
       supplier: row.supplier,
       group: row.group,
       creator: row.creator || { id: row.dlcProduct.createdBy, username: 'unknown' }
@@ -1389,6 +1390,7 @@ export class DatabaseStorage implements IStorage {
     if (!result) return undefined;
     return {
       ...result.dlcProduct,
+      dlcDate: result.dlcProduct.expiryDate, // ✅ Mapping expiryDate vers dlcDate pour frontend
       supplier: result.supplier,
       group: result.group,
       creator: result.creator || { id: result.dlcProduct.createdBy, username: 'unknown' }
