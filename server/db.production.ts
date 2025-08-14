@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
+import { runProductionMigrations } from './migrations.production.js';
 
 console.log('🐳 PRODUCTION: Configuring standard PostgreSQL database');
 
@@ -35,5 +36,17 @@ pool.on('connect', () => {
 pool.on('error', (err) => {
   console.error('❌ PostgreSQL connection error:', err);
 });
+
+// Run migrations automatically when database is configured
+(async () => {
+  try {
+    console.log('🔄 Running automatic database migrations...');
+    await runProductionMigrations();
+    console.log('✅ Database migrations completed');
+  } catch (error) {
+    console.error('❌ Database migrations failed:', error);
+    // Don't fail the application startup for migration errors
+  }
+})();
 
 console.log('✅ Production PostgreSQL database configured');

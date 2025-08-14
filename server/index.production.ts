@@ -6,6 +6,7 @@ import { dirname, join } from 'path';
 // Database will be configured in storage.js
 import { storage } from "./storage.js";
 import { setupLocalAuth, requireAuth } from "./localAuth.production.js";
+import { runProductionMigrations } from "./migrations.production.js";
 
 // Get directory paths
 const __filename = fileURLToPath(import.meta.url);
@@ -42,6 +43,10 @@ import { registerRoutes } from "./routes.js";
 
 async function registerProductionRoutes(app: Express): Promise<void> {
   console.log('🔧 Registering all production routes...');
+  
+  // Run automatic migrations before registering routes
+  console.log('🔄 Running automatic production migrations...');
+  await runProductionMigrations();
   
   // Register ALL API routes (same as development)
   await registerRoutes(app);
