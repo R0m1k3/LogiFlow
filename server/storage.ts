@@ -149,7 +149,7 @@ export interface IStorage {
   deleteCustomerOrder(id: number): Promise<void>;
 
   // DLC Product operations
-  getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; }): Promise<DlcProductWithRelations[]>;
+  getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]>;
   getDlcProduct(id: number): Promise<DlcProductWithRelations | undefined>;
   createDlcProduct(dlcProduct: InsertDlcProduct): Promise<DlcProductFrontend>;
   updateDlcProduct(id: number, dlcProduct: Partial<InsertDlcProduct>): Promise<DlcProductFrontend>;
@@ -1350,7 +1350,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(customerOrders).where(eq(customerOrders.id, id));
   }
 
-  async getDlcProducts(groupIds?: number[]): Promise<DlcProductWithRelations[]> {
+  async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]> {
     let query = db
       .select({
         dlcProduct: dlcProducts,
@@ -1361,8 +1361,31 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(suppliers, eq(dlcProducts.supplierId, suppliers.id))
       .leftJoin(groups, eq(dlcProducts.groupId, groups.id));
 
+    const conditions = [];
+
     if (groupIds && groupIds.length > 0) {
-      query = query.where(inArray(dlcProducts.groupId, groupIds));
+      conditions.push(inArray(dlcProducts.groupId, groupIds));
+    }
+
+    if (filters) {
+      if (filters.status) {
+        conditions.push(eq(dlcProducts.status, filters.status));
+      }
+      if (filters.supplierId) {
+        conditions.push(eq(dlcProducts.supplierId, filters.supplierId));
+      }
+      if (filters.search) {
+        conditions.push(
+          or(
+            sql`LOWER(${dlcProducts.productName}) LIKE LOWER(${'%' + filters.search + '%'})`,
+            sql`LOWER(${suppliers.name}) LIKE LOWER(${'%' + filters.search + '%'})`
+          )
+        );
+      }
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
     }
 
     const results = await query.orderBy(asc(dlcProducts.expiryDate));
@@ -2409,7 +2432,7 @@ export class MemStorage implements IStorage {
     this.customerOrders.delete(id);
   }
 
-  async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; }): Promise<DlcProductWithRelations[]> {
+  async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]> {
     let products = Array.from(this.dlcProducts.values());
     
     if (groupIds && groupIds.length > 0) {
@@ -2422,6 +2445,14 @@ export class MemStorage implements IStorage {
       }
       if (filters.supplierId) {
         products = products.filter(product => product.supplierId === filters.supplierId);
+      }
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase();
+        products = products.filter(product => {
+          const supplier = this.suppliers.get(product.supplierId);
+          return product.productName.toLowerCase().includes(searchTerm) ||
+                 (supplier && supplier.name.toLowerCase().includes(searchTerm));
+        });
       }
     }
     

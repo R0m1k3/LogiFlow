@@ -986,7 +986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const { storeId, status, supplierId } = req.query;
+      const { storeId, status, supplierId, search } = req.query;
       let groupIds: number[] | undefined;
       
       if (user.role === 'admin') {
@@ -1003,10 +1003,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: any = {};
       if (status && status !== 'all') filters.status = status as string;
       if (supplierId && supplierId !== 'all') filters.supplierId = parseInt(supplierId as string);
+      if (search) filters.search = search as string;
 
-      console.log('DLC Products API called with:', { groupIds, filters, userRole: user.role });
       const dlcProducts = await storage.getDlcProducts(groupIds, filters);
-      console.log('DLC Products returned:', dlcProducts.length, 'items');
       res.json(dlcProducts);
     } catch (error) {
       console.error("Error fetching DLC products:", error);
