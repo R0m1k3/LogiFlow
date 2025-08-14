@@ -59,7 +59,7 @@ export default function SavTickets() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showCommentModal, setShowCommentModal] = useState(false);
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SavTicketWithRelations | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -173,7 +173,6 @@ export default function SavTickets() {
       if (selectedTicket) {
         queryClient.invalidateQueries({ queryKey: [`/api/sav/tickets/${selectedTicket.id}`] });
       }
-      setShowCommentModal(false);
       setNewComment("");
       toast({
         title: "Commentaire ajouté",
@@ -301,12 +300,7 @@ export default function SavTickets() {
     setShowEditModal(true);
   };
 
-  // Handle commenting on ticket
-  const handleCommentTicket = (ticket: SavTicketWithRelations) => {
-    setSelectedTicket(ticket);
-    setNewComment("");
-    setShowCommentModal(true);
-  };
+
 
   // Handle deleting ticket
   const handleDeleteTicket = (ticket: SavTicketWithRelations) => {
@@ -790,14 +784,9 @@ export default function SavTickets() {
                               <Eye className="h-4 w-4" />
                             </Button>
                             {canModify && (
-                              <>
-                                <Button variant="ghost" size="sm" onClick={() => handleEditTicket(ticket)}>
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleCommentTicket(ticket)}>
-                                  <MessageCircle className="h-4 w-4" />
-                                </Button>
-                              </>
+                              <Button variant="ghost" size="sm" onClick={() => handleEditTicket(ticket)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
                             )}
                             {canDelete && (
                               <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-900" onClick={() => handleDeleteTicket(ticket)}>
@@ -910,10 +899,12 @@ export default function SavTickets() {
               </div>
 
               {/* Historique et commentaires */}
-              {ticketDetails?.history && ticketDetails.history.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Historique et commentaires</h3>
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Historique et commentaires</h3>
+                
+                {/* Affichage de l'historique existant */}
+                {ticketDetails?.history && ticketDetails.history.length > 0 && (
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
                     {ticketDetails.history.map((entry: any, index: number) => (
                       <div key={index} className="bg-gray-50 rounded-lg p-3 text-sm">
                         <div className="flex justify-between items-start mb-2">
@@ -931,8 +922,42 @@ export default function SavTickets() {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+                
+                {/* Champ d'ajout de commentaire */}
+                {canModify && (
+                  <div className="border-t pt-4 space-y-3">
+                    <Label htmlFor="new-comment">Ajouter un commentaire</Label>
+                    <Textarea
+                      id="new-comment"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Entrez votre commentaire..."
+                      rows={3}
+                      className="resize-none"
+                    />
+                    <div className="flex justify-end">
+                      <Button 
+                        size="sm"
+                        onClick={() => {
+                          if (!newComment.trim()) {
+                            toast({
+                              title: "Erreur",
+                              description: "Le commentaire ne peut pas être vide.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          addCommentMutation.mutate({ ticketId: selectedTicket.id, comment: newComment.trim() });
+                        }}
+                        disabled={addCommentMutation.isPending}
+                      >
+                        {addCommentMutation.isPending ? "Ajout..." : "Ajouter commentaire"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -1074,53 +1099,7 @@ export default function SavTickets() {
         </Dialog>
       )}
 
-      {/* Comment Modal */}
-      {selectedTicket && (
-        <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Ajouter un commentaire</DialogTitle>
-              <DialogDescription>
-                Ajouter un commentaire au ticket {selectedTicket.ticketNumber}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="comment">Commentaire</Label>
-                <Textarea
-                  id="comment"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Entrez votre commentaire..."
-                  rows={4}
-                />
-              </div>
-              
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setShowCommentModal(false)}>
-                  Annuler
-                </Button>
-                <Button 
-                  onClick={() => {
-                    if (!newComment.trim()) {
-                      toast({
-                        title: "Erreur",
-                        description: "Le commentaire ne peut pas être vide.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    addCommentMutation.mutate({ ticketId: selectedTicket.id, comment: newComment.trim() });
-                  }}
-                  disabled={addCommentMutation.isPending}
-                >
-                  {addCommentMutation.isPending ? "Ajout..." : "Ajouter"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+
 
       {/* Delete Confirmation Modal */}
       {selectedTicket && (
