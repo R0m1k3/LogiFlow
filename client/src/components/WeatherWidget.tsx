@@ -21,14 +21,7 @@ interface WeatherResponse {
   location: string;
 }
 
-const formatDate = (date: Date): string => {
-  return date.toLocaleDateString('fr-FR', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-};
+
 
 const WeatherIcon = ({ condition, size = 20 }: { condition: string; size?: number }) => {
   const iconClass = `h-${Math.floor(size/4)} w-${Math.floor(size/4)}`;
@@ -127,9 +120,6 @@ export default function WeatherWidget() {
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400">
                 {weather.currentYear?.condition || 'Inconnu'}
-              </span>
-              <span className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                {formatDate(new Date())}
               </span>
             </div>
           </div>
