@@ -1204,19 +1204,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let groupIds: number[] | undefined;
       
       if (user.role === 'admin') {
+        // Admin can see all tasks or filter by specific store
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
       } else {
+        // Non-admin users can only see tasks from their assigned groups
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
-        if (storeId && userGroupIds.includes(parseInt(storeId as string))) {
-          groupIds = [parseInt(storeId as string)];
+        
+        if (storeId) {
+          // If a specific store is requested, verify user has access to it
+          const requestedStoreId = parseInt(storeId as string);
+          if (userGroupIds.includes(requestedStoreId)) {
+            groupIds = [requestedStoreId];
+          } else {
+            // User doesn't have access to this store, return empty array
+            return res.json([]);
+          }
         } else {
+          // No specific store requested, return tasks from user's groups only
           groupIds = userGroupIds;
         }
       }
 
-      console.log('Tasks API called with:', { groupIds, userRole: user.role });
+      console.log('🔍 Tasks API called with:', { 
+        groupIds, 
+        userRole: user.role, 
+        userId: user.id,
+        requestedStoreId: storeId,
+        userGroups: user.role !== 'admin' ? user.userGroups.map(ug => ug.groupId) : 'all'
+      });
+      
       const tasks = await storage.getTasks(groupIds);
-      console.log('Tasks returned:', tasks.length, 'items');
+      console.log('📋 Tasks returned:', tasks.length, 'items for user:', user.id);
       res.json(tasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
