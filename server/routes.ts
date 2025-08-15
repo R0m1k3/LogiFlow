@@ -1169,6 +1169,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Check if user has permission to validate DLC products (admin, directeur, manager)
+      if (!['admin', 'directeur', 'manager'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions to validate DLC products" });
+      }
+
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
       
@@ -1176,15 +1181,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "DLC Product not found" });
       }
 
-      // Check permissions
+      // For non-admin users, check if they have access to the product's group
       if (user.role !== 'admin') {
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
         if (!userGroupIds.includes(dlcProduct.groupId)) {
-          return res.status(403).json({ message: "Access denied" });
+          return res.status(403).json({ message: "Access denied to this group's DLC products" });
         }
       }
 
+      console.log('🔍 DLC Validation attempt:', { 
+        userId: user.id,
+        userRole: user.role, 
+        dlcProductId: id,
+        dlcGroupId: dlcProduct.groupId,
+        userGroups: user.role !== 'admin' ? user.userGroups.map(ug => ug.groupId) : 'all'
+      });
+
       const validatedProduct = await storage.validateDlcProduct(id, user.id);
+      console.log('✅ DLC Product validated successfully by:', user.role, user.id);
+      
       res.json(validatedProduct);
     } catch (error) {
       console.error("Error validating DLC product:", error);
