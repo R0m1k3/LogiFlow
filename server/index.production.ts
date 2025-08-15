@@ -48,6 +48,12 @@ async function registerProductionRoutes(app: Express): Promise<void> {
   console.log('🔄 Running automatic production migrations...');
   await runProductionMigrations();
   
+  // Initialize weather system for production
+  console.log('🌤️ [PRODUCTION] Initializing weather system...');
+  const { initializeWeatherConfig } = await import('./weatherAutoConfig.js');
+  await initializeWeatherConfig();
+  console.log('✅ [PRODUCTION] Weather system initialized');
+  
   // Register ALL API routes (same as development)
   await registerRoutes(app);
   console.log('✅ All routes registered successfully for production');
