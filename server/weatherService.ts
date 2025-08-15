@@ -244,43 +244,50 @@ export class WeatherService {
   }
 
   /**
-   * Convertit les coordonnées GPS en nom de ville via l'API Visual Crossing
+   * Convertit les coordonnées GPS en nom de ville via l'API de géocodage inverse Nominatim (OpenStreetMap)
    */
   async getCityFromCoordinates(latitude: number, longitude: number, apiKey: string): Promise<{ city: string; country: string; fullLocation: string } | null> {
     try {
-      const url = `${this.baseUrl}/${latitude},${longitude}?unitGroup=metric&include=current&key=${apiKey}&contentType=json`;
+      // Utiliser l'API Nominatim (OpenStreetMap) pour la géolocalisation inverse
+      const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=fr`;
       
-      console.log('🌍 Géolocalisation:', { latitude, longitude });
+      console.log('🌍 Géolocalisation via Nominatim:', { latitude, longitude });
       
-      const response = await fetch(url);
+      const response = await fetch(nominatimUrl, {
+        headers: {
+          'User-Agent': 'LogiFlow-Weather-System/1.0 (Enterprise Weather Management Platform)'
+        }
+      });
+      
       if (!response.ok) {
-        console.error(`Geolocation API error: ${response.status} ${response.statusText}`);
+        console.error(`Nominatim API error: ${response.status} ${response.statusText}`);
         return null;
       }
 
       const data = await response.json();
       
-      console.log('🌍 API Response:', JSON.stringify(data, null, 2));
+      console.log('🌍 Nominatim Response:', JSON.stringify(data, null, 2));
       
-      // L'API Visual Crossing retourne les informations de localisation
-      if (data.resolvedAddress) {
-        const address = data.resolvedAddress;
-        const parts = address.split(',').map((part: string) => part.trim());
+      if (data && data.address) {
+        const address = data.address;
         
-        // Extraire la ville et le pays de l'adresse
-        const city = parts[0] || 'Ville inconnue';
-        const country = parts[parts.length - 1] || 'Pays inconnu';
+        // Extraire la ville (peut être dans city, town, village, municipality, etc.)
+        const city = address.city || address.town || address.village || address.municipality || address.hamlet || 'Ville inconnue';
+        const country = address.country || 'Pays inconnu';
         
-        console.log('🌍 Parsed location:', { city, country, fullLocation: address });
+        // Créer une adresse lisible pour Visual Crossing
+        const fullLocation = `${city}, ${country}`;
+        
+        console.log('🌍 Parsed location:', { city, country, fullLocation });
         
         return {
           city,
           country,
-          fullLocation: address
+          fullLocation
         };
       }
 
-      console.log('🌍 No resolvedAddress found in API response');
+      console.log('🌍 No address found in Nominatim response');
       return null;
     } catch (error) {
       console.error("Erreur lors de la géolocalisation:", error);
