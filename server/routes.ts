@@ -2934,6 +2934,60 @@ RÉSUMÉ DU SCAN
     }
   });
 
+  // Route de géolocalisation météo
+  app.post('/api/weather/geolocation', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { latitude, longitude } = req.body;
+
+      if (!latitude || !longitude) {
+        return res.status(400).json({ message: "Latitude et longitude requises" });
+      }
+
+      // Récupérer les paramètres météo actuels pour obtenir la clé API
+      const settings = await storage.getWeatherSettings();
+      if (!settings || !settings.apiKey) {
+        return res.status(500).json({ message: "Configuration météo manquante" });
+      }
+
+      // Convertir les coordonnées en nom de ville
+      const locationData = await weatherService.getCityFromCoordinates(
+        parseFloat(latitude),
+        parseFloat(longitude),
+        settings.apiKey
+      );
+
+      if (!locationData) {
+        return res.status(500).json({ message: "Impossible de déterminer la ville à partir des coordonnées" });
+      }
+
+      // Mettre à jour automatiquement la configuration météo avec la nouvelle localisation
+      await storage.updateWeatherSettings(settings.id, {
+        location: locationData.fullLocation
+      });
+
+      console.log('🌍 Localisation mise à jour automatiquement:', {
+        from: settings.location,
+        to: locationData.fullLocation,
+        coordinates: { latitude, longitude }
+      });
+
+      res.json({
+        success: true,
+        location: locationData,
+        message: `Localisation mise à jour vers ${locationData.city}, ${locationData.country}`
+      });
+
+    } catch (error) {
+      console.error("Erreur géolocalisation météo:", error);
+      res.status(500).json({ message: "Erreur lors de la géolocalisation" });
+    }
+  });
+
   // Create server instance
   const httpServer = createServer(app);
 
