@@ -48,7 +48,7 @@ export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [dueDateFilter, setDueDateFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<string>("list");
+  const [viewMode, setViewMode] = useState<string>("kanban");
   
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -430,13 +430,13 @@ export default function Tasks() {
             {/* Sélecteur de vue */}
             <Tabs value={viewMode} onValueChange={setViewMode} className="w-auto">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="list" className="flex items-center gap-2">
-                  <ListTodo className="w-4 h-4" />
-                  Liste
-                </TabsTrigger>
                 <TabsTrigger value="kanban" className="flex items-center gap-2">
                   <Kanban className="w-4 h-4" />
                   Kanban
+                </TabsTrigger>
+                <TabsTrigger value="list" className="flex items-center gap-2">
+                  <ListTodo className="w-4 h-4" />
+                  Liste
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -549,6 +549,104 @@ export default function Tasks() {
         <div className="flex-1">
           {/* Contenu selon la vue sélectionnée */}
           <Tabs value={viewMode} onValueChange={setViewMode} className="h-full">
+            <TabsContent value="kanban" className="mt-0">
+              {/* Vue Kanban avec 7 colonnes */}
+              <div className="p-6">
+                <div className="grid grid-cols-7 gap-3 h-full text-sm">
+                  {/* Colonne Backlog */}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
+                      <Circle className="w-4 h-4 text-gray-400" />
+                      Backlog ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'backlog').length})
+                    </h3>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'backlog').map((task: TaskWithRelations) => {
+                        return renderKanbanCard(task, canEditTasks);
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colonne À faire */}
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
+                      <Circle className="w-4 h-4 text-blue-500" />
+                      À faire ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'todo').length})
+                    </h3>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'todo').map((task: TaskWithRelations) => {
+                        return renderKanbanCard(task, canEditTasks);
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colonne En cours */}
+                  <div className="bg-yellow-50 rounded-lg p-3">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
+                      <Clock className="w-4 h-4 text-yellow-500" />
+                      En cours ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'in_progress').length})
+                    </h3>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'in_progress').map((task: TaskWithRelations) => {
+                        return renderKanbanCard(task, canEditTasks);
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colonne Révision */}
+                  <div className="bg-purple-50 rounded-lg p-3">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
+                      <Edit className="w-4 h-4 text-purple-500" />
+                      Révision ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'review').length})
+                    </h3>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'review').map((task: TaskWithRelations) => {
+                        return renderKanbanCard(task, canEditTasks);
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colonne Test */}
+                  <div className="bg-orange-50 rounded-lg p-3">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
+                      <AlertTriangle className="w-4 h-4 text-orange-500" />
+                      Test ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'testing').length})
+                    </h3>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'testing').map((task: TaskWithRelations) => {
+                        return renderKanbanCard(task, canEditTasks);
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colonne Terminé */}
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      Terminé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'done').length})
+                    </h3>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'done').map((task: TaskWithRelations) => {
+                        return renderKanbanCard(task, canEditTasks, true);
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colonne Archivé */}
+                  <div className="bg-gray-100 rounded-lg p-3">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
+                      <Circle className="w-4 h-4 text-gray-400" />
+                      Archivé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'archived').length})
+                    </h3>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'archived').map((task: TaskWithRelations) => {
+                        return renderKanbanCard(task, canEditTasks, true);
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
             <TabsContent value="list" className="mt-0">
               {/* Liste des tâches */}
               <div className="p-6">
@@ -564,15 +662,15 @@ export default function Tasks() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Tâches en cours */}
-                {paginatedTasks.filter(task => task.status === 'pending').length > 0 && (
+                {/* Tâches actives (non terminées/archivées) */}
+                {paginatedTasks.filter(task => !['done', 'archived'].includes(task.status)).length > 0 && (
                   <div>
                     <h4 className="text-lg font-semibold text-gray-900 mb-3">
-                      Tâches en cours ({paginatedTasks.filter(task => task.status === 'pending').length})
+                      Tâches actives ({paginatedTasks.filter(task => !['done', 'archived'].includes(task.status)).length})
                     </h4>
                     <div className="space-y-3">
                       {paginatedTasks
-                        .filter(task => task.status === 'pending')
+                        .filter(task => !['done', 'archived'].includes(task.status))
                         .map((task) => {
                           const priorityConfig = getPriorityConfig(task.priority);
                           const PriorityIcon = priorityConfig.icon;
@@ -589,6 +687,13 @@ export default function Tasks() {
                                       <Badge variant={priorityConfig.color} className="flex items-center gap-1">
                                         <PriorityIcon className="w-3 h-3" />
                                         {priorityConfig.label}
+                                      </Badge>
+                                      <Badge variant="outline" className="text-xs">
+                                        {task.status === 'backlog' ? 'Backlog' :
+                                         task.status === 'todo' ? 'À faire' :
+                                         task.status === 'in_progress' ? 'En cours' :
+                                         task.status === 'review' ? 'Révision' :
+                                         task.status === 'testing' ? 'Test' : task.status}
                                       </Badge>
                                     </div>
                                     
@@ -675,15 +780,15 @@ export default function Tasks() {
                   </div>
                 )}
 
-                {/* Tâches terminées */}
-                {paginatedTasks.filter(task => task.status === 'completed').length > 0 && (
+                {/* Tâches terminées et archivées */}
+                {paginatedTasks.filter(task => ['done', 'archived'].includes(task.status)).length > 0 && (
                   <div>
                     <h4 className="text-lg font-semibold text-gray-900 mb-3 mt-8">
-                      Tâches terminées ({paginatedTasks.filter(task => task.status === 'completed').length})
+                      Tâches terminées ({paginatedTasks.filter(task => ['done', 'archived'].includes(task.status)).length})
                     </h4>
                     <div className="space-y-3">
                       {paginatedTasks
-                        .filter(task => task.status === 'completed')
+                        .filter(task => ['done', 'archived'].includes(task.status))
                         .map((task) => {
                           const priorityConfig = getPriorityConfig(task.priority);
                           const PriorityIcon = priorityConfig.icon;
@@ -697,9 +802,12 @@ export default function Tasks() {
                                       <h5 className="font-medium text-gray-500 truncate line-through">
                                         {task.title}
                                       </h5>
-                                      <Badge variant="secondary" className="flex items-center gap-1">
-                                        <CheckCircle className="w-3 h-3 border border-gray-300 rounded p-0.5" />
-                                        Terminée
+                                      <Badge 
+                                        variant={task.status === 'done' ? 'secondary' : 'outline'} 
+                                        className="flex items-center gap-1"
+                                      >
+                                        <CheckCircle className="w-3 h-3" />
+                                        {task.status === 'done' ? 'Terminée' : 'Archivée'}
                                       </Badge>
                                     </div>
                                     
