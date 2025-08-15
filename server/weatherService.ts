@@ -44,18 +44,27 @@ export class WeatherService {
    */
   async fetchPreviousYearWeather(settings: WeatherSettings, targetDate: string): Promise<WeatherApiResponse | null> {
     try {
-      const url = `${this.baseUrl}/${encodeURIComponent(settings.location)}?unitGroup=metric&include=days&key=${settings.apiKey}&contentType=json&forecastBasisDate=${targetDate}`;
+      // Pour les données historiques, Visual Crossing utilise la syntaxe: /timeline/location/date
+      const url = `${this.baseUrl}/${encodeURIComponent(settings.location)}/${targetDate}?unitGroup=metric&include=days&key=${settings.apiKey}&contentType=json`;
+      
+      console.log(`🌤️ [FETCH-HISTORY] Requesting: ${settings.location} for ${targetDate}`);
       
       const response = await fetch(url);
       if (!response.ok) {
-        console.error(`Weather API error for previous year: ${response.status} ${response.statusText}`);
+        console.error(`🌤️ [ERROR] Weather API error for previous year: ${response.status} ${response.statusText}`);
+        
+        // Pour les données historiques, certains comptes peuvent ne pas avoir accès
+        if (response.status === 401) {
+          console.warn(`⚠️ [WARNING] Historical data access may not be available with current API key`);
+        }
         return null;
       }
 
       const data = await response.json();
+      console.log(`✅ [FETCH-HISTORY] Successfully retrieved data for ${targetDate}`);
       return data;
     } catch (error) {
-      console.error("Erreur lors de la récupération de la météo de l'année précédente:", error);
+      console.error("🌤️ [ERROR] Erreur lors de la récupération de la météo de l'année précédente:", error);
       return null;
     }
   }

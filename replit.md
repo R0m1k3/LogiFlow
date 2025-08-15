@@ -19,6 +19,17 @@ La plateforme fournit une gestion robuste des flux de travail de livraison avec 
 
 ## Recent Changes
 
+### 2025-08-15 - Système météo production opérationnel avec clé API authentique
+✅ **Problème API Visual Crossing complètement résolu** :
+- **Problème** : Erreur 401 pour données année précédente en production
+- **Cause** : Mauvaise syntaxe URL pour données historiques (utilisait `forecastBasisDate`)
+- **Solution** : Syntaxe correcte `/timeline/location/date` pour données historiques
+- **Auto-configuration** : Système utilise automatiquement `VISUAL_CROSSING_API_KEY` des variables d'environnement
+- **Gestion d'erreur robuste** : Affiche météo actuelle même si année précédente échoue
+- **Format données corrigé** : `maxTemperature`/`minTemperature` numériques pour WeatherWidget
+- **Visibilité** : Météo accessible à tous utilisateurs connectés (non admin-seulement)
+- **Logs améliorés** : Debugging détaillé pour diagnostic production
+
 ### 2025-08-14 - Correction finale permissions employés commandes clients
 ✅ **Problème permissions employés entièrement résolu** :
 - **Problème** : Employés ne pouvaient pas créer de commandes clients (erreur "Access denied to this group")

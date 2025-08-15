@@ -2886,17 +2886,32 @@ RÉSUMÉ DU SCAN
         }
       }
 
-      res.json({
+      // Toujours retourner une réponse même si seule l'année actuelle est disponible
+      const response = {
         currentYear: currentYearData ? {
           ...currentYearData,
+          maxTemperature: parseFloat(currentYearData.tempMax),
+          minTemperature: parseFloat(currentYearData.tempMin),
+          condition: currentYearData.conditions,
           icon: weatherService.getWeatherIcon(currentYearData.icon)
         } : null,
         previousYear: previousYearData ? {
           ...previousYearData,
+          maxTemperature: parseFloat(previousYearData.tempMax),
+          minTemperature: parseFloat(previousYearData.tempMin),
+          condition: previousYearData.conditions,
           icon: weatherService.getWeatherIcon(previousYearData.icon)
         } : null,
         location: settings.location
+      };
+
+      console.log('🌤️ [RESPONSE] Weather data prepared:', {
+        hasCurrentYear: !!response.currentYear,
+        hasPreviousYear: !!response.previousYear,
+        location: response.location
       });
+
+      res.json(response);
     } catch (error) {
       console.error("Error fetching weather data:", error);
       res.status(500).json({ message: "Failed to fetch weather data" });
