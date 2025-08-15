@@ -678,7 +678,7 @@ export default function SavTickets() {
               <p className="text-gray-500">Aucun ticket trouvé</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div>
               <table className="w-full">
                 <thead className="bg-gray-50 border-b">
                   <tr>

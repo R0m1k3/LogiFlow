@@ -74,6 +74,40 @@
     background-color: var(--primary);
   }
   
+  /* Optimisation des ascenseurs pour les tableaux */
+  .table-container {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(20, 5.9%, 80%) transparent;
+  }
+  
+  .table-container::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .table-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .table-container::-webkit-scrollbar-thumb {
+    background: hsl(20, 5.9%, 80%);
+    border-radius: 3px;
+  }
+  
+  .table-container::-webkit-scrollbar-thumb:hover {
+    background: hsl(20, 5.9%, 70%);
+  }
+  
+  /* Masquer l'ascenseur horizontal sauf si nécessaire */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
   .bg-secondary {
     background-color: var(--secondary);
   }

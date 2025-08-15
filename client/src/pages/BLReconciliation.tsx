@@ -626,7 +626,7 @@ export default function BLReconciliation() {
                   />
                 </div>
                 
-                <div className="overflow-x-auto">
+                <div className="table-container">
                   <table className="w-full min-w-[900px]">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
@@ -937,7 +937,7 @@ export default function BLReconciliation() {
                   />
                 </div>
                 
-                <div className="overflow-x-auto">
+                <div className="table-container">
                   <table className="w-full min-w-[700px]">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>

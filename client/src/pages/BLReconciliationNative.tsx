@@ -437,7 +437,7 @@ export default function BLReconciliation() {
                 itemsPerPage={itemsPerPage}
               />
               
-              <div className="overflow-x-auto">
+              <div className="table-container">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
@@ -628,7 +628,7 @@ export default function BLReconciliation() {
                 itemsPerPage={itemsPerPage}
               />
               
-              <div className="overflow-x-auto">
+              <div className="table-container">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>

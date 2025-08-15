@@ -340,7 +340,7 @@ export default function Deliveries() {
         ) : (
           <div className="flex-1 overflow-y-auto p-6">
             <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
-              <div className="overflow-x-auto">
+              <div>
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
