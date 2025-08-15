@@ -2,11 +2,11 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic } from "./vite.js";
 
-// Initialize simple weather system
-console.log('🌤️ [STARTUP] Initializing simple weather system...');
-const { default: simpleWeather } = await import('./simpleWeather.js');
-await simpleWeather.init();
-console.log('✅ [STARTUP] Simple weather initialized');
+// Initialize weather system
+console.log('🌤️ [STARTUP] Initializing weather system...');
+const { initializeWeatherConfig } = await import('./weatherAutoConfig.js');
+await initializeWeatherConfig();
+console.log('✅ [STARTUP] Weather system initialized');
 
 const app = express();
 
