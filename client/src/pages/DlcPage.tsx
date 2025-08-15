@@ -229,7 +229,7 @@ export default function DlcPage() {
     
     const dlcData: InsertDlcProduct = {
       ...data,
-      dlcDate,
+      expiryDate: dlcDate,
       quantity: 1, // Valeur par défaut
       unit: "unité", // Valeur par défaut
       location: "Magasin", // Valeur par défaut
@@ -249,7 +249,7 @@ export default function DlcPage() {
     form.reset({
       productName: product.productName,
       gencode: product.gencode || "",
-      dlcDate: product.dlcDate ? format(new Date(product.dlcDate), "yyyy-MM-dd") : "",
+      dlcDate: product.expiryDate ? format(new Date(product.expiryDate), "yyyy-MM-dd") : "",
       dateType: product.dateType as "dlc" | "ddm" | "dluo",
       supplierId: product.supplierId,
       status: product.status as "en_cours" | "expires_soon" | "expires" | "valides",
@@ -278,7 +278,7 @@ export default function DlcPage() {
   // Fonction pour déterminer si un produit doit afficher le bouton de validation
   const shouldShowValidateButton = (product: DlcProductWithRelations) => {
     const today = new Date();
-    const expiry = new Date(product.dlcDate || new Date());
+    const expiry = new Date(product.expiryDate || new Date());
     const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     // Afficher le bouton si le produit expire dans 15 jours ou moins, ou est déjà expiré
@@ -779,10 +779,10 @@ export default function DlcPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {product.dlcDate ? format(new Date(product.dlcDate), "dd/MM/yyyy", { locale: fr }) : 'Date non définie'}
+                          {product.expiryDate ? format(new Date(product.expiryDate), "dd/MM/yyyy", { locale: fr }) : 'Date non définie'}
                         </TableCell>
                         <TableCell>{product.supplier?.name || 'Non défini'}</TableCell>
-                        <TableCell>{getStatusBadge(product.status, product.dlcDate)}</TableCell>
+                        <TableCell>{getStatusBadge(product.status, product.expiryDate)}</TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
                             <Button
