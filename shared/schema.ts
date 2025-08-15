@@ -160,7 +160,7 @@ export const nocodbConfig = pgTable("nocodb_config", {
 // Cache de vérification des factures
 export const invoiceVerificationCache = pgTable("invoice_verification_cache", {
   id: serial("id").primaryKey(),
-  cacheKey: varchar("cache_key", { length: 255 }).notNull(),
+  cacheKey: varchar("cache_key", { length: 255 }).notNull().unique(),
   groupId: integer("group_id").notNull(),
   invoiceReference: varchar("invoice_reference", { length: 255 }).notNull(),
   supplierName: varchar("supplier_name", { length: 255 }),
