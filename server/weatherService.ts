@@ -260,6 +260,8 @@ export class WeatherService {
 
       const data = await response.json();
       
+      console.log('🌍 API Response:', JSON.stringify(data, null, 2));
+      
       // L'API Visual Crossing retourne les informations de localisation
       if (data.resolvedAddress) {
         const address = data.resolvedAddress;
@@ -269,6 +271,8 @@ export class WeatherService {
         const city = parts[0] || 'Ville inconnue';
         const country = parts[parts.length - 1] || 'Pays inconnu';
         
+        console.log('🌍 Parsed location:', { city, country, fullLocation: address });
+        
         return {
           city,
           country,
@@ -276,6 +280,7 @@ export class WeatherService {
         };
       }
 
+      console.log('🌍 No resolvedAddress found in API response');
       return null;
     } catch (error) {
       console.error("Erreur lors de la géolocalisation:", error);
