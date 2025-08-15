@@ -118,9 +118,6 @@ const WeatherIcon = ({ condition, size = 20 }: { condition: string; size?: numbe
 };
 
 export default function WeatherWidget() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
   const { data: weather, isLoading, error } = useQuery<WeatherResponse>({
     queryKey: ['/api/weather/current'],
     refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes
