@@ -9,11 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { apiRequest } from "@/lib/queryClient";
 import { insertTaskSchema, Task, Group } from "@shared/schema";
 import { z } from "zod";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 type TaskWithRelations = Task & {
   assignedUser: { id: string; username: string; firstName?: string; lastName?: string; };
@@ -21,15 +26,14 @@ type TaskWithRelations = Task & {
   group: { id: number; name: string; color: string; };
 };
 
-// Schéma simplifié sans magasin et sans date d'échéance
-const taskFormSchema = insertTaskSchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  completedAt: true,
-  createdBy: true,
-  groupId: true,
-  dueDate: true, // Suppression du champ échéance
+// Schéma avec date d'échéance incluse
+const taskFormSchema = z.object({
+  title: z.string().min(1, "Le titre est requis"),
+  description: z.string().optional(),
+  priority: z.enum(["low", "medium", "high"]).default("medium"),
+  status: z.enum(["pending", "completed"]).default("pending"),
+  assignedTo: z.string().min(1, "L'assignation est requise"),
+  dueDate: z.date().optional(),
 });
 
 type TaskFormData = z.infer<typeof taskFormSchema>;
@@ -113,10 +117,10 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
     defaultValues: {
       title: task?.title || "",
       description: task?.description || "",
-      priority: task?.priority || "medium",
-      status: task?.status || "pending",
+      priority: (task?.priority as "low" | "medium" | "high") || "medium",
+      status: (task?.status as "pending" | "completed") || "pending",
       assignedTo: task?.assignedTo || "",
-
+      dueDate: task?.dueDate ? new Date(task.dueDate) : undefined,
     },
   });
 
@@ -190,6 +194,7 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
         priority: data.priority,
         status: data.status,
         assignedTo: data.assignedTo,
+        dueDate: data.dueDate?.toISOString(),
       };
       updateMutation.mutate(submitData);
     } else {
@@ -217,7 +222,7 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-6">
         {/* Affichage du magasin auto-sélectionné */}
         {localSelectedStoreId && (
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
@@ -236,7 +241,7 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
                       <span className="inline-flex items-center gap-2">
                         <div 
                           className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: selectedGroup.color }}
+                          style={{ backgroundColor: selectedGroup.color || "#1976D2" }}
                         />
                         {selectedGroup.name}
                       </span>
@@ -369,7 +374,49 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
           )}
         />
 
-
+        {/* Date d'échéance */}
+        <FormField
+          control={form.control}
+          name="dueDate"
+          render={({ field }) => (
+            <FormItem className="flex flex-col">
+              <FormLabel>Date d'échéance (optionnel)</FormLabel>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full pl-3 text-left font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      {field.value ? (
+                        format(field.value, "PPP", { locale: fr })
+                      ) : (
+                        <span>Sélectionner une date</span>
+                      )}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={field.value}
+                    onSelect={field.onChange}
+                    disabled={(date) =>
+                      date < new Date(new Date().setHours(0, 0, 0, 0))
+                    }
+                    initialFocus
+                    locale={fr}
+                  />
+                </PopoverContent>
+              </Popover>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Boutons d'action */}
         <div className="flex justify-end space-x-3 pt-6">
