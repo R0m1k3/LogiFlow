@@ -749,7 +749,7 @@ export default function DlcPage() {
                 Aucun produit DLC trouvé
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div>
                 <Table>
                   <TableHeader>
                     <TableRow>

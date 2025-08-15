@@ -656,7 +656,7 @@ export default function UsersPage() {
         ) : (
           <div className="p-6">
             <div className="bg-white border border-gray-200 shadow-lg overflow-hidden">
-              <div className="overflow-x-auto">
+              <div>
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
