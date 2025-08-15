@@ -242,6 +242,46 @@ export class WeatherService {
       return { success: false, message: "Erreur de connexion à l'API météo" };
     }
   }
+
+  /**
+   * Convertit les coordonnées GPS en nom de ville via l'API Visual Crossing
+   */
+  async getCityFromCoordinates(latitude: number, longitude: number, apiKey: string): Promise<{ city: string; country: string; fullLocation: string } | null> {
+    try {
+      const url = `${this.baseUrl}/${latitude},${longitude}?unitGroup=metric&include=current&key=${apiKey}&contentType=json`;
+      
+      console.log('🌍 Géolocalisation:', { latitude, longitude });
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error(`Geolocation API error: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const data = await response.json();
+      
+      // L'API Visual Crossing retourne les informations de localisation
+      if (data.resolvedAddress) {
+        const address = data.resolvedAddress;
+        const parts = address.split(',').map((part: string) => part.trim());
+        
+        // Extraire la ville et le pays de l'adresse
+        const city = parts[0] || 'Ville inconnue';
+        const country = parts[parts.length - 1] || 'Pays inconnu';
+        
+        return {
+          city,
+          country,
+          fullLocation: address
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Erreur lors de la géolocalisation:", error);
+      return null;
+    }
+  }
 }
 
 export const weatherService = new WeatherService();

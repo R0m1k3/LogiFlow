@@ -201,6 +201,19 @@ export class InvoiceVerificationService {
           tableId
         );
 
+        // Gérer les erreurs d'API spécifiques
+        if (matchResult.error) {
+          const result = {
+            exists: false,
+            matchType: 'none' as const,
+            errorMessage: matchResult.error
+          };
+          
+          // Sauvegarder en cache même les erreurs pour éviter les rappels répétés
+          await this.saveToCache(invoiceReference, groupId, result);
+          return result;
+        }
+
         if (matchResult.found) {
           const result = {
             exists: true,
@@ -224,6 +237,19 @@ export class InvoiceVerificationService {
             tableId
           );
 
+          // Gérer les erreurs d'API pour la recherche BL
+          if (matchResult.error) {
+            const result = {
+              exists: false,
+              matchType: 'none' as const,
+              errorMessage: matchResult.error
+            };
+            
+            // Sauvegarder en cache même les erreurs
+            await this.saveToCache(invoiceReference, groupId, result);
+            return result;
+          }
+
           if (matchResult.found) {
             const result = {
               exists: true,
@@ -240,19 +266,35 @@ export class InvoiceVerificationService {
         }
 
         // Aucune correspondance trouvée
-        return {
+        const notFoundResult = {
           exists: false,
-          matchType: 'none',
+          matchType: 'none' as const,
           errorMessage: 'Aucune correspondance trouvée dans NocoDB'
         };
+        
+        // Sauvegarder même les résultats "non trouvé" pour éviter les rappels répétés
+        await this.saveToCache(invoiceReference, groupId, notFoundResult);
+        return notFoundResult;
 
       } catch (error) {
-        console.error('❌ Erreur lors de la vérification NocoDB:', error);
-        return {
+        const errorMessage = `Erreur NocoDB: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+        
+        // Log condensé en production
+        if (process.env.NODE_ENV === 'production') {
+          console.error('❌ Erreur vérification NocoDB:', error instanceof Error ? error.message : 'Erreur inconnue');
+        } else {
+          console.error('❌ Erreur lors de la vérification NocoDB:', error);
+        }
+        
+        const errorResult = {
           exists: false,
-          matchType: 'none',
-          errorMessage: `Erreur NocoDB: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
+          matchType: 'none' as const,
+          errorMessage
         };
+        
+        // Sauvegarder les erreurs en cache pour éviter les rappels répétés
+        await this.saveToCache(invoiceReference, groupId, errorResult);
+        return errorResult;
       }
 
     } catch (error) {
@@ -266,53 +308,108 @@ export class InvoiceVerificationService {
   }
 
   /**
-   * Recherche dans NocoDB
+   * Recherche dans NocoDB avec protection contre les erreurs
    */
   private async searchInNocoDB(
     searchValue: string, 
     columnName: string, 
     config: any, 
     tableId: string
-  ): Promise<{ found: boolean; data?: any }> {
+  ): Promise<{ found: boolean; data?: any; error?: string }> {
     try {
+      // Protection contre les appels avec des paramètres invalides
+      if (!searchValue || !columnName || !config || !tableId) {
+        return { found: false, error: 'Paramètres invalides' };
+      }
+
       // Utiliser directement l'ID de table fourni  
       const searchUrl = `${config.baseUrl}/api/v1/db/data/v1/${config.projectId}/${tableId}`;
       
-      console.log('🔍 Recherche NocoDB:', {
-        url: searchUrl,
-        tableId: tableId,
-        column: columnName,
-        value: searchValue
-      });
+      // Log condensé en production pour éviter le spam
+      if (process.env.NODE_ENV === 'production') {
+        console.log('🔍 Recherche NocoDB:', { tableId, column: columnName });
+      } else {
+        console.log('🔍 Recherche NocoDB:', {
+          url: searchUrl,
+          tableId: tableId,
+          column: columnName,
+          value: searchValue
+        });
+      }
 
-      const response = await fetch(`${searchUrl}?where=(${columnName},eq,${encodeURIComponent(searchValue)})`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'xc-token': config.apiToken
+      // Créer un AbortController pour le timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes timeout
+
+      try {
+        const response = await fetch(`${searchUrl}?where=(${columnName},eq,${encodeURIComponent(searchValue)})`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'xc-token': config.apiToken
+          },
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorMsg = `HTTP ${response.status}: ${response.statusText}`;
+          console.error('❌ Erreur réponse NocoDB:', errorMsg);
+          return { found: false, error: errorMsg };
         }
-      });
 
-      if (!response.ok) {
-        console.error('❌ Erreur réponse NocoDB:', response.status, response.statusText);
+        const result = await response.json();
+        
+        // Log condensé en production
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('✅ Réponse NocoDB:', result);
+        }
+
+        if (result.list && result.list.length > 0) {
+          return {
+            found: true,
+            data: result.list[0]
+          };
+        }
+
         return { found: false };
+
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        // Gestion spécifique des erreurs réseau
+        if (fetchError.name === 'AbortError') {
+          const timeoutMsg = 'Timeout - API NocoDB non accessible';
+          console.error('⏱️ Timeout NocoDB:', timeoutMsg);
+          return { found: false, error: timeoutMsg };
+        }
+        
+        if (fetchError.code === 'ERR_CERT_VERIFIER_CHANGED' || fetchError.message?.includes('certificate')) {
+          const certMsg = 'Erreur certificat SSL - Vérifiez la configuration NocoDB';
+          console.error('🔒 Erreur certificat NocoDB:', certMsg);
+          return { found: false, error: certMsg };
+        }
+
+        if (fetchError.code === 'ENOTFOUND' || fetchError.code === 'ECONNREFUSED') {
+          const connMsg = 'NocoDB non accessible - Vérifiez la connectivité réseau';
+          console.error('🌐 Erreur connexion NocoDB:', connMsg);
+          return { found: false, error: connMsg };
+        }
+
+        throw fetchError; // Relancer les autres erreurs
       }
 
-      const result = await response.json();
-      console.log('✅ Réponse NocoDB:', result);
-
-      if (result.list && result.list.length > 0) {
-        return {
-          found: true,
-          data: result.list[0]
-        };
+    } catch (error: any) {
+      // Log d'erreur condensé en production
+      const errorMsg = error?.message || 'Erreur inconnue';
+      if (process.env.NODE_ENV === 'production') {
+        console.error('❌ Erreur NocoDB:', errorMsg);
+      } else {
+        console.error('❌ Erreur appel NocoDB:', error);
       }
-
-      return { found: false };
-
-    } catch (error) {
-      console.error('❌ Erreur appel NocoDB:', error);
-      return { found: false };
+      
+      return { found: false, error: errorMsg };
     }
   }
 
