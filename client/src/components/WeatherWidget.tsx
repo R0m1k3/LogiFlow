@@ -1,9 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Cloud, CloudRain, Sun, CloudSnow, CloudSun, ThermometerSun, CloudDrizzle, Wind, Zap, Eye, MapPin, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Cloud, CloudRain, Sun, CloudSnow, CloudSun, ThermometerSun, CloudDrizzle, Wind, Zap, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 
 interface WeatherData {
   id: number;
@@ -130,86 +127,7 @@ export default function WeatherWidget() {
     retry: 1,
   });
 
-  // Mutation pour la géolocalisation
-  const geoLocationMutation = useMutation({
-    mutationFn: async (coordinates: { latitude: number; longitude: number }) => {
-      const response = await fetch('/api/weather/geolocation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(coordinates),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erreur de géolocalisation');
-      }
-      
-      return response.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Localisation mise à jour",
-        description: data.message,
-      });
-      
-      // Forcer le rechargement immédiat des données météo
-      queryClient.invalidateQueries({ queryKey: ['/api/weather/current'] });
-      queryClient.refetchQueries({ queryKey: ['/api/weather/current'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erreur de géolocalisation",
-        description: error.message || "Impossible de déterminer votre localisation",
-        variant: "destructive",
-      });
-    },
-  });
 
-  // Fonction pour obtenir la géolocalisation
-  const handleGeolocation = () => {
-    if (!navigator.geolocation) {
-      toast({
-        title: "Géolocalisation non supportée",
-        description: "Votre navigateur ne supporte pas la géolocalisation",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        geoLocationMutation.mutate({ latitude, longitude });
-      },
-      (error) => {
-        let message = "Erreur de géolocalisation";
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            message = "Autorisation de géolocalisation refusée";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            message = "Position non disponible";
-            break;
-          case error.TIMEOUT:
-            message = "Délai d'attente dépassé";
-            break;
-        }
-        
-        toast({
-          title: "Erreur de géolocalisation",
-          description: message,
-          variant: "destructive",
-        });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000, // 5 minutes
-      }
-    );
-  };
 
   if (isLoading) {
     return (
@@ -247,25 +165,9 @@ export default function WeatherWidget() {
               <WeatherIcon condition={weather.currentYear?.condition || ''} size={24} />
             </div>
             <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-700 dark:text-slate-200 font-semibold text-sm">
-                  {location.split(',')[0]}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleGeolocation}
-                  disabled={geoLocationMutation.isPending}
-                  className="h-6 w-6 p-0 hover:bg-slate-200 dark:hover:bg-slate-600"
-                  title="Détecter ma localisation"
-                >
-                  {geoLocationMutation.isPending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <MapPin className="h-3 w-3" />
-                  )}
-                </Button>
-              </div>
+              <span className="text-slate-700 dark:text-slate-200 font-semibold text-sm">
+                {location.split(',')[0]}
+              </span>
               <span className="text-xs text-slate-500 dark:text-slate-400">
                 {translateToFrench(weather.currentYear?.condition || 'Inconnu')}
               </span>
@@ -291,14 +193,11 @@ export default function WeatherWidget() {
                   <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
                     Année dernière
                   </div>
-                  <div className="flex items-center justify-center gap-1 mb-1">
+                  <div className="flex items-center justify-center gap-1">
                     <WeatherIcon condition={weather.previousYear?.condition || ''} size={16} />
                     <div className="text-lg font-semibold text-slate-600 dark:text-slate-300">
                       {Math.round(previousTemp)}°
                     </div>
-                  </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-tight">
-                    {translateToFrench(weather.previousYear?.condition || '')}
                   </div>
                 </div>
               </>
@@ -307,24 +206,29 @@ export default function WeatherWidget() {
             {/* Différence */}
             {currentTemp !== undefined && previousTemp !== undefined && (
               <>
-                <div className="h-8 w-px bg-slate-300 dark:bg-slate-600"></div>
-                <div className="flex items-center gap-1">
-                  {tempDifference > 0 ? (
-                    <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
-                      <span className="text-lg">↗</span>
-                      <span className="text-sm font-semibold">+{Math.round(tempDifference)}°</span>
-                    </div>
-                  ) : tempDifference < 0 ? (
-                    <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                      <span className="text-lg">↘</span>
-                      <span className="text-sm font-semibold">{Math.round(tempDifference)}°</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                      <span className="text-lg">=</span>
-                      <span className="text-sm font-semibold">0°</span>
-                    </div>
-                  )}
+                <div className="h-12 w-px bg-slate-300 dark:bg-slate-600 self-center"></div>
+                <div className="text-center">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
+                    Différence
+                  </div>
+                  <div className="flex items-center justify-center gap-1">
+                    {tempDifference > 0 ? (
+                      <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                        <span className="text-lg">↗</span>
+                        <span className="text-sm font-semibold">+{Math.round(tempDifference)}°</span>
+                      </div>
+                    ) : tempDifference < 0 ? (
+                      <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                        <span className="text-lg">↘</span>
+                        <span className="text-sm font-semibold">{Math.round(tempDifference)}°</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                        <span className="text-lg">=</span>
+                        <span className="text-sm font-semibold">0°</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}
