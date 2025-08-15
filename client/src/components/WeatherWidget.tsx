@@ -140,8 +140,11 @@ export default function WeatherWidget() {
               <>
                 <div className="h-8 w-px bg-slate-300 dark:bg-slate-600"></div>
                 <div className="text-center">
-                  <div className="text-lg font-semibold text-slate-600 dark:text-slate-300">
-                    {Math.round(previousTemp)}°
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <WeatherIcon condition={weather.previousYear?.condition || ''} size={16} />
+                    <div className="text-lg font-semibold text-slate-600 dark:text-slate-300">
+                      {Math.round(previousTemp)}°
+                    </div>
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400">
                     Année dernière
