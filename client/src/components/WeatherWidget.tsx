@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Cloud, CloudRain, Sun, CloudSnow, ThermometerSun } from "lucide-react";
+import { Cloud, CloudRain, Sun, CloudSnow, ThermometerSun, CloudDrizzle, Wind, Zap, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface WeatherData {
@@ -21,22 +21,53 @@ interface WeatherResponse {
   location: string;
 }
 
-const WeatherIcon = ({ condition, size = 16 }: { condition: string; size?: number }) => {
+const WeatherIcon = ({ condition, size = 20 }: { condition: string; size?: number }) => {
   const iconClass = `h-${Math.floor(size/4)} w-${Math.floor(size/4)}`;
+  const conditionLower = condition.toLowerCase();
   
-  if (condition.includes('rain') || condition.includes('pluie')) {
-    return <CloudRain className={iconClass} />;
+  // Conditions pluvieuses
+  if (conditionLower.includes('rain') || conditionLower.includes('pluie') || conditionLower.includes('shower')) {
+    if (conditionLower.includes('heavy') || conditionLower.includes('forte')) {
+      return <CloudRain className={`${iconClass} text-blue-600`} />;
+    }
+    return <CloudDrizzle className={`${iconClass} text-blue-500`} />;
   }
-  if (condition.includes('snow') || condition.includes('neige')) {
-    return <CloudSnow className={iconClass} />;
+  
+  // Conditions neigeuses
+  if (conditionLower.includes('snow') || conditionLower.includes('neige') || conditionLower.includes('blizzard')) {
+    return <CloudSnow className={`${iconClass} text-blue-300`} />;
   }
-  if (condition.includes('cloud') || condition.includes('nuage')) {
-    return <Cloud className={iconClass} />;
+  
+  // Orages
+  if (conditionLower.includes('thunder') || conditionLower.includes('storm') || conditionLower.includes('orage')) {
+    return <Zap className={`${iconClass} text-yellow-500`} />;
   }
-  if (condition.includes('sun') || condition.includes('soleil') || condition.includes('clear')) {
-    return <Sun className={iconClass} />;
+  
+  // Brouillard
+  if (conditionLower.includes('fog') || conditionLower.includes('mist') || conditionLower.includes('brouillard')) {
+    return <Eye className={`${iconClass} text-gray-400`} />;
   }
-  return <ThermometerSun className={iconClass} />;
+  
+  // Vent
+  if (conditionLower.includes('wind') || conditionLower.includes('vent')) {
+    return <Wind className={`${iconClass} text-gray-600`} />;
+  }
+  
+  // Nuageux
+  if (conditionLower.includes('cloud') || conditionLower.includes('nuage') || conditionLower.includes('overcast')) {
+    if (conditionLower.includes('partly') || conditionLower.includes('partial')) {
+      return <Cloud className={`${iconClass} text-gray-500`} />;
+    }
+    return <Cloud className={`${iconClass} text-gray-600`} />;
+  }
+  
+  // Ensoleillé
+  if (conditionLower.includes('sun') || conditionLower.includes('soleil') || conditionLower.includes('clear') || conditionLower.includes('fair')) {
+    return <Sun className={`${iconClass} text-yellow-500`} />;
+  }
+  
+  // Par défaut
+  return <ThermometerSun className={`${iconClass} text-orange-500`} />;
 };
 
 export default function WeatherWidget() {
@@ -48,13 +79,13 @@ export default function WeatherWidget() {
 
   if (isLoading) {
     return (
-      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+      <Card className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-slate-200 dark:border-slate-700 shadow-sm">
         <CardContent className="p-3">
           <div className="flex items-center gap-2 text-sm">
             <div className="animate-pulse">
-              <Cloud className="h-4 w-4" />
+              <Cloud className="h-5 w-5 text-slate-400" />
             </div>
-            <span className="text-blue-700 dark:text-blue-300">Chargement météo...</span>
+            <span className="text-slate-600 dark:text-slate-300 font-medium">Chargement météo...</span>
           </div>
         </CardContent>
       </Card>
@@ -69,40 +100,79 @@ export default function WeatherWidget() {
   const previousTemp = weather.previousYear?.maxTemperature;
   const location = weather.location || "Nancy";
 
+  const tempDifference = currentTemp !== undefined && previousTemp !== undefined 
+    ? currentTemp - previousTemp : 0;
+
   return (
-    <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-      <CardContent className="p-3">
-        <div className="flex items-center gap-3 text-sm">
-          <div className="flex items-center gap-1">
-            <WeatherIcon condition={weather.currentYear?.condition || ''} />
-            <span className="text-blue-700 dark:text-blue-300 font-medium">
-              {location.split(',')[0]}
-            </span>
+    <Card className="bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border-slate-200 dark:border-slate-700 shadow-lg hover:shadow-xl transition-all duration-300">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          {/* Icône et localisation */}
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-slate-100 dark:bg-slate-700 rounded-full">
+              <WeatherIcon condition={weather.currentYear?.condition || ''} size={24} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-slate-700 dark:text-slate-200 font-semibold text-sm">
+                {location.split(',')[0]}
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">
+                {weather.currentYear?.condition || 'Inconnu'}
+              </span>
+            </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <div className="text-blue-800 dark:text-blue-200 font-semibold">
-              {currentTemp !== undefined ? `${Math.round(currentTemp)}°` : '--°'}
+          {/* Températures actuelles */}
+          <div className="flex items-center gap-3">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                {currentTemp !== undefined ? `${Math.round(currentTemp)}°` : '--°'}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Aujourd'hui
+              </div>
             </div>
             
+            {/* Comparaison avec l'an dernier */}
             {previousTemp !== undefined && (
-              <div className="text-blue-600 dark:text-blue-400 text-xs">
-                (l'an dernier: {Math.round(previousTemp)}°)
-              </div>
+              <>
+                <div className="h-8 w-px bg-slate-300 dark:bg-slate-600"></div>
+                <div className="text-center">
+                  <div className="text-lg font-semibold text-slate-600 dark:text-slate-300">
+                    {Math.round(previousTemp)}°
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    Année dernière
+                  </div>
+                </div>
+              </>
+            )}
+            
+            {/* Différence */}
+            {currentTemp !== undefined && previousTemp !== undefined && (
+              <>
+                <div className="h-8 w-px bg-slate-300 dark:bg-slate-600"></div>
+                <div className="flex items-center gap-1">
+                  {tempDifference > 0 ? (
+                    <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                      <span className="text-lg">↗</span>
+                      <span className="text-sm font-semibold">+{Math.round(tempDifference)}°</span>
+                    </div>
+                  ) : tempDifference < 0 ? (
+                    <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                      <span className="text-lg">↘</span>
+                      <span className="text-sm font-semibold">{Math.round(tempDifference)}°</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                      <span className="text-lg">=</span>
+                      <span className="text-sm font-semibold">0°</span>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
-          
-          {currentTemp !== undefined && previousTemp !== undefined && (
-            <div className="text-xs">
-              {currentTemp > previousTemp ? (
-                <span className="text-red-600 dark:text-red-400">↑{Math.round(currentTemp - previousTemp)}°</span>
-              ) : currentTemp < previousTemp ? (
-                <span className="text-blue-600 dark:text-blue-400">↓{Math.round(previousTemp - currentTemp)}°</span>
-              ) : (
-                <span className="text-gray-600 dark:text-gray-400">=</span>
-              )}
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
