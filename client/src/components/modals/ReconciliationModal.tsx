@@ -77,19 +77,9 @@ export default function ReconciliationModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation basique
-    if (!formData.blNumber.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Le numéro de BL est requis",
-        variant: "destructive",
-      });
-      return;
-    }
 
     updateDeliveryMutation.mutate({
-      blNumber: formData.blNumber.trim(),
+      blNumber: formData.blNumber.trim() || null,
       blAmount: formData.blAmount ? formData.blAmount.toString() : null,
       invoiceReference: formData.invoiceReference.trim() || null,
       invoiceAmount: formData.invoiceAmount ? formData.invoiceAmount.toString() : null,
@@ -97,17 +87,8 @@ export default function ReconciliationModal({
   };
 
   const handleValidateReconciliation = () => {
-    if (!formData.blNumber.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez d'abord renseigner le numéro de BL",
-        variant: "destructive",
-      });
-      return;
-    }
-
     updateDeliveryMutation.mutate({
-      blNumber: formData.blNumber.trim(),
+      blNumber: formData.blNumber.trim() || null,
       blAmount: formData.blAmount ? formData.blAmount.toString() : null,
       invoiceReference: formData.invoiceReference.trim() || null,
       invoiceAmount: formData.invoiceAmount ? formData.invoiceAmount.toString() : null,
@@ -117,7 +98,7 @@ export default function ReconciliationModal({
   };
 
   const isAutomaticMode = delivery?.supplier?.automaticReconciliation;
-  const canValidate = formData.blNumber.trim().length > 0;
+  const canValidate = true; // Plus de restriction sur le numéro BL
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -176,13 +157,12 @@ export default function ReconciliationModal({
                 <h4 className="font-medium text-gray-900">Bon de Livraison (BL)</h4>
                 
                 <div>
-                  <Label htmlFor="blNumber">N° BL *</Label>
+                  <Label htmlFor="blNumber">N° BL</Label>
                   <Input
                     id="blNumber"
                     value={formData.blNumber}
                     onChange={(e) => setFormData(prev => ({ ...prev, blNumber: e.target.value }))}
-                    placeholder="Ex: BL-2025-001"
-                    required
+                    placeholder="Ex: BL-2025-001 (optionnel)"
                   />
                 </div>
 
@@ -263,8 +243,8 @@ export default function ReconciliationModal({
 
           {/* Note d'aide */}
           <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded">
-            <strong>Note :</strong> Le numéro de BL est obligatoire pour valider un rapprochement. 
-            Les montants sont optionnels mais recommandés pour un suivi précis.
+            <strong>Note :</strong> Tous les champs sont optionnels. 
+            Les données BL et facture sont recommandées pour un suivi précis mais pas obligatoires.
           </div>
         </div>
       </DialogContent>
