@@ -90,11 +90,15 @@ export default function BLReconciliation() {
       
       // Auto-remplissage si facture trouvée via BL
       if (result.exists && result.matchType === 'bl_number' && result.invoiceReference) {
-        // Auto-remplir les champs dans la livraison
-        updateDeliveryMutation.mutate({
-          id: variables.deliveryId,
+        // Auto-remplir les champs dans la livraison via API
+        apiRequest(`/api/deliveries/${variables.deliveryId}`, "PUT", {
           invoiceReference: result.invoiceReference,
           invoiceAmount: result.invoiceAmount
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+        }).catch((error) => {
+          console.error('Erreur auto-remplissage:', error);
         });
       }
       
@@ -263,17 +267,11 @@ export default function BLReconciliation() {
     setIsModalOpen(false);
   };
 
-  const handleSaveReconciliation = async (data: any) => {
+  const handleSaveReconciliation = async () => {
     try {
-      await apiRequest(`/api/deliveries/${selectedDelivery.id}`, "PUT", data);
-      
-      toast({
-        title: "Succès",
-        description: "Données de rapprochement mises à jour",
-      });
-      
       // Invalidation cache + refetch forcé pour mise à jour immédiate
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
       refetch();
       handleCloseModal();
     } catch (error) {
@@ -720,18 +718,12 @@ export default function BLReconciliation() {
                                 {(delivery.group?.nocodbTableName || delivery.group?.nocodbConfigId || delivery.group?.webhookUrl) && (
                                   <div className="flex items-center">
                                     {verifyingDeliveries.has(delivery.id) ? (
-                                      <Clock className="h-4 w-4 text-blue-500 animate-spin" title="Vérification en cours..." />
+                                      <Clock className="h-4 w-4 text-blue-500 animate-spin" />
                                     ) : verificationResults[delivery.id] ? (
                                       verificationResults[delivery.id].exists ? (
-                                        <CheckCircle 
-                                          className="h-4 w-4 text-green-500 cursor-help" 
-                                          title={`Facture vérifiée (${verificationResults[delivery.id].matchType === 'invoice_ref' ? 'référence directe' : 'via BL'})`}
-                                        />
+                                        <CheckCircle className="h-4 w-4 text-green-500 cursor-help" />
                                       ) : (
-                                        <XCircle 
-                                          className="h-4 w-4 text-red-500 cursor-help" 
-                                          title={`Facture non trouvée: ${verificationResults[delivery.id].errorMessage || 'Aucune correspondance'}`}
-                                        />
+                                        <XCircle className="h-4 w-4 text-red-500 cursor-help" />
                                       )
                                     ) : (
                                       <button
