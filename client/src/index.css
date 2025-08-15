@@ -115,22 +115,20 @@
     display: none;
   }
   
-  /* Solution simple et directe pour masquer l'ascenseur horizontal */
-  ::-webkit-scrollbar:horizontal {
-    display: none !important;
-  }
-  
-  html {
-    overflow-x: hidden !important;
-    scrollbar-width: none;
-  }
-  
-  body {
-    overflow-x: hidden !important;
+  /* Solution pour masquer l'ascenseur vertical de droite */
+  html, body {
+    height: 100%;
+    overflow: hidden !important;
   }
   
   #root {
-    overflow-x: hidden !important;
+    height: 100%;
+    overflow: hidden !important;
+  }
+  
+  .layout-container {
+    height: 100vh;
+    overflow: hidden !important;
   }
   
   .bg-secondary {
