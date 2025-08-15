@@ -152,7 +152,7 @@ export default function WeatherWidget() {
 
   return (
     <Card className="bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border-slate-200 dark:border-slate-700 shadow-lg hover:shadow-xl transition-all duration-300">
-      <CardContent className="p-4">
+      <CardContent className="p-4 min-h-[80px]">
         <div className="flex items-center gap-4">
           {/* Icône et localisation */}
           <div className="flex items-center gap-2">
@@ -183,18 +183,18 @@ export default function WeatherWidget() {
             {/* Comparaison avec l'an dernier */}
             {previousTemp !== undefined && (
               <>
-                <div className="h-8 w-px bg-slate-300 dark:bg-slate-600"></div>
-                <div className="text-center">
+                <div className="h-12 w-px bg-slate-300 dark:bg-slate-600"></div>
+                <div className="text-center min-w-[80px]">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <WeatherIcon condition={weather.previousYear?.condition || ''} size={16} />
                     <div className="text-lg font-semibold text-slate-600 dark:text-slate-300">
                       {Math.round(previousTemp)}°
                     </div>
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
                     Année dernière
                   </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-300 mt-1 font-medium">
+                  <div className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-tight">
                     {translateToFrench(weather.previousYear?.condition || '')}
                   </div>
                 </div>
