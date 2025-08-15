@@ -64,6 +64,11 @@ export class InvoiceVerificationService {
       
       console.log('💾 Résultat sauvé en cache:', { invoiceReference, groupId, exists: result.exists });
     } catch (error) {
+      // Gérer spécifiquement les erreurs de contrainte unique (duplicate key)
+      if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+        console.log('🔄 Cache déjà existant pour cette clé, ignoré:', { invoiceReference, groupId });
+        return;
+      }
       console.error('❌ Erreur sauvegarde cache:', error);
     }
   }

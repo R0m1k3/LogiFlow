@@ -1287,8 +1287,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInvoiceVerificationCache(cacheData: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
-    const [cache] = await db.insert(invoiceVerificationCache).values(cacheData).returning();
-    return cache;
+    try {
+      // Utiliser UPSERT pour gérer les conflits de clés
+      const [cache] = await db
+        .insert(invoiceVerificationCache)
+        .values(cacheData)
+        .onConflictDoUpdate({
+          target: invoiceVerificationCache.cacheKey,
+          set: {
+            exists: cacheData.exists,
+            matchType: cacheData.matchType,
+            errorMessage: cacheData.errorMessage,
+            cacheHit: cacheData.cacheHit,
+            apiCallTime: cacheData.apiCallTime,
+            updatedAt: new Date()
+          }
+        })
+        .returning();
+      return cache;
+    } catch (error) {
+      console.error('❌ Erreur création cache:', error);
+      throw error;
+    }
   }
 
   async saveInvoiceVerificationCache(cacheData: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
