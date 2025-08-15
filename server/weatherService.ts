@@ -70,7 +70,41 @@ export class WeatherService {
   }
 
   /**
-   * Convertit les données de l'API en format WeatherData
+   * Traduit les conditions météo en français
+   */
+  private translateConditionToFrench(condition: string): string {
+    const conditionLower = condition.toLowerCase();
+    
+    // Traductions anglais -> français
+    if (conditionLower.includes('clear')) return 'Dégagé';
+    if (conditionLower.includes('sunny')) return 'Ensoleillé';
+    if (conditionLower.includes('fair')) return 'Beau temps';
+    if (conditionLower.includes('partly cloudy')) return 'Partiellement nuageux';
+    if (conditionLower.includes('cloudy')) return 'Nuageux';
+    if (conditionLower.includes('overcast')) return 'Couvert';
+    if (conditionLower.includes('rain')) {
+      if (conditionLower.includes('heavy')) return 'Pluie forte';
+      if (conditionLower.includes('light')) return 'Pluie légère';
+      return 'Pluie';
+    }
+    if (conditionLower.includes('shower')) return 'Averses';
+    if (conditionLower.includes('drizzle')) return 'Bruine';
+    if (conditionLower.includes('thunderstorm') || conditionLower.includes('thunder')) return 'Orage';
+    if (conditionLower.includes('snow')) {
+      if (conditionLower.includes('heavy')) return 'Neige forte';
+      if (conditionLower.includes('light')) return 'Neige légère';
+      return 'Neige';
+    }
+    if (conditionLower.includes('fog')) return 'Brouillard';
+    if (conditionLower.includes('mist')) return 'Brume';
+    if (conditionLower.includes('wind')) return 'Venteux';
+    
+    // Si déjà en français, retourner tel quel
+    return condition;
+  }
+
+  /**
+   * Convertit les données de l'API en format WeatherData avec traduction française forcée
    */
   convertApiDataToWeatherData(apiData: WeatherApiResponse, location: string, isCurrentYear: boolean): InsertWeatherData | null {
     if (!apiData.days || apiData.days.length === 0) {
@@ -86,7 +120,7 @@ export class WeatherService {
       tempMax: todayData.tempmax.toString(),
       tempMin: todayData.tempmin.toString(),
       icon: todayData.icon,
-      conditions: todayData.conditions,
+      conditions: this.translateConditionToFrench(todayData.conditions), // Traduction forcée
       isCurrentYear
       // Pas de createdAt/updatedAt - gérés par la base de données
     };
