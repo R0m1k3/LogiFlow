@@ -557,7 +557,7 @@ export default function Tasks() {
               <div className="p-6">
                 <div className="grid grid-cols-10 gap-1 h-full text-xs overflow-x-auto">
                   {/* Colonne Backlog */}
-                  <div className="bg-gray-50 rounded-lg p-3">
+                  <div className="bg-gray-50 rounded-lg p-2 min-w-[150px]">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <Circle className="w-4 h-4 text-gray-400" />
                       Backlog ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'backlog').length})
@@ -570,7 +570,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne À faire */}
-                  <div className="bg-blue-50 rounded-lg p-3">
+                  <div className="bg-blue-50 rounded-lg p-2 min-w-[150px]">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <Circle className="w-4 h-4 text-blue-500" />
                       À faire ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'todo').length})
@@ -583,7 +583,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne En cours */}
-                  <div className="bg-yellow-50 rounded-lg p-3">
+                  <div className="bg-yellow-50 rounded-lg p-2 min-w-[150px]">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <Clock className="w-4 h-4 text-yellow-500" />
                       En cours ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'in_progress').length})
@@ -596,7 +596,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne Révision */}
-                  <div className="bg-purple-50 rounded-lg p-3">
+                  <div className="bg-purple-50 rounded-lg p-2 min-w-[150px]">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <Edit className="w-4 h-4 text-purple-500" />
                       Révision ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'review').length})
@@ -609,7 +609,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne Test */}
-                  <div className="bg-orange-50 rounded-lg p-2">
+                  <div className="bg-orange-50 rounded-lg p-2 min-w-[150px]">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <AlertTriangle className="w-4 h-4 text-orange-500" />
                       Test ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'testing').length})
@@ -622,7 +622,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne Bloqué */}
-                  <div className="bg-red-50 rounded-lg p-2">
+                  <div className="bg-red-50 rounded-lg p-2 min-w-[150px]">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <Circle className="w-4 h-4 text-red-500" />
                       Bloqué ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'blocked').length})
@@ -635,7 +635,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne Prêt Déploiement */}
-                  <div className="bg-indigo-50 rounded-lg p-2">
+                  <div className="bg-indigo-50 rounded-lg p-2 min-w-[150px]">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <CheckCircle className="w-4 h-4 text-indigo-500" />
                       Prêt Déploiement ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'ready_to_deploy').length})
@@ -648,7 +648,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne Déployé */}
-                  <div className="bg-cyan-50 rounded-lg p-2">
+                  <div className="bg-cyan-50 rounded-lg p-2 min-w-[150px]">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <CheckCircle className="w-4 h-4 text-cyan-500" />
                       Déployé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'deployed').length})
@@ -661,7 +661,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne Terminé */}
-                  <div className="bg-green-50 rounded-lg p-2">
+                  <div className="bg-green-50 rounded-lg p-2 min-w-[150px]">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <CheckCircle className="w-4 h-4 text-green-500" />
                       Terminé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'done').length})
@@ -674,7 +674,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne Archivé */}
-                  <div className="bg-gray-100 rounded-lg p-2">
+                  <div className="bg-gray-100 rounded-lg p-2 min-w-[150px]">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <Circle className="w-4 h-4 text-gray-400" />
                       Archivé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'archived').length})
@@ -704,15 +704,15 @@ export default function Tasks() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Tâches actives (non terminées/archivées) */}
-                {paginatedTasks.filter(task => !['done', 'archived'].includes(task.status)).length > 0 && (
+                {/* Tâches À faire en premier */}
+                {paginatedTasks.filter(task => ['todo', 'backlog', 'in_progress', 'review', 'testing', 'blocked', 'ready_to_deploy', 'deployed'].includes(task.status)).length > 0 && (
                   <div>
                     <h4 className="text-lg font-semibold text-gray-900 mb-3">
-                      Tâches actives ({paginatedTasks.filter(task => !['done', 'archived'].includes(task.status)).length})
+                      Tâches à faire ({paginatedTasks.filter(task => ['todo', 'backlog', 'in_progress', 'review', 'testing', 'blocked', 'ready_to_deploy', 'deployed'].includes(task.status)).length})
                     </h4>
                     <div className="space-y-3">
                       {paginatedTasks
-                        .filter(task => !['done', 'archived'].includes(task.status))
+                        .filter(task => ['todo', 'backlog', 'in_progress', 'review', 'testing', 'blocked', 'ready_to_deploy', 'deployed'].includes(task.status))
                         .map((task) => {
                           const priorityConfig = getPriorityConfig(task.priority);
                           const PriorityIcon = priorityConfig.icon;
@@ -912,8 +912,6 @@ export default function Tasks() {
                 )}
               </div>
             </TabsContent>
-
-
           </Tabs>
         </div>
       </div>
