@@ -1,9 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Cloud, CloudRain, Sun, CloudSnow, CloudSun, ThermometerSun, CloudDrizzle, Wind, Zap, Eye, MapPin, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Cloud, CloudRain, Sun, CloudSnow, CloudSun, ThermometerSun, CloudDrizzle, Wind, Zap, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 
 interface WeatherData {
   id: number;
@@ -130,86 +127,7 @@ export default function WeatherWidget() {
     retry: 1,
   });
 
-  // Mutation pour la géolocalisation
-  const geoLocationMutation = useMutation({
-    mutationFn: async (coordinates: { latitude: number; longitude: number }) => {
-      const response = await fetch('/api/weather/geolocation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(coordinates),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erreur de géolocalisation');
-      }
-      
-      return response.json();
-    },
-    onSuccess: (data) => {
-      toast({
-        title: "Localisation mise à jour",
-        description: data.message,
-      });
-      
-      // Forcer le rechargement immédiat des données météo
-      queryClient.invalidateQueries({ queryKey: ['/api/weather/current'] });
-      queryClient.refetchQueries({ queryKey: ['/api/weather/current'] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erreur de géolocalisation",
-        description: error.message || "Impossible de déterminer votre localisation",
-        variant: "destructive",
-      });
-    },
-  });
 
-  // Fonction pour obtenir la géolocalisation
-  const handleGeolocation = () => {
-    if (!navigator.geolocation) {
-      toast({
-        title: "Géolocalisation non supportée",
-        description: "Votre navigateur ne supporte pas la géolocalisation",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        geoLocationMutation.mutate({ latitude, longitude });
-      },
-      (error) => {
-        let message = "Erreur de géolocalisation";
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            message = "Autorisation de géolocalisation refusée";
-            break;
-          case error.POSITION_UNAVAILABLE:
-            message = "Position non disponible";
-            break;
-          case error.TIMEOUT:
-            message = "Délai d'attente dépassé";
-            break;
-        }
-        
-        toast({
-          title: "Erreur de géolocalisation",
-          description: message,
-          variant: "destructive",
-        });
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000, // 5 minutes
-      }
-    );
-  };
 
   if (isLoading) {
     return (
@@ -247,25 +165,9 @@ export default function WeatherWidget() {
               <WeatherIcon condition={weather.currentYear?.condition || ''} size={24} />
             </div>
             <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-700 dark:text-slate-200 font-semibold text-sm">
-                  {location.split(',')[0]}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleGeolocation}
-                  disabled={geoLocationMutation.isPending}
-                  className="h-6 w-6 p-0 hover:bg-slate-200 dark:hover:bg-slate-600"
-                  title="Détecter ma localisation"
-                >
-                  {geoLocationMutation.isPending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <MapPin className="h-3 w-3" />
-                  )}
-                </Button>
-              </div>
+              <span className="text-slate-700 dark:text-slate-200 font-semibold text-sm">
+                {location.split(',')[0]}
+              </span>
               <span className="text-xs text-slate-500 dark:text-slate-400">
                 {translateToFrench(weather.currentYear?.condition || 'Inconnu')}
               </span>

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { AlertCircle, CheckCircle, Cloud, Settings } from "lucide-react";
+import { AlertCircle, CheckCircle, Cloud, Settings, MapPin, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -65,6 +65,92 @@ export default function WeatherSettings() {
       });
     },
   });
+
+  // Geolocation mutation
+  const geoLocationMutation = useMutation({
+    mutationFn: async (coordinates: { latitude: number; longitude: number }) => {
+      const response = await fetch('/api/weather/geolocation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(coordinates),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur de géolocalisation');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Localisation mise à jour",
+        description: data.message,
+      });
+      
+      // Refresh settings to get updated location
+      queryClient.invalidateQueries({ queryKey: ['/api/weather/settings'] });
+      
+      // Update the form field
+      const locationInput = document.getElementById('location') as HTMLInputElement;
+      if (locationInput && data.location?.fullLocation) {
+        locationInput.value = data.location.fullLocation;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur de géolocalisation",
+        description: error.message || "Impossible de déterminer votre localisation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle geolocation
+  const handleGeolocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Géolocalisation non supportée",
+        description: "Votre navigateur ne supporte pas la géolocalisation",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        geoLocationMutation.mutate({ latitude, longitude });
+      },
+      (error) => {
+        let message = "Erreur de géolocalisation";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            message = "Autorisation de géolocalisation refusée";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message = "Position non disponible";
+            break;
+          case error.TIMEOUT:
+            message = "Délai d'attente dépassé";
+            break;
+        }
+        
+        toast({
+          title: "Erreur de géolocalisation",
+          description: message,
+          variant: "destructive",
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000, // 5 minutes
+      }
+    );
+  };
 
   // Test API connection
   const testConnection = async (apiKey: string, location: string) => {
@@ -174,15 +260,33 @@ export default function WeatherSettings() {
 
             <div className="space-y-2">
               <Label htmlFor="location">Localisation</Label>
-              <Input
-                id="location"
-                name="location"
-                placeholder="Nancy, France"
-                defaultValue={settings?.location || "Nancy, France"}
-                required
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="location"
+                  name="location"
+                  placeholder="Nancy, France"
+                  defaultValue={settings?.location || "Nancy, France"}
+                  required
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGeolocation}
+                  disabled={geoLocationMutation.isPending}
+                  className="px-3"
+                  title="Détecter ma localisation automatiquement"
+                >
+                  {geoLocationMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MapPin className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
               <p className="text-sm text-muted-foreground">
-                Ville ou région pour laquelle afficher la météo
+                Ville ou région pour laquelle afficher la météo. Cliquez sur 📍 pour détecter automatiquement votre localisation.
               </p>
             </div>
 
