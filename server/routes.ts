@@ -2389,8 +2389,13 @@ RÉSUMÉ DU SCAN
   });
 
   // Backup management routes (Admin only)
-  app.get('/api/backups', isAuthenticated, requireAdmin, async (req: any, res: any) => {
+  app.get('/api/backups', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const backups = await backupService.getBackupList();
       res.json(backups);
     } catch (error) {
@@ -2399,11 +2404,11 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.post('/api/backups', isAuthenticated, requireAdmin, async (req: any, res: any) => {
+  app.post('/api/backups', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
       }
 
       const backup = await backupService.createBackup('manual', user.id);
@@ -2414,12 +2419,17 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.get('/api/backups/:filename/download', isAuthenticated, requireAdmin, async (req: any, res: any) => {
+  app.get('/api/backups/:filename/download', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const { filename } = req.params;
       const filepath = await backupService.downloadBackup(filename);
       
-      res.download(filepath, filename, (err) => {
+      res.download(filepath, filename, (err: any) => {
         if (err) {
           console.error("Error downloading backup:", err);
           res.status(404).json({ message: "Backup file not found" });
@@ -2431,8 +2441,13 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.delete('/api/backups/:filename', isAuthenticated, requireAdmin, async (req: any, res: any) => {
+  app.delete('/api/backups/:filename', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const { filename } = req.params;
       await backupService.deleteBackup(filename);
       res.json({ message: "Backup deleted successfully" });
@@ -2757,8 +2772,13 @@ RÉSUMÉ DU SCAN
   });
 
   // Weather routes
-  app.get('/api/weather/settings', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.get('/api/weather/settings', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const settings = await storage.getWeatherSettings();
       res.json(settings);
     } catch (error) {
@@ -2767,8 +2787,13 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.post('/api/weather/settings', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.post('/api/weather/settings', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const data = insertWeatherSettingsSchema.parse(req.body);
       const settings = await storage.createWeatherSettings(data);
       res.json(settings);
@@ -2781,8 +2806,13 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.put('/api/weather/settings/:id', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.put('/api/weather/settings/:id', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const id = parseInt(req.params.id);
       const data = insertWeatherSettingsSchema.partial().parse(req.body);
       const settings = await storage.updateWeatherSettings(id, data);
@@ -2796,8 +2826,13 @@ RÉSUMÉ DU SCAN
     }
   });
 
-  app.post('/api/weather/test-connection', isAuthenticated, requireAdmin, async (req: any, res) => {
+  app.post('/api/weather/test-connection', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const { apiKey, location } = req.body;
       
       if (!apiKey || !location) {
