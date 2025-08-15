@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,58 +44,53 @@ export default function DlcPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<DlcProductWithRelations | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
 
-  // Fetch stores/groups
+  // Debounce search term to reduce API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Fetch stores/groups - optimized cache
   const { data: stores = [] } = useQuery({
     queryKey: ["/api/groups"],
     enabled: !authLoading,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
   });
 
-
-
-  // Fetch suppliers with DLC enabled only
+  // Fetch suppliers with DLC enabled only - optimized cache
   const { data: suppliers = [] } = useQuery({
     queryKey: ["/api/suppliers", "dlc"],
     queryFn: () => apiRequest("/api/suppliers?dlc=true"),
     enabled: !authLoading,
+    staleTime: 10 * 60 * 1000, // 10 minutes cache
   });
 
-  // Fetch DLC products
+  // Fetch DLC products - optimized with server-side search
   const { data: dlcProducts = [], isLoading: productsLoading } = useQuery({
-    queryKey: ["/api/dlc-products", selectedStoreId, statusFilter, supplierFilter],
+    queryKey: ["/api/dlc-products", selectedStoreId, statusFilter, supplierFilter, debouncedSearchTerm],
     queryFn: () => {
       const params = new URLSearchParams();
       if (selectedStoreId && user?.role === 'admin') params.append("storeId", selectedStoreId.toString());
       if (statusFilter && statusFilter !== "all") params.append("status", statusFilter);
       if (supplierFilter && supplierFilter !== "all") params.append("supplierId", supplierFilter);
-      
-      if (import.meta.env.DEV) {
-        console.log("🔍 Requête DLC products:", {
-          url: `/api/dlc-products?${params.toString()}`,
-          user: user?.role,
-          selectedStoreId,
-          userGroups: user?.userGroups?.map(ug => ({ groupId: ug.groupId, groupName: ug.group?.name }))
-        });
-      }
+      if (debouncedSearchTerm) params.append("search", debouncedSearchTerm);
       
       return apiRequest(`/api/dlc-products?${params.toString()}`);
     },
     enabled: !authLoading,
-    onSuccess: (data) => {
-      if (import.meta.env.DEV) {
-        console.log("📋 DLC products reçus:", {
-          total: data.length,
-          sample: data.slice(0, 3).map(d => ({ id: d.id, productName: d.productName, groupId: d.groupId }))
-        });
-      }
-    }
+    staleTime: 2 * 60 * 1000, // 2 minutes cache for DLC data
   });
 
-  // Fetch DLC stats
+  // Fetch DLC stats - optimized cache
   const { data: stats = { active: 0, expiringSoon: 0, expired: 0 } } = useQuery({
     queryKey: ["/api/dlc-products/stats", selectedStoreId],
     queryFn: () => {
@@ -104,6 +99,7 @@ export default function DlcPage() {
       return apiRequest(`/api/dlc-products/stats?${params.toString()}`);
     },
     enabled: !authLoading,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache for stats
   });
 
   // Form setup
@@ -118,16 +114,13 @@ export default function DlcPage() {
     },
   });
 
-  // Create mutation
+  // Create mutation - optimized cache invalidation
   const createMutation = useMutation({
     mutationFn: (data: InsertDlcProduct) => apiRequest("/api/dlc-products", "POST", data),
     onSuccess: () => {
-      // Invalidate all DLC queries with any combination of parameters
+      // Selective cache invalidation
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
-      if (import.meta.env.DEV) {
-        console.log("🔄 Cache DLC invalidé après création");
-      }
       toast({ title: "Produit DLC créé avec succès" });
       setIsDialogOpen(false);
       form.reset();
@@ -142,16 +135,13 @@ export default function DlcPage() {
     },
   });
 
-  // Update mutation
+  // Update mutation - optimized cache invalidation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<InsertDlcProduct> }) =>
       apiRequest(`/api/dlc-products/${id}`, "PUT", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
-      if (import.meta.env.DEV) {
-        console.log("🔄 Cache DLC invalidé après mise à jour");
-      }
       toast({ title: "Produit DLC mis à jour avec succès" });
       setIsDialogOpen(false);
       form.reset();
@@ -166,15 +156,12 @@ export default function DlcPage() {
     },
   });
 
-  // Validate mutation
+  // Validate mutation - optimized cache invalidation
   const validateMutation = useMutation({
     mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/validate`, "PUT"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
-      if (import.meta.env.DEV) {
-        console.log("🔄 Cache DLC invalidé après validation");
-      }
       toast({ title: "Produit validé avec succès" });
     },
     onError: (error: any) => {
@@ -186,13 +173,12 @@ export default function DlcPage() {
     },
   });
 
-  // Delete mutation
+  // Delete mutation - optimized cache invalidation
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
-      console.log("🔄 Cache DLC invalidé après suppression");
       toast({ title: "Produit supprimé avec succès" });
     },
     onError: (error: any) => {
@@ -325,13 +311,7 @@ export default function DlcPage() {
   };
 
   const printExpiringSoon = () => {
-    const expiringSoon = filteredProducts.filter(product => {
-      const today = new Date();
-      const expiry = new Date(product.dlcDate || new Date());
-      const diffTime = expiry.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays > 0 && diffDays <= 15;
-    });
+    const expiringSoon = expiringSoonProducts;
 
     const printContent = `
       <html>
@@ -390,11 +370,7 @@ export default function DlcPage() {
   };
 
   const printExpired = () => {
-    const expired = filteredProducts.filter(product => {
-      const today = new Date();
-      const expiry = new Date(product.dlcDate || new Date());
-      return expiry < today;
-    });
+    const expired = expiredProducts;
 
     const printContent = `
       <html>
@@ -452,13 +428,27 @@ export default function DlcPage() {
     }
   };
 
-  const filteredProducts = (dlcProducts || []).filter(product => {
-    if (searchTerm) {
-      return product.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             (product.supplier?.name && product.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
-    return true;
-  });
+  // Products are already filtered server-side, no client filtering needed
+  const filteredProducts = dlcProducts || [];
+
+  // Memoized calculations for print functions
+  const { expiringSoonProducts, expiredProducts } = useMemo(() => {
+    const today = new Date();
+    const expiringSoon = filteredProducts.filter(product => {
+      if (product.status === 'valides') return false;
+      const expiryDate = new Date(product.dlcDate || new Date());
+      const diffDays = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 15 && diffDays > 0;
+    });
+
+    const expired = filteredProducts.filter(product => {
+      if (product.status === 'valides') return false;
+      const expiryDate = new Date(product.dlcDate || new Date());
+      return expiryDate <= today;
+    });
+
+    return { expiringSoonProducts: expiringSoon, expiredProducts: expired };
+  }, [filteredProducts]);
 
   // Pagination
   const {

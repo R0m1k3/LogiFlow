@@ -14,6 +14,8 @@ import {
   invoiceVerificationCache,
   savTickets,
   savTicketHistory,
+  weatherData,
+  weatherSettings,
   type User,
   type UpsertUser,
   type Group,
@@ -55,6 +57,10 @@ import {
   type InsertSavTicketHistory,
   type SavTicketWithRelations,
   type SavTicketHistoryWithCreator,
+  type WeatherData,
+  type InsertWeatherData,
+  type WeatherSettings,
+  type InsertWeatherSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql, gte, lte, lt, or, isNull, isNotNull, asc } from "drizzle-orm";
@@ -149,7 +155,7 @@ export interface IStorage {
   deleteCustomerOrder(id: number): Promise<void>;
 
   // DLC Product operations
-  getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; }): Promise<DlcProductWithRelations[]>;
+  getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]>;
   getDlcProduct(id: number): Promise<DlcProductWithRelations | undefined>;
   createDlcProduct(dlcProduct: InsertDlcProduct): Promise<DlcProductFrontend>;
   updateDlcProduct(id: number, dlcProduct: Partial<InsertDlcProduct>): Promise<DlcProductFrontend>;
@@ -187,6 +193,15 @@ export interface IStorage {
     resolvedTickets: number;
     criticalTickets: number;
   }>;
+
+  // Weather operations
+  getWeatherSettings(): Promise<WeatherSettings | undefined>;
+  createWeatherSettings(settings: InsertWeatherSettings): Promise<WeatherSettings>;
+  updateWeatherSettings(id: number, settings: Partial<InsertWeatherSettings>): Promise<WeatherSettings>;
+  getWeatherData(date: string, isCurrentYear: boolean): Promise<WeatherData | undefined>;
+  createWeatherData(data: InsertWeatherData): Promise<WeatherData>;
+  updateWeatherData(id: number, data: Partial<InsertWeatherData>): Promise<WeatherData>;
+  deleteOldWeatherData(daysToKeep: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1350,7 +1365,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(customerOrders).where(eq(customerOrders.id, id));
   }
 
-  async getDlcProducts(groupIds?: number[]): Promise<DlcProductWithRelations[]> {
+  async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]> {
     let query = db
       .select({
         dlcProduct: dlcProducts,
@@ -1361,8 +1376,31 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(suppliers, eq(dlcProducts.supplierId, suppliers.id))
       .leftJoin(groups, eq(dlcProducts.groupId, groups.id));
 
+    const conditions = [];
+
     if (groupIds && groupIds.length > 0) {
-      query = query.where(inArray(dlcProducts.groupId, groupIds));
+      conditions.push(inArray(dlcProducts.groupId, groupIds));
+    }
+
+    if (filters) {
+      if (filters.status) {
+        conditions.push(eq(dlcProducts.status, filters.status));
+      }
+      if (filters.supplierId) {
+        conditions.push(eq(dlcProducts.supplierId, filters.supplierId));
+      }
+      if (filters.search) {
+        conditions.push(
+          or(
+            sql`LOWER(${dlcProducts.productName}) LIKE LOWER(${'%' + filters.search + '%'})`,
+            sql`LOWER(${suppliers.name}) LIKE LOWER(${'%' + filters.search + '%'})`
+          )
+        );
+      }
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
     }
 
     const results = await query.orderBy(asc(dlcProducts.expiryDate));
@@ -1724,6 +1762,63 @@ export class DatabaseStorage implements IStorage {
     });
 
     return stats;
+  }
+
+  // Weather operations
+  async getWeatherSettings(): Promise<WeatherSettings | undefined> {
+    const [settings] = await db.select().from(weatherSettings).limit(1);
+    return settings;
+  }
+
+  async createWeatherSettings(settingsData: InsertWeatherSettings): Promise<WeatherSettings> {
+    const [settings] = await db.insert(weatherSettings).values(settingsData).returning();
+    return settings;
+  }
+
+  async updateWeatherSettings(id: number, settingsData: Partial<InsertWeatherSettings>): Promise<WeatherSettings> {
+    const [settings] = await db
+      .update(weatherSettings)
+      .set({ ...settingsData, updatedAt: new Date() })
+      .where(eq(weatherSettings.id, id))
+      .returning();
+    return settings;
+  }
+
+  async getWeatherData(date: string, isCurrentYear: boolean): Promise<WeatherData | undefined> {
+    const [data] = await db
+      .select()
+      .from(weatherData)
+      .where(and(
+        eq(weatherData.date, date),
+        eq(weatherData.isCurrentYear, isCurrentYear)
+      ))
+      .limit(1);
+    return data;
+  }
+
+  async createWeatherData(data: InsertWeatherData): Promise<WeatherData> {
+    const [weatherInfo] = await db.insert(weatherData).values(data).returning();
+    return weatherInfo;
+  }
+
+  async updateWeatherData(id: number, data: Partial<InsertWeatherData>): Promise<WeatherData> {
+    const [weatherInfo] = await db
+      .update(weatherData)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(weatherData.id, id))
+      .returning();
+    return weatherInfo;
+  }
+
+  async deleteOldWeatherData(daysToKeep: number): Promise<void> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+    
+    await db
+      .delete(weatherData)
+      .where(lt(weatherData.createdAt, cutoffDate));
+    
+    console.log(`🧹 Deleted weather data older than ${daysToKeep} days`);
   }
 }
 
@@ -2409,7 +2504,7 @@ export class MemStorage implements IStorage {
     this.customerOrders.delete(id);
   }
 
-  async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; }): Promise<DlcProductWithRelations[]> {
+  async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]> {
     let products = Array.from(this.dlcProducts.values());
     
     if (groupIds && groupIds.length > 0) {
@@ -2422,6 +2517,14 @@ export class MemStorage implements IStorage {
       }
       if (filters.supplierId) {
         products = products.filter(product => product.supplierId === filters.supplierId);
+      }
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase();
+        products = products.filter(product => {
+          const supplier = this.suppliers.get(product.supplierId);
+          return product.productName.toLowerCase().includes(searchTerm) ||
+                 (supplier && supplier.name.toLowerCase().includes(searchTerm));
+        });
       }
     }
     
@@ -3077,6 +3180,66 @@ export class MemStorage implements IStorage {
 
     this.idCounters.savTicket = 6;
     console.log('✅ SAV test data initialized with 5 tickets and comprehensive history');
+  }
+
+  // Weather operations
+  async getWeatherSettings(): Promise<WeatherSettings | undefined> {
+    // In memory storage, return a default setting for development
+    return {
+      id: 1,
+      apiKey: "6PSHYLBJB9EEYNZ7NDQ5BPGBZ", // Token fourni par l'utilisateur
+      location: "Nancy, France",
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  async createWeatherSettings(settings: InsertWeatherSettings): Promise<WeatherSettings> {
+    // For development, we'll just return the created settings with an ID
+    return {
+      id: 1,
+      ...settings,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  async updateWeatherSettings(id: number, settings: Partial<InsertWeatherSettings>): Promise<WeatherSettings> {
+    const existing = await this.getWeatherSettings();
+    return {
+      ...existing!,
+      ...settings,
+      updatedAt: new Date()
+    };
+  }
+
+  async getWeatherData(date: string, isCurrentYear: boolean): Promise<WeatherData | undefined> {
+    // In development, return some mock data for testing
+    return undefined; // Will trigger API calls
+  }
+
+  async createWeatherData(data: InsertWeatherData): Promise<WeatherData> {
+    return {
+      id: 1,
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  async updateWeatherData(id: number, data: Partial<InsertWeatherData>): Promise<WeatherData> {
+    const existing = await this.getWeatherData(data.date || "", data.isCurrentYear || true);
+    return {
+      ...existing!,
+      ...data,
+      updatedAt: new Date()
+    };
+  }
+
+  async deleteOldWeatherData(daysToKeep: number): Promise<void> {
+    // In development, this is a no-op
+    console.log(`🧹 DEV: Would delete weather data older than ${daysToKeep} days`);
   }
 }
 

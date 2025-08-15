@@ -36,12 +36,15 @@ import {
   insertTaskSchema,
   insertNocodbConfigSchema,
   insertSavTicketSchema,
-  insertSavTicketHistorySchema
+  insertSavTicketHistorySchema,
+  insertWeatherDataSchema,
+  insertWeatherSettingsSchema
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
 import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
+import { weatherService } from "./weatherService.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for Docker
@@ -986,7 +989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const { storeId, status, supplierId } = req.query;
+      const { storeId, status, supplierId, search } = req.query;
       let groupIds: number[] | undefined;
       
       if (user.role === 'admin') {
@@ -1003,10 +1006,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: any = {};
       if (status && status !== 'all') filters.status = status as string;
       if (supplierId && supplierId !== 'all') filters.supplierId = parseInt(supplierId as string);
+      if (search) filters.search = search as string;
 
-      console.log('DLC Products API called with:', { groupIds, filters, userRole: user.role });
       const dlcProducts = await storage.getDlcProducts(groupIds, filters);
-      console.log('DLC Products returned:', dlcProducts.length, 'items');
       res.json(dlcProducts);
     } catch (error) {
       console.error("Error fetching DLC products:", error);
@@ -2751,6 +2753,118 @@ RÉSUMÉ DU SCAN
         details: (error as Error).message,
         timestamp: new Date().toISOString()
       });
+    }
+  });
+
+  // Weather routes
+  app.get('/api/weather/settings', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const settings = await storage.getWeatherSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching weather settings:", error);
+      res.status(500).json({ message: "Failed to fetch weather settings" });
+    }
+  });
+
+  app.post('/api/weather/settings', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const data = insertWeatherSettingsSchema.parse(req.body);
+      const settings = await storage.createWeatherSettings(data);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error creating weather settings:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create weather settings" });
+    }
+  });
+
+  app.put('/api/weather/settings/:id', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const data = insertWeatherSettingsSchema.partial().parse(req.body);
+      const settings = await storage.updateWeatherSettings(id, data);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating weather settings:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update weather settings" });
+    }
+  });
+
+  app.post('/api/weather/test-connection', isAuthenticated, requireAdmin, async (req: any, res) => {
+    try {
+      const { apiKey, location } = req.body;
+      
+      if (!apiKey || !location) {
+        return res.status(400).json({ message: "API key and location are required" });
+      }
+
+      const result = await weatherService.testApiConnection(apiKey, location);
+      res.json(result);
+    } catch (error) {
+      console.error("Error testing weather API connection:", error);
+      res.status(500).json({ message: "Failed to test API connection" });
+    }
+  });
+
+  app.get('/api/weather/current', isAuthenticated, async (req: any, res) => {
+    try {
+      const settings = await storage.getWeatherSettings();
+      
+      if (!settings || !settings.isActive) {
+        return res.status(404).json({ message: "Weather service not configured or disabled" });
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const previousYearDate = weatherService.getPreviousYearDate();
+      
+      // Check if we already have today's data
+      let currentYearData = await storage.getWeatherData(today, true);
+      let previousYearData = await storage.getWeatherData(previousYearDate, false);
+
+      // Fetch current year data if not in cache
+      if (!currentYearData) {
+        console.log("🌤️ Fetching current weather data from API");
+        const apiData = await weatherService.fetchCurrentWeather(settings);
+        if (apiData) {
+          const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, true);
+          if (weatherData) {
+            currentYearData = await storage.createWeatherData(weatherData);
+          }
+        }
+      }
+
+      // Fetch previous year data if not in cache
+      if (!previousYearData) {
+        console.log("🌤️ Fetching previous year weather data from API");
+        const apiData = await weatherService.fetchPreviousYearWeather(settings, previousYearDate);
+        if (apiData) {
+          const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, false);
+          if (weatherData) {
+            previousYearData = await storage.createWeatherData(weatherData);
+          }
+        }
+      }
+
+      res.json({
+        currentYear: currentYearData ? {
+          ...currentYearData,
+          icon: weatherService.getWeatherIcon(currentYearData.icon)
+        } : null,
+        previousYear: previousYearData ? {
+          ...previousYearData,
+          icon: weatherService.getWeatherIcon(previousYearData.icon)
+        } : null,
+        location: settings.location
+      });
+    } catch (error) {
+      console.error("Error fetching weather data:", error);
+      res.status(500).json({ message: "Failed to fetch weather data" });
     }
   });
 
