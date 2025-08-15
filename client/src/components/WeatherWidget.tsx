@@ -291,14 +291,11 @@ export default function WeatherWidget() {
                   <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
                     Année dernière
                   </div>
-                  <div className="flex items-center justify-center gap-1 mb-1">
+                  <div className="flex items-center justify-center gap-1">
                     <WeatherIcon condition={weather.previousYear?.condition || ''} size={16} />
                     <div className="text-lg font-semibold text-slate-600 dark:text-slate-300">
                       {Math.round(previousTemp)}°
                     </div>
-                  </div>
-                  <div className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-tight">
-                    {translateToFrench(weather.previousYear?.condition || '')}
                   </div>
                 </div>
               </>
@@ -307,24 +304,29 @@ export default function WeatherWidget() {
             {/* Différence */}
             {currentTemp !== undefined && previousTemp !== undefined && (
               <>
-                <div className="h-8 w-px bg-slate-300 dark:bg-slate-600"></div>
-                <div className="flex items-center gap-1">
-                  {tempDifference > 0 ? (
-                    <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
-                      <span className="text-lg">↗</span>
-                      <span className="text-sm font-semibold">+{Math.round(tempDifference)}°</span>
-                    </div>
-                  ) : tempDifference < 0 ? (
-                    <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
-                      <span className="text-lg">↘</span>
-                      <span className="text-sm font-semibold">{Math.round(tempDifference)}°</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                      <span className="text-lg">=</span>
-                      <span className="text-sm font-semibold">0°</span>
-                    </div>
-                  )}
+                <div className="h-12 w-px bg-slate-300 dark:bg-slate-600 self-center"></div>
+                <div className="text-center">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
+                    Différence
+                  </div>
+                  <div className="flex items-center justify-center gap-1">
+                    {tempDifference > 0 ? (
+                      <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                        <span className="text-lg">↗</span>
+                        <span className="text-sm font-semibold">+{Math.round(tempDifference)}°</span>
+                      </div>
+                    ) : tempDifference < 0 ? (
+                      <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                        <span className="text-lg">↘</span>
+                        <span className="text-sm font-semibold">{Math.round(tempDifference)}°</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                        <span className="text-lg">=</span>
+                        <span className="text-sm font-semibold">0°</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}
