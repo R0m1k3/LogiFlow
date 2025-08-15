@@ -169,30 +169,30 @@ export default function WeatherWidget() {
             </div>
           </div>
           
-          {/* Températures actuelles */}
-          <div className="flex items-center gap-3">
+          {/* Températures avec en-têtes */}
+          <div className="flex items-stretch gap-3">
             <div className="text-center">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
+                Aujourd'hui
+              </div>
               <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
                 {currentTemp !== undefined ? `${Math.round(currentTemp)}°` : '--°'}
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">
-                Aujourd'hui
               </div>
             </div>
             
             {/* Comparaison avec l'an dernier */}
             {previousTemp !== undefined && (
               <>
-                <div className="h-12 w-px bg-slate-300 dark:bg-slate-600"></div>
-                <div className="text-center min-w-[80px]">
+                <div className="h-12 w-px bg-slate-300 dark:bg-slate-600 self-center"></div>
+                <div className="text-center min-w-[90px]">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">
+                    Année dernière
+                  </div>
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <WeatherIcon condition={weather.previousYear?.condition || ''} size={16} />
                     <div className="text-lg font-semibold text-slate-600 dark:text-slate-300">
                       {Math.round(previousTemp)}°
                     </div>
-                  </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
-                    Année dernière
                   </div>
                   <div className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-tight">
                     {translateToFrench(weather.previousYear?.condition || '')}
