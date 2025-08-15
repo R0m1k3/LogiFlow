@@ -23,7 +23,7 @@ export class WeatherService {
    */
   async fetchCurrentWeather(settings: WeatherSettings): Promise<WeatherApiResponse | null> {
     try {
-      const url = `${this.baseUrl}/${encodeURIComponent(settings.location)}?unitGroup=metric&include=days&key=${settings.apiKey}&contentType=json`;
+      const url = `${this.baseUrl}/${encodeURIComponent(settings.location)}?unitGroup=metric&include=days&key=${settings.apiKey}&contentType=json&lang=fr`;
       
       const response = await fetch(url);
       if (!response.ok) {
@@ -45,7 +45,7 @@ export class WeatherService {
   async fetchPreviousYearWeather(settings: WeatherSettings, targetDate: string): Promise<WeatherApiResponse | null> {
     try {
       // Pour les données historiques, Visual Crossing utilise la syntaxe: /timeline/location/date
-      const url = `${this.baseUrl}/${encodeURIComponent(settings.location)}/${targetDate}?unitGroup=metric&include=days&key=${settings.apiKey}&contentType=json`;
+      const url = `${this.baseUrl}/${encodeURIComponent(settings.location)}/${targetDate}?unitGroup=metric&include=days&key=${settings.apiKey}&contentType=json&lang=fr`;
       
       console.log(`🌤️ [FETCH-HISTORY] Requesting: ${settings.location} for ${targetDate}`);
       
@@ -93,12 +93,45 @@ export class WeatherService {
   }
 
   /**
-   * Calcule la date de l'année précédente pour la même date
+   * Calcule la date de l'année précédente pour le même jour de la semaine
    */
   getPreviousYearDate(date: Date = new Date()): string {
-    const previousYear = new Date(date);
-    previousYear.setFullYear(date.getFullYear() - 1);
-    return previousYear.toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const currentYear = date.getFullYear();
+    const currentMonth = date.getMonth();
+    const currentDayOfWeek = date.getDay(); // 0 = dimanche, 1 = lundi, etc.
+    
+    // Créer une date pour l'année précédente, même mois
+    const previousYear = new Date(currentYear - 1, currentMonth, 1);
+    
+    // Trouver le premier jour de la semaine correspondant dans ce mois
+    const firstDayOfMonth = previousYear.getDay();
+    const daysToAdd = (currentDayOfWeek - firstDayOfMonth + 7) % 7;
+    
+    // Calculer quelle semaine nous sommes dans le mois actuel
+    const currentDate = date.getDate();
+    const currentWeekOfMonth = Math.ceil(currentDate / 7);
+    
+    // Aller à la même semaine du mois l'année précédente
+    const targetDate = new Date(currentYear - 1, currentMonth, 1 + daysToAdd + (currentWeekOfMonth - 1) * 7);
+    
+    // Si la date calculée dépasse le mois, prendre la dernière occurrence de ce jour dans le mois
+    if (targetDate.getMonth() !== currentMonth) {
+      // Revenir en arrière d'une semaine
+      targetDate.setDate(targetDate.getDate() - 7);
+    }
+    
+    console.log(`🗓️ [DATE-CALC] Aujourd'hui: ${date.toISOString().split('T')[0]} (${this.getDayName(currentDayOfWeek)})`);
+    console.log(`🗓️ [DATE-CALC] Année précédente: ${targetDate.toISOString().split('T')[0]} (${this.getDayName(targetDate.getDay())})`);
+    
+    return targetDate.toISOString().split('T')[0]; // Format YYYY-MM-DD
+  }
+
+  /**
+   * Retourne le nom du jour de la semaine
+   */
+  private getDayName(dayOfWeek: number): string {
+    const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    return days[dayOfWeek];
   }
 
   /**

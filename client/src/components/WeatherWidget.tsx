@@ -21,6 +21,8 @@ interface WeatherResponse {
   location: string;
 }
 
+
+
 const WeatherIcon = ({ condition, size = 20 }: { condition: string; size?: number }) => {
   const iconClass = `h-${Math.floor(size/4)} w-${Math.floor(size/4)}`;
   const conditionLower = condition.toLowerCase();
@@ -116,7 +118,7 @@ export default function WeatherWidget() {
               <span className="text-slate-700 dark:text-slate-200 font-semibold text-sm">
                 {location.split(',')[0]}
               </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 {weather.currentYear?.condition || 'Inconnu'}
               </span>
             </div>
@@ -143,6 +145,9 @@ export default function WeatherWidget() {
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400">
                     Année dernière
+                  </div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                    {weather.previousYear?.condition || ''}
                   </div>
                 </div>
               </>
