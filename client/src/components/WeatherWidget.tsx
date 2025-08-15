@@ -23,6 +23,36 @@ interface WeatherResponse {
 
 
 
+// Fonction de traduction française côté client comme sécurité
+const translateToFrench = (condition: string): string => {
+  const conditionLower = condition.toLowerCase();
+  
+  if (conditionLower.includes('clear')) return 'Dégagé';
+  if (conditionLower.includes('sunny')) return 'Ensoleillé';
+  if (conditionLower.includes('fair')) return 'Beau temps';
+  if (conditionLower.includes('partly cloudy')) return 'Partiellement nuageux';
+  if (conditionLower.includes('cloudy')) return 'Nuageux';
+  if (conditionLower.includes('overcast')) return 'Couvert';
+  if (conditionLower.includes('rain')) {
+    if (conditionLower.includes('heavy')) return 'Pluie forte';
+    if (conditionLower.includes('light')) return 'Pluie légère';
+    return 'Pluie';
+  }
+  if (conditionLower.includes('shower')) return 'Averses';
+  if (conditionLower.includes('drizzle')) return 'Bruine';
+  if (conditionLower.includes('thunderstorm') || conditionLower.includes('thunder')) return 'Orage';
+  if (conditionLower.includes('snow')) {
+    if (conditionLower.includes('heavy')) return 'Neige forte';
+    if (conditionLower.includes('light')) return 'Neige légère';
+    return 'Neige';
+  }
+  if (conditionLower.includes('fog')) return 'Brouillard';
+  if (conditionLower.includes('mist')) return 'Brume';
+  if (conditionLower.includes('wind')) return 'Venteux';
+  
+  return condition; // Si déjà en français ou inconnu
+};
+
 const WeatherIcon = ({ condition, size = 20 }: { condition: string; size?: number }) => {
   // Utiliser des tailles fixes plutôt que dynamiques pour éviter les problèmes de Tailwind
   const getIconClass = (size: number) => {
@@ -122,7 +152,7 @@ export default function WeatherWidget() {
 
   return (
     <Card className="bg-gradient-to-r from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border-slate-200 dark:border-slate-700 shadow-lg hover:shadow-xl transition-all duration-300">
-      <CardContent className="p-4">
+      <CardContent className="p-4 min-h-[80px]">
         <div className="flex items-center gap-4">
           {/* Icône et localisation */}
           <div className="flex items-center gap-2">
@@ -134,7 +164,7 @@ export default function WeatherWidget() {
                 {location.split(',')[0]}
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400">
-                {weather.currentYear?.condition || 'Inconnu'}
+                {translateToFrench(weather.currentYear?.condition || 'Inconnu')}
               </span>
             </div>
           </div>
@@ -153,19 +183,19 @@ export default function WeatherWidget() {
             {/* Comparaison avec l'an dernier */}
             {previousTemp !== undefined && (
               <>
-                <div className="h-8 w-px bg-slate-300 dark:bg-slate-600"></div>
-                <div className="text-center">
+                <div className="h-12 w-px bg-slate-300 dark:bg-slate-600"></div>
+                <div className="text-center min-w-[80px]">
                   <div className="flex items-center justify-center gap-1 mb-1">
                     <WeatherIcon condition={weather.previousYear?.condition || ''} size={16} />
                     <div className="text-lg font-semibold text-slate-600 dark:text-slate-300">
                       {Math.round(previousTemp)}°
                     </div>
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">
                     Année dernière
                   </div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    {weather.previousYear?.condition || ''}
+                  <div className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-tight">
+                    {translateToFrench(weather.previousYear?.condition || '')}
                   </div>
                 </div>
               </>
