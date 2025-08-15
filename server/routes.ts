@@ -2864,25 +2864,41 @@ RÉSUMÉ DU SCAN
 
       // Fetch current year data if not in cache
       if (!currentYearData) {
-        console.log("🌤️ Fetching current weather data from API");
+        console.log("🌤️ [FETCH] Fetching current weather data from API");
         const apiData = await weatherService.fetchCurrentWeather(settings);
         if (apiData) {
           const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, true);
           if (weatherData) {
-            currentYearData = await storage.createWeatherData(weatherData);
+            try {
+              currentYearData = await storage.createWeatherData(weatherData);
+              console.log("✅ [CACHE] Current year data saved to cache");
+            } catch (error: any) {
+              console.warn("⚠️ [CACHE] Could not save current year data (may already exist):", error.message);
+              // Récupérer les données existantes au lieu de créer
+              currentYearData = await storage.getWeatherData(today, true);
+            }
           }
         }
       }
 
       // Fetch previous year data if not in cache
       if (!previousYearData) {
-        console.log("🌤️ Fetching previous year weather data from API");
+        console.log("🌤️ [FETCH] Fetching previous year weather data from API");
         const apiData = await weatherService.fetchPreviousYearWeather(settings, previousYearDate);
         if (apiData) {
           const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, false);
           if (weatherData) {
-            previousYearData = await storage.createWeatherData(weatherData);
+            try {
+              previousYearData = await storage.createWeatherData(weatherData);
+              console.log("✅ [CACHE] Previous year data saved to cache");
+            } catch (error: any) {
+              console.warn("⚠️ [CACHE] Could not save previous year data (may already exist):", error.message);
+              // Récupérer les données existantes au lieu de créer
+              previousYearData = await storage.getWeatherData(previousYearDate, false);
+            }
           }
+        } else {
+          console.warn("⚠️ [HISTORY] Could not fetch historical data - continuing with current year only");
         }
       }
 

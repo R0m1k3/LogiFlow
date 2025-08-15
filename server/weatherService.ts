@@ -1,4 +1,4 @@
-import { WeatherData, WeatherSettings } from "../shared/schema.js";
+import { WeatherData, WeatherSettings, InsertWeatherData } from "../shared/schema.js";
 
 export interface WeatherApiResponse {
   days: Array<{
@@ -72,7 +72,7 @@ export class WeatherService {
   /**
    * Convertit les données de l'API en format WeatherData
    */
-  convertApiDataToWeatherData(apiData: WeatherApiResponse, location: string, isCurrentYear: boolean): WeatherData | null {
+  convertApiDataToWeatherData(apiData: WeatherApiResponse, location: string, isCurrentYear: boolean): InsertWeatherData | null {
     if (!apiData.days || apiData.days.length === 0) {
       return null;
     }
@@ -80,16 +80,15 @@ export class WeatherService {
     const todayData = apiData.days[0];
     
     return {
-      id: 0, // Sera généré par la base de données
+      // Pas d'ID - sera auto-généré par PostgreSQL serial
       date: todayData.datetime,
       location,
       tempMax: todayData.tempmax.toString(),
       tempMin: todayData.tempmin.toString(),
       icon: todayData.icon,
       conditions: todayData.conditions,
-      isCurrentYear,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      isCurrentYear
+      // Pas de createdAt/updatedAt - gérés par la base de données
     };
   }
 
