@@ -6,6 +6,7 @@ import { LogOut, Store, Menu } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Sidebar from "./Sidebar";
+import WeatherWidget from "./WeatherWidget";
 import type { Group } from "@shared/schema";
 
 interface StoreContextType {
@@ -91,6 +92,8 @@ export default function Layout({ children }: LayoutProps) {
                 </Button>
               )}
 
+              {/* Weather widget */}
+              <WeatherWidget />
             </div>
 
             {/* Store selector for admin - responsive */}

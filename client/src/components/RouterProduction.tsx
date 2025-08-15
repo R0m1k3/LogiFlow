@@ -22,6 +22,7 @@ import Utilities from "@/pages/Utilities";
 import Tasks from "@/pages/Tasks";
 import TasksSimplified from "@/pages/TasksSimplified";
 import SavTickets from "@/pages/SavTickets";
+import WeatherSettings from "@/pages/WeatherSettings";
 import Layout from "@/components/Layout";
 
 function RouterProduction() {
@@ -101,6 +102,7 @@ function RouterProduction() {
         <Route path="/backup" component={Utilities} />
         <Route path="/nocodb-config" component={Utilities} />
         <Route path="/database-debug" component={Utilities} />
+        <Route path="/weather-settings" component={Utilities} />
         
         <Route path="/" component={Dashboard} />
         <Route component={NotFound} />

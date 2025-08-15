@@ -700,3 +700,45 @@ export type SavTicketWithRelations = SavTicket & {
 export type SavTicketHistoryWithCreator = SavTicketHistory & {
   creator: User;
 };
+
+// Weather Tables
+export const weatherData = pgTable("weather_data", {
+  id: serial("id").primaryKey(),
+  date: date("date").notNull(),
+  location: text("location").notNull(),
+  tempMax: text("temp_max").notNull(),
+  tempMin: text("temp_min").notNull(),
+  icon: text("icon").notNull(),
+  conditions: text("conditions").notNull(),
+  isCurrentYear: boolean("is_current_year").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const weatherSettings = pgTable("weather_settings", {
+  id: serial("id").primaryKey(),
+  apiKey: text("api_key").notNull(),
+  location: text("location").notNull().default("Paris, France"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Weather Schemas
+export const insertWeatherDataSchema = createInsertSchema(weatherData).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWeatherSettingsSchema = createInsertSchema(weatherSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Weather Types
+export type WeatherData = typeof weatherData.$inferSelect;
+export type InsertWeatherData = z.infer<typeof insertWeatherDataSchema>;
+export type WeatherSettings = typeof weatherSettings.$inferSelect;
+export type InsertWeatherSettings = z.infer<typeof insertWeatherSettingsSchema>;
