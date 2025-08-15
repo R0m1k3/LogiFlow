@@ -31,7 +31,7 @@ const taskFormSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
-  status: z.enum(["backlog", "todo", "in_progress", "review", "testing", "done", "archived"]).default("todo"),
+  status: z.enum(["backlog", "todo", "in_progress", "review", "testing", "blocked", "ready_to_deploy", "deployed", "done", "archived"]).default("todo"),
   assignedTo: z.string().min(1, "L'assignation est requise"),
   dueDate: z.date().optional(),
 });
@@ -118,7 +118,7 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
       title: task?.title || "",
       description: task?.description || "",
       priority: (task?.priority as "low" | "medium" | "high") || "medium",
-      status: (task?.status as "backlog" | "todo" | "in_progress" | "review" | "testing" | "done" | "archived") || "todo",
+      status: (task?.status as "backlog" | "todo" | "in_progress" | "review" | "testing" | "blocked" | "ready_to_deploy" | "deployed" | "done" | "archived") || "todo",
       assignedTo: task?.assignedTo || "",
       dueDate: task?.dueDate ? new Date(task.dueDate) : undefined,
     },
@@ -351,6 +351,9 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
                     <SelectItem value="in_progress">En cours</SelectItem>
                     <SelectItem value="review">Révision</SelectItem>
                     <SelectItem value="testing">Test</SelectItem>
+                    <SelectItem value="blocked">Bloqué</SelectItem>
+                    <SelectItem value="ready_to_deploy">Prêt Déploiement</SelectItem>
+                    <SelectItem value="deployed">Déployé</SelectItem>
                     <SelectItem value="done">Terminé</SelectItem>
                     <SelectItem value="archived">Archivé</SelectItem>
                   </SelectContent>

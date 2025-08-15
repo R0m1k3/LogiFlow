@@ -499,6 +499,9 @@ export default function Tasks() {
                     <SelectItem value="in_progress">En cours</SelectItem>
                     <SelectItem value="review">Révision</SelectItem>
                     <SelectItem value="testing">Test</SelectItem>
+                    <SelectItem value="blocked">Bloqué</SelectItem>
+                    <SelectItem value="ready_to_deploy">Prêt Déploiement</SelectItem>
+                    <SelectItem value="deployed">Déployé</SelectItem>
                     <SelectItem value="done">Terminé</SelectItem>
                     <SelectItem value="archived">Archivé</SelectItem>
                   </SelectContent>
@@ -550,9 +553,9 @@ export default function Tasks() {
           {/* Contenu selon la vue sélectionnée */}
           <Tabs value={viewMode} onValueChange={setViewMode} className="h-full">
             <TabsContent value="kanban" className="mt-0">
-              {/* Vue Kanban avec 7 colonnes */}
+              {/* Vue Kanban avec 10 colonnes - Workflow complet */}
               <div className="p-6">
-                <div className="grid grid-cols-7 gap-3 h-full text-sm">
+                <div className="grid grid-cols-10 gap-1 h-full text-xs overflow-x-auto">
                   {/* Colonne Backlog */}
                   <div className="bg-gray-50 rounded-lg p-3">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
@@ -606,7 +609,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne Test */}
-                  <div className="bg-orange-50 rounded-lg p-3">
+                  <div className="bg-orange-50 rounded-lg p-2">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <AlertTriangle className="w-4 h-4 text-orange-500" />
                       Test ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'testing').length})
@@ -618,8 +621,47 @@ export default function Tasks() {
                     </div>
                   </div>
 
+                  {/* Colonne Bloqué */}
+                  <div className="bg-red-50 rounded-lg p-2">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
+                      <Circle className="w-4 h-4 text-red-500" />
+                      Bloqué ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'blocked').length})
+                    </h3>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'blocked').map((task: TaskWithRelations) => {
+                        return renderKanbanCard(task, canEditTasks);
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colonne Prêt Déploiement */}
+                  <div className="bg-indigo-50 rounded-lg p-2">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
+                      <CheckCircle className="w-4 h-4 text-indigo-500" />
+                      Prêt Déploiement ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'ready_to_deploy').length})
+                    </h3>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'ready_to_deploy').map((task: TaskWithRelations) => {
+                        return renderKanbanCard(task, canEditTasks);
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colonne Déployé */}
+                  <div className="bg-cyan-50 rounded-lg p-2">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
+                      <CheckCircle className="w-4 h-4 text-cyan-500" />
+                      Déployé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'deployed').length})
+                    </h3>
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'deployed').map((task: TaskWithRelations) => {
+                        return renderKanbanCard(task, canEditTasks);
+                      })}
+                    </div>
+                  </div>
+
                   {/* Colonne Terminé */}
-                  <div className="bg-green-50 rounded-lg p-3">
+                  <div className="bg-green-50 rounded-lg p-2">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <CheckCircle className="w-4 h-4 text-green-500" />
                       Terminé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'done').length})
@@ -632,7 +674,7 @@ export default function Tasks() {
                   </div>
 
                   {/* Colonne Archivé */}
-                  <div className="bg-gray-100 rounded-lg p-3">
+                  <div className="bg-gray-100 rounded-lg p-2">
                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
                       <Circle className="w-4 h-4 text-gray-400" />
                       Archivé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'archived').length})
@@ -693,7 +735,10 @@ export default function Tasks() {
                                          task.status === 'todo' ? 'À faire' :
                                          task.status === 'in_progress' ? 'En cours' :
                                          task.status === 'review' ? 'Révision' :
-                                         task.status === 'testing' ? 'Test' : task.status}
+                                         task.status === 'testing' ? 'Test' :
+                                         task.status === 'blocked' ? 'Bloqué' :
+                                         task.status === 'ready_to_deploy' ? 'Prêt Déploiement' :
+                                         task.status === 'deployed' ? 'Déployé' : task.status}
                                       </Badge>
                                     </div>
                                     
@@ -868,103 +913,7 @@ export default function Tasks() {
               </div>
             </TabsContent>
 
-            <TabsContent value="kanban" className="mt-0">
-              {/* Vue Kanban */}
-              <div className="p-6">
-                <div className="grid grid-cols-7 gap-3 h-full text-sm">
-                  {/* Colonne Backlog */}
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
-                      <Circle className="w-4 h-4 text-gray-400" />
-                      Backlog ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'backlog').length})
-                    </h3>
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'backlog').map((task: TaskWithRelations) => {
-                        return renderKanbanCard(task, canEditTasks);
-                      })}
-                    </div>
-                  </div>
 
-                  {/* Colonne À faire */}
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
-                      <Circle className="w-4 h-4 text-blue-500" />
-                      À faire ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'todo').length})
-                    </h3>
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'todo').map((task: TaskWithRelations) => {
-                        return renderKanbanCard(task, canEditTasks);
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Colonne En cours */}
-                  <div className="bg-yellow-50 rounded-lg p-3">
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
-                      <Clock className="w-4 h-4 text-yellow-500" />
-                      En cours ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'in_progress').length})
-                    </h3>
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'in_progress').map((task: TaskWithRelations) => {
-                        return renderKanbanCard(task, canEditTasks);
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Colonne Révision */}
-                  <div className="bg-purple-50 rounded-lg p-3">
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
-                      <Edit className="w-4 h-4 text-purple-500" />
-                      Révision ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'review').length})
-                    </h3>
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'review').map((task: TaskWithRelations) => {
-                        return renderKanbanCard(task, canEditTasks);
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Colonne Test */}
-                  <div className="bg-orange-50 rounded-lg p-3">
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
-                      <AlertTriangle className="w-4 h-4 text-orange-500" />
-                      Test ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'testing').length})
-                    </h3>
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'testing').map((task: TaskWithRelations) => {
-                        return renderKanbanCard(task, canEditTasks);
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Colonne Terminé */}
-                  <div className="bg-green-50 rounded-lg p-3">
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      Terminé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'done').length})
-                    </h3>
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'done').map((task: TaskWithRelations) => {
-                        return renderKanbanCard(task, canEditTasks, true);
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Colonne Archivé */}
-                  <div className="bg-gray-100 rounded-lg p-3">
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-xs">
-                      <Circle className="w-4 h-4 text-gray-400" />
-                      Archivé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'archived').length})
-                    </h3>
-                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'archived').map((task: TaskWithRelations) => {
-                        return renderKanbanCard(task, canEditTasks, true);
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
           </Tabs>
         </div>
       </div>

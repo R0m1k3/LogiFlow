@@ -245,7 +245,7 @@ export const tasks = pgTable("tasks", {
   description: text("description"), // Description de la tâche (optionnel)
   dueDate: timestamp("due_date"), // Date d'échéance (optionnel)
   priority: varchar("priority").notNull().default("medium"), // low, medium, high
-  status: varchar("status").notNull().default("todo"), // backlog, todo, in_progress, review, testing, done, archived
+  status: varchar("status").notNull().default("todo"), // backlog, todo, in_progress, review, testing, blocked, ready_to_deploy, deployed, done, archived
   assignedTo: text("assigned_to").notNull(), // Utilisateur responsable (champ libre)
   createdBy: varchar("created_by").notNull(), // Utilisateur créateur
   groupId: integer("group_id").notNull(), // Magasin/groupe associé
