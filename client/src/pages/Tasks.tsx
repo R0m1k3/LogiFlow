@@ -56,7 +56,7 @@ export default function Tasks() {
     queryFn: () => {
       const params = new URLSearchParams();
       if (selectedStoreId) {
-        params.append('storeId', selectedStoreId);
+        params.append('storeId', selectedStoreId.toString());
       }
       return fetch(`/api/tasks?${params.toString()}`, {
         credentials: 'include'
@@ -157,26 +157,46 @@ export default function Tasks() {
     }
   };
 
-  // Filtrer les tâches
-  const filteredTasks = tasks.filter((task: TaskWithRelations) => {
-    // Filtre par recherche
-    if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase()) && 
-        !task.description?.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false;
-    }
+  // Filtrer et trier les tâches
+  const filteredTasks = tasks
+    .filter((task: TaskWithRelations) => {
+      // Filtre par recherche
+      if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase()) && 
+          !task.description?.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
+      }
 
-    // Filtre par statut
-    if (statusFilter !== "all" && task.status !== statusFilter) {
-      return false;
-    }
+      // Filtre par statut
+      if (statusFilter !== "all" && task.status !== statusFilter) {
+        return false;
+      }
 
-    // Filtre par priorité
-    if (priorityFilter !== "all" && task.priority !== priorityFilter) {
-      return false;
-    }
+      // Filtre par priorité
+      if (priorityFilter !== "all" && task.priority !== priorityFilter) {
+        return false;
+      }
 
-    return true;
-  });
+      return true;
+    })
+    .sort((a: TaskWithRelations, b: TaskWithRelations) => {
+      // Faire remonter les tâches non validées (pending) en premier
+      if (a.status === 'pending' && b.status === 'completed') return -1;
+      if (a.status === 'completed' && b.status === 'pending') return 1;
+      
+      // Pour les tâches de même statut, trier par priorité (high > medium > low)
+      const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 2;
+      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 2;
+      
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority; // Ordre décroissant (high en premier)
+      }
+      
+      // Enfin, trier par date de création (plus récent en premier)
+      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bDate - aDate;
+    });
 
   // Pagination
   const {
