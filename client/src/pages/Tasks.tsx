@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ListTodo, 
   Plus, 
@@ -19,9 +20,13 @@ import {
   AlertTriangle,
   CheckCircle,
   Edit,
-  Trash2
+  Trash2,
+  Calendar,
+  CalendarX,
+  CalendarClock,
+  Kanban
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isToday, isThisWeek, isPast, differenceInDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import TaskForm from "@/components/tasks/TaskForm";
 import { Task } from "@shared/schema";
@@ -42,6 +47,8 @@ export default function Tasks() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [dueDateFilter, setDueDateFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<string>("list");
   
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -56,7 +63,7 @@ export default function Tasks() {
     queryFn: () => {
       const params = new URLSearchParams();
       if (selectedStoreId) {
-        params.append('storeId', selectedStoreId);
+        params.append('storeId', selectedStoreId.toString());
       }
       return fetch(`/api/tasks?${params.toString()}`, {
         credentials: 'include'
@@ -157,26 +164,67 @@ export default function Tasks() {
     }
   };
 
-  // Filtrer les tâches
-  const filteredTasks = tasks.filter((task: TaskWithRelations) => {
-    // Filtre par recherche
-    if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase()) && 
-        !task.description?.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false;
-    }
+  // Filtrer et trier les tâches
+  const filteredTasks = tasks
+    .filter((task: TaskWithRelations) => {
+      // Filtre par recherche
+      if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase()) && 
+          !task.description?.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
+      }
 
-    // Filtre par statut
-    if (statusFilter !== "all" && task.status !== statusFilter) {
-      return false;
-    }
+      // Filtre par statut
+      if (statusFilter !== "all" && task.status !== statusFilter) {
+        return false;
+      }
 
-    // Filtre par priorité
-    if (priorityFilter !== "all" && task.priority !== priorityFilter) {
-      return false;
-    }
+      // Filtre par priorité
+      if (priorityFilter !== "all" && task.priority !== priorityFilter) {
+        return false;
+      }
 
-    return true;
-  });
+      // Filtre par date d'échéance
+      if (dueDateFilter !== "all" && task.dueDate) {
+        const dueDate = new Date(task.dueDate);
+        switch (dueDateFilter) {
+          case "today":
+            if (!isToday(dueDate)) return false;
+            break;
+          case "this_week":
+            if (!isThisWeek(dueDate)) return false;
+            break;
+          case "overdue":
+            if (!isPast(dueDate) || task.status === 'completed') return false;
+            break;
+          case "no_due_date":
+            if (task.dueDate) return false;
+            break;
+        }
+      } else if (dueDateFilter === "no_due_date" && task.dueDate) {
+        return false;
+      }
+
+      return true;
+    })
+    .sort((a: TaskWithRelations, b: TaskWithRelations) => {
+      // Faire remonter les tâches non validées (pending) en premier
+      if (a.status === 'pending' && b.status === 'completed') return -1;
+      if (a.status === 'completed' && b.status === 'pending') return 1;
+      
+      // Pour les tâches de même statut, trier par priorité (high > medium > low)
+      const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 2;
+      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 2;
+      
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority; // Ordre décroissant (high en premier)
+      }
+      
+      // Enfin, trier par date de création (plus récent en premier)
+      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bDate - aDate;
+    });
 
   // Pagination
   const {
@@ -218,6 +266,48 @@ export default function Tasks() {
     }
   };
 
+  const getDueDateStatus = (dueDate: string | null, status: string) => {
+    if (!dueDate || status === 'completed') return null;
+    
+    const due = new Date(dueDate);
+    const now = new Date();
+    const daysDiff = differenceInDays(due, now);
+    
+    if (isPast(due)) {
+      return {
+        type: 'overdue',
+        color: 'destructive' as const,
+        icon: CalendarX,
+        label: `En retard de ${Math.abs(daysDiff)} jour${Math.abs(daysDiff) > 1 ? 's' : ''}`,
+        text: 'En retard'
+      };
+    } else if (isToday(due)) {
+      return {
+        type: 'today',
+        color: 'secondary' as const,
+        icon: CalendarClock,
+        label: "Échéance aujourd'hui",
+        text: "Aujourd'hui"
+      };
+    } else if (daysDiff <= 3) {
+      return {
+        type: 'soon',
+        color: 'default' as const,
+        icon: Calendar,
+        label: `Dans ${daysDiff} jour${daysDiff > 1 ? 's' : ''}`,
+        text: `${daysDiff}j`
+      };
+    }
+    
+    return {
+      type: 'normal',
+      color: 'outline' as const,
+      icon: Calendar,
+      label: format(due, 'dd/MM/yyyy', { locale: fr }),
+      text: format(due, 'dd/MM', { locale: fr })
+    };
+  };
+
   const canCreateTasks = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur';
   const canEditTasks = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur';
 
@@ -243,24 +333,40 @@ export default function Tasks() {
               {totalItems} tâche{totalItems !== 1 ? 's' : ''} trouvée{totalItems !== 1 ? 's' : ''}
             </p>
           </div>
-          {canCreateTasks && (
-            <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-              <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-md">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nouvelle Tâche
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Créer une nouvelle tâche</DialogTitle>
-                </DialogHeader>
-                <TaskForm
-                  onClose={() => setShowCreateModal(false)}
-                />
-              </DialogContent>
-            </Dialog>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Sélecteur de vue */}
+            <Tabs value={viewMode} onValueChange={setViewMode} className="w-auto">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="list" className="flex items-center gap-2">
+                  <ListTodo className="w-4 h-4" />
+                  Liste
+                </TabsTrigger>
+                <TabsTrigger value="kanban" className="flex items-center gap-2">
+                  <Kanban className="w-4 h-4" />
+                  Kanban
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
+            {canCreateTasks && (
+              <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-md">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nouvelle Tâche
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Créer une nouvelle tâche</DialogTitle>
+                  </DialogHeader>
+                  <TaskForm
+                    onClose={() => setShowCreateModal(false)}
+                  />
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
       </div>
 
@@ -318,14 +424,36 @@ export default function Tasks() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Filtre par échéance */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Échéance
+                </label>
+                <Select value={dueDateFilter} onValueChange={setDueDateFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes</SelectItem>
+                    <SelectItem value="today">Aujourd'hui</SelectItem>
+                    <SelectItem value="this_week">Cette semaine</SelectItem>
+                    <SelectItem value="overdue">En retard</SelectItem>
+                    <SelectItem value="no_due_date">Sans échéance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Zone principale avec les tâches */}
         <div className="flex-1">
-          {/* Liste des tâches */}
-          <div className="p-6">
+          {/* Contenu selon la vue sélectionnée */}
+          <Tabs value={viewMode} onValueChange={setViewMode} className="h-full">
+            <TabsContent value="list" className="mt-0">
+              {/* Liste des tâches */}
+              <div className="p-6">
             {totalItems === 0 ? (
               <div className="text-center py-12">
                 <ListTodo className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -372,7 +500,7 @@ export default function Tasks() {
                                       </p>
                                     )}
                                     
-                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-2">
                                       <span>
                                         Assigné à: {task.assignedTo}
                                       </span>
@@ -380,6 +508,33 @@ export default function Tasks() {
                                         Créée: {format(new Date(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
                                       </span>
                                     </div>
+                                    
+                                    {/* Affichage de l'échéance */}
+                                    {(() => {
+                                      const dueDateStatus = getDueDateStatus(task.dueDate, task.status);
+                                      if (dueDateStatus) {
+                                        const DueDateIcon = dueDateStatus.icon;
+                                        return (
+                                          <div className="flex items-center gap-2">
+                                            <Badge variant={dueDateStatus.color} className="flex items-center gap-1 text-xs">
+                                              <DueDateIcon className="w-3 h-3" />
+                                              {dueDateStatus.text}
+                                            </Badge>
+                                            <span className="text-xs text-gray-500">{dueDateStatus.label}</span>
+                                          </div>
+                                        );
+                                      } else if (task.dueDate) {
+                                        return (
+                                          <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                                              <Calendar className="w-3 h-3" />
+                                              {format(new Date(task.dueDate), 'dd/MM', { locale: fr })}
+                                            </Badge>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                   </div>
                                   
                                   <div className="flex items-center gap-2 ml-4">
@@ -492,19 +647,163 @@ export default function Tasks() {
               </div>
             )}
             
-            {/* Pagination */}
-            {totalItems > 0 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={setItemsPerPage}
-                className="mt-4 border-t border-gray-200 pt-4 mx-6"
-              />
-            )}
-          </div>
+                {/* Pagination */}
+                {totalItems > 0 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    onItemsPerPageChange={setItemsPerPage}
+                    className="mt-4 border-t border-gray-200 pt-4 mx-6"
+                  />
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="kanban" className="mt-0">
+              {/* Vue Kanban */}
+              <div className="p-6">
+                <div className="grid grid-cols-2 gap-6 h-full">
+                  {/* Colonne En cours */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Circle className="w-5 h-5 text-yellow-500" />
+                      En cours ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'pending').length})
+                    </h3>
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'pending').map((task: TaskWithRelations) => {
+                        const priorityConfig = getPriorityConfig(task.priority);
+                        const PriorityIcon = priorityConfig.icon;
+                        const dueDateStatus = getDueDateStatus(task.dueDate, task.status);
+                        const DueDateIcon = dueDateStatus?.icon;
+                        
+                        return (
+                          <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                            <CardContent className="p-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <h5 className="font-medium text-gray-900 text-sm">{task.title}</h5>
+                                <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs">
+                                  <PriorityIcon className="w-3 h-3" />
+                                  {priorityConfig.label}
+                                </Badge>
+                              </div>
+                              
+                              {task.description && (
+                                <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                                  {task.description}
+                                </p>
+                              )}
+                              
+                              <div className="text-xs text-gray-500 mb-2">
+                                Assigné à: {task.assignedTo}
+                              </div>
+                              
+                              {dueDateStatus && DueDateIcon && (
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant={dueDateStatus.color} className="flex items-center gap-1 text-xs">
+                                    <DueDateIcon className="w-3 h-3" />
+                                    {dueDateStatus.text}
+                                  </Badge>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center gap-1 mt-2">
+                                {canEditTasks && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleCompleteTask(task.id)}
+                                      className="text-green-600 hover:text-green-700 text-xs h-7"
+                                    >
+                                      <CheckCircle className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleEditTask(task)}
+                                      className="text-xs h-7"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDeleteClick(task)}
+                                      className="text-red-600 hover:text-red-700 text-xs h-7"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colonne Terminées */}
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      Terminées ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'completed').length})
+                    </h3>
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'completed').map((task: TaskWithRelations) => {
+                        const priorityConfig = getPriorityConfig(task.priority);
+                        const PriorityIcon = priorityConfig.icon;
+                        
+                        return (
+                          <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer opacity-75">
+                            <CardContent className="p-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <h5 className="font-medium text-gray-900 text-sm line-through">{task.title}</h5>
+                                <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs">
+                                  <PriorityIcon className="w-3 h-3" />
+                                  {priorityConfig.label}
+                                </Badge>
+                              </div>
+                              
+                              <div className="text-xs text-gray-500">
+                                Terminée le: {task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yyyy', { locale: fr }) : 'Date inconnue'}
+                              </div>
+                              
+                              <div className="flex items-center gap-1 mt-2">
+                                {canEditTasks && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleEditTask(task)}
+                                      className="text-xs h-7"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDeleteClick(task)}
+                                      className="text-red-600 hover:text-red-700 text-xs h-7"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
