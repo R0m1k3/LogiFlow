@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Cloud, CloudRain, Sun, CloudSnow, ThermometerSun, CloudDrizzle, Wind, Zap, Eye } from "lucide-react";
+import { Cloud, CloudRain, Sun, CloudSnow, CloudSun, ThermometerSun, CloudDrizzle, Wind, Zap, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface WeatherData {
@@ -24,15 +24,35 @@ interface WeatherResponse {
 
 
 const WeatherIcon = ({ condition, size = 20 }: { condition: string; size?: number }) => {
-  const iconClass = `h-${Math.floor(size/4)} w-${Math.floor(size/4)}`;
+  // Utiliser des tailles fixes plutôt que dynamiques pour éviter les problèmes de Tailwind
+  const getIconClass = (size: number) => {
+    if (size <= 16) return "h-4 w-4";
+    if (size <= 20) return "h-5 w-5";
+    if (size <= 24) return "h-6 w-6";
+    return "h-8 w-8";
+  };
+  
+  const iconClass = getIconClass(size);
   const conditionLower = condition.toLowerCase();
   
+  // Ensoleillé/Dégagé
+  if (conditionLower.includes('clear') || conditionLower.includes('dégagé') || 
+      conditionLower.includes('sunny') || conditionLower.includes('ensoleillé') ||
+      conditionLower.includes('fair') || conditionLower.includes('beau')) {
+    return <Sun className={`${iconClass} text-yellow-500`} />;
+  }
+  
   // Conditions pluvieuses
-  if (conditionLower.includes('rain') || conditionLower.includes('pluie') || conditionLower.includes('shower')) {
+  if (conditionLower.includes('rain') || conditionLower.includes('pluie') || conditionLower.includes('shower') || conditionLower.includes('averses')) {
     if (conditionLower.includes('heavy') || conditionLower.includes('forte')) {
       return <CloudRain className={`${iconClass} text-blue-600`} />;
     }
     return <CloudDrizzle className={`${iconClass} text-blue-500`} />;
+  }
+  
+  // Bruine  
+  if (conditionLower.includes('drizzle') || conditionLower.includes('bruine')) {
+    return <CloudDrizzle className={`${iconClass} text-blue-400`} />;
   }
   
   // Conditions neigeuses
@@ -42,34 +62,29 @@ const WeatherIcon = ({ condition, size = 20 }: { condition: string; size?: numbe
   
   // Orages
   if (conditionLower.includes('thunder') || conditionLower.includes('storm') || conditionLower.includes('orage')) {
-    return <Zap className={`${iconClass} text-yellow-500`} />;
+    return <Zap className={`${iconClass} text-purple-600`} />;
   }
   
   // Brouillard
-  if (conditionLower.includes('fog') || conditionLower.includes('mist') || conditionLower.includes('brouillard')) {
-    return <Eye className={`${iconClass} text-gray-400`} />;
+  if (conditionLower.includes('fog') || conditionLower.includes('mist') || conditionLower.includes('brouillard') || conditionLower.includes('brume')) {
+    return <Cloud className={`${iconClass} text-gray-400`} />;
   }
   
   // Vent
-  if (conditionLower.includes('wind') || conditionLower.includes('vent')) {
+  if (conditionLower.includes('wind') || conditionLower.includes('vent') || conditionLower.includes('venteux')) {
     return <Wind className={`${iconClass} text-gray-600`} />;
   }
   
   // Nuageux
-  if (conditionLower.includes('cloud') || conditionLower.includes('nuage') || conditionLower.includes('overcast')) {
-    if (conditionLower.includes('partly') || conditionLower.includes('partial')) {
-      return <Cloud className={`${iconClass} text-gray-500`} />;
+  if (conditionLower.includes('cloud') || conditionLower.includes('nuage') || conditionLower.includes('overcast') || conditionLower.includes('couvert')) {
+    if (conditionLower.includes('partly') || conditionLower.includes('partial') || conditionLower.includes('partiellement')) {
+      return <CloudSun className={`${iconClass} text-yellow-400`} />;
     }
     return <Cloud className={`${iconClass} text-gray-600`} />;
   }
   
-  // Ensoleillé
-  if (conditionLower.includes('sun') || conditionLower.includes('soleil') || conditionLower.includes('clear') || conditionLower.includes('fair')) {
-    return <Sun className={`${iconClass} text-yellow-500`} />;
-  }
-  
-  // Par défaut
-  return <ThermometerSun className={`${iconClass} text-orange-500`} />;
+  // Par défaut pour températures
+  return <Sun className={`${iconClass} text-yellow-500`} />;
 };
 
 export default function WeatherWidget() {
