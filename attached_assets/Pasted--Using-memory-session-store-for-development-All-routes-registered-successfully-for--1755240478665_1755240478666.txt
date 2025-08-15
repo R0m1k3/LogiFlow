@@ -1,0 +1,202 @@
+
+      
+🔧 Using memory session store for development
+
+✅ All routes registered successfully for production
+
+🐳 Serving static files from: /app/dist/public
+
+🐳 PRODUCTION: LogiFlow serving on port 3000
+
+HEAD /api/health 200 in 5ms
+
+📄 SPA: Serving index.html for /dashboard
+
+GET /api/user 401 in 1ms
+
+📄 SPA: Serving index.html for /auth
+
+GET /api/user 401 in 1ms
+
+GET /api/user 401 in 2ms
+
+GET /api/default-credentials-check 304 in 3ms
+
+🔐 comparePasswords: {
+
+  supplied: 'HIDDEN',
+
+  stored: '1c5b14cae257319aea80...',
+
+  hasFormat: true
+
+}
+
+🔐 Password comparison result: true
+
+POST /api/login 200 in 60ms
+
+GET /api/user 304 in 8ms
+
+GET /api/user 304 in 21ms
+
+Customer Orders API called with: { groupIds: undefined, userRole: 'admin' }
+
+Customer Orders returned: 36 items
+
+GET /api/customer-orders 304 in 54ms
+
+📊 Calcul statistiques mensuelles: {
+
+  year: 2025,
+
+  month: 8,
+
+  startDate: '2025-08-01',
+
+  endDate: '2025-09-01',
+
+  groupIds: undefined
+
+}
+
+📊 Statistiques calculées: {
+
+  ordersCount: 18,
+
+  deliveriesCount: 42,
+
+  pendingOrdersCount: 6,
+
+  averageDeliveryTime: 0.3611111111111111,
+
+  totalPalettes: 120,
+
+  totalPackages: 36
+
+}
+
+GET /api/stats/monthly 304 in 126ms
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: undefined,
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering deliveries with groupIds: undefined
+
+Fetching all deliveries
+
+Tasks API called with: { groupIds: undefined, userRole: 'admin' }
+
+🌤️ Fetching previous year weather data from API
+
+GET /api/user 304 in 161ms
+
+Tasks returned: 61 items
+
+Orders API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering with groupIds: undefined
+
+Fetching all orders
+
+GET /api/tasks 304 in 247ms
+
+GET /api/publicities 304 in 260ms
+
+GET /api/dlc-products/stats 304 in 303ms
+
+🔗 PRODUCTION: getOrders() récupéré 49 commandes avec relations
+
+Orders returned: 49 items
+
+GET /api/orders 304 in 456ms
+
+Orders API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  userRole: 'admin'
+
+}
+
+Admin filtering with groupIds: [ 1 ]
+
+Fetching all orders
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering deliveries with groupIds: [ 1 ]
+
+Fetching all deliveries
+
+GET /api/user 304 in 176ms
+
+Customer Orders API called with: { groupIds: [ 1 ], userRole: 'admin' }
+
+🔗 PRODUCTION: getDeliveries() récupéré 82 livraisons avec relations
+
+Deliveries returned: 82 items
+
+GET /api/deliveries 304 in 521ms
+
+🔗 PRODUCTION: getOrders() récupéré 31 commandes avec relations
+
+Orders returned: 31 items
+
+GET /api/orders 304 in 252ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 44 livraisons avec relations
+
+Deliveries returned: 44 items
+
+GET /api/deliveries 304 in 261ms
+
+Customer Orders returned: 9 items
+
+GET /api/customer-orders 304 in 257ms
+
+GET /api/publicities 304 in 255ms
+
+GET /api/groups 304 in 40ms
+
+Weather API error for previous year: 401 
+
+GET /api/weather/current 304 in 765ms
+

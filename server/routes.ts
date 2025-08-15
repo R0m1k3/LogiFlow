@@ -2849,6 +2849,11 @@ RÉSUMÉ DU SCAN
 
   app.get('/api/weather/current', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied - Admin only" });
+      }
+
       const settings = await storage.getWeatherSettings();
       
       if (!settings || !settings.isActive) {
