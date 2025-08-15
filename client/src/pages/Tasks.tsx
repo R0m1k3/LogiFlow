@@ -48,7 +48,7 @@ export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [dueDateFilter, setDueDateFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<string>("kanban");
+  const [viewMode, setViewMode] = useState<string>("list");
   
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -194,7 +194,7 @@ export default function Tasks() {
             if (!isThisWeek(dueDate)) return false;
             break;
           case "overdue":
-            if (!isPast(dueDate) || task.status === 'done' || task.status === 'archived') return false;
+            if (!isPast(dueDate) || task.status === 'completed') return false;
             break;
           case "no_due_date":
             if (task.dueDate) return false;
@@ -207,22 +207,9 @@ export default function Tasks() {
       return true;
     })
     .sort((a: TaskWithRelations, b: TaskWithRelations) => {
-      // Ordre des statuts (backlog > todo > in_progress > review > testing > done > archived)
-      const statusOrder = { 
-        backlog: 7, 
-        todo: 6, 
-        in_progress: 5, 
-        review: 4, 
-        testing: 3, 
-        done: 2, 
-        archived: 1 
-      };
-      const aStatusOrder = statusOrder[a.status as keyof typeof statusOrder] || 0;
-      const bStatusOrder = statusOrder[b.status as keyof typeof statusOrder] || 0;
-      
-      if (aStatusOrder !== bStatusOrder) {
-        return bStatusOrder - aStatusOrder; // Ordre décroissant
-      }
+      // Faire remonter les tâches non validées (pending) en premier
+      if (a.status === 'pending' && b.status === 'completed') return -1;
+      if (a.status === 'completed' && b.status === 'pending') return 1;
       
       // Pour les tâches de même statut, trier par priorité (high > medium > low)
       const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
@@ -279,8 +266,8 @@ export default function Tasks() {
     }
   };
 
-  const getDueDateStatus = (dueDate: string | Date | null, status: string) => {
-    if (!dueDate || status === 'done' || status === 'archived') return null;
+  const getDueDateStatus = (dueDate: string | null, status: string) => {
+    if (!dueDate || status === 'completed') return null;
     
     const due = new Date(dueDate);
     const now = new Date();
@@ -321,86 +308,6 @@ export default function Tasks() {
     };
   };
 
-  // Fonction pour rendre une carte Kanban
-  const renderKanbanCard = (task: TaskWithRelations, canEditTasks: boolean, isCompleted = false) => {
-    const priorityConfig = getPriorityConfig(task.priority);
-    const PriorityIcon = priorityConfig.icon;
-    const dueDateStatus = getDueDateStatus(task.dueDate, task.status);
-    const DueDateIcon = dueDateStatus?.icon;
-    
-    return (
-      <Card key={task.id} className={`hover:shadow-md transition-shadow cursor-pointer ${isCompleted ? 'opacity-75' : ''}`}>
-        <CardContent className="p-2">
-          <div className="flex items-start justify-between mb-1">
-            <h5 className={`font-medium text-gray-900 text-xs ${isCompleted ? 'line-through' : ''}`}>{task.title}</h5>
-            <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs">
-              <PriorityIcon className="w-2 h-2" />
-              {priorityConfig.label.charAt(0)}
-            </Badge>
-          </div>
-          
-          {task.description && (
-            <p className="text-xs text-gray-600 mb-1 line-clamp-1">
-              {task.description}
-            </p>
-          )}
-          
-          <div className="text-xs text-gray-500 mb-1">
-            {task.assignedTo}
-          </div>
-          
-          {dueDateStatus && DueDateIcon && (
-            <div className="flex items-center gap-1 mb-1">
-              <Badge variant={dueDateStatus.color} className="flex items-center gap-1 text-xs">
-                <DueDateIcon className="w-2 h-2" />
-                {dueDateStatus.text}
-              </Badge>
-            </div>
-          )}
-          
-          {isCompleted && (
-            <div className="text-xs text-gray-500 mb-1">
-              {task.completedAt ? format(new Date(task.completedAt), 'dd/MM', { locale: fr }) : ''}
-            </div>
-          )}
-          
-          <div className="flex items-center gap-1 mt-1">
-            {canEditTasks && (
-              <>
-                {!isCompleted && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleCompleteTask(task.id)}
-                    className="text-green-600 hover:text-green-700 text-xs h-5 w-5 p-0"
-                  >
-                    <CheckCircle className="w-2 h-2" />
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleEditTask(task)}
-                  className="text-xs h-5 w-5 p-0"
-                >
-                  <Edit className="w-2 h-2" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDeleteClick(task)}
-                  className="text-red-600 hover:text-red-700 text-xs h-5 w-5 p-0"
-                >
-                  <Trash2 className="w-2 h-2" />
-                </Button>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   const canCreateTasks = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur';
   const canEditTasks = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur';
 
@@ -430,13 +337,13 @@ export default function Tasks() {
             {/* Sélecteur de vue */}
             <Tabs value={viewMode} onValueChange={setViewMode} className="w-auto">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="kanban" className="flex items-center gap-2">
-                  <Kanban className="w-4 h-4" />
-                  Kanban
-                </TabsTrigger>
                 <TabsTrigger value="list" className="flex items-center gap-2">
                   <ListTodo className="w-4 h-4" />
                   Liste
+                </TabsTrigger>
+                <TabsTrigger value="kanban" className="flex items-center gap-2">
+                  <Kanban className="w-4 h-4" />
+                  Kanban
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -494,16 +401,8 @@ export default function Tasks() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes</SelectItem>
-                    <SelectItem value="backlog">Backlog</SelectItem>
-                    <SelectItem value="todo">À faire</SelectItem>
-                    <SelectItem value="in_progress">En cours</SelectItem>
-                    <SelectItem value="review">Révision</SelectItem>
-                    <SelectItem value="testing">Test</SelectItem>
-                    <SelectItem value="blocked">Bloqué</SelectItem>
-                    <SelectItem value="ready_to_deploy">Prêt Déploiement</SelectItem>
-                    <SelectItem value="deployed">Déployé</SelectItem>
-                    <SelectItem value="done">Terminé</SelectItem>
-                    <SelectItem value="archived">Archivé</SelectItem>
+                    <SelectItem value="pending">En cours</SelectItem>
+                    <SelectItem value="completed">Terminées</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -552,39 +451,6 @@ export default function Tasks() {
         <div className="flex-1">
           {/* Contenu selon la vue sélectionnée */}
           <Tabs value={viewMode} onValueChange={setViewMode} className="h-full">
-            <TabsContent value="kanban" className="mt-0">
-              {/* Vue Kanban simple - 2 colonnes */}
-              <div className="p-6">
-                <div className="grid grid-cols-2 gap-6 h-full">
-                  {/* Colonne À faire */}
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Circle className="w-5 h-5 text-blue-500" />
-                      À faire ({filteredTasks.filter((task: TaskWithRelations) => task.status !== 'done' && task.status !== 'archived').length})
-                    </h3>
-                    <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status !== 'done' && task.status !== 'archived').map((task: TaskWithRelations) => {
-                        return renderKanbanCard(task, canEditTasks);
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Colonne Terminé */}
-                  <div className="bg-green-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                      Terminé ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'done' || task.status === 'archived').length})
-                    </h3>
-                    <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'done' || task.status === 'archived').map((task: TaskWithRelations) => {
-                        return renderKanbanCard(task, canEditTasks, true);
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabsContent>
-
             <TabsContent value="list" className="mt-0">
               {/* Liste des tâches */}
               <div className="p-6">
@@ -600,15 +466,15 @@ export default function Tasks() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Tâches À faire en premier */}
-                {paginatedTasks.filter(task => ['todo', 'backlog', 'in_progress', 'review', 'testing', 'blocked', 'ready_to_deploy', 'deployed'].includes(task.status)).length > 0 && (
+                {/* Tâches en cours */}
+                {paginatedTasks.filter(task => task.status === 'pending').length > 0 && (
                   <div>
                     <h4 className="text-lg font-semibold text-gray-900 mb-3">
-                      Tâches à faire ({paginatedTasks.filter(task => ['todo', 'backlog', 'in_progress', 'review', 'testing', 'blocked', 'ready_to_deploy', 'deployed'].includes(task.status)).length})
+                      Tâches en cours ({paginatedTasks.filter(task => task.status === 'pending').length})
                     </h4>
                     <div className="space-y-3">
                       {paginatedTasks
-                        .filter(task => ['todo', 'backlog', 'in_progress', 'review', 'testing', 'blocked', 'ready_to_deploy', 'deployed'].includes(task.status))
+                        .filter(task => task.status === 'pending')
                         .map((task) => {
                           const priorityConfig = getPriorityConfig(task.priority);
                           const PriorityIcon = priorityConfig.icon;
@@ -625,16 +491,6 @@ export default function Tasks() {
                                       <Badge variant={priorityConfig.color} className="flex items-center gap-1">
                                         <PriorityIcon className="w-3 h-3" />
                                         {priorityConfig.label}
-                                      </Badge>
-                                      <Badge variant="outline" className="text-xs">
-                                        {task.status === 'backlog' ? 'Backlog' :
-                                         task.status === 'todo' ? 'À faire' :
-                                         task.status === 'in_progress' ? 'En cours' :
-                                         task.status === 'review' ? 'Révision' :
-                                         task.status === 'testing' ? 'Test' :
-                                         task.status === 'blocked' ? 'Bloqué' :
-                                         task.status === 'ready_to_deploy' ? 'Prêt Déploiement' :
-                                         task.status === 'deployed' ? 'Déployé' : task.status}
                                       </Badge>
                                     </div>
                                     
@@ -721,15 +577,15 @@ export default function Tasks() {
                   </div>
                 )}
 
-                {/* Tâches terminées et archivées */}
-                {paginatedTasks.filter(task => ['done', 'archived'].includes(task.status)).length > 0 && (
+                {/* Tâches terminées */}
+                {paginatedTasks.filter(task => task.status === 'completed').length > 0 && (
                   <div>
                     <h4 className="text-lg font-semibold text-gray-900 mb-3 mt-8">
-                      Tâches terminées ({paginatedTasks.filter(task => ['done', 'archived'].includes(task.status)).length})
+                      Tâches terminées ({paginatedTasks.filter(task => task.status === 'completed').length})
                     </h4>
                     <div className="space-y-3">
                       {paginatedTasks
-                        .filter(task => ['done', 'archived'].includes(task.status))
+                        .filter(task => task.status === 'completed')
                         .map((task) => {
                           const priorityConfig = getPriorityConfig(task.priority);
                           const PriorityIcon = priorityConfig.icon;
@@ -743,12 +599,9 @@ export default function Tasks() {
                                       <h5 className="font-medium text-gray-500 truncate line-through">
                                         {task.title}
                                       </h5>
-                                      <Badge 
-                                        variant={task.status === 'done' ? 'secondary' : 'outline'} 
-                                        className="flex items-center gap-1"
-                                      >
-                                        <CheckCircle className="w-3 h-3" />
-                                        {task.status === 'done' ? 'Terminée' : 'Archivée'}
+                                      <Badge variant="secondary" className="flex items-center gap-1">
+                                        <CheckCircle className="w-3 h-3 border border-gray-300 rounded p-0.5" />
+                                        Terminée
                                       </Badge>
                                     </div>
                                     
@@ -806,6 +659,148 @@ export default function Tasks() {
                     className="mt-4 border-t border-gray-200 pt-4 mx-6"
                   />
                 )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="kanban" className="mt-0">
+              {/* Vue Kanban */}
+              <div className="p-6">
+                <div className="grid grid-cols-2 gap-6 h-full">
+                  {/* Colonne En cours */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Circle className="w-5 h-5 text-yellow-500" />
+                      En cours ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'pending').length})
+                    </h3>
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'pending').map((task: TaskWithRelations) => {
+                        const priorityConfig = getPriorityConfig(task.priority);
+                        const PriorityIcon = priorityConfig.icon;
+                        const dueDateStatus = getDueDateStatus(task.dueDate, task.status);
+                        const DueDateIcon = dueDateStatus?.icon;
+                        
+                        return (
+                          <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                            <CardContent className="p-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <h5 className="font-medium text-gray-900 text-sm">{task.title}</h5>
+                                <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs">
+                                  <PriorityIcon className="w-3 h-3" />
+                                  {priorityConfig.label}
+                                </Badge>
+                              </div>
+                              
+                              {task.description && (
+                                <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                                  {task.description}
+                                </p>
+                              )}
+                              
+                              <div className="text-xs text-gray-500 mb-2">
+                                Assigné à: {task.assignedTo}
+                              </div>
+                              
+                              {dueDateStatus && DueDateIcon && (
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant={dueDateStatus.color} className="flex items-center gap-1 text-xs">
+                                    <DueDateIcon className="w-3 h-3" />
+                                    {dueDateStatus.text}
+                                  </Badge>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center gap-1 mt-2">
+                                {canEditTasks && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleCompleteTask(task.id)}
+                                      className="text-green-600 hover:text-green-700 text-xs h-7"
+                                    >
+                                      <CheckCircle className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleEditTask(task)}
+                                      className="text-xs h-7"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDeleteClick(task)}
+                                      className="text-red-600 hover:text-red-700 text-xs h-7"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colonne Terminées */}
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      Terminées ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'completed').length})
+                    </h3>
+                    <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'completed').map((task: TaskWithRelations) => {
+                        const priorityConfig = getPriorityConfig(task.priority);
+                        const PriorityIcon = priorityConfig.icon;
+                        
+                        return (
+                          <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer opacity-75">
+                            <CardContent className="p-3">
+                              <div className="flex items-start justify-between mb-2">
+                                <h5 className="font-medium text-gray-900 text-sm line-through">{task.title}</h5>
+                                <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs">
+                                  <PriorityIcon className="w-3 h-3" />
+                                  {priorityConfig.label}
+                                </Badge>
+                              </div>
+                              
+                              <div className="text-xs text-gray-500">
+                                Terminée le: {task.completedAt ? format(new Date(task.completedAt), 'dd/MM/yyyy', { locale: fr }) : 'Date inconnue'}
+                              </div>
+                              
+                              <div className="flex items-center gap-1 mt-2">
+                                {canEditTasks && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleEditTask(task)}
+                                      className="text-xs h-7"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDeleteClick(task)}
+                                      className="text-red-600 hover:text-red-700 text-xs h-7"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
