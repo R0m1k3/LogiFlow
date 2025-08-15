@@ -23,7 +23,7 @@ export class WeatherService {
    */
   async fetchCurrentWeather(settings: WeatherSettings): Promise<WeatherApiResponse | null> {
     try {
-      const url = `${this.baseUrl}/${encodeURIComponent(settings.location)}?unitGroup=metric&include=days&key=${settings.apiKey}&contentType=json`;
+      const url = `${this.baseUrl}/${encodeURIComponent(settings.location)}?unitGroup=metric&include=days&key=${settings.apiKey}&contentType=json&lang=fr`;
       
       const response = await fetch(url);
       if (!response.ok) {
@@ -45,7 +45,7 @@ export class WeatherService {
   async fetchPreviousYearWeather(settings: WeatherSettings, targetDate: string): Promise<WeatherApiResponse | null> {
     try {
       // Pour les données historiques, Visual Crossing utilise la syntaxe: /timeline/location/date
-      const url = `${this.baseUrl}/${encodeURIComponent(settings.location)}/${targetDate}?unitGroup=metric&include=days&key=${settings.apiKey}&contentType=json`;
+      const url = `${this.baseUrl}/${encodeURIComponent(settings.location)}/${targetDate}?unitGroup=metric&include=days&key=${settings.apiKey}&contentType=json&lang=fr`;
       
       console.log(`🌤️ [FETCH-HISTORY] Requesting: ${settings.location} for ${targetDate}`);
       

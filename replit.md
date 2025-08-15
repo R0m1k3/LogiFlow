@@ -1,240 +1,43 @@
 # Enterprise Weather Management Platform
 
-## Project Overview
-Plateforme de gestion météorologique d'entreprise avec suivi logistique multi-tenant avancé et capacités complètes de gestion des commandes.
+## Overview
+This platform is an enterprise weather management system with advanced multi-tenant logistics tracking and comprehensive order management capabilities. It provides robust delivery workflow management with enhanced reconciliation features, focusing on operational efficiency through detailed financial tracking, granular access controls, and sophisticated permission management.
 
-La plateforme fournit une gestion robuste des flux de travail de livraison avec des fonctionnalités de rapprochement améliorées, se concentrant sur l'efficacité opérationnelle grâce au suivi financier détaillé, aux contrôles d'accès granulaires et à la gestion sophistiquée des permissions.
-
-## Tech Stack
-- Frontend: React.js avec composants UI personnalisés (shadcn/ui)
-- Backend: Node.js Express (ESM)
-- API Météo: Visual Crossing
-- Gestion d'état: React Query
-- Base de données: PostgreSQL avec Drizzle ORM
-- Authentification: Gestion d'accès sécurisée basée sur les rôles
-- Validation: Schémas de validation Zod
-- Styling: Tailwind CSS
-- Déploiement: Docker
-- Localisation: Support français amélioré
-
-## Recent Changes
-
-### 2025-08-15 - Système météo production opérationnel avec clé API authentique
-✅ **Problème API Visual Crossing complètement résolu** :
-- **Problème** : Erreur 401 pour données année précédente en production
-- **Cause** : Mauvaise syntaxe URL pour données historiques (utilisait `forecastBasisDate`)
-- **Solution** : Syntaxe correcte `/timeline/location/date` pour données historiques
-- **Auto-configuration** : Système utilise automatiquement `VISUAL_CROSSING_API_KEY` des variables d'environnement
-- **Gestion d'erreur robuste** : Affiche météo actuelle même si année précédente échoue
-- **Format données corrigé** : `maxTemperature`/`minTemperature` numériques pour WeatherWidget
-- **Visibilité** : Météo accessible à tous utilisateurs connectés (non admin-seulement)
-- **Logs améliorés** : Debugging détaillé pour diagnostic production
-
-### 2025-08-14 - Correction finale permissions employés commandes clients
-✅ **Problème permissions employés entièrement résolu** :
-- **Problème** : Employés ne pouvaient pas créer de commandes clients (erreur "Access denied to this group")
-- **Cause racine** : Formulaire utilisait groupe 1 par défaut au lieu du groupe assigné à l'employé
-- **Solution complète** : Formulaire utilise automatiquement le groupe assigné à l'utilisateur
-- **Simplification** : Suppression du sélecteur de magasin (inutile car utilisateurs ont un magasin assigné)
-- **Code nettoyé** : Logique simplifiée pour utiliser uniquement `user.userGroups[0].groupId`
-- **Production ready** : Code optimisé pour fonctionner sur serveur privé
-
-✅ **Boutons SAV "Détail" et "Éditer" opérationnels** :
-- **Bouton Détail** : Modal complet avec toutes informations ticket
-- **Bouton Éditer** : Formulaire pré-rempli pour modification
-- **Interface responsive** : Affichage optimisé tous écrans
-- **Permissions** : Boutons visibles selon rôles utilisateur
-
-### 2025-08-14 - Correction critique SAV production + route d'urgence
-🔧 **Problème production SAV entièrement résolu** :
-- **Problème** : Tables SAV en production manquaient colonnes essentielles (priority, problem_type, etc.)
-- **Erreur** : "column priority does not exist" en production PostgreSQL 
-- **Cause** : Structure de table incomplète entre développement (MemStorage) et production (PostgreSQL)
-- **Solution automatique** : Migration auto dans `server/migrations.production.ts` + `db.production.ts`
-- **Route d'urgence** : `POST /api/admin/emergency-migration` pour forcer migration immédiate
-- **Exécution** : Appeler cette API sur serveur production pour résoudre instantanément l'erreur
-- **Logs détaillés** : Migration avec logs complets pour diagnostic et vérification
-- **Sécurisé** : Vérifications avant exécution, pas d'impact si déjà appliqué
-
-### 2025-08-13 - CORRECTION COMPLÈTE PostgreSQL production - Statut et Relations
-✅ **Problème production PostgreSQL entièrement résolu** :
-
-**1. Correction statut commande lors liaison :**
-- **Problème** : Commandes passaient à "delivered" au lieu de "planned" lors liaison avec livraison
-- **Cause** : Méthode createDelivery() dans DatabaseStorage (PostgreSQL) manquait logique status
-- **Solution** : Ajout logique complète dans createDelivery() production identique à développement
-- **Correction** : Commandes liées passent maintenant à "planned" (jaune) et non "delivered"
-
-**2. Correction affichage relations commandes-livraisons :**
-- **Problème** : Liaisons n'apparaissaient pas car relations non récupérées en production
-- **Cause** : getOrder() et getDelivery() PostgreSQL ne récupéraient pas les entités associées
-- **Solution** : getOrder() récupère maintenant les livraisons liées + getDelivery() récupère commande liée
-- **Résultat** : Calendrier affiche maintenant correctement les liaisons avec informations complètes
-
-**3. Cohérence développement-production :**
-- **Avant** : MemStorage (dev) et DatabaseStorage (prod) comportements différents
-- **Après** : Logique identique entre développement et production PostgreSQL
-- **Test** : Synchronisation automatique uniquement lors validation, pas création
-
-### 2025-08-13 - Interface épurée + redirection automatique + réorganisation navigation
-✅ **Redirection automatique vers authentification** :
-- RouterProduction redirige immédiatement si utilisateur non connecté
-- Query client gère les erreurs 401 avec redirection automatique
-- Gestion centralisée des sessions expirées pour meilleure UX
-- Plus de pages d'erreur, redirection transparente vers /auth
-
-✅ **Interface épurée et navigation optimisée** :
-- Titre LogiFlow supprimé du header principal (évite redondance)
-- Seul titre dans la sidebar conservé pour navigation centralisée
-- Fournisseurs et Magasins déplacés dans Administration
-- Catégorie "Gestion" supprimée (consolidation menu)
-- Interface plus propre et logique
-
-### 2025-08-13 - Module de sauvegarde PostgreSQL implémenté + correction ESM
-✅ **Module de sauvegarde PostgreSQL complet** :
-- **Interface BackupManager** : Affichage des sauvegardes avec détails (taille, tables, statut)
-- **Fonctions** : Création manuelle, suppression, téléchargement de sauvegardes SQL
-- **Automatisation** : Sauvegardes programmées à 2h du matin avec timer natif
-- **Base de données** : Table `DATABASE_BACKUPS` avec suivi complet des sauvegardes
-- **Navigation** : Ajouté dans la sidebar administration pour les admins
-- **Compatibilité ESM** : Remplacement de `node-cron` par `setTimeout` natif pour résoudre l'erreur production
-- **Permissions Docker** : Correction permissions `/app/backups` et installation `postgresql-client` pour `pg_dump`
-
-### 2025-08-13 - Optimisation performance production + correction calendrier
-✅ **Résolution latence production** :
-- **Problème** : Console saturée par centaines de logs "API Response" causant latence
-- **Solution** : Logging conditionnel - seulement en développement pour requêtes normales
-- **Production** : Seules les erreurs API sont loggées pour debugging
-- **Impact** : Réduction drastique de la charge console et amélioration performances
-
-✅ **Problème calendrier résolu** :
-- **Problème** : Fermeture carte commande/livraison faisait disparaître toutes les données
-- **Cause** : Invalidation aggressive du cache React Query + invalidation à l'ouverture
-- **Solution** : Cache timing optimisé (5min staleTime) + invalidation sélective seulement
-- **Résultat** : Calendrier stable, plus de disparition des données au jour actuel
-
-✅ **Fonctionnalité suppression complètement opérationnelle** :
-- **Cache NocoDB** : Fonction `saveInvoiceVerificationCache` ajoutée aux deux systèmes stockage
-- **MemStorage** : Implémentation CRUD complète pour ordres et livraisons
-- **Test validé** : Création, lecture et suppression fonctionnent parfaitement
-- **Production** : Les suppressions de livraisons et rapprochements sont maintenant possibles
-
-### 2025-08-13 - Problème authentification production résolu
-✅ **Diagnostic et solution du problème de validation des livraisons** :
-
-**Problème identifié et corrigé :**
-- Erreur "Cannot validate Delivery" causée par des jointures SQL complexes défectueuses
-- Les récentes modifications avaient ajouté des `LEFT JOIN` avec la table `users` dans `getDelivery()`
-- Ces jointures complexes échouaient en production PostgreSQL lors de la validation
-- L'endpoint `/api/deliveries/:id/validate` appelle `getDelivery()` qui devenait défaillant
-
-**Corrections appliquées :**
-- ✅ **Fonction getDelivery() simplifiée** : Retrait des jointures LEFT JOIN complexes avec users
-- ✅ **Chargement creator sécurisé** : Informations utilisateur chargées séparément avec gestion d'erreur
-- ✅ **Erreurs TypeScript corrigées** : Problèmes de types undefined/null résolus
-- ✅ **Erreur validateDelivery() corrigée** : Utilisation objet Date au lieu de toISOString() pour Drizzle ORM
-- ✅ **Production restaurée** : La validation des livraisons fonctionne à nouveau
-
-**Technique :** Remplacé les jointures SQL risquées par un chargement séparé optionnel des données creator + correction format Date pour PostgreSQL
-
-### 2025-08-13 - Correction finale statistiques + affichage BL résolu
-✅ **Résolution définitive des bugs statistiques et affichage BL** :
-
-**1. Statistiques mois corrigées :**
-- **Problème** : Palettes/colis comptées sur scheduledDate au lieu de deliveredDate
-- **Solution** : Filtrage par `deliveredDate` pour vraies stats mensuelles
-- **Impact** : Statistiques reflètent maintenant les livraisons effectives du mois
-- **Calcul** : Seules les livraisons `delivered` dans le mois avec `deliveredDate` valide
-
-**2. Affichage BL rapprochement optimisé :**
-- **Problème** : BL numbers n'apparaissaient pas immédiatement après validation
-- **Solution** : Cache invalidation + refetch forcé après modification
-- **Technique** : `staleTime: 0` + `queryClient.invalidateQueries` + `refetch()`
-- **Résultat** : Mise à jour instantanée de l'interface utilisateur
-
-### 2025-08-13 - Erreurs 502 production entièrement corrigées
-✅ **Résolution définitive des erreurs Bad Gateway en production** :
-
-**Problèmes critiques résolus :**
-- **TypeScript compilation fixed** : Erreurs de types 'unknown' corrigées en 'any'
-- **Build production successful** : index.production.ts compile maintenant correctement
-- **Routes complètes** : Toutes les API routes importées via registerRoutes()
-- **Service NocoDB opérationnel** : InvoiceVerificationService remplace nocodbService.js manquant
-- **Configuration réaliste** : URLs et paramètres NocoDB de production configurés
-- **Serveur stable** : Build réussi en 27ms, plus d'erreurs 502 attendues
-
-**Corrections techniques :**
-- **Variable server duplicate fixed** : Conflit de déclaration dans index.production.ts résolu
-- **esbuild compilation successful** : Build Docker maintenant possible (210.4kb en 25ms) 
-- **TypeScript errors eliminated** : Toutes les erreurs de compilation corrigées
-- Service `invoiceVerificationService` créé avec simulation développement
-- API `apiRequest` ne nécessite plus d'appel `.json()` - données déjà parsées
-- Table `orders` : `plannedDate`, `quantity`, `unit`
-- Table `deliveries` : `quantity`, `unit`
-- Types utilisateurs complets avec tous les champs requis
-
-### 2025-08-13 - Uniformisation complète des interfaces utilisateur
-✅ **Harmonisation du design des tableaux** terminée pour une expérience utilisateur cohérente :
-
-**Pages uniformisées :**
-- `Orders.tsx` - Page des commandes avec design responsive optimisé
-- `Deliveries.tsx` - Page des livraisons avec structure identique
-- `BLReconciliation.tsx` - Page de rapprochement BL/Factures harmonisée
-- `Dashboard.tsx` - Tableau de bord avec erreurs TypeScript corrigées
-
-**Améliorations appliquées :**
-- Headers responsifs adaptés mobile/tablette
-- Filtres restructurés avec style cohérent
-- Tableaux standardisés : `px-6 py-4` et `whitespace-nowrap`
-- Boutons d'actions modernisés avec composants Button shadcn/ui
-- Pagination repositionnée avec bordures uniformisées
-- Espacement et typographie harmonisés
-
-### 2025-08-12 - Nettoyage des fichiers inutiles
-✅ **Suppression complète des fichiers inutiles** effectuée pour optimiser le projet
-
-## Project Architecture
-
-### Frontend Structure
-```
-client/src/
-├── components/       # Composants UI réutilisables
-├── pages/           # Pages principales de l'application
-├── hooks/           # Hooks React personnalisés
-├── lib/             # Utilitaires et clients
-└── main.tsx         # Point d'entrée
-```
-
-### Backend Structure
-```
-server/
-├── index.ts         # Serveur principal (développement)
-├── index.production.ts  # Serveur production
-├── routes.ts        # Routes API
-├── storage.ts       # Couche d'accès aux données
-├── localAuth.ts     # Authentification locale
-└── services/        # Services métier
-```
-
-### Database
-- PostgreSQL avec Drizzle ORM
-- Migrations gérées dans `migrations/`
-- Schémas définis dans `shared/schema.ts`
+**Business Vision & Market Potential:** The platform aims to streamline logistics and order fulfillment processes for businesses, improving efficiency and providing critical weather insights for operational planning. Its multi-tenant architecture makes it scalable for various enterprise sizes, offering a competitive edge in logistics management.
 
 ## User Preferences
 - Langue préférée : Français
 - Communication : Langue simple et accessible, éviter les détails techniques
 - Nettoyage : Préfère un projet optimisé sans fichiers inutiles
 
-## Development Guidelines
-- Utiliser `npm run dev` pour lancer l'application
-- Les migrations sont gérées avec `npm run db:push`
-- Architecture full-stack JavaScript avec focus frontend
-- Validation des données avec Zod
-- UI avec shadcn/ui + Tailwind CSS
+## System Architecture
+The platform is built with a clear separation of concerns, utilizing a modern full-stack JavaScript architecture.
 
-## Notes
-- L'application utilise un système de stockage en mémoire pour le développement
-- Support multi-tenant avec gestion des groupes et permissions
-- Interface météorologique simplifiée intégrée
-- Système d'authentification unifié pour développement et production
+**UI/UX Decisions:**
+- Frontend uses React.js with custom UI components from `shadcn/ui` and styled with Tailwind CSS for a consistent and modern aesthetic.
+- The design emphasizes clean interfaces, responsive layouts for various screen sizes, and intuitive navigation.
+- Color schemes prioritize readability and user comfort, with an elegant gradient and shadow design for key elements like the weather widget.
+
+**Technical Implementations & Design Patterns:**
+- **Frontend:** React.js for building interactive user interfaces. State management is handled efficiently with React Query for data fetching, caching, and synchronization.
+- **Backend:** Node.js Express (ESM) provides a robust API layer. Data validation is performed using Zod schemas.
+- **Database:** PostgreSQL is used as the primary data store, with Drizzle ORM facilitating interaction. Database migrations ensure schema consistency.
+- **Authentication:** Secure role-based access control (RBAC) is implemented for granular permissions.
+- **Multi-tenancy:** The system supports multi-tenant operations with group and permission management.
+- **Module for Backup:** An integrated PostgreSQL backup manager allows manual and scheduled backups, with tracking in a `DATABASE_BACKUPS` table.
+- **Error Handling:** Robust error management ensures graceful degradation and informative logging, especially for production environments. API responses are logged conditionally to reduce console clutter in production.
+- **Data Synchronization:** Logic is implemented to ensure data consistency between development (in-memory storage) and production (PostgreSQL) environments, particularly for order status and relationships.
+
+**Feature Specifications:**
+- **Weather Integration:** A comprehensive, modern weather interface displays detailed weather conditions sourced directly from the Visual Crossing API with French language support.
+- **Order and Delivery Management:** Full CRUD operations for orders and deliveries, including linking orders to deliveries and managing their statuses.
+- **Reconciliation:** Functionality for reconciling Bills of Lading (BL) and invoices with immediate UI updates.
+- **User and Permission Management:** Granular access controls ensuring that users (e.g., employees) have appropriate permissions for tasks like creating customer orders.
+- **Reporting:** Statistical reporting, including monthly summaries of deliveries based on `deliveredDate`.
+
+## External Dependencies
+- **API Météo:** Visual Crossing API for weather data.
+- **Database:** PostgreSQL.
+- **ORM:** Drizzle ORM for database interaction.
+- **UI Components:** `shadcn/ui`.
+- **Styling:** Tailwind CSS.

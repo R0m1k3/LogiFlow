@@ -21,36 +21,7 @@ interface WeatherResponse {
   location: string;
 }
 
-const translateWeatherCondition = (condition: string): string => {
-  const conditionLower = condition.toLowerCase();
-  
-  // Traductions des conditions météo
-  if (conditionLower.includes('clear')) return 'Ensoleillé';
-  if (conditionLower.includes('sunny')) return 'Ensoleillé';
-  if (conditionLower.includes('fair')) return 'Beau temps';
-  if (conditionLower.includes('partly cloudy')) return 'Partiellement nuageux';
-  if (conditionLower.includes('cloudy')) return 'Nuageux';
-  if (conditionLower.includes('overcast')) return 'Couvert';
-  if (conditionLower.includes('rain')) {
-    if (conditionLower.includes('heavy')) return 'Pluie forte';
-    if (conditionLower.includes('light')) return 'Pluie légère';
-    return 'Pluie';
-  }
-  if (conditionLower.includes('shower')) return 'Averses';
-  if (conditionLower.includes('drizzle')) return 'Bruine';
-  if (conditionLower.includes('thunderstorm') || conditionLower.includes('thunder')) return 'Orage';
-  if (conditionLower.includes('snow')) {
-    if (conditionLower.includes('heavy')) return 'Neige forte';
-    if (conditionLower.includes('light')) return 'Neige légère';
-    return 'Neige';
-  }
-  if (conditionLower.includes('fog')) return 'Brouillard';
-  if (conditionLower.includes('mist')) return 'Brume';
-  if (conditionLower.includes('wind')) return 'Venteux';
-  
-  // Si pas de traduction trouvée, retourner tel quel
-  return condition;
-};
+
 
 const WeatherIcon = ({ condition, size = 20 }: { condition: string; size?: number }) => {
   const iconClass = `h-${Math.floor(size/4)} w-${Math.floor(size/4)}`;
@@ -148,7 +119,7 @@ export default function WeatherWidget() {
                 {location.split(',')[0]}
               </span>
               <span className="text-xs text-slate-500 dark:text-slate-400">
-                {translateWeatherCondition(weather.currentYear?.condition || 'Inconnu')}
+                {weather.currentYear?.condition || 'Inconnu'}
               </span>
             </div>
           </div>
@@ -176,7 +147,7 @@ export default function WeatherWidget() {
                     Année dernière
                   </div>
                   <div className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                    {translateWeatherCondition(weather.previousYear?.condition || '')}
+                    {weather.previousYear?.condition || ''}
                   </div>
                 </div>
               </>
