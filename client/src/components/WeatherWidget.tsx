@@ -154,8 +154,9 @@ export default function WeatherWidget() {
         description: data.message,
       });
       
-      // Actualiser les données météo
+      // Forcer le rechargement immédiat des données météo
       queryClient.invalidateQueries({ queryKey: ['/api/weather/current'] });
+      queryClient.refetchQueries({ queryKey: ['/api/weather/current'] });
     },
     onError: (error: any) => {
       toast({

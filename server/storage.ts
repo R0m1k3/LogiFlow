@@ -202,6 +202,7 @@ export interface IStorage {
   createWeatherData(data: InsertWeatherData): Promise<WeatherData>;
   updateWeatherData(id: number, data: Partial<InsertWeatherData>): Promise<WeatherData>;
   deleteOldWeatherData(daysToKeep: number): Promise<void>;
+  clearWeatherCache(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1840,6 +1841,11 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`🧹 Deleted weather data older than ${daysToKeep} days`);
   }
+
+  async clearWeatherCache(): Promise<void> {
+    await db.delete(weatherData);
+    console.log('🧹 Weather cache cleared due to location change');
+  }
 }
 
 // MemStorage class for development
@@ -3260,6 +3266,11 @@ export class MemStorage implements IStorage {
   async deleteOldWeatherData(daysToKeep: number): Promise<void> {
     // In development, this is a no-op
     console.log(`🧹 DEV: Would delete weather data older than ${daysToKeep} days`);
+  }
+
+  async clearWeatherCache(): Promise<void> {
+    // In development, this is a no-op
+    console.log('🧹 DEV: Weather cache cleared due to location change');
   }
 }
 
