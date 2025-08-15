@@ -282,7 +282,8 @@ export default function DlcPage() {
     const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     // Afficher le bouton si le produit expire dans 15 jours ou moins, ou est déjà expiré
-    return (daysUntilExpiry <= 15 && product.status !== "valide");
+    // ET si le produit n'est pas déjà validé
+    return (daysUntilExpiry <= 15 && product.status !== "valides");
   };
 
   const getStatusBadge = (status: string, dlcDate: string | null) => {
@@ -791,7 +792,7 @@ export default function DlcPage() {
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            {shouldShowValidateButton(product) && (user?.role === 'admin' || user?.role === 'manager') && (
+                            {shouldShowValidateButton(product) && (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur') && (
                               <Button
                                 variant="default"
                                 size="sm"
