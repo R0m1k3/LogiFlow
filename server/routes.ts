@@ -2970,6 +2970,9 @@ RÉSUMÉ DU SCAN
         location: locationData.fullLocation
       });
 
+      // Vider le cache météo car la localisation a changé
+      await storage.clearWeatherCache();
+
       console.log('🌍 Localisation mise à jour automatiquement:', {
         from: settings.location,
         to: locationData.fullLocation,
