@@ -29,7 +29,7 @@ The platform is built with a clear separation of concerns, utilizing a modern fu
 - **Data Synchronization:** Logic is implemented to ensure data consistency between development (in-memory storage) and production (PostgreSQL) environments, particularly for order status and relationships.
 
 **Feature Specifications:**
-- **Weather Integration:** A comprehensive, modern weather interface displays detailed weather conditions sourced directly from the Visual Crossing API with French language support.
+- **Weather Integration:** A comprehensive, modern weather interface displays detailed weather conditions sourced directly from the Visual Crossing API with French language support. Features intelligent date comparison using the same day of the week from the previous year for more relevant weather pattern analysis (e.g., Friday August 15, 2025 vs Friday August 16, 2024).
 - **Order and Delivery Management:** Full CRUD operations for orders and deliveries, including linking orders to deliveries and managing their statuses.
 - **Reconciliation:** Functionality for reconciling Bills of Lading (BL) and invoices with immediate UI updates.
 - **User and Permission Management:** Granular access controls ensuring that users (e.g., employees) have appropriate permissions for tasks like creating customer orders.
