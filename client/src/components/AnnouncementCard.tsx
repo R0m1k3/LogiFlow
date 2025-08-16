@@ -137,6 +137,22 @@ export default function AnnouncementCard() {
   });
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
+    console.log('🔥 [FORM] onSubmit called with data:', data);
+    console.log('🔥 [FORM] Form errors:', form.formState.errors);
+    console.log('🔥 [FORM] Form is valid:', form.formState.isValid);
+    console.log('🔥 [FORM] Form is submitting:', form.formState.isSubmitting);
+    
+    if (!data.title || !data.content) {
+      console.error('🔥 [FORM] Missing required fields:', { title: data.title, content: data.content });
+      toast({
+        title: "Erreur",
+        description: "Le titre et le contenu sont obligatoires",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log('🔥 [FORM] Calling createMutation.mutate');
     createMutation.mutate(data);
   };
 
@@ -268,7 +284,11 @@ export default function AnnouncementCard() {
                     >
                       Annuler
                     </Button>
-                    <Button type="submit" disabled={createMutation.isPending}>
+                    <Button 
+                      type="submit" 
+                      disabled={createMutation.isPending}
+                      onClick={() => console.log('🔥 [BUTTON] Submit button clicked')}
+                    >
                       {createMutation.isPending ? 'Création...' : 'Créer'}
                     </Button>
                   </div>

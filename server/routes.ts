@@ -3029,28 +3029,49 @@ RÉSUMÉ DU SCAN
   });
 
   app.post('/api/announcements', isAuthenticated, async (req: any, res) => {
+    console.log('🎯 [SERVER] POST /api/announcements endpoint hit');
+    console.log('🎯 [SERVER] Request body:', JSON.stringify(req.body, null, 2));
+    console.log('🎯 [SERVER] User object:', {
+      hasClaims: !!req.user.claims,
+      hasId: !!req.user.id,
+      userId: req.user.claims ? req.user.claims.sub : req.user.id
+    });
+    
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      console.log('🎯 [SERVER] Extracted userId:', userId);
+      
       const user = await storage.getUserWithGroups(userId);
       if (!user) {
+        console.error('🎯 [SERVER] User not found for ID:', userId);
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log('🎯 [SERVER] User found:', { username: user.username, role: user.role, id: user.id });
+
       // Only admin can create announcements
       if (user.role !== 'admin') {
+        console.error('🎯 [SERVER] Access denied - user role:', user.role);
         return res.status(403).json({ message: "Only administrators can create announcements" });
       }
+
+      console.log('🎯 [SERVER] User is admin, proceeding with validation');
 
       const announcementData = insertAnnouncementSchema.parse({
         ...req.body,
         authorId: user.id,
       });
 
+      console.log('🎯 [SERVER] Announcement data validated:', announcementData);
+
       const announcement = await storage.createAnnouncement(announcementData);
+      console.log('🎯 [SERVER] Announcement created successfully:', announcement);
+      
       res.status(201).json(announcement);
     } catch (error) {
-      console.error("Error creating announcement:", error);
+      console.error('🎯 [SERVER] Error creating announcement:', error);
       if (error instanceof z.ZodError) {
+        console.error('🎯 [SERVER] Validation errors:', error.errors);
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create announcement" });
