@@ -17,16 +17,15 @@ class AnnouncementMemoryStorage {
   }
 
   private initializeTestData() {
-    // Créer quelques annonces de test
+    // Créer quelques annonces de test avec la nouvelle structure DASHBOARD_MESSAGES
     const testAnnouncement: Announcement = {
       id: this.idCounter++,
       title: "Bienvenue dans le système d'informations",
       content: "Ce nouveau système remplace l'ancienne carte des commandes clients. Vous pouvez maintenant créer et gérer des annonces importantes.",
-      priority: 'important',
-      authorId: 'admin',
-      groupId: 1,
+      type: 'warning',
+      createdBy: 'admin',
+      storeId: 1,
       createdAt: new Date(),
-      updatedAt: new Date(),
     };
     this.announcements.set(testAnnouncement.id, testAnnouncement);
 
@@ -34,11 +33,10 @@ class AnnouncementMemoryStorage {
       id: this.idCounter++,
       title: "Maintenance programmée",
       content: "Une maintenance système aura lieu dimanche prochain de 2h à 4h du matin.",
-      priority: 'normal',
-      authorId: 'admin',
-      groupId: null, // Annonce globale
+      type: 'info',
+      createdBy: 'admin',
+      storeId: null, // Annonce globale
       createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Hier
-      updatedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
     };
     this.announcements.set(testAnnouncement2.id, testAnnouncement2);
   }
@@ -51,7 +49,7 @@ class AnnouncementMemoryStorage {
     // Filtrer par groupIds si fourni (pour le filtrage admin par magasin)
     if (groupIds && groupIds.length > 0) {
       filteredAnnouncements = announcements.filter(announcement => 
-        !announcement.groupId || groupIds.includes(announcement.groupId)
+        !announcement.storeId || groupIds.includes(announcement.storeId)
       );
     }
 
@@ -66,8 +64,8 @@ class AnnouncementMemoryStorage {
 
     // Ajouter les relations
     const announcementsWithRelations = filteredAnnouncements.map(announcement => {
-      const author = usersMap.get(announcement.authorId);
-      const group = announcement.groupId ? groupsMap.get(announcement.groupId) : undefined;
+      const author = usersMap.get(announcement.createdBy);
+      const group = announcement.storeId ? groupsMap.get(announcement.storeId) : undefined;
       
       return {
         ...announcement,
@@ -76,12 +74,12 @@ class AnnouncementMemoryStorage {
       };
     }).filter(a => a.author); // Filtrer celles sans auteur valide
 
-    // Trier par priorité (urgent > important > normal) puis par date (plus récent d'abord)
+    // Trier par type (error > warning > success > info) puis par date (plus récent d'abord)
     return announcementsWithRelations.sort((a, b) => {
-      const priorityOrder = { urgent: 3, important: 2, normal: 1 };
-      const priorityDiff = (priorityOrder[b.priority as keyof typeof priorityOrder] || 1) - 
-                          (priorityOrder[a.priority as keyof typeof priorityOrder] || 1);
-      if (priorityDiff !== 0) return priorityDiff;
+      const typeOrder = { error: 4, warning: 3, success: 2, info: 1 };
+      const typeDiff = (typeOrder[b.type as keyof typeof typeOrder] || 1) - 
+                       (typeOrder[a.type as keyof typeof typeOrder] || 1);
+      if (typeDiff !== 0) return typeDiff;
       return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
     });
   }
@@ -103,10 +101,9 @@ class AnnouncementMemoryStorage {
     const announcement: Announcement = {
       id,
       ...announcementData,
-      priority: announcementData.priority || 'normal',
-      groupId: announcementData.groupId || null,
+      type: announcementData.type || 'info',
+      storeId: announcementData.storeId || null,
       createdAt: new Date(),
-      updatedAt: new Date(),
     };
     
     this.announcements.set(id, announcement);
@@ -130,8 +127,8 @@ class AnnouncementMemoryStorage {
     const usersMap = new Map(users.map(u => [u.id, u]));
     const groupsMap = new Map(groups.map(g => [g.id, g]));
 
-    const author = usersMap.get(announcement.authorId);
-    const group = announcement.groupId ? groupsMap.get(announcement.groupId) : undefined;
+    const author = usersMap.get(announcement.createdBy);
+    const group = announcement.storeId ? groupsMap.get(announcement.storeId) : undefined;
 
     if (!author) {
       return undefined;
@@ -154,7 +151,7 @@ class AnnouncementMemoryStorage {
       ...existingAnnouncement,
       ...announcementData,
       id, // Ensure ID doesn't change
-      updatedAt: new Date(),
+      // Note: DASHBOARD_MESSAGES table n'a pas de champ updatedAt
     };
 
     this.announcements.set(id, updatedAnnouncement);

@@ -49,14 +49,8 @@ if (isProduction && dbUrl && (dbUrl.includes('logiflow-db') || dbUrl.includes('l
   neonConfig.webSocketConstructor = ws.default;
   
   if (dbUrl) {
-    try {
-      pool = new Pool({ connectionString: dbUrl });
-      db = drizzle({ client: pool, schema });
-    } catch (error) {
-      console.error('❌ Neon connection failed, will use MemStorage:', error);
-      pool = null;
-      db = null;
-    }
+    pool = new Pool({ connectionString: dbUrl });
+    db = drizzle({ client: pool, schema });
   } else {
     // Create dummy instances for development
     pool = null;

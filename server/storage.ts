@@ -10,6 +10,7 @@ import {
   customerOrders,
   dlcProducts,
   tasks,
+  dashboardMessages,
   announcements,
   nocodbConfig,
   invoiceVerificationCache,
@@ -3344,6 +3345,22 @@ export class MemStorage implements IStorage {
       async () => Array.from(this.groups.values())
     );
     return await announcementStorage.getAnnouncements(groupIds);
+  }
+
+  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | undefined> {
+    const announcementStorage = getAnnouncementStorage(
+      async () => Array.from(this.users.values()),
+      async () => Array.from(this.groups.values())
+    );
+    return await announcementStorage.getAnnouncement(id);
+  }
+
+  async updateAnnouncement(id: number, announcementData: Partial<InsertAnnouncement>): Promise<AnnouncementWithRelations> {
+    const announcementStorage = getAnnouncementStorage(
+      async () => Array.from(this.users.values()),
+      async () => Array.from(this.groups.values())
+    );
+    return await announcementStorage.updateAnnouncement(id, announcementData);
   }
 
   async deleteAnnouncement(id: number): Promise<boolean> {
