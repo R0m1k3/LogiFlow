@@ -3078,6 +3078,58 @@ RÉSUMÉ DU SCAN
     }
   });
 
+  // PUT /api/announcements/:id - Update announcement (admin only)
+  app.put('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
+    console.log('📝 [SERVER] PUT /api/announcements/:id endpoint hit');
+    console.log('📝 [SERVER] Request body:', JSON.stringify(req.body, null, 2));
+    
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      console.log('📝 [SERVER] Extracted userId:', userId);
+      
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        console.error('📝 [SERVER] User not found for ID:', userId);
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      console.log('📝 [SERVER] User found:', { username: user.username, role: user.role, id: user.id });
+
+      // Only admin can edit announcements
+      if (user.role !== 'admin') {
+        console.error('📝 [SERVER] Access denied - user role:', user.role);
+        return res.status(403).json({ message: "Only administrators can edit announcements" });
+      }
+
+      const id = parseInt(req.params.id);
+      console.log('📝 [SERVER] Announcement ID:', id);
+
+      // Verify announcement exists
+      const existingAnnouncement = await storage.getAnnouncement(id);
+      if (!existingAnnouncement) {
+        console.error('📝 [SERVER] Announcement not found:', id);
+        return res.status(404).json({ message: "Announcement not found" });
+      }
+
+      console.log('📝 [SERVER] User is admin, proceeding with validation');
+
+      const announcementData = insertAnnouncementSchema.partial().parse(req.body);
+      console.log('📝 [SERVER] Announcement data validated:', announcementData);
+
+      const updatedAnnouncement = await storage.updateAnnouncement(id, announcementData);
+      console.log('📝 [SERVER] Announcement updated successfully:', updatedAnnouncement);
+      
+      res.json(updatedAnnouncement);
+    } catch (error) {
+      console.error('📝 [SERVER] Error updating announcement:', error);
+      if (error instanceof z.ZodError) {
+        console.error('📝 [SERVER] Validation errors:', error.errors);
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update announcement" });
+    }
+  });
+
   app.delete('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;

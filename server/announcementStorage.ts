@@ -103,6 +103,7 @@ class AnnouncementMemoryStorage {
     const announcement: Announcement = {
       id,
       ...announcementData,
+      priority: announcementData.priority || 'normal',
       groupId: announcementData.groupId || null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -112,6 +113,60 @@ class AnnouncementMemoryStorage {
     console.log(`✅ Nouvelle annonce créée: ${announcement.title} (${this.announcements.size}/${this.MAX_ANNOUNCEMENTS})`);
     
     return announcement;
+  }
+
+  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | undefined> {
+    const announcement = this.announcements.get(id);
+    if (!announcement) {
+      return undefined;
+    }
+
+    // Récupérer les utilisateurs et groupes pour les relations
+    const [users, groups] = await Promise.all([
+      this.usersGetter(),
+      this.groupsGetter()
+    ]);
+
+    const usersMap = new Map(users.map(u => [u.id, u]));
+    const groupsMap = new Map(groups.map(g => [g.id, g]));
+
+    const author = usersMap.get(announcement.authorId);
+    const group = announcement.groupId ? groupsMap.get(announcement.groupId) : undefined;
+
+    if (!author) {
+      return undefined;
+    }
+
+    return {
+      ...announcement,
+      author,
+      group,
+    };
+  }
+
+  async updateAnnouncement(id: number, announcementData: Partial<InsertAnnouncement>): Promise<AnnouncementWithRelations> {
+    const existingAnnouncement = this.announcements.get(id);
+    if (!existingAnnouncement) {
+      throw new Error(`Announcement with ID ${id} not found`);
+    }
+
+    const updatedAnnouncement: Announcement = {
+      ...existingAnnouncement,
+      ...announcementData,
+      id, // Ensure ID doesn't change
+      updatedAt: new Date(),
+    };
+
+    this.announcements.set(id, updatedAnnouncement);
+    console.log(`✏️ Annonce mise à jour: ${updatedAnnouncement.title} (ID: ${id})`);
+
+    // Return the announcement with relations
+    const announcementWithRelations = await this.getAnnouncement(id);
+    if (!announcementWithRelations) {
+      throw new Error(`Failed to get updated announcement with relations`);
+    }
+
+    return announcementWithRelations;
   }
 
   async deleteAnnouncement(id: number): Promise<boolean> {
@@ -124,27 +179,18 @@ class AnnouncementMemoryStorage {
     
     return deleted;
   }
-
-  // Méthode utilitaire pour obtenir le nombre d'annonces
-  getCount(): number {
-    return this.announcements.size;
-  }
-
-  // Méthode utilitaire pour nettoyer toutes les annonces (si nécessaire)
-  clear(): void {
-    this.announcements.clear();
-    this.idCounter = 1;
-    console.log('🧹 Toutes les annonces ont été supprimées');
-  }
 }
 
-// Instance singleton pour partager entre production et développement
-let announcementStorage: AnnouncementMemoryStorage | null = null;
+// Instance globale partagée
+let globalAnnouncementStorage: AnnouncementMemoryStorage | null = null;
 
-export function getAnnouncementStorage(usersGetter: () => Promise<User[]>, groupsGetter: () => Promise<Group[]>): AnnouncementMemoryStorage {
-  if (!announcementStorage) {
-    announcementStorage = new AnnouncementMemoryStorage(usersGetter, groupsGetter);
-    console.log('📢 Système d\'annonces en mémoire initialisé (max 5 annonces)');
+export function getAnnouncementStorage(
+  usersGetter: () => Promise<User[]>,
+  groupsGetter: () => Promise<Group[]>
+): AnnouncementMemoryStorage {
+  if (!globalAnnouncementStorage) {
+    globalAnnouncementStorage = new AnnouncementMemoryStorage(usersGetter, groupsGetter);
+    console.log('📢 Stockage mémoire des annonces initialisé');
   }
-  return announcementStorage;
+  return globalAnnouncementStorage;
 }
