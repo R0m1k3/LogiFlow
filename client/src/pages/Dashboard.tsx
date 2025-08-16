@@ -234,11 +234,6 @@ export default function Dashboard() {
               Vue d'ensemble des performances et statistiques
             </p>
           </div>
-          {selectedStoreId && user?.role === 'admin' && (
-            <Badge variant="outline" className="text-blue-700 border-blue-300 w-fit">
-              Magasin sélectionné
-            </Badge>
-          )}
         </div>
       </div>
 
