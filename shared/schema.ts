@@ -255,6 +255,18 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Announcements - Système d'information du dashboard
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(), // Titre du message
+  content: text("content").notNull(), // Contenu du message
+  priority: varchar("priority").notNull().default("normal"), // normal, important, urgent
+  authorId: varchar("author_id").notNull(), // Référence vers l'utilisateur créateur
+  groupId: integer("group_id"), // Filtrage par magasin (null = global)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   userGroups: many(userGroups),
@@ -265,6 +277,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   createdDlcProducts: many(dlcProducts),
   createdTasks: many(tasks),
   assignedTasks: many(tasks),
+  createdAnnouncements: many(announcements),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
@@ -275,7 +288,7 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   customerOrders: many(customerOrders),
   dlcProducts: many(dlcProducts),
   tasks: many(tasks),
-
+  announcements: many(announcements),
 }));
 
 export const userGroupsRelations = relations(userGroups, ({ one }) => ({
@@ -396,6 +409,17 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   }),
 }));
 
+export const announcementsRelations = relations(announcements, ({ one }) => ({
+  author: one(users, {
+    fields: [announcements.authorId],
+    references: [users.id],
+  }),
+  group: one(groups, {
+    fields: [announcements.groupId],
+    references: [groups.id],
+  }),
+}));
+
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).pick({
   id: true,
@@ -501,6 +525,12 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   dueDate: z.coerce.date().optional().nullable(), // Convertit automatiquement les chaînes en Date
 });
 
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
   id: true,
   createdAt: true,
@@ -557,6 +587,8 @@ export type DlcProductFrontend = Omit<DlcProduct, 'expiryDate'> & { dlcDate: Dat
 export type InsertDlcProductFrontend = z.infer<typeof insertDlcProductFrontendSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 
 // Complex types with relations
 
@@ -603,6 +635,12 @@ export type InvoiceVerificationCache = typeof invoiceVerificationCache.$inferSel
 export type TaskWithRelations = Task & {
   creator: User;
   group: Group;
+};
+
+// Announcement with relations type
+export type AnnouncementWithRelations = Announcement & {
+  author: User;
+  group?: Group;
 };
 
 // SAV (Service Après-Vente) Tables
