@@ -91,11 +91,11 @@ docker exec logiflow-logiflow-1 ls -la /app/scripts/
 docker-compose up -d --env DEBUG_MIGRATIONS=true
 ```
 
-## 📋 Tables créées automatiquement
+## 📋 Table créée automatiquement
 
-✅ **announcements** - Système d'informations (prioritaire)
+✅ **announcements** - Système d'informations
 
-Le script vérifie et crée uniquement les tables manquantes nécessaires au fonctionnement de l'application.
+Le script vérifie et crée **UNIQUEMENT** la table `announcements` si elle n'existe pas. Toutes les autres tables existent déjà en production et ne sont pas touchées.
 
 ## 🔄 Futures mises à jour
 

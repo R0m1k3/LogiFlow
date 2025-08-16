@@ -1,5 +1,8 @@
 # 🚨 SOLUTION IMMÉDIATE POUR LA PRODUCTION
 
+## 🎯 Objectif
+Créer **UNIQUEMENT** la table `announcements` manquante. Toutes les autres tables existent déjà en production et ne doivent pas être touchées.
+
 ## Problème
 La table `announcements` n'existe pas dans votre base de données de production, ce qui cause l'erreur:
 ```
