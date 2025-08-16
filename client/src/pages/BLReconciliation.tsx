@@ -135,10 +135,14 @@ export default function BLReconciliation() {
 
   // Fonction pour déclencher la vérification
   const handleVerifyInvoice = (delivery: any, forceRefresh: boolean = false) => {
-    if (!delivery.invoiceReference?.trim()) {
+    // Accepter soit une référence de facture soit un numéro BL
+    const hasInvoiceRef = delivery.invoiceReference?.trim();
+    const hasBlNumber = delivery.blNumber?.trim();
+    
+    if (!hasInvoiceRef && !hasBlNumber) {
       toast({
         title: "Référence manquante",
-        description: "Veuillez saisir une référence de facture avant la vérification",
+        description: "Veuillez saisir une référence de facture ou un numéro BL avant la vérification",
         variant: "destructive",
       });
       return;
@@ -152,6 +156,15 @@ export default function BLReconciliation() {
       });
       return;
     }
+
+    console.log('🔍 Déclenchement vérification:', {
+      deliveryId: delivery.id,
+      hasInvoiceRef,
+      hasBlNumber,
+      invoiceReference: delivery.invoiceReference,
+      blNumber: delivery.blNumber,
+      supplier: delivery.supplier?.name
+    });
     
     setVerifyingDeliveries(prev => new Set(prev).add(delivery.id));
     
@@ -166,14 +179,14 @@ export default function BLReconciliation() {
   // Fonction pour vérifier toutes les factures avec un bouton
   const handleVerifyAllInvoices = () => {
     const deliveriesToVerify = manualReconciliationDeliveries.filter(delivery => 
-      delivery.invoiceReference?.trim() && 
+      (delivery.invoiceReference?.trim() || delivery.blNumber?.trim()) && 
       (delivery.group?.nocodbTableName || delivery.group?.nocodbConfigId || delivery.group?.webhookUrl)
     );
 
     if (deliveriesToVerify.length === 0) {
       toast({
         title: "Aucune facture à vérifier",
-        description: "Aucune livraison avec référence de facture trouvée",
+        description: "Aucune livraison avec référence de facture ou numéro BL trouvée",
       });
       return;
     }
@@ -187,7 +200,7 @@ export default function BLReconciliation() {
 
     toast({
       title: "Vérification lancée",
-      description: `Vérification de ${deliveriesToVerify.length} facture(s) en cours...`,
+      description: `Vérification de ${deliveriesToVerify.length} facture(s)/BL en cours...`,
     });
   };
 
@@ -231,10 +244,16 @@ export default function BLReconciliation() {
     }
     
     deliveriesWithBL.forEach((delivery: any) => {
-      // Vérifier seulement si on a une référence de facture et pas déjà de résultat
-      if (delivery.invoiceReference && !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id)) {
+      // Vérifier seulement si on a une référence de facture ou un BL et pas déjà de résultat
+      const hasVerifiableData = delivery.invoiceReference || delivery.blNumber;
+      const notAlreadyProcessed = !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id);
+      
+      if (hasVerifiableData && notAlreadyProcessed) {
         if (import.meta.env.DEV) {
-          console.log(`🔍 Vérification auto pour livraison ${delivery.id}:`, delivery.invoiceReference);
+          console.log(`🔍 Vérification auto pour livraison ${delivery.id}:`, {
+            invoiceRef: delivery.invoiceReference,
+            blNumber: delivery.blNumber
+          });
         }
         
         // Délai pour éviter de surcharger le serveur - le cache évitera les appels inutiles

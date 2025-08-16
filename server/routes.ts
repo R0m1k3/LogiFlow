@@ -882,7 +882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const { invoiceReference, forceRefresh } = req.body;
+      const { invoiceReference, blNumber, forceRefresh } = req.body;
       
       if (!delivery.supplier || !delivery.group) {
         console.log('❌ Livraison manque informations:', {
@@ -893,24 +893,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Delivery missing supplier or group information" });
       }
 
-      if (!invoiceReference || !invoiceReference.trim()) {
-        return res.status(400).json({ message: "Référence de facture requise" });
+      // Accepter soit une référence de facture soit un numéro de BL
+      if ((!invoiceReference || !invoiceReference.trim()) && (!blNumber || !blNumber.trim())) {
+        return res.status(400).json({ message: "Référence de facture ou numéro BL requis" });
       }
 
       console.log('🔍 Vérification facture:', {
         deliveryId,
         invoiceReference,
+        blNumber,
         supplier: delivery.supplier?.name,
         group: delivery.group?.name,
         groupId: delivery.groupId
       });
 
-      // Appeler le service de vérification
-      const result = await invoiceVerificationService.verifyInvoice(
-        invoiceReference,
-        delivery.groupId,
-        forceRefresh || false
-      );
+      let result;
+      
+      if (invoiceReference && invoiceReference.trim()) {
+        // Vérifier par référence de facture
+        result = await invoiceVerificationService.verifyInvoice(
+          invoiceReference,
+          delivery.groupId,
+          forceRefresh || false
+        );
+      } else if (blNumber && blNumber.trim()) {
+        // Vérifier par numéro BL
+        result = await invoiceVerificationService.verifyInvoiceByBL(
+          blNumber,
+          delivery.supplier.name,
+          delivery.groupId,
+          forceRefresh || false
+        );
+      } else {
+        result = {
+          exists: false,
+          matchType: 'none',
+          errorMessage: 'Aucune référence de facture ou numéro BL fourni'
+        };
+      }
 
       console.log('✅ Résultat vérification:', result);
       res.json(result);
