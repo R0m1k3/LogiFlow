@@ -414,29 +414,335 @@ export class InvoiceVerificationService {
   }
 
   /**
-   * Recherche par numéro de BL
+   * Vérifie une facture par numéro de BL et nom de fournisseur
    */
-  async searchByBLNumber(blNumber: string, groupId: number): Promise<any> {
-    console.log('🔍 Recherche par BL:', { blNumber, groupId });
-    
-    // Pour le développement, simuler une recherche
-    if (process.env.NODE_ENV === 'development') {
-      if (blNumber && blNumber.trim()) {
+  async verifyInvoiceByBL(blNumber: string, supplierName: string, groupId: number, forceRefresh: boolean = false): Promise<{
+    exists: boolean;
+    matchType: 'invoice_reference' | 'bl_number' | 'none';
+    errorMessage?: string;
+    invoiceReference?: string;
+    invoiceAmount?: number;
+    supplierName?: string;
+    fromCache?: boolean;
+  }> {
+    try {
+      console.log('🔍 Début vérification facture par BL:', { blNumber, supplierName, groupId, forceRefresh });
+      
+      if (!blNumber || !blNumber.trim()) {
         return {
-          found: true,
-          data: {
-            invoiceReference: `FACT_${blNumber}`,
-            amount: 156.78,
-            supplier: 'Fournisseur BL'
-          }
+          exists: false,
+          matchType: 'none',
+          errorMessage: 'Numéro BL vide'
         };
       }
+
+      // Générer une clé de cache pour le BL
+      const cacheKey = `bl_${groupId}_${blNumber.trim().toLowerCase()}_${supplierName.toLowerCase()}`;
+      
+      // Vérifier le cache d'abord (sauf si refresh forcé)
+      if (!forceRefresh) {
+        try {
+          const cached = await storage.getInvoiceVerificationCache(cacheKey);
+          if (cached && new Date() < new Date(cached.expiresAt)) {
+            console.log('💾 Cache hit pour BL:', { blNumber, groupId });
+            return {
+              exists: cached.exists,
+              matchType: cached.matchType as 'invoice_reference' | 'bl_number' | 'none',
+              errorMessage: cached.errorMessage || undefined,
+              invoiceReference: cached.invoiceReference || undefined,
+              supplierName: cached.supplierName || undefined,
+              fromCache: true
+            };
+          }
+        } catch (error) {
+          console.error('❌ Erreur lecture cache BL:', error);
+        }
+      }
+
+      // Récupérer la configuration du groupe
+      const group = await storage.getGroup(groupId);
+      if (!group) {
+        return {
+          exists: false,
+          matchType: 'none',
+          errorMessage: 'Groupe non trouvé'
+        };
+      }
+
+      console.log('🔧 Configuration groupe pour BL:', {
+        groupName: group.name,
+        hasNocodbConfig: !!group.nocodbConfigId,
+        hasTableName: !!group.nocodbTableName,
+        hasWebhook: !!group.webhookUrl,
+        blColumnName: group.nocodbBlColumnName
+      });
+
+      // Si pas de configuration NocoDB, retourner un résultat par défaut
+      if (!group.nocodbConfigId && !group.nocodbTableName && !group.webhookUrl) {
+        console.log('⚠️ Pas de configuration NocoDB pour ce groupe');
+        return {
+          exists: false,
+          matchType: 'none',
+          errorMessage: 'Configuration NocoDB manquante pour ce magasin'
+        };
+      }
+
+      // Pour le développement, simuler une vérification
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔧 Mode développement - simulation vérification BL');
+        
+        if (blNumber && blNumber.trim()) {
+          const result = {
+            exists: true,
+            matchType: 'bl_number' as const,
+            invoiceReference: `FACT_${blNumber}`,
+            invoiceAmount: 156.78,
+            supplierName: supplierName
+          };
+          
+          // Sauvegarder en cache
+          try {
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 24);
+            
+            await storage.saveInvoiceVerificationCache({
+              cacheKey,
+              groupId,
+              invoiceReference: result.invoiceReference,
+              supplierName: supplierName,
+              exists: result.exists,
+              matchType: result.matchType,
+              errorMessage: null,
+              cacheHit: false,
+              apiCallTime: null,
+              expiresAt
+            });
+          } catch (error) {
+            console.error('❌ Erreur sauvegarde cache BL:', error);
+          }
+          
+          return result;
+        }
+        
+        return {
+          exists: false,
+          matchType: 'none',
+          errorMessage: 'BL non trouvé (mode développement)'
+        };
+      }
+
+      // En production, faire l'appel réel à NocoDB
+      console.log('🔍 Vérification BL NocoDB en production...');
+      
+      try {
+        // Récupérer la configuration NocoDB active
+        const nocodbConfig = await storage.getActiveNocodbConfig();
+        if (!nocodbConfig) {
+          console.log('⚠️ Pas de configuration NocoDB active');
+          return {
+            exists: false,
+            matchType: 'none',
+            errorMessage: 'Configuration NocoDB non trouvée'
+          };
+        }
+
+        // Utiliser l'ID de table configuré dans le groupe
+        const tableId = group.nocodbTableId || 'mrr733dfb8wtt9b';
+        console.log('🔧 Utilisation table ID pour BL:', { 
+          groupTable: group.nocodbTableName, 
+          configuredId: group.nocodbTableId,
+          resolvedId: tableId 
+        });
+
+        // Rechercher par numéro de BL
+        const blColumnName = group.nocodbBlColumnName || 'Numero_BL';
+        let matchResult = await this.searchInNocoDB(
+          blNumber, 
+          blColumnName,
+          nocodbConfig,
+          tableId
+        );
+
+        // Gérer les erreurs d'API spécifiques
+        if (matchResult.error) {
+          const result = {
+            exists: false,
+            matchType: 'none' as const,
+            errorMessage: matchResult.error
+          };
+          
+          // Sauvegarder en cache même les erreurs
+          try {
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 24);
+            
+            await storage.saveInvoiceVerificationCache({
+              cacheKey,
+              groupId,
+              invoiceReference: blNumber,
+              supplierName: supplierName,
+              exists: false,
+              matchType: 'none',
+              errorMessage: result.errorMessage,
+              cacheHit: false,
+              apiCallTime: null,
+              expiresAt
+            });
+          } catch (error) {
+            console.error('❌ Erreur sauvegarde cache erreur BL:', error);
+          }
+          
+          return result;
+        }
+
+        if (matchResult.found) {
+          // Vérifier que le fournisseur correspond
+          const foundSupplier = matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || '';
+          const supplierMatch = foundSupplier.toLowerCase().includes(supplierName.toLowerCase()) || 
+                               supplierName.toLowerCase().includes(foundSupplier.toLowerCase());
+          
+          if (!supplierMatch) {
+            console.log('⚠️ Fournisseur ne correspond pas:', { 
+              expected: supplierName, 
+              found: foundSupplier 
+            });
+            return {
+              exists: false,
+              matchType: 'none',
+              errorMessage: `BL trouvé mais fournisseur différent: ${foundSupplier} vs ${supplierName}`
+            };
+          }
+          
+          const result = {
+            exists: true,
+            matchType: 'bl_number' as const,
+            invoiceReference: matchResult.data[group.invoiceColumnName || 'RefFacture'] || `BL_${blNumber}`,
+            invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
+            supplierName: foundSupplier || supplierName
+          };
+          
+          // Sauvegarder en cache si succès
+          try {
+            const expiresAt = new Date();
+            expiresAt.setHours(expiresAt.getHours() + 24);
+            
+            await storage.saveInvoiceVerificationCache({
+              cacheKey,
+              groupId,
+              invoiceReference: result.invoiceReference,
+              supplierName: result.supplierName,
+              exists: true,
+              matchType: 'bl_number',
+              errorMessage: null,
+              cacheHit: false,
+              apiCallTime: null,
+              expiresAt
+            });
+          } catch (error) {
+            console.error('❌ Erreur sauvegarde cache succès BL:', error);
+          }
+          
+          return result;
+        }
+
+        // Aucune correspondance trouvée
+        const notFoundResult = {
+          exists: false,
+          matchType: 'none' as const,
+          errorMessage: 'Aucun BL correspondant trouvé dans NocoDB'
+        };
+        
+        // Sauvegarder même les résultats "non trouvé"
+        try {
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + 24);
+          
+          await storage.saveInvoiceVerificationCache({
+            cacheKey,
+            groupId,
+            invoiceReference: blNumber,
+            supplierName: supplierName,
+            exists: false,
+            matchType: 'none',
+            errorMessage: notFoundResult.errorMessage,
+            cacheHit: false,
+            apiCallTime: null,
+            expiresAt
+          });
+        } catch (error) {
+          console.error('❌ Erreur sauvegarde cache not found BL:', error);
+        }
+        
+        return notFoundResult;
+
+      } catch (error) {
+        const errorMessage = `Erreur NocoDB BL: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+        
+        console.error('❌ Erreur lors de la vérification BL NocoDB:', error);
+        
+        const errorResult = {
+          exists: false,
+          matchType: 'none' as const,
+          errorMessage
+        };
+        
+        // Sauvegarder les erreurs en cache
+        try {
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + 24);
+          
+          await storage.saveInvoiceVerificationCache({
+            cacheKey,
+            groupId,
+            invoiceReference: blNumber,
+            supplierName: supplierName,
+            exists: false,
+            matchType: 'none',
+            errorMessage: errorResult.errorMessage,
+            cacheHit: false,
+            apiCallTime: null,
+            expiresAt
+          });
+        } catch (error) {
+          console.error('❌ Erreur sauvegarde cache erreur BL:', error);
+        }
+        
+        return errorResult;
+      }
+
+    } catch (error) {
+      console.error('❌ Erreur vérification facture par BL:', error);
+      return {
+        exists: false,
+        matchType: 'none',
+        errorMessage: error instanceof Error ? error.message : 'Erreur inconnue'
+      };
     }
+  }
+
+  /**
+   * Recherche par numéro de BL (méthode simplifiée pour compatibilité)
+   */
+  async searchByBLNumber(blNumber: string, groupId: number): Promise<any> {
+    console.log('🔍 Recherche par BL (legacy):', { blNumber, groupId });
     
-    return {
-      found: false,
-      error: 'BL non trouvé'
-    };
+    const result = await this.verifyInvoiceByBL(blNumber, '', groupId, false);
+    
+    if (result.exists) {
+      return {
+        found: true,
+        data: {
+          invoiceReference: result.invoiceReference,
+          amount: result.invoiceAmount,
+          supplier: result.supplierName
+        }
+      };
+    } else {
+      return {
+        found: false,
+        error: result.errorMessage || 'BL non trouvé'
+      };
+    }
   }
 
   /**
