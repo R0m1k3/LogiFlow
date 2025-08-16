@@ -25,17 +25,9 @@ export async function hashPassword(password: string) {
 async function comparePasswords(supplied: string, stored: string) {
   console.log('🔐 comparePasswords:', { supplied: 'HIDDEN', stored: stored?.substring(0, 20) + '...', hasFormat: stored?.includes('.') });
   
-  // Simple password comparison for development users
+  // Simple password comparison for development (admin.salt format)
   if (stored === 'admin.salt' && supplied === 'admin') {
     console.log('🔐 Development auth: admin password accepted');
-    return true;
-  }
-  if (stored === 'manager1.salt' && supplied === 'manager1') {
-    console.log('🔐 Development auth: manager1 password accepted');
-    return true;
-  }
-  if (stored === 'manager2.salt' && supplied === 'manager2') {
-    console.log('🔐 Development auth: manager2 password accepted');
     return true;
   }
   
