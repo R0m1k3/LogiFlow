@@ -199,20 +199,40 @@ export default function AnnouncementCard() {
     );
   }
 
+  const getPriorityConfig = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return { 
+          color: 'destructive' as const, 
+          icon: AlertTriangle, 
+          label: 'Urgente' 
+        };
+      case 'important':
+        return { 
+          color: 'default' as const, 
+          icon: Clock, 
+          label: 'Importante' 
+        };
+      case 'normal':
+      default:
+        return { 
+          color: 'secondary' as const, 
+          icon: Circle, 
+          label: 'Normale' 
+        };
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Informations</CardTitle>
-        <Megaphone className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        {user?.role === 'admin' && (
-          <div className="mb-4">
+        <div className="flex items-center gap-2">
+          {user?.role === 'admin' && (
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="w-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouvelle information
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                  <Plus className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
@@ -318,9 +338,11 @@ export default function AnnouncementCard() {
                 </Form>
               </DialogContent>
             </Dialog>
-          </div>
-        )}
-
+          )}
+          <Megaphone className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </CardHeader>
+      <CardContent>
         {announcements.length === 0 ? (
           <div className="text-center py-6">
             <Megaphone className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
@@ -331,30 +353,6 @@ export default function AnnouncementCard() {
         ) : (
           <div className="space-y-3">
             {announcements.map((announcement) => {
-              const getPriorityConfig = (priority: string) => {
-                switch (priority) {
-                  case 'urgent':
-                    return { 
-                      color: 'destructive' as const, 
-                      icon: AlertTriangle, 
-                      label: 'Urgente' 
-                    };
-                  case 'important':
-                    return { 
-                      color: 'default' as const, 
-                      icon: Clock, 
-                      label: 'Importante' 
-                    };
-                  case 'normal':
-                  default:
-                    return { 
-                      color: 'secondary' as const, 
-                      icon: Circle, 
-                      label: 'Normale' 
-                    };
-                }
-              };
-
               const priorityConfig = getPriorityConfig(announcement.priority);
               const PriorityIcon = priorityConfig.icon;
               
