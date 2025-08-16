@@ -17,6 +17,7 @@ import { insertAnnouncementSchema } from "@shared/schema";
 import type { AnnouncementWithRelations } from "@shared/schema";
 import { z } from "zod";
 import { safeFormat, safeDate } from "@/lib/dateUtils";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = insertAnnouncementSchema.extend({
   groupId: z.coerce.number().optional(),
@@ -27,6 +28,7 @@ export default function AnnouncementCard() {
   const { selectedStoreId } = useStore();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -68,6 +70,8 @@ export default function AnnouncementCard() {
   // Create announcement mutation
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      console.log('📢 Creating announcement with data:', data);
+      
       const response = await fetch('/api/announcements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,16 +79,41 @@ export default function AnnouncementCard() {
         body: JSON.stringify(data),
       });
       
+      console.log('📢 Create announcement response:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
+      
       if (!response.ok) {
-        throw new Error('Failed to create announcement');
+        const errorText = await response.text();
+        console.error('📢 Create announcement failed:', errorText);
+        throw new Error(`Failed to create announcement: ${response.status} - ${errorText}`);
       }
       
-      return response.json();
+      const result = await response.json();
+      console.log('📢 Announcement created successfully:', result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('📢 Announcement creation success callback:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
       setIsCreateDialogOpen(false);
       form.reset();
+      // Add success toast
+      toast({
+        title: "Succès",
+        description: "Annonce créée avec succès",
+      });
+    },
+    onError: (error) => {
+      console.error('📢 Announcement creation error:', error);
+      // Add error toast
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de créer l'annonce",
+        variant: "destructive",
+      });
     },
   });
 
