@@ -60,9 +60,16 @@ exit
 Après ces étapes, le système d'annonces fonctionnera immédiatement sur votre production.
 
 ## Alternative plus simple (une seule commande)
-Si vous préférez, vous pouvez exécuter directement depuis votre serveur :
 ```bash
 docker exec logiflow-logiflow-1 psql $DATABASE_URL -c "CREATE TABLE IF NOT EXISTS announcements (id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, content TEXT NOT NULL, priority VARCHAR(20) NOT NULL DEFAULT 'normal', author_id VARCHAR(255) NOT NULL, group_id INTEGER, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), CONSTRAINT announcements_priority_check CHECK (priority IN ('normal', 'important', 'urgent')), CONSTRAINT announcements_author_id_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE, CONSTRAINT announcements_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE);"
+```
+
+## Script minimal (nouvelle option)
+```bash
+# Copier et exécuter le script minimal
+docker cp scripts/fix-announcements-only.sh logiflow-logiflow-1:/app/scripts/
+docker exec logiflow-logiflow-1 chmod +x /app/scripts/fix-announcements-only.sh
+docker exec logiflow-logiflow-1 /app/scripts/fix-announcements-only.sh
 ```
 
 La correction du problème `Select.Item` value est déjà faite dans le code source.

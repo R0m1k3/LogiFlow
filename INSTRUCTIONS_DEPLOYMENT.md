@@ -93,13 +93,9 @@ docker-compose up -d --env DEBUG_MIGRATIONS=true
 
 ## 📋 Tables créées automatiquement
 
-✅ **announcements** - Système d'informations
-✅ **sav_tickets** - Tickets SAV  
-✅ **sav_ticket_history** - Historique SAV
-✅ **weather_settings** - Configuration météo
-✅ **weather_data** - Cache météo
-✅ **database_backups** - Sauvegardes
-✅ **invoice_verification_cache** - Cache vérification factures
+✅ **announcements** - Système d'informations (prioritaire)
+
+Le script vérifie et crée uniquement les tables manquantes nécessaires au fonctionnement de l'application.
 
 ## 🔄 Futures mises à jour
 
