@@ -212,14 +212,14 @@ export default function AnnouncementCard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Magasin (optionnel)</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}>
+                        <Select onValueChange={(value) => field.onChange(value === 'all' ? undefined : parseInt(value))}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Tous les magasins" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Tous les magasins</SelectItem>
+                            <SelectItem value="all">Tous les magasins</SelectItem>
                             {groups.map((group: any) => (
                               <SelectItem key={group.id} value={group.id.toString()}>
                                 {group.name}
