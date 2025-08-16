@@ -1,0 +1,15 @@
+# Fichier de configuration Docker Compose pour le développement et la production
+# Utilise les variables d'environnement pour la configuration
+
+version: '3.8'
+
+services:
+  app:
+    volumes:
+      # Monter les scripts de migration
+      - ./scripts:/app/scripts:ro
+    environment:
+      # Forcer l'exécution des migrations au démarrage
+      - AUTO_MIGRATE=true
+      # Variables de debug
+      - DEBUG_MIGRATIONS=true

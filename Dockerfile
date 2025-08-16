@@ -81,6 +81,9 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=build --chown=nextjs:nodejs /app/dist ./dist
 COPY --from=build --chown=nextjs:nodejs /app/shared ./shared
 
+# Copy migration scripts
+COPY --chown=nextjs:nodejs scripts/ ./scripts/
+
 # Create symlink for public files to be accessible from dist
 RUN ln -sf /app/dist/public /app/dist/public
 
@@ -103,5 +106,11 @@ USER nextjs
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-# Start the application
+# Copy and set entrypoint script
+COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh ./
+RUN chmod +x /app/scripts/auto-migrate-production.sh && \
+    chmod +x /app/docker-entrypoint.sh
+
+# Start the application with migration
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["node", "dist/index.js"]
