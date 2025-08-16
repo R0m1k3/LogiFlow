@@ -1863,6 +1863,7 @@ export class MemStorage implements IStorage {
   private tasks = new Map<number, Task>();
   private savTickets = new Map<number, SavTicket>();
   private savTicketHistories = new Map<number, SavTicketHistory[]>();
+  private passwords = new Map<string, { password: string; hasFormat: boolean }>();
 
   private idCounters = {
     group: 1,
@@ -1892,13 +1893,14 @@ export class MemStorage implements IStorage {
       firstName: 'Admin',
       lastName: 'User',
       profileImageUrl: null,
-      password: 'admin', // In real app, this would be hashed
+      password: 'admin.salt', // Development format with salt
       role: 'admin',
       passwordChanged: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     this.users.set(adminUser.id, adminUser);
+    this.passwords.set('admin', { password: 'admin.salt', hasFormat: true });
 
     // Initialize group counter
     this.idCounters.group = 2;
@@ -1907,39 +1909,124 @@ export class MemStorage implements IStorage {
     this.idCounters.supplier = 2;
 
     // Create test groups
-    const testGroup: Group = {
+    const testGroup1: Group = {
       id: 1,
-      name: 'Magasin Test',
+      name: 'Magasin 1',
       color: '#3B82F6',
       nocodbConfigId: 1, // Référence vers la config NocoDB de test
-      nocodbTableName: 'invoices',
+      nocodbTableName: 'invoices_store1',
       nocodbTableId: 'mrr733dfb8wtt9b', // ID réel de la table NocoDB
       invoiceColumnName: 'invoice_reference',
       nocodbBlColumnName: 'bl_number',
       nocodbAmountColumnName: 'amount',
       nocodbSupplierColumnName: 'supplier',
-      webhookUrl: 'https://webhook.test/invoice-upload',
+      webhookUrl: 'https://webhook.test/invoice-upload-store1',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.groups.set(testGroup.id, testGroup);
-    this.idCounters.group = 2;
+    
+    const testGroup2: Group = {
+      id: 2,
+      name: 'Magasin 2',
+      color: '#10B981',
+      nocodbConfigId: 1, // Même config NocoDB
+      nocodbTableName: 'invoices_store2',
+      nocodbTableId: 'store2table123', // Différent ID de table
+      invoiceColumnName: 'invoice_reference',
+      nocodbBlColumnName: 'bl_number',
+      nocodbAmountColumnName: 'amount',
+      nocodbSupplierColumnName: 'supplier',
+      webhookUrl: 'https://webhook.test/invoice-upload-store2',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.groups.set(testGroup1.id, testGroup1);
+    this.groups.set(testGroup2.id, testGroup2);
+    this.idCounters.group = 3;
 
-    // Create test supplier
-    const testSupplier: Supplier = {
+    // Create test suppliers
+    const testSupplier1: Supplier = {
       id: 1,
-      name: 'Fournisseur Test',
-      contact: 'test@supplier.com',
+      name: 'Fournisseur Magasin 1',
+      contact: 'magasin1@supplier.com',
       phone: '0123456789',
-      hasDlc: false,
+      hasDlc: true,
+      automaticReconciliation: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    const testSupplier2: Supplier = {
+      id: 2,
+      name: 'Fournisseur Magasin 2',
+      contact: 'magasin2@supplier.com',
+      phone: '0987654321',
+      hasDlc: true,
       automaticReconciliation: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.suppliers.set(testSupplier.id, testSupplier);
-    this.idCounters.supplier = 2;
+    
+    this.suppliers.set(testSupplier1.id, testSupplier1);
+    this.suppliers.set(testSupplier2.id, testSupplier2);
+    this.idCounters.supplier = 3;
+
+    // Create additional test users for different stores
+    const manager1User: User = {
+      id: 'manager1',
+      username: 'manager1',
+      email: 'manager1@magasin1.com',
+      name: 'Manager Magasin 1',
+      firstName: 'Manager',
+      lastName: 'Magasin 1',
+      profileImageUrl: null,
+      password: 'manager1.salt',
+      role: 'manager',
+      passwordChanged: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(manager1User.id, manager1User);
+    this.passwords.set('manager1', { password: 'manager1.salt', hasFormat: true });
+
+    const manager2User: User = {
+      id: 'manager2',
+      username: 'manager2',
+      email: 'manager2@magasin2.com',
+      name: 'Manager Magasin 2',
+      firstName: 'Manager',
+      lastName: 'Magasin 2',
+      profileImageUrl: null,
+      password: 'manager2.salt',
+      role: 'manager',
+      passwordChanged: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(manager2User.id, manager2User);
+    this.passwords.set('manager2', { password: 'manager2.salt', hasFormat: true });
+
+    // Set up user-group associations
+    this.userGroups.set('admin', [
+      { userId: 'admin', groupId: 1 },
+      { userId: 'admin', groupId: 2 }
+    ]);
+    
+    this.userGroups.set('manager1', [
+      { userId: 'manager1', groupId: 1 }
+    ]);
+    
+    this.userGroups.set('manager2', [
+      { userId: 'manager2', groupId: 2 }
+    ]);
 
     console.log('✅ MemStorage initialized with admin user (admin/admin)');
+    console.log('🔧 Test users created:', {
+      admin: 'Access to both stores',
+      manager1: 'Access to Magasin 1 only',
+      manager2: 'Access to Magasin 2 only'
+    });
   }
 
   // User operations
@@ -2014,6 +2101,16 @@ export class MemStorage implements IStorage {
   async deleteUser(id: string): Promise<void> {
     this.users.delete(id);
     this.userGroups.delete(id);
+    this.passwords.delete(id);
+  }
+
+  async validatePassword(userId: string, password: string): Promise<boolean> {
+    const storedPassword = this.passwords.get(userId);
+    if (!storedPassword) return false;
+    
+    // For development, we use simple string comparison
+    // In production, this would use bcrypt comparison
+    return storedPassword.password === password;
   }
 
   // Group operations
@@ -2683,7 +2780,9 @@ export class MemStorage implements IStorage {
   }
 
   private initializeExtraTestData() {
-    // Add test customer orders
+    console.log('🔧 Initialisation des données de test des commandes clients...');
+    
+    // Add test customer orders for Store 1 (groupId: 1) - Recent dates
     const testOrder1: CustomerOrder = {
       id: 1,
       supplierId: 1,
@@ -2702,8 +2801,8 @@ export class MemStorage implements IStorage {
       isPromotionalPrice: false,
       customerNotified: false,
       notes: 'Livraison urgente demandée',
-      createdAt: new Date('2025-01-15'),
-      updatedAt: new Date('2025-01-15'),
+      createdAt: new Date('2025-08-15'),
+      updatedAt: new Date('2025-08-15'),
     };
     
     const testOrder2: CustomerOrder = {
@@ -2724,13 +2823,114 @@ export class MemStorage implements IStorage {
       isPromotionalPrice: true,
       customerNotified: true,
       notes: null,
-      createdAt: new Date('2025-01-10'),
-      updatedAt: new Date('2025-01-12'),
+      createdAt: new Date('2025-08-10'),
+      updatedAt: new Date('2025-08-12'),
+    };
+
+    // Add test customer orders for Store 2 (groupId: 2) - Recent dates
+    const testOrder3: CustomerOrder = {
+      id: 3,
+      supplierId: 2,
+      groupId: 2,
+      createdBy: 'admin',
+      orderTaker: 'Manager Store 2',
+      customerName: 'Jean Durand',
+      customerPhone: '0147258369',
+      customerEmail: 'jean.durand@email.fr',
+      productDesignation: 'Canapé 3 places',
+      productReference: 'CAN-001',
+      gencode: null,
+      quantity: 1,
+      deposit: '300.00' as any,
+      status: 'Commande passée',
+      isPromotionalPrice: false,
+      customerNotified: true,
+      notes: 'Client préfère livraison matin',
+      createdAt: new Date('2025-08-14'),
+      updatedAt: new Date('2025-08-14'),
+    };
+
+    const testOrder4: CustomerOrder = {
+      id: 4,
+      supplierId: 2,
+      groupId: 2,
+      createdBy: 'admin',
+      orderTaker: 'Manager Store 2',
+      customerName: 'Sophie Moreau',
+      customerPhone: '0612345678',
+      customerEmail: null,
+      productDesignation: 'Étagère murale',
+      productReference: null,
+      gencode: null,
+      quantity: 3,
+      deposit: '75.00' as any,
+      status: 'En attente de Commande',
+      isPromotionalPrice: true,
+      customerNotified: false,
+      notes: 'Prix promotionnel -20%',
+      createdAt: new Date('2025-08-16'),
+      updatedAt: new Date('2025-08-16'),
+    };
+
+    // Add more recent orders for Store 1 to show variety
+    const testOrder5: CustomerOrder = {
+      id: 5,
+      supplierId: 1,
+      groupId: 1,
+      createdBy: 'admin',
+      orderTaker: 'Admin',
+      customerName: 'Michel Blanc',
+      customerPhone: '0188776655',
+      customerEmail: 'michel.blanc@test.fr',
+      productDesignation: 'Set de jardin complet',
+      productReference: 'JARDIN-SET-01',
+      gencode: null,
+      quantity: 1,
+      deposit: '250.00' as any,
+      status: 'Livrée',
+      isPromotionalPrice: false,
+      customerNotified: true,
+      notes: 'Commande livrée avec succès',
+      createdAt: new Date('2025-08-09'),
+      updatedAt: new Date('2025-08-11'),
+    };
+
+    const testOrder6: CustomerOrder = {
+      id: 6,
+      supplierId: 1,
+      groupId: 1,
+      createdBy: 'admin',
+      orderTaker: 'Admin',
+      customerName: 'Isabelle Roux',
+      customerPhone: '0199887766',
+      customerEmail: null,
+      productDesignation: 'Barbecue électrique',
+      productReference: null,
+      gencode: null,
+      quantity: 1,
+      deposit: '120.00' as any,
+      status: 'En attente de Commande',
+      isPromotionalPrice: false,
+      customerNotified: false,
+      notes: 'À confirmer avec le client',
+      createdAt: new Date('2025-08-16'),
+      updatedAt: new Date('2025-08-16'),
     };
 
     this.customerOrders.set(1, testOrder1);
     this.customerOrders.set(2, testOrder2);
-    this.idCounters.customerOrder = 3;
+    this.customerOrders.set(3, testOrder3);
+    this.customerOrders.set(4, testOrder4);
+    this.customerOrders.set(5, testOrder5);
+    this.customerOrders.set(6, testOrder6);
+    this.idCounters.customerOrder = 7;
+    
+    console.log('✅ Données de test initialisées:', {
+      totalOrders: 6,
+      store1Orders: [1, 2, 5, 6],
+      store2Orders: [3, 4],
+      recentDates: '2025-08-09 à 2025-08-16'
+    });
 
     // Add test DLC products
     const testDlc1: DlcProduct = {
