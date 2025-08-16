@@ -289,23 +289,6 @@ export default function AnnouncementCard() {
                       Annuler
                     </Button>
                     <Button 
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        console.log('🔥 [TEST] Direct test button clicked');
-                        const testData = {
-                          title: "Test Direct",
-                          content: "Test contenu direct",
-                          priority: "normal" as const,
-                          groupId: null,
-                        };
-                        console.log('🔥 [TEST] Test data:', testData);
-                        createMutation.mutate(testData);
-                      }}
-                    >
-                      Test Direct
-                    </Button>
-                    <Button 
                       type="submit" 
                       disabled={createMutation.isPending}
                       onClick={() => console.log('🔥 [BUTTON] Submit button clicked')}
