@@ -4,7 +4,7 @@ import { useStore } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Megaphone, Plus, X, AlertTriangle, Clock, Circle, Edit2 } from "lucide-react";
+import { Megaphone, Plus, X, AlertTriangle, Clock, Circle, Edit2, Bell, Info, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -20,12 +20,12 @@ import { z } from "zod";
 import { safeFormat, safeDate } from "@/lib/dateUtils";
 import { useToast } from "@/hooks/use-toast";
 
-// Schéma simplifié pour tester
+// Schéma adapté pour DASHBOARD_MESSAGES
 const formSchema = z.object({
   title: z.string().min(1, "Le titre est obligatoire"),
   content: z.string().min(1, "Le contenu est obligatoire"),
-  priority: z.enum(["normal", "important", "urgent"]).default("normal"),
-  groupId: z.number().optional().nullable(),
+  type: z.enum(["info", "warning", "error", "success"]).default("info"),
+  storeId: z.number().optional().nullable(),
 });
 
 export default function AnnouncementCard() {
@@ -41,8 +41,8 @@ export default function AnnouncementCard() {
     defaultValues: {
       title: "",
       content: "",
-      priority: "normal",
-      groupId: undefined,
+      type: "info",
+      storeId: undefined,
     },
   });
 
@@ -52,15 +52,15 @@ export default function AnnouncementCard() {
       form.reset({
         title: editingAnnouncement.title,
         content: editingAnnouncement.content,
-        priority: editingAnnouncement.priority as "normal" | "important" | "urgent",
-        groupId: editingAnnouncement.groupId || undefined,
+        type: editingAnnouncement.type as "info" | "warning" | "error" | "success",
+        storeId: editingAnnouncement.storeId || undefined,
       });
     } else {
       form.reset({
         title: "",
         content: "",
-        priority: "normal",
-        groupId: undefined,
+        type: "info",
+        storeId: undefined,
       });
     }
   }, [editingAnnouncement, form]);
@@ -228,26 +228,32 @@ export default function AnnouncementCard() {
     );
   }
 
-  const getPriorityConfig = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
+  const getPriorityConfig = (type: string) => {
+    switch (type) {
+      case 'error':
         return { 
           color: 'destructive' as const, 
           icon: AlertTriangle, 
-          label: 'Urgente' 
+          label: 'Erreur' 
         };
-      case 'important':
+      case 'warning':
         return { 
           color: 'default' as const, 
-          icon: Clock, 
-          label: 'Importante' 
+          icon: Bell, 
+          label: 'Attention' 
         };
-      case 'normal':
+      case 'success':
+        return { 
+          color: 'default' as const, 
+          icon: CheckCircle, 
+          label: 'Succès' 
+        };
+      case 'info':
       default:
         return { 
           color: 'secondary' as const, 
-          icon: Circle, 
-          label: 'Normale' 
+          icon: Info, 
+          label: 'Information' 
         };
     }
   };
@@ -310,20 +316,21 @@ export default function AnnouncementCard() {
                     />
                     <FormField
                       control={form.control}
-                      name="priority"
+                      name="type"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Priorité</FormLabel>
+                          <FormLabel>Type</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner une priorité" />
+                                <SelectValue placeholder="Sélectionner un type" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="normal">Normale</SelectItem>
-                              <SelectItem value="important">Importante</SelectItem>
-                              <SelectItem value="urgent">Urgente</SelectItem>
+                              <SelectItem value="info">Information</SelectItem>
+                              <SelectItem value="warning">Attention</SelectItem>
+                              <SelectItem value="error">Erreur</SelectItem>
+                              <SelectItem value="success">Succès</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -332,7 +339,7 @@ export default function AnnouncementCard() {
                     />
                     <FormField
                       control={form.control}
-                      name="groupId"
+                      name="storeId"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Magasin (optionnel)</FormLabel>
@@ -393,7 +400,7 @@ export default function AnnouncementCard() {
         ) : (
           <div className="space-y-3">
             {announcements.map((announcement) => {
-              const priorityConfig = getPriorityConfig(announcement.priority);
+              const priorityConfig = getPriorityConfig(announcement.type);
               const PriorityIcon = priorityConfig.icon;
               
               return (
