@@ -19,8 +19,12 @@ import { z } from "zod";
 import { safeFormat, safeDate } from "@/lib/dateUtils";
 import { useToast } from "@/hooks/use-toast";
 
-const formSchema = insertAnnouncementSchema.extend({
-  groupId: z.coerce.number().optional(),
+// Schéma simplifié pour tester
+const formSchema = z.object({
+  title: z.string().min(1, "Le titre est obligatoire"),
+  content: z.string().min(1, "Le contenu est obligatoire"),
+  priority: z.enum(["normal", "important", "urgent"]).default("normal"),
+  groupId: z.number().optional().nullable(),
 });
 
 export default function AnnouncementCard() {
@@ -283,6 +287,23 @@ export default function AnnouncementCard() {
                       onClick={() => setIsCreateDialogOpen(false)}
                     >
                       Annuler
+                    </Button>
+                    <Button 
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        console.log('🔥 [TEST] Direct test button clicked');
+                        const testData = {
+                          title: "Test Direct",
+                          content: "Test contenu direct",
+                          priority: "normal" as const,
+                          groupId: null,
+                        };
+                        console.log('🔥 [TEST] Test data:', testData);
+                        createMutation.mutate(testData);
+                      }}
+                    >
+                      Test Direct
                     </Button>
                     <Button 
                       type="submit" 
