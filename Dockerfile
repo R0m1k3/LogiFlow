@@ -106,11 +106,8 @@ USER nextjs
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-# Copy and set entrypoint script
-COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh ./
-RUN chmod +x /app/scripts/auto-migrate-production.sh && \
-    chmod +x /app/docker-entrypoint.sh
+# Make migration script executable
+RUN chmod +x /app/scripts/auto-migrate-production.sh
 
-# Start the application with migration
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# Start the application normally (migration will be manual or via init script)
 CMD ["node", "dist/index.js"]
