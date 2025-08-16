@@ -266,7 +266,7 @@ export default function Tasks() {
     }
   };
 
-  const getDueDateStatus = (dueDate: string | null, status: string) => {
+  const getDueDateStatus = (dueDate: Date | string | null, status: string) => {
     if (!dueDate || status === 'completed') return null;
     
     const due = new Date(dueDate);
