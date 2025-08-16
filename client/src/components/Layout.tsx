@@ -1,4 +1,4 @@
-import { ReactNode, useState, createContext, useContext } from "react";
+import { ReactNode, useState, createContext, useContext, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ interface StoreContextType {
   setSidebarCollapsed: (collapsed: boolean) => void;
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
+  storeInitialized: boolean;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -46,6 +47,8 @@ export default function Layout({ children }: LayoutProps) {
     console.log('🏪 Layout - Restoring selectedStoreId from localStorage:', { saved, restoredId });
     return restoredId;
   });
+  
+  const [storeInitialized, setStoreInitialized] = useState(false);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     // Restaurer l'état de la sidebar depuis localStorage, mais forcer collapsed sur mobile
@@ -60,12 +63,34 @@ export default function Layout({ children }: LayoutProps) {
     enabled: !!user,
   });
 
+  // Effet pour marquer l'initialisation comme terminée
+  useEffect(() => {
+    if (user && stores.length > 0) {
+      // Pour les admins, vérifier que selectedStoreId est cohérent avec les stores disponibles
+      if (user.role === 'admin' && selectedStoreId) {
+        const storeExists = stores.find(store => store.id === selectedStoreId);
+        if (!storeExists) {
+          console.log('🏪 Selected store not found in available stores, clearing selection');
+          setSelectedStoreId(null);
+          localStorage.removeItem('selectedStoreId');
+        }
+      }
+      
+      console.log('🏪 Store initialization complete:', { 
+        user: user.role, 
+        selectedStoreId, 
+        storesCount: stores.length 
+      });
+      setStoreInitialized(true);
+    }
+  }, [user, stores, selectedStoreId]);
+
   const handleLogout = () => {
     window.location.href = "/api/logout";
   };
 
   return (
-    <StoreContext.Provider value={{ selectedStoreId, setSelectedStoreId, stores, sidebarCollapsed, setSidebarCollapsed, mobileMenuOpen, setMobileMenuOpen }}>
+    <StoreContext.Provider value={{ selectedStoreId, setSelectedStoreId, stores, sidebarCollapsed, setSidebarCollapsed, mobileMenuOpen, setMobileMenuOpen, storeInitialized }}>
       <div className="layout-container flex bg-gray-50">
         {/* Mobile overlay */}
         {isMobile && mobileMenuOpen && (

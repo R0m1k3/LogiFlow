@@ -1265,11 +1265,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userRole: user.role, 
         userId: user.id,
         requestedStoreId: storeId,
-        userGroups: user.role !== 'admin' ? user.userGroups.map(ug => ug.groupId) : 'all'
+        userGroups: user.role !== 'admin' ? user.userGroups.map(ug => ug.groupId) : 'all',
+        timestamp: new Date().toISOString()
       });
       
       const tasks = await storage.getTasks(groupIds);
-      console.log('📋 Tasks returned:', tasks.length, 'items for user:', user.id);
+      console.log('📋 Tasks returned:', {
+        count: tasks.length,
+        userId: user.id,
+        userRole: user.role,
+        requestedStoreId: storeId,
+        groupIds,
+        taskGroups: tasks.map(t => ({ id: t.id, title: t.title, groupId: t.groupId })).slice(0, 3)
+      });
       res.json(tasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
