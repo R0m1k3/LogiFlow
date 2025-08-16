@@ -45,7 +45,7 @@ export default function AnnouncementCard() {
   });
 
   // Fetch announcements
-  const { data: announcements = [] } = useQuery<AnnouncementWithRelations[]>({
+  const { data: announcements = [], isLoading } = useQuery<AnnouncementWithRelations[]>({
     queryKey: ['/api/announcements', selectedStoreId],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -63,6 +63,7 @@ export default function AnnouncementCard() {
       
       return response.json();
     },
+    enabled: !!user,
   });
 
   // Fetch groups for admin
@@ -182,161 +183,181 @@ export default function AnnouncementCard() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Informations</CardTitle>
+          <Megaphone className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <div className="flex items-center space-x-2">
-          <Megaphone className="h-5 w-5 text-muted-foreground" />
-          <CardTitle className="text-lg">Informations</CardTitle>
-        </div>
-        {user?.role === 'admin' && (
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
-                <Plus className="h-4 w-4 mr-1" />
-                Nouveau
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Nouvelle information</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Titre</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Titre de l'information" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="content"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Contenu</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Contenu de l'information" 
-                            rows={4}
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="priority"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Priorité</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner une priorité" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="normal">Normale</SelectItem>
-                            <SelectItem value="important">Importante</SelectItem>
-                            <SelectItem value="urgent">Urgente</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="groupId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Magasin (optionnel)</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(value === 'all' ? undefined : parseInt(value))}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Tous les magasins" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="all">Tous les magasins</SelectItem>
-                            {groups.map((group: any) => (
-                              <SelectItem key={group.id} value={group.id.toString()}>
-                                {group.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex justify-end space-x-2 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsCreateDialogOpen(false)}
-                    >
-                      Annuler
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={createMutation.isPending}
-                      onClick={() => console.log('🔥 [BUTTON] Submit button clicked')}
-                    >
-                      {createMutation.isPending ? 'Création...' : 'Créer'}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        )}
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Informations</CardTitle>
+        <Megaphone className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
+        {user?.role === 'admin' && (
+          <div className="mb-4">
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="w-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouvelle information
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Nouvelle information</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Titre</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Titre de l'information" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="content"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contenu</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Contenu de l'information" 
+                              rows={4}
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="priority"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Priorité</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sélectionner une priorité" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="normal">Normale</SelectItem>
+                              <SelectItem value="important">Importante</SelectItem>
+                              <SelectItem value="urgent">Urgente</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="groupId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Magasin (optionnel)</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(value === 'all' ? null : parseInt(value))}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Tous les magasins" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="all">Tous les magasins</SelectItem>
+                              {groups.map((group: any) => (
+                                <SelectItem key={group.id} value={group.id.toString()}>
+                                  {group.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex justify-end space-x-2 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsCreateDialogOpen(false)}
+                      >
+                        Annuler
+                      </Button>
+                      <Button 
+                        type="submit" 
+                        disabled={createMutation.isPending}
+                        onClick={() => console.log('🔥 [BUTTON] Submit button clicked')}
+                      >
+                        {createMutation.isPending ? 'Création...' : 'Créer'}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
+
         {announcements.length === 0 ? (
-          <div className="text-center text-muted-foreground py-6">
-            <Megaphone className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>Aucune information disponible</p>
+          <div className="text-center py-6">
+            <Megaphone className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">
+              Aucune information disponible
+            </p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-80 overflow-y-auto">
-            {announcements.map((announcement) => (
-              <div
-                key={announcement.id}
-                className="p-3 bg-muted/50 rounded-lg space-y-2"
-              >
-                <div className="flex items-start justify-between">
+          <div className="space-y-3">
+            {announcements.map((announcement) => {
+              return (
+                <div key={announcement.id} className="flex items-start justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      {getPriorityIcon(announcement.priority)}
+                    <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-sm truncate">
                         {announcement.title}
                       </h4>
                       <Badge variant="secondary" className={getPriorityColor(announcement.priority)}>
-                        {announcement.priority === 'urgent' ? 'Urgent' : 
-                         announcement.priority === 'important' ? 'Important' : 'Normal'}
+                        <span className="flex items-center gap-1">
+                          {getPriorityIcon(announcement.priority)}
+                          {announcement.priority === 'urgent' ? 'Urgent' : 
+                           announcement.priority === 'important' ? 'Important' : 'Normal'}
+                        </span>
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
+                    
+                    <p className="text-xs text-muted-foreground mb-1 line-clamp-2">
                       {announcement.content}
                     </p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+                    
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>
                         Par {announcement.author.firstName} {announcement.author.lastName}
                         {announcement.group && ` • ${announcement.group.name}`}
                       </span>
                       <span>
-                        {safeFormat(safeDate(announcement.createdAt), 'dd/MM/yyyy HH:mm')}
+                        {safeFormat(safeDate(announcement.createdAt), 'dd/MM HH:mm')}
                       </span>
                     </div>
                   </div>
@@ -352,8 +373,8 @@ export default function AnnouncementCard() {
                     </Button>
                   )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
