@@ -13,7 +13,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { Check, X } from "lucide-react";
 
 const validateDeliverySchema = z.object({
-  blNumber: z.string().min(1, "Le numéro de BL est obligatoire"),
+  blNumber: z.string().optional(),
   blAmount: z.string().optional(),
 });
 
@@ -45,9 +45,12 @@ export default function ValidateDeliveryModal({
 
   const validateDeliveryMutation = useMutation({
     mutationFn: async (data: ValidateDeliveryForm) => {
-      const payload: any = {
-        blNumber: data.blNumber,
-      };
+      const payload: any = {};
+      
+      // Ajouter blNumber seulement s'il est fourni
+      if (data.blNumber && data.blNumber.trim() !== '') {
+        payload.blNumber = data.blNumber.trim();
+      }
       
       if (data.blAmount && data.blAmount.trim() !== '') {
         payload.blAmount = parseFloat(data.blAmount);
@@ -134,10 +137,10 @@ export default function ValidateDeliveryModal({
               name="blNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>N° Bon de Livraison *</FormLabel>
+                  <FormLabel>N° Bon de Livraison</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Ex: BL-2024-001"
+                      placeholder="Ex: BL-2024-001 (optionnel)"
                       {...field}
                     />
                   </FormControl>
