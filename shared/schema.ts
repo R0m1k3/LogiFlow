@@ -255,17 +255,19 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Announcements - Système d'information du dashboard
-export const announcements = pgTable("announcements", {
+// Dashboard Messages - Utilise la table existante DASHBOARD_MESSAGES
+export const dashboardMessages = pgTable("dashboard_messages", {
   id: serial("id").primaryKey(),
-  title: varchar("title").notNull(), // Titre du message
+  title: varchar("title", { length: 255 }).notNull(), // Titre du message
   content: text("content").notNull(), // Contenu du message
-  priority: varchar("priority").notNull().default("normal"), // normal, important, urgent
-  authorId: varchar("author_id").notNull(), // Référence vers l'utilisateur créateur
-  groupId: integer("group_id"), // Filtrage par magasin (null = global)
+  type: varchar("type", { length: 50 }).notNull().default("info"), // info, warning, error, success
+  storeId: integer("store_id"), // Filtrage par magasin (null = global)
+  createdBy: varchar("created_by", { length: 255 }).notNull(), // Référence vers l'utilisateur créateur
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Alias pour la compatibilité avec le code existant
+export const announcements = dashboardMessages;
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -277,7 +279,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   createdDlcProducts: many(dlcProducts),
   createdTasks: many(tasks),
   assignedTasks: many(tasks),
-  createdAnnouncements: many(announcements),
+  createdAnnouncements: many(dashboardMessages),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
@@ -288,7 +290,7 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   customerOrders: many(customerOrders),
   dlcProducts: many(dlcProducts),
   tasks: many(tasks),
-  announcements: many(announcements),
+  announcements: many(dashboardMessages),
 }));
 
 export const userGroupsRelations = relations(userGroups, ({ one }) => ({
@@ -409,16 +411,19 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   }),
 }));
 
-export const announcementsRelations = relations(announcements, ({ one }) => ({
+export const dashboardMessagesRelations = relations(dashboardMessages, ({ one }) => ({
   author: one(users, {
-    fields: [announcements.authorId],
+    fields: [dashboardMessages.createdBy],
     references: [users.id],
   }),
   group: one(groups, {
-    fields: [announcements.groupId],
+    fields: [dashboardMessages.storeId],
     references: [groups.id],
   }),
 }));
+
+// Alias pour compatibilité
+export const announcementsRelations = dashboardMessagesRelations;
 
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -525,11 +530,15 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   dueDate: z.coerce.date().optional().nullable(), // Convertit automatiquement les chaînes en Date
 });
 
-export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+export const insertAnnouncementSchema = createInsertSchema(dashboardMessages).omit({
   id: true,
   createdAt: true,
-  updatedAt: true,
+}).extend({
+  type: z.enum(["info", "warning", "error", "success"]).default("info"),
 });
+
+// Mapping pour la compatibilité avec l'interface actuelle
+export const insertDashboardMessageSchema = insertAnnouncementSchema;
 
 export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
   id: true,
@@ -587,8 +596,12 @@ export type DlcProductFrontend = Omit<DlcProduct, 'expiryDate'> & { dlcDate: Dat
 export type InsertDlcProductFrontend = z.infer<typeof insertDlcProductFrontendSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
-export type Announcement = typeof announcements.$inferSelect;
-export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type DashboardMessage = typeof dashboardMessages.$inferSelect;
+export type InsertDashboardMessage = z.infer<typeof insertDashboardMessageSchema>;
+
+// Alias pour compatibilité
+export type Announcement = DashboardMessage;
+export type InsertAnnouncement = InsertDashboardMessage;
 
 // Complex types with relations
 
@@ -637,11 +650,14 @@ export type TaskWithRelations = Task & {
   group: Group;
 };
 
-// Announcement with relations type
-export type AnnouncementWithRelations = Announcement & {
+// Dashboard Message with relations type
+export type DashboardMessageWithRelations = DashboardMessage & {
   author: User;
   group?: Group;
 };
+
+// Alias pour compatibilité
+export type AnnouncementWithRelations = DashboardMessageWithRelations;
 
 // SAV (Service Après-Vente) Tables
 export const savTickets = pgTable("sav_tickets", {
