@@ -34,6 +34,7 @@ import {
   insertDlcProductSchema,
   insertDlcProductFrontendSchema,
   insertTaskSchema,
+  insertAnnouncementSchema,
   insertNocodbConfigSchema,
   insertSavTicketSchema,
   insertSavTicketHistorySchema,
@@ -2996,6 +2997,93 @@ RÉSUMÉ DU SCAN
   });
 
   // Route de géolocalisation météo
+  // Announcement routes
+  app.get('/api/announcements', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get user's group IDs for filtering
+      let groupIds: number[] = [];
+      if (user.role === 'admin') {
+        // Admin can see all announcements, but can filter by selected store
+        const storeId = req.query.storeId;
+        if (storeId) {
+          groupIds = [parseInt(storeId)];
+        }
+      } else {
+        // Other roles see only their assigned groups + global announcements
+        const userGroups = (user as any).userGroups;
+        groupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+      }
+
+      const announcements = await storage.getAnnouncements(groupIds.length > 0 ? groupIds : undefined);
+      res.json(announcements);
+    } catch (error) {
+      console.error("Error fetching announcements:", error);
+      res.status(500).json({ message: "Failed to fetch announcements" });
+    }
+  });
+
+  app.post('/api/announcements', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only admin can create announcements
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only administrators can create announcements" });
+      }
+
+      const announcementData = insertAnnouncementSchema.parse({
+        ...req.body,
+        authorId: user.id,
+      });
+
+      const announcement = await storage.createAnnouncement(announcementData);
+      res.status(201).json(announcement);
+    } catch (error) {
+      console.error("Error creating announcement:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create announcement" });
+    }
+  });
+
+  app.delete('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Only admin can delete announcements
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only administrators can delete announcements" });
+      }
+
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteAnnouncement(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Announcement not found" });
+      }
+
+      res.json({ message: "Announcement deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting announcement:", error);
+      res.status(500).json({ message: "Failed to delete announcement" });
+    }
+  });
+
   app.post('/api/weather/geolocation', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);

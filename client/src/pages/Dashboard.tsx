@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Package, ShoppingCart, TrendingUp, Clock, MapPin, User, AlertTriangle, CheckCircle, Truck, FileText, BarChart3, Megaphone, Shield, XCircle, CheckSquare, Circle } from "lucide-react";
 import { safeFormat, safeDate } from "@/lib/dateUtils";
 import type { PublicityWithRelations } from "@shared/schema";
+import AnnouncementCard from "@/components/AnnouncementCard";
 
 export default function Dashboard() {
   const { user } = useAuthUnified();
@@ -476,52 +477,8 @@ export default function Dashboard() {
 
       {/* Section Rapprochement BL */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Statistiques des commandes clients */}
-        <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="pb-4 border-b border-gray-100">
-            <CardTitle className="text-lg font-semibold text-gray-800 flex items-center">
-              <User className="h-5 w-5 mr-3 text-purple-600" />
-              Commandes Clients
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 p-6">
-            <div className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center space-x-3">
-                <div className="h-3 w-3 bg-red-500"></div>
-                <span className="text-sm font-medium text-gray-700">En attente</span>
-              </div>
-              <span className="font-semibold text-red-600 text-lg">{customerOrderStats.waiting}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center space-x-3">
-                <div className="h-3 w-3 bg-orange-500"></div>
-                <span className="text-sm font-medium text-gray-700">En cours</span>
-              </div>
-              <span className="font-semibold text-orange-600 text-lg">{customerOrderStats.inProgress}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center space-x-3">
-                <div className="h-3 w-3 bg-green-500"></div>
-                <span className="text-sm font-medium text-gray-700">Disponibles</span>
-              </div>
-              <span className="font-semibold text-green-600 text-lg">{customerOrderStats.available}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center space-x-3">
-                <div className="h-3 w-3 bg-blue-500"></div>
-                <span className="text-sm font-medium text-gray-700">Retirées</span>
-              </div>
-              <span className="font-semibold text-blue-600 text-lg">{customerOrderStats.withdrawn}</span>
-            </div>
-            <div className="flex items-center justify-between border-t border-gray-200 pt-3 mt-3 p-3">
-              <div className="flex items-center space-x-3">
-                <div className="h-3 w-3 bg-gray-500"></div>
-                <span className="text-sm font-semibold text-gray-800">Total commandes</span>
-              </div>
-              <span className="font-bold text-xl text-gray-800">{customerOrderStats.total}</span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Système d'informations - Remplace les commandes clients */}
+        <AnnouncementCard />
 
         {/* Tâches à faire */}
         <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
