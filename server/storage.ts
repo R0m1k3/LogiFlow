@@ -68,6 +68,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql, gte, lte, lt, or, isNull, isNotNull, asc } from "drizzle-orm";
+import { getAnnouncementStorage } from "./announcementStorage.js";
 
 export interface IStorage {
   // User operations
@@ -1591,51 +1592,27 @@ export class DatabaseStorage implements IStorage {
 
   // Announcement operations
   async createAnnouncement(announcementData: InsertAnnouncement): Promise<Announcement> {
-    const [announcement] = await db.insert(announcements).values(announcementData).returning();
-    return announcement;
+    const announcementStorage = getAnnouncementStorage(
+      () => this.getUsers(),
+      () => this.getGroups()
+    );
+    return await announcementStorage.createAnnouncement(announcementData);
   }
 
   async getAnnouncements(groupIds?: number[]): Promise<AnnouncementWithRelations[]> {
-    let query = db
-      .select({
-        announcement: announcements,
-        author: users,
-        group: groups,
-      })
-      .from(announcements)
-      .leftJoin(users, eq(announcements.authorId, users.id))
-      .leftJoin(groups, eq(announcements.groupId, groups.id));
-
-    // Filter by groupIds if provided (for admin filtering by store)
-    if (groupIds && groupIds.length > 0) {
-      query = query.where(
-        or(
-          isNull(announcements.groupId), // Global announcements (no group)
-          inArray(announcements.groupId, groupIds)
-        )
-      );
-    }
-
-    const results = await query.orderBy(
-      // Sort by priority (urgent > important > normal) then by date (newest first)
-      sql`CASE 
-        WHEN ${announcements.priority} = 'urgent' THEN 3
-        WHEN ${announcements.priority} = 'important' THEN 2
-        ELSE 1
-      END DESC`,
-      desc(announcements.createdAt)
+    const announcementStorage = getAnnouncementStorage(
+      () => this.getUsers(),
+      () => this.getGroups()
     );
-
-    return results.map(result => ({
-      ...result.announcement,
-      author: result.author!,
-      group: result.group,
-    }));
+    return await announcementStorage.getAnnouncements(groupIds);
   }
 
   async deleteAnnouncement(id: number): Promise<boolean> {
-    const result = await db.delete(announcements).where(eq(announcements.id, id));
-    return result.rowCount ? result.rowCount > 0 : false;
+    const announcementStorage = getAnnouncementStorage(
+      () => this.getUsers(),
+      () => this.getGroups()
+    );
+    return await announcementStorage.deleteAnnouncement(id);
   }
 
   // SAV operations
@@ -3335,51 +3312,27 @@ export class MemStorage implements IStorage {
 
   // Announcement operations
   async createAnnouncement(announcementData: InsertAnnouncement): Promise<Announcement> {
-    const id = this.idCounters.announcement++;
-    const announcement: Announcement = {
-      id,
-      ...announcementData,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.announcements.set(id, announcement);
-    return announcement;
+    const announcementStorage = getAnnouncementStorage(
+      async () => Array.from(this.users.values()),
+      async () => Array.from(this.groups.values())
+    );
+    return await announcementStorage.createAnnouncement(announcementData);
   }
 
   async getAnnouncements(groupIds?: number[]): Promise<AnnouncementWithRelations[]> {
-    const announcements = Array.from(this.announcements.values());
-    
-    let filteredAnnouncements = announcements;
-    
-    // Filter by groupIds if provided (for admin filtering by store)
-    if (groupIds && groupIds.length > 0) {
-      filteredAnnouncements = announcements.filter(announcement => 
-        !announcement.groupId || groupIds.includes(announcement.groupId)
-      );
-    }
-
-    // Add relations
-    return filteredAnnouncements.map(announcement => {
-      const author = this.users.get(announcement.authorId);
-      const group = announcement.groupId ? this.groups.get(announcement.groupId) : undefined;
-      
-      return {
-        ...announcement,
-        author: author!,
-        group,
-      };
-    }).sort((a, b) => {
-      // Sort by priority (urgent > important > normal) then by date (newest first)
-      const priorityOrder = { urgent: 3, important: 2, normal: 1 };
-      const priorityDiff = (priorityOrder[b.priority as keyof typeof priorityOrder] || 1) - 
-                          (priorityOrder[a.priority as keyof typeof priorityOrder] || 1);
-      if (priorityDiff !== 0) return priorityDiff;
-      return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
-    });
+    const announcementStorage = getAnnouncementStorage(
+      async () => Array.from(this.users.values()),
+      async () => Array.from(this.groups.values())
+    );
+    return await announcementStorage.getAnnouncements(groupIds);
   }
 
   async deleteAnnouncement(id: number): Promise<boolean> {
-    return this.announcements.delete(id);
+    const announcementStorage = getAnnouncementStorage(
+      async () => Array.from(this.users.values()),
+      async () => Array.from(this.groups.values())
+    );
+    return await announcementStorage.deleteAnnouncement(id);
   }
 }
 
