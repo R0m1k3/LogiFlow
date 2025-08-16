@@ -4,7 +4,7 @@ import { useStore } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Megaphone, Plus, X, AlertTriangle, Info, Bell } from "lucide-react";
+import { Megaphone, Plus, X, AlertTriangle, Clock, Circle } from "lucide-react";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -199,20 +199,40 @@ export default function AnnouncementCard() {
     );
   }
 
+  const getPriorityConfig = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return { 
+          color: 'destructive' as const, 
+          icon: AlertTriangle, 
+          label: 'Urgente' 
+        };
+      case 'important':
+        return { 
+          color: 'default' as const, 
+          icon: Clock, 
+          label: 'Importante' 
+        };
+      case 'normal':
+      default:
+        return { 
+          color: 'secondary' as const, 
+          icon: Circle, 
+          label: 'Normale' 
+        };
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Informations</CardTitle>
-        <Megaphone className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        {user?.role === 'admin' && (
-          <div className="mb-4">
+        <div className="flex items-center gap-2">
+          {user?.role === 'admin' && (
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" variant="outline" className="w-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouvelle information
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                  <Plus className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
@@ -318,9 +338,11 @@ export default function AnnouncementCard() {
                 </Form>
               </DialogContent>
             </Dialog>
-          </div>
-        )}
-
+          )}
+          <Megaphone className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </CardHeader>
+      <CardContent>
         {announcements.length === 0 ? (
           <div className="text-center py-6">
             <Megaphone className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
@@ -331,6 +353,9 @@ export default function AnnouncementCard() {
         ) : (
           <div className="space-y-3">
             {announcements.map((announcement) => {
+              const priorityConfig = getPriorityConfig(announcement.priority);
+              const PriorityIcon = priorityConfig.icon;
+              
               return (
                 <div key={announcement.id} className="flex items-start justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                   <div className="flex-1 min-w-0">
@@ -338,26 +363,25 @@ export default function AnnouncementCard() {
                       <h4 className="font-medium text-sm truncate">
                         {announcement.title}
                       </h4>
-                      <Badge variant="secondary" className={getPriorityColor(announcement.priority)}>
-                        <span className="flex items-center gap-1">
-                          {getPriorityIcon(announcement.priority)}
-                          {announcement.priority === 'urgent' ? 'Urgent' : 
-                           announcement.priority === 'important' ? 'Important' : 'Normal'}
-                        </span>
+                      <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs">
+                        <PriorityIcon className="w-2.5 h-2.5" />
+                        {priorityConfig.label}
                       </Badge>
                     </div>
                     
-                    <p className="text-xs text-muted-foreground mb-1 line-clamp-2">
-                      {announcement.content}
-                    </p>
+                    {announcement.content && (
+                      <p className="text-xs text-muted-foreground mb-1 line-clamp-1">
+                        {announcement.content}
+                      </p>
+                    )}
                     
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>
-                        Par {announcement.author.firstName} {announcement.author.lastName}
-                        {announcement.group && ` • ${announcement.group.name}`}
+                        {safeFormat(safeDate(announcement.createdAt), 'dd/MM à HH:mm')}
                       </span>
                       <span>
-                        {safeFormat(safeDate(announcement.createdAt), 'dd/MM HH:mm')}
+                        {announcement.author.firstName} {announcement.author.lastName}
+                        {announcement.group && ` • ${announcement.group.name}`}
                       </span>
                     </div>
                   </div>
