@@ -39,7 +39,7 @@ type TaskWithRelations = Task & {
 
 export default function Tasks() {
   const { user } = useAuthUnified();
-  const { selectedStoreId } = useStore();
+  const { selectedStoreId, storeInitialized } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -57,14 +57,20 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState<TaskWithRelations | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<TaskWithRelations | null>(null);
 
-  // Fetch tasks
+  // Fetch tasks - attendre que l'initialisation des stores soit terminée pour les admins
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ["/api/tasks", selectedStoreId],
     queryFn: () => {
       const params = new URLSearchParams();
-      if (selectedStoreId) {
+      if (selectedStoreId && user?.role === 'admin') {
         params.append('storeId', selectedStoreId.toString());
       }
+      console.log('📋 TASKS QUERY - Fetching with params:', { 
+        selectedStoreId, 
+        userRole: user?.role,
+        storeInitialized,
+        url: `/api/tasks?${params.toString()}`
+      });
       return fetch(`/api/tasks?${params.toString()}`, {
         credentials: 'include'
       }).then(res => {
@@ -74,7 +80,7 @@ export default function Tasks() {
         return res.json();
       });
     },
-    enabled: !!user,
+    enabled: !!user && (user.role !== 'admin' || storeInitialized),
   });
 
   // Fetch users for task assignment - seulement pour admin/manager/directeur
