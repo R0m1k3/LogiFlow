@@ -25,7 +25,6 @@ const formSchema = z.object({
   title: z.string().min(1, "Le titre est obligatoire"),
   content: z.string().min(1, "Le contenu est obligatoire"),
   type: z.enum(["info", "warning", "error", "success"]).default("info"),
-  storeId: z.number().optional().nullable(),
 });
 
 export default function AnnouncementCard() {
@@ -42,7 +41,6 @@ export default function AnnouncementCard() {
       title: "",
       content: "",
       type: "info",
-      storeId: undefined,
     },
   });
 
@@ -53,14 +51,12 @@ export default function AnnouncementCard() {
         title: editingAnnouncement.title,
         content: editingAnnouncement.content,
         type: editingAnnouncement.type as "info" | "warning" | "error" | "success",
-        storeId: editingAnnouncement.storeId || undefined,
       });
     } else {
       form.reset({
         title: "",
         content: "",
         type: "info",
-        storeId: undefined,
       });
     }
   }, [editingAnnouncement, form]);
@@ -87,11 +83,7 @@ export default function AnnouncementCard() {
     enabled: !!user,
   });
 
-  // Fetch groups for admin
-  const { data: groups = [] } = useQuery<any[]>({
-    queryKey: ['/api/groups'],
-    enabled: user?.role === 'admin',
-  });
+
 
   // Create/Update announcement mutation
   const createMutation = useMutation({
@@ -337,31 +329,7 @@ export default function AnnouncementCard() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="storeId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Magasin (optionnel)</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(value === 'all' ? null : parseInt(value))}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Tous les magasins" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="all">Tous les magasins</SelectItem>
-                              {groups.map((group: any) => (
-                                <SelectItem key={group.id} value={group.id.toString()}>
-                                  {group.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+
                     <div className="flex justify-end space-x-2 pt-4">
                       <Button
                         type="button"

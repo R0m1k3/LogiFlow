@@ -3058,8 +3058,11 @@ RÉSUMÉ DU SCAN
       console.log('🎯 [SERVER] User is admin, proceeding with validation');
 
       const announcementData = insertAnnouncementSchema.parse({
-        ...req.body,
-        authorId: user.id,
+        title: req.body.title,
+        content: req.body.content,
+        type: req.body.type || 'info',
+        storeId: null, // Toutes les annonces sont globales
+        createdBy: user.id,
       });
 
       console.log('🎯 [SERVER] Announcement data validated:', announcementData);
