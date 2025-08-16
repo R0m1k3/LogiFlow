@@ -68,7 +68,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql, gte, lte, lt, or, isNull, isNotNull, asc } from "drizzle-orm";
-import { getAnnouncementStorage } from "./announcementStorage.js";
+
 
 export interface IStorage {
   // User operations
@@ -179,6 +179,8 @@ export interface IStorage {
   // Announcement operations
   createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
   getAnnouncements(groupIds?: number[]): Promise<AnnouncementWithRelations[]>;
+  getAnnouncement(id: number): Promise<AnnouncementWithRelations | undefined>;
+  updateAnnouncement(id: number, announcement: Partial<InsertAnnouncement>): Promise<AnnouncementWithRelations>;
   deleteAnnouncement(id: number): Promise<boolean>;
   
   // SAV operations
@@ -1605,6 +1607,22 @@ export class DatabaseStorage implements IStorage {
       () => this.getGroups()
     );
     return await announcementStorage.getAnnouncements(groupIds);
+  }
+
+  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | undefined> {
+    const announcementStorage = getAnnouncementStorage(
+      () => this.getUsers(),
+      () => this.getGroups()
+    );
+    return await announcementStorage.getAnnouncement(id);
+  }
+
+  async updateAnnouncement(id: number, announcementData: Partial<InsertAnnouncement>): Promise<AnnouncementWithRelations> {
+    const announcementStorage = getAnnouncementStorage(
+      () => this.getUsers(),
+      () => this.getGroups()
+    );
+    return await announcementStorage.updateAnnouncement(id, announcementData);
   }
 
   async deleteAnnouncement(id: number): Promise<boolean> {

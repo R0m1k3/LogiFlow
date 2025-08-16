@@ -4,8 +4,9 @@ import { useStore } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Megaphone, Plus, X, AlertTriangle, Clock, Circle } from "lucide-react";
+import { Megaphone, Plus, X, AlertTriangle, Clock, Circle, Edit2 } from "lucide-react";
 import { useState } from "react";
+import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ export default function AnnouncementCard() {
   const { selectedStoreId } = useStore();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementWithRelations | null>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -43,6 +45,25 @@ export default function AnnouncementCard() {
       groupId: undefined,
     },
   });
+
+  // Reset form when editing announcement changes
+  React.useEffect(() => {
+    if (editingAnnouncement) {
+      form.reset({
+        title: editingAnnouncement.title,
+        content: editingAnnouncement.content,
+        priority: editingAnnouncement.priority as "normal" | "important" | "urgent",
+        groupId: editingAnnouncement.groupId || undefined,
+      });
+    } else {
+      form.reset({
+        title: "",
+        content: "",
+        priority: "normal",
+        groupId: undefined,
+      });
+    }
+  }, [editingAnnouncement, form]);
 
   // Fetch announcements
   const { data: announcements = [], isLoading } = useQuery<AnnouncementWithRelations[]>({
@@ -72,19 +93,26 @@ export default function AnnouncementCard() {
     enabled: user?.role === 'admin',
   });
 
-  // Create announcement mutation
+  // Create/Update announcement mutation
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
-      console.log('📢 Creating announcement with data:', data);
+      const isEditing = !!editingAnnouncement;
+      console.log('📢 Submitting announcement:', { data, isEditing });
       
-      const response = await fetch('/api/announcements', {
-        method: 'POST',
+      const url = isEditing 
+        ? `/api/announcements/${editingAnnouncement.id}`
+        : '/api/announcements';
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(data),
       });
       
-      console.log('📢 Create announcement response:', {
+      console.log('📢 Announcement response:', {
         status: response.status,
         statusText: response.statusText,
         ok: response.ok
@@ -92,31 +120,32 @@ export default function AnnouncementCard() {
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('📢 Create announcement failed:', errorText);
-        throw new Error(`Failed to create announcement: ${response.status} - ${errorText}`);
+        console.error('📢 Announcement failed:', errorText);
+        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} announcement: ${response.status} - ${errorText}`);
       }
       
       const result = await response.json();
-      console.log('📢 Announcement created successfully:', result);
+      console.log('📢 Announcement success:', result);
       return result;
     },
     onSuccess: (data) => {
-      console.log('📢 Announcement creation success callback:', data);
+      const isEditing = !!editingAnnouncement;
+      console.log('📢 Announcement success callback:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
       setIsCreateDialogOpen(false);
+      setEditingAnnouncement(null);
       form.reset();
-      // Add success toast
       toast({
         title: "Succès",
-        description: "Annonce créée avec succès",
+        description: isEditing ? "Information modifiée avec succès" : "Information créée avec succès",
       });
     },
     onError: (error) => {
-      console.error('📢 Announcement creation error:', error);
-      // Add error toast
+      const isEditing = !!editingAnnouncement;
+      console.error('📢 Announcement error:', error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de créer l'annonce",
+        description: error.message || `Impossible de ${isEditing ? 'modifier' : 'créer'} l'information`,
         variant: "destructive",
       });
     },
@@ -229,7 +258,13 @@ export default function AnnouncementCard() {
         <CardTitle className="text-sm font-medium">Informations</CardTitle>
         <div className="flex items-center gap-2">
           {user?.role === 'admin' && (
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+              setIsCreateDialogOpen(open);
+              if (!open) {
+                setEditingAnnouncement(null);
+                form.reset();
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
                   <Plus className="h-4 w-4" />
@@ -237,7 +272,9 @@ export default function AnnouncementCard() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>Nouvelle information</DialogTitle>
+                  <DialogTitle>
+                    {editingAnnouncement ? 'Modifier l\'information' : 'Nouvelle information'}
+                  </DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -331,7 +368,10 @@ export default function AnnouncementCard() {
                         disabled={createMutation.isPending}
                         onClick={() => console.log('🔥 [BUTTON] Submit button clicked')}
                       >
-                        {createMutation.isPending ? 'Création...' : 'Créer'}
+                        {createMutation.isPending 
+                          ? (editingAnnouncement ? 'Modification...' : 'Création...') 
+                          : (editingAnnouncement ? 'Modifier' : 'Créer')
+                        }
                       </Button>
                     </div>
                   </form>
@@ -386,15 +426,28 @@ export default function AnnouncementCard() {
                     </div>
                   </div>
                   {user?.role === 'admin' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 ml-2 flex-shrink-0"
-                      onClick={() => deleteMutation.mutate(announcement.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
+                    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-blue-600"
+                        onClick={() => {
+                          setEditingAnnouncement(announcement);
+                          setIsCreateDialogOpen(true);
+                        }}
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteMutation.mutate(announcement.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               );

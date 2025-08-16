@@ -114,6 +114,60 @@ class AnnouncementMemoryStorage {
     return announcement;
   }
 
+  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | undefined> {
+    const announcement = this.announcements.get(id);
+    if (!announcement) {
+      return undefined;
+    }
+
+    // Récupérer les utilisateurs et groupes pour les relations
+    const [users, groups] = await Promise.all([
+      this.usersGetter(),
+      this.groupsGetter()
+    ]);
+
+    const usersMap = new Map(users.map(u => [u.id, u]));
+    const groupsMap = new Map(groups.map(g => [g.id, g]));
+
+    const author = usersMap.get(announcement.authorId);
+    const group = announcement.groupId ? groupsMap.get(announcement.groupId) : undefined;
+
+    if (!author) {
+      return undefined;
+    }
+
+    return {
+      ...announcement,
+      author,
+      group,
+    };
+  }
+
+  async updateAnnouncement(id: number, announcementData: Partial<InsertAnnouncement>): Promise<AnnouncementWithRelations> {
+    const existingAnnouncement = this.announcements.get(id);
+    if (!existingAnnouncement) {
+      throw new Error(`Announcement with ID ${id} not found`);
+    }
+
+    const updatedAnnouncement: Announcement = {
+      ...existingAnnouncement,
+      ...announcementData,
+      id, // Ensure ID doesn't change
+      updatedAt: new Date(),
+    };
+
+    this.announcements.set(id, updatedAnnouncement);
+    console.log(`✏️ Annonce mise à jour: ${updatedAnnouncement.title} (ID: ${id})`);
+
+    // Return the announcement with relations
+    const announcementWithRelations = await this.getAnnouncement(id);
+    if (!announcementWithRelations) {
+      throw new Error(`Failed to get updated announcement with relations`);
+    }
+
+    return announcementWithRelations;
+  }
+
   async deleteAnnouncement(id: number): Promise<boolean> {
     const existed = this.announcements.has(id);
     const deleted = this.announcements.delete(id);
