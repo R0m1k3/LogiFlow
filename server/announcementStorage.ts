@@ -103,6 +103,7 @@ class AnnouncementMemoryStorage {
     const announcement: Announcement = {
       id,
       ...announcementData,
+      priority: announcementData.priority || 'normal',
       groupId: announcementData.groupId || null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -178,27 +179,18 @@ class AnnouncementMemoryStorage {
     
     return deleted;
   }
-
-  // Méthode utilitaire pour obtenir le nombre d'annonces
-  getCount(): number {
-    return this.announcements.size;
-  }
-
-  // Méthode utilitaire pour nettoyer toutes les annonces (si nécessaire)
-  clear(): void {
-    this.announcements.clear();
-    this.idCounter = 1;
-    console.log('🧹 Toutes les annonces ont été supprimées');
-  }
 }
 
-// Instance singleton pour partager entre production et développement
-let announcementStorage: AnnouncementMemoryStorage | null = null;
+// Instance globale partagée
+let globalAnnouncementStorage: AnnouncementMemoryStorage | null = null;
 
-export function getAnnouncementStorage(usersGetter: () => Promise<User[]>, groupsGetter: () => Promise<Group[]>): AnnouncementMemoryStorage {
-  if (!announcementStorage) {
-    announcementStorage = new AnnouncementMemoryStorage(usersGetter, groupsGetter);
-    console.log('📢 Système d\'annonces en mémoire initialisé (max 5 annonces)');
+export function getAnnouncementStorage(
+  usersGetter: () => Promise<User[]>,
+  groupsGetter: () => Promise<Group[]>
+): AnnouncementMemoryStorage {
+  if (!globalAnnouncementStorage) {
+    globalAnnouncementStorage = new AnnouncementMemoryStorage(usersGetter, groupsGetter);
+    console.log('📢 Stockage mémoire des annonces initialisé');
   }
-  return announcementStorage;
+  return globalAnnouncementStorage;
 }
