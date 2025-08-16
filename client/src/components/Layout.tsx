@@ -116,7 +116,8 @@ export default function Layout({ children }: LayoutProps) {
                       const key = query.queryKey;
                       return Boolean(key[0]?.toString().includes('/api/orders') || 
                              key[0]?.toString().includes('/api/deliveries') || 
-                             key[0]?.toString().includes('/api/stats/monthly'));
+                             key[0]?.toString().includes('/api/stats/monthly') ||
+                             key[0]?.toString().includes('/api/tasks'));
                     }});
                     
                     // Sauvegarder dans localStorage et mettre à jour l'état
