@@ -1,0 +1,238 @@
+
+
+User-related
+
+
+Environment-related
+
+Registries
+
+Logs
+
+Notifications
+
+Settings
+
+New version available 2.27.9
+DismissSee what's new
+Community Edition
+2.27.6 LTS
+Containers>logiflow-logiflow-1>Logs
+Container logs
+
+
+admin
+Log viewer settings
+Auto-refresh logs
+Wrap lines
+Display timestamps
+Fetch
+All logs
+Search
+Filter...
+Lines
+100
+Actions
+ 
+ 
+ 
+      
+      at authenticate (/app/node_modules/passport/lib/middleware/authenticate.js:379:7)
+
+      at file:///app/dist/index.js:4874:7
+
+      at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+      at next (/app/node_modules/express/lib/router/route.js:149:13)
+
+      at Route.dispatch (/app/node_modules/express/lib/router/route.js:119:3)
+
+      at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+}
+
+POST /api/login 500 in 2ms
+
+TypeError: Cannot read properties of null (reading 'select')
+
+    at DatabaseStorage.getUserByUsername (file:///app/dist/index.js:1204:33)
+
+    at Strategy._verify (file:///app/dist/index.js:4832:38)
+
+    at Strategy.authenticate (/app/node_modules/passport-local/lib/strategy.js:90:12)
+
+    at attempt (/app/node_modules/passport/lib/middleware/authenticate.js:378:16)
+
+    at authenticate (/app/node_modules/passport/lib/middleware/authenticate.js:379:7)
+
+    at file:///app/dist/index.js:4874:7
+
+    at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+    at next (/app/node_modules/express/lib/router/route.js:149:13)
+
+    at Route.dispatch (/app/node_modules/express/lib/router/route.js:119:3)
+
+    at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+Server error: {
+
+  status: 500,
+
+  message: "Cannot read properties of null (reading 'select')",
+
+  error: TypeError: Cannot read properties of null (reading 'select')
+
+      at DatabaseStorage.getUserByUsername (file:///app/dist/index.js:1204:33)
+
+      at Strategy._verify (file:///app/dist/index.js:4832:38)
+
+      at Strategy.authenticate (/app/node_modules/passport-local/lib/strategy.js:90:12)
+
+      at attempt (/app/node_modules/passport/lib/middleware/authenticate.js:378:16)
+
+      at authenticate (/app/node_modules/passport/lib/middleware/authenticate.js:379:7)
+
+      at file:///app/dist/index.js:4874:7
+
+      at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+      at next (/app/node_modules/express/lib/router/route.js:149:13)
+
+      at Route.dispatch (/app/node_modules/express/lib/router/route.js:119:3)
+
+      at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+}
+
+POST /api/login 500 in 2ms
+
+TypeError: Cannot read properties of null (reading 'select')
+
+    at DatabaseStorage.getUserByUsername (file:///app/dist/index.js:1204:33)
+
+    at Strategy._verify (file:///app/dist/index.js:4832:38)
+
+    at Strategy.authenticate (/app/node_modules/passport-local/lib/strategy.js:90:12)
+
+    at attempt (/app/node_modules/passport/lib/middleware/authenticate.js:378:16)
+
+    at authenticate (/app/node_modules/passport/lib/middleware/authenticate.js:379:7)
+
+    at file:///app/dist/index.js:4874:7
+
+    at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+    at next (/app/node_modules/express/lib/router/route.js:149:13)
+
+    at Route.dispatch (/app/node_modules/express/lib/router/route.js:119:3)
+
+    at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+Server error: {
+
+  status: 500,
+
+  message: "Cannot read properties of null (reading 'select')",
+
+  error: TypeError: Cannot read properties of null (reading 'select')
+
+      at DatabaseStorage.getUserByUsername (file:///app/dist/index.js:1204:33)
+
+      at Strategy._verify (file:///app/dist/index.js:4832:38)
+
+      at Strategy.authenticate (/app/node_modules/passport-local/lib/strategy.js:90:12)
+
+      at attempt (/app/node_modules/passport/lib/middleware/authenticate.js:378:16)
+
+      at authenticate (/app/node_modules/passport/lib/middleware/authenticate.js:379:7)
+
+      at file:///app/dist/index.js:4874:7
+
+      at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+      at next (/app/node_modules/express/lib/router/route.js:149:13)
+
+      at Route.dispatch (/app/node_modules/express/lib/router/route.js:119:3)
+
+      at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+}
+
+POST /api/login 500 in 2ms
+
+TypeError: Cannot read properties of null (reading 'select')
+
+    at DatabaseStorage.getUserByUsername (file:///app/dist/index.js:1204:33)
+
+    at Strategy._verify (file:///app/dist/index.js:4832:38)
+
+    at Strategy.authenticate (/app/node_modules/passport-local/lib/strategy.js:90:12)
+
+    at attempt (/app/node_modules/passport/lib/middleware/authenticate.js:378:16)
+
+    at authenticate (/app/node_modules/passport/lib/middleware/authenticate.js:379:7)
+
+    at file:///app/dist/index.js:4874:7
+
+    at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+    at next (/app/node_modules/express/lib/router/route.js:149:13)
+
+    at Route.dispatch (/app/node_modules/express/lib/router/route.js:119:3)
+
+    at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+Server error: {
+
+  status: 500,
+
+  message: "Cannot read properties of null (reading 'select')",
+
+  error: TypeError: Cannot read properties of null (reading 'select')
+
+      at DatabaseStorage.getUserByUsername (file:///app/dist/index.js:1204:33)
+
+      at Strategy._verify (file:///app/dist/index.js:4832:38)
+
+      at Strategy.authenticate (/app/node_modules/passport-local/lib/strategy.js:90:12)
+
+      at attempt (/app/node_modules/passport/lib/middleware/authenticate.js:378:16)
+
+      at authenticate (/app/node_modules/passport/lib/middleware/authenticate.js:379:7)
+
+      at file:///app/dist/index.js:4874:7
+
+      at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+      at next (/app/node_modules/express/lib/router/route.js:149:13)
+
+      at Route.dispatch (/app/node_modules/express/lib/router/route.js:119:3)
+
+      at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+}
+
+POST /api/login 500 in 2ms
+
+TypeError: Cannot read properties of null (reading 'select')
+
+    at DatabaseStorage.getUserByUsername (file:///app/dist/index.js:1204:33)
+
+    at Strategy._verify (file:///app/dist/index.js:4832:38)
+
+    at Strategy.authenticate (/app/node_modules/passport-local/lib/strategy.js:90:12)
+
+    at attempt (/app/node_modules/passport/lib/middleware/authenticate.js:378:16)
+
+    at authenticate (/app/node_modules/passport/lib/middleware/authenticate.js:379:7)
+
+    at file:///app/dist/index.js:4874:7
+
+    at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)
+
+    at next (/app/node_modules/express/lib/router/route.js:149:13)
+
+    at Route.dispatch (/app/node_modules/express/lib/router/route.js:119:3)
+
+    at Layer.handle [as handle_request] (/app/node_modules/express/lib/router/layer.js:95:5)

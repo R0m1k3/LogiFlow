@@ -14,15 +14,15 @@ console.log('🔗 Database initialization:', {
 let db: any;
 let pool: any;
 
-if (dbUrl && (isProduction || process.env.FORCE_POSTGRES === 'true')) {
-  // Use PostgreSQL for production or when forced
-  console.log('🐘 Using PostgreSQL database');
+if (isProduction && dbUrl && (dbUrl.includes('logiflow-db') || dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1'))) {
+  // Standard PostgreSQL for production Docker
+  console.log('🐳 PRODUCTION: Using standard PostgreSQL');
   const { Pool } = await import('pg');
   const { drizzle } = await import('drizzle-orm/node-postgres');
   
   pool = new Pool({ 
     connectionString: dbUrl,
-    ssl: dbUrl.includes('localhost') ? false : { rejectUnauthorized: false },
+    ssl: false,
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
@@ -38,15 +38,31 @@ if (dbUrl && (isProduction || process.env.FORCE_POSTGRES === 'true')) {
     });
   } catch (error) {
     console.error('❌ PostgreSQL connection test failed:', error);
-    // Continue anyway, will use MemStorage as fallback
-    pool = null;
-    db = null;
   }
 } else {
-  // Development fallback: use MemStorage
-  console.log('🔧 DEV: Using MemStorage (development fallback)');
-  pool = null;
-  db = null;
+  // Fallback: use Neon for development (but will be overridden by MemStorage)
+  console.log('🔧 DEV: Using Neon (fallback, will use MemStorage)');
+  const { Pool, neonConfig } = await import('@neondatabase/serverless');
+  const { drizzle } = await import('drizzle-orm/neon-serverless');
+  const ws = await import('ws');
+  
+  neonConfig.webSocketConstructor = ws.default;
+  
+  if (dbUrl) {
+    try {
+      pool = new Pool({ connectionString: dbUrl });
+      db = drizzle({ client: pool, schema });
+    } catch (error) {
+      console.error('❌ Neon connection failed, will use MemStorage:', error);
+      pool = null;
+      db = null;
+    }
+  } else {
+    // Create dummy instances for development
+    pool = null;
+    db = null;
+    console.log('🔧 DEV: No DATABASE_URL, using MemStorage');
+  }
 }
 
 export { db, pool };
