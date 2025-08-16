@@ -1324,6 +1324,8 @@ export class DatabaseStorage implements IStorage {
 
   // Real implementations for production operations
   async getCustomerOrders(groupIds?: number[]): Promise<CustomerOrderWithRelations[]> {
+    console.log('🔍 [PRODUCTION DEBUG] getCustomerOrders called with groupIds:', groupIds);
+    
     let query = db
       .select({
         customerOrder: customerOrders,
@@ -1336,15 +1338,34 @@ export class DatabaseStorage implements IStorage {
 
     if (groupIds && groupIds.length > 0) {
       query = query.where(inArray(customerOrders.groupId, groupIds));
+      console.log('🔍 [PRODUCTION DEBUG] Filtering by groupIds:', groupIds);
     }
 
-    const results = await query.orderBy(desc(customerOrders.createdAt));
-    return results.map((row: any) => ({
-      ...row.customerOrder,
-      supplier: row.supplier,
-      group: row.group,
-      creator: row.creator || { id: row.customerOrder.createdBy, username: 'unknown' }
-    }));
+    try {
+      const results = await query.orderBy(desc(customerOrders.createdAt));
+      console.log('🔍 [PRODUCTION DEBUG] Raw SQL results count:', results.length);
+      
+      // Debug: Log some sample data
+      if (results.length > 0) {
+        console.log('🔍 [PRODUCTION DEBUG] Sample results (first 3):');
+        results.slice(0, 3).forEach((row, idx) => {
+          console.log(`  [${idx}] Order ID: ${row.customerOrder?.id}, GroupId: ${row.customerOrder?.groupId}, Customer: ${row.customerOrder?.customerName}, Created: ${row.customerOrder?.createdAt}`);
+        });
+      }
+      
+      const mappedResults = results.map((row: any) => ({
+        ...row.customerOrder,
+        supplier: row.supplier,
+        group: row.group,
+        creator: row.creator || { id: row.customerOrder.createdBy, username: 'unknown' }
+      }));
+      
+      console.log('🔍 [PRODUCTION DEBUG] Final mapped results count:', mappedResults.length);
+      return mappedResults;
+    } catch (error) {
+      console.error('❌ [PRODUCTION ERROR] getCustomerOrders failed:', error);
+      throw error;
+    }
   }
 
   async getCustomerOrder(id: number): Promise<CustomerOrderWithRelations | undefined> {

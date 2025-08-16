@@ -1395,6 +1395,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DEBUG ROUTE for production diagnosis
+  app.get('/api/debug/customer-orders-raw', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      console.log('🔍 [DEBUG] Raw customer orders analysis started');
+      
+      // Get all customer orders without filtering
+      const allOrders = await storage.getCustomerOrders();
+      console.log('🔍 [DEBUG] Total orders in DB:', allOrders.length);
+      
+      // Group by store and analyze dates
+      const analysis = allOrders.reduce((acc, order) => {
+        const groupId = order.groupId;
+        const groupName = order.group?.name || 'Unknown';
+        
+        if (!acc[groupId]) {
+          acc[groupId] = {
+            groupId,
+            groupName,
+            orders: [],
+            count: 0,
+            latestDate: null,
+            oldestDate: null
+          };
+        }
+        
+        acc[groupId].orders.push({
+          id: order.id,
+          customerName: order.customerName,
+          createdAt: order.createdAt,
+          status: order.status
+        });
+        acc[groupId].count++;
+        
+        const orderDate = new Date(order.createdAt);
+        if (!acc[groupId].latestDate || orderDate > new Date(acc[groupId].latestDate)) {
+          acc[groupId].latestDate = order.createdAt;
+        }
+        if (!acc[groupId].oldestDate || orderDate < new Date(acc[groupId].oldestDate)) {
+          acc[groupId].oldestDate = order.createdAt;
+        }
+        
+        return acc;
+      }, {} as Record<number, any>);
+      
+      console.log('🔍 [DEBUG] Analysis by group:', analysis);
+      
+      res.json({
+        totalOrders: allOrders.length,
+        analysis: Object.values(analysis),
+        sampleOrders: allOrders.slice(0, 10).map(order => ({
+          id: order.id,
+          groupId: order.groupId,
+          groupName: order.group?.name,
+          customerName: order.customerName,
+          createdAt: order.createdAt,
+          status: order.status
+        }))
+      });
+    } catch (error) {
+      console.error("Error in debug route:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Customer Orders routes
   app.get('/api/customer-orders', isAuthenticated, async (req: any, res) => {
     try {
@@ -1417,9 +1486,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('Customer Orders API called with:', { groupIds, userRole: user.role });
+      console.log('🔍 [PRODUCTION DEBUG] Customer Orders API called with:', { 
+        groupIds, 
+        userRole: user.role,
+        userId: user.id,
+        userGroups: user.userGroups?.map(ug => ({ groupId: ug.groupId, groupName: ug.group?.name }))
+      });
       const customerOrders = await storage.getCustomerOrders(groupIds);
-      console.log('Customer Orders returned:', customerOrders.length, 'items');
+      console.log('🔍 [PRODUCTION DEBUG] Customer Orders returned:', customerOrders.length, 'items');
+      
+      // Debug: Group orders by groupId to see distribution
+      const ordersByGroup = customerOrders.reduce((acc, order) => {
+        const groupId = order.groupId || 'null';
+        if (!acc[groupId]) acc[groupId] = [];
+        acc[groupId].push(order);
+        return acc;
+      }, {} as Record<string, any[]>);
+      
+      console.log('🔍 [PRODUCTION DEBUG] Orders distribution by group:', 
+        Object.entries(ordersByGroup).map(([groupId, orders]) => ({
+          groupId,
+          count: orders.length,
+          latestDate: orders[0]?.createdAt,
+          groupName: orders[0]?.group?.name
+        }))
+      );
       res.json(customerOrders);
     } catch (error) {
       console.error("Error fetching customer orders:", error);
