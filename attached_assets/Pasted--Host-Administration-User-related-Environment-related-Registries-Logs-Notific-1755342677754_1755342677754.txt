@@ -1,0 +1,242 @@
+
+
+Host
+
+Administration
+
+User-related
+
+
+Environment-related
+
+Registries
+
+Logs
+
+Notifications
+
+Settings
+
+New version available 2.27.9
+DismissSee what's new
+Community Edition
+2.27.6 LTS
+Containers>logiflow-logiflow-1>Logs
+Container logs
+
+
+admin
+Log viewer settings
+Auto-refresh logs
+Wrap lines
+Display timestamps
+Fetch
+All logs
+Search
+Filter...
+Lines
+100
+Actions
+ 
+ 
+ 
+      
+}
+
+GET /api/user 200 in 213ms
+
+GET /api/deliveries 200 in 285ms
+
+Customer Orders returned: 38 items
+
+🔗 PRODUCTION: getOrders() récupéré 51 commandes avec relations
+
+Orders returned: 51 items
+
+GET /api/customer-orders 200 in 287ms
+
+GET /api/orders 200 in 302ms
+
+Orders API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  userRole: 'admin'
+
+}
+
+Admin filtering with groupIds: [ 1 ]
+
+Fetching all orders
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering deliveries with groupIds: [ 1 ]
+
+Fetching all deliveries
+
+Customer Orders API called with: { groupIds: [ 1 ], userRole: 'admin' }
+
+📋 Tasks returned: {
+
+  count: 55,
+
+  userId: 'admin_local',
+
+  userRole: 'admin',
+
+  requestedStoreId: undefined,
+
+  groupIds: undefined,
+
+  taskGroups: [
+
+    { id: 91, title: 'refaire podium lot assiettes', groupId: 2 },
+
+    { id: 90, title: 'caisse 1', groupId: 1 },
+
+    { id: 89, title: 'caisse 3', groupId: 1 }
+
+  ]
+
+}
+
+GET /api/groups 200 in 169ms
+
+GET /api/tasks 200 in 277ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 48 livraisons avec relations
+
+Deliveries returned: 48 items
+
+GET /api/deliveries 200 in 215ms
+
+Customer Orders returned: 10 items
+
+GET /api/customer-orders 200 in 214ms
+
+🔗 PRODUCTION: getOrders() récupéré 33 commandes avec relations
+
+Orders returned: 33 items
+
+GET /api/orders 200 in 243ms
+
+GET /api/publicities 200 in 121ms
+
+Error fetching announcements: error: relation "announcements" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.getAnnouncements (file:///app/dist/index.js:2074:25)
+
+    at async file:///app/dist/index.js:7420:30 {
+
+  length: 113,
+
+  severity: 'ERROR',
+
+  code: '42P01',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '829',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_relation.c',
+
+  line: '1392',
+
+  routine: 'parserOpenTable'
+
+}
+
+GET /api/announcements 500 in 13ms
+
+HEAD /api/health 200 in 2ms
+
+Error fetching announcements: error: relation "announcements" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.getAnnouncements (file:///app/dist/index.js:2074:25)
+
+    at async file:///app/dist/index.js:7420:30 {
+
+  length: 113,
+
+  severity: 'ERROR',
+
+  code: '42P01',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '829',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_relation.c',
+
+  line: '1392',
+
+  routine: 'parserOpenTable'
+
+}
+
+GET /api/announcements 500 in 11ms
