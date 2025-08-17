@@ -267,10 +267,7 @@ export default function AnnouncementCard() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div className="flex items-center gap-2">
-          <Megaphone className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-medium">Informations</CardTitle>
-        </div>
+        <CardTitle className="text-sm font-medium">Informations</CardTitle>
         <div className="flex items-center gap-2">
           {user?.role === 'admin' && (
             <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
@@ -371,6 +368,7 @@ export default function AnnouncementCard() {
               </DialogContent>
             </Dialog>
           )}
+          <Megaphone className="h-4 w-4 text-muted-foreground" />
         </div>
       </CardHeader>
       <CardContent>
