@@ -36,7 +36,7 @@ import {
   Info, 
   AlertTriangle, 
   CheckCircle, 
-  XCircle 
+  AlertCircle 
 } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/components/Layout";
@@ -62,18 +62,38 @@ type AnnouncementWithRelations = DashboardMessage & {
   };
 };
 
-// Configuration des priorités
+// Configuration des priorités avec icônes
 const getPriorityConfig = (type: string) => {
   switch (type) {
     case 'error':
-      return { label: 'Erreur', color: 'bg-red-100 text-red-800' };
+      return { 
+        label: 'Erreur', 
+        color: 'bg-red-100 text-red-800',
+        icon: AlertCircle,
+        iconColor: 'text-red-600'
+      };
     case 'warning':
-      return { label: 'Attention', color: 'bg-orange-100 text-orange-800' };
+      return { 
+        label: 'Attention', 
+        color: 'bg-orange-100 text-orange-800',
+        icon: AlertTriangle,
+        iconColor: 'text-orange-600'
+      };
     case 'success':
-      return { label: 'Succès', color: 'bg-green-100 text-green-800' };
+      return { 
+        label: 'Succès', 
+        color: 'bg-green-100 text-green-800',
+        icon: CheckCircle,
+        iconColor: 'text-green-600'
+      };
     case 'info':
     default:
-      return { label: 'Information', color: 'bg-blue-100 text-blue-800' };
+      return { 
+        label: 'Information', 
+        color: 'bg-blue-100 text-blue-800',
+        icon: Info,
+        iconColor: 'text-blue-600'
+      };
   }
 };
 
@@ -297,7 +317,10 @@ export default function AnnouncementCard() {
                   <div className="flex items-start space-x-3 flex-1 min-w-0">
                     <div className="h-2 w-2 bg-blue-500 mt-2 flex-shrink-0"></div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900">{announcement.title}</p>
+                      <div className="flex items-center gap-2 mb-1">
+                        <priorityConfig.icon className={`h-4 w-4 ${priorityConfig.iconColor}`} />
+                        <p className="font-medium text-gray-900">{announcement.title}</p>
+                      </div>
                       {announcement.content && (
                         <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap break-words">{announcement.content}</p>
                       )}
