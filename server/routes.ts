@@ -3043,18 +3043,19 @@ RÉSUMÉ DU SCAN
           const announcements = await Promise.all(
             messages.map(async (message) => {
               // Récupérer l'auteur
-              let author = { id: parseInt(message.createdBy) || 0, firstName: 'Utilisateur', lastName: 'Inconnu' };
+              let author = { id: message.createdBy, firstName: 'Utilisateur', lastName: 'Inconnu' };
               try {
-                const [userResult] = await db.select().from(users).where(eq(users.id, message.createdBy));
+                // En production, createdBy est varchar, donc chercher par username
+                const [userResult] = await db.select().from(users).where(eq(users.username, message.createdBy));
                 if (userResult) {
                   author = {
-                    id: parseInt(message.createdBy),
+                    id: userResult.id,
                     firstName: userResult.firstName || 'Utilisateur',
                     lastName: userResult.lastName || 'Inconnu'
                   };
                 }
               } catch (e) {
-                console.warn('Could not fetch author for message:', message.id);
+                console.warn('❌ [PRODUCTION] Could not fetch author for message:', message.id, e);
               }
               
               // Récupérer le groupe si storeId est défini
@@ -3152,7 +3153,7 @@ RÉSUMÉ DU SCAN
             content: announcementData.content,
             type: announcementData.type,
             storeId: announcementData.storeId,
-            createdBy: user.id.toString(),
+            createdBy: user.username, // Utiliser username plutôt que ID pour PostgreSQL
           }).returning();
           
           const announcement = {

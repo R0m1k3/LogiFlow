@@ -46,7 +46,7 @@ class AnnouncementDatabaseStorage implements IAnnouncementStorage {
 
     const results = await query;
     
-    return results.map(result => ({
+    return results.map((result: any) => ({
       id: result.id,
       title: result.title,
       content: result.content,
@@ -249,15 +249,12 @@ class AnnouncementMemoryStorage implements IAnnouncementStorage {
     return announcementWithRelations;
   }
 
-  async deleteAnnouncement(id: number): Promise<boolean> {
-    const existed = this.announcements.has(id);
+  async deleteAnnouncement(id: number): Promise<void> {
     const deleted = this.announcements.delete(id);
     
     if (deleted) {
       console.log(`🗑️ Annonce supprimée: ID ${id} (${this.announcements.size}/${this.MAX_ANNOUNCEMENTS} restantes)`);
     }
-    
-    return deleted;
   }
 }
 
