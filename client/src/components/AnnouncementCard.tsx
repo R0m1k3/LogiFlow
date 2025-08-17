@@ -35,8 +35,8 @@ import {
   X, 
   Info, 
   AlertTriangle, 
-  CheckCircle, 
-  AlertCircle 
+  Star, 
+  Sparkles 
 } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/components/Layout";
@@ -67,10 +67,10 @@ const getPriorityConfig = (type: string) => {
   switch (type) {
     case 'error':
       return { 
-        label: 'Erreur', 
-        color: 'bg-red-100 text-red-800',
-        icon: AlertCircle,
-        iconColor: 'text-red-600'
+        label: 'Nouveauté', 
+        color: 'bg-purple-100 text-purple-800',
+        icon: Sparkles,
+        iconColor: 'text-purple-600'
       };
     case 'warning':
       return { 
@@ -81,10 +81,10 @@ const getPriorityConfig = (type: string) => {
       };
     case 'success':
       return { 
-        label: 'Succès', 
-        color: 'bg-green-100 text-green-800',
-        icon: CheckCircle,
-        iconColor: 'text-green-600'
+        label: 'Important', 
+        color: 'bg-red-100 text-red-800',
+        icon: Star,
+        iconColor: 'text-red-600'
       };
     case 'info':
     default:
@@ -428,8 +428,8 @@ export default function AnnouncementCard() {
                       <SelectContent>
                         <SelectItem value="info">Information</SelectItem>
                         <SelectItem value="warning">Attention</SelectItem>
-                        <SelectItem value="error">Erreur</SelectItem>
-                        <SelectItem value="success">Succès</SelectItem>
+                        <SelectItem value="error">Nouveauté</SelectItem>
+                        <SelectItem value="success">Important</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
