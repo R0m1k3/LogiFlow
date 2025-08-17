@@ -1,0 +1,209 @@
+ctions
+ 
+ 
+ 
+      
+Admin filtering deliveries with groupIds: [ 1 ]
+
+Fetching all deliveries
+
+📢 [SERVER] Fetching announcements for user: admin_local environment: production
+
+📢 [SERVER] User found: { username: 'admin', role: 'admin' }
+
+🎯 [PRODUCTION] Using PostgreSQL DASHBOARD_MESSAGES table
+
+Orders API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  userRole: 'admin'
+
+}
+
+Admin filtering with groupIds: [ 1 ]
+
+Fetching all orders
+
+Customer Orders API called with: { groupIds: [ 1 ], userRole: 'admin' }
+
+GET /api/publicities 200 in 191ms
+
+🎯 [PRODUCTION] Found announcements: 0
+
+Customer Orders returned: 10 items
+
+🔗 PRODUCTION: getDeliveries() récupéré 48 livraisons avec relations
+
+Deliveries returned: 48 items
+
+GET /api/announcements 200 in 265ms
+
+GET /api/customer-orders 200 in 180ms
+
+GET /api/deliveries 200 in 187ms
+
+🔗 PRODUCTION: getOrders() récupéré 33 commandes avec relations
+
+Orders returned: 33 items
+
+GET /api/orders 200 in 241ms
+
+🎯 [SERVER] POST /api/announcements endpoint hit
+
+🎯 [SERVER] Request body: {
+
+  "title": "test",
+
+  "content": "test",
+
+  "type": "info",
+
+  "storeId": 1,
+
+  "createdBy": "admin"
+
+}
+
+🎯 [SERVER] User object: { hasClaims: false, hasId: true, userId: 'admin_local' }
+
+🎯 [SERVER] Extracted userId: admin_local
+
+🎯 [SERVER] User found: { username: 'admin', role: 'admin', id: 'admin_local' }
+
+🎯 [SERVER] User is admin, proceeding with validation
+
+🎯 [SERVER] Announcement data validated: {
+
+  title: 'test',
+
+  content: 'test',
+
+  type: 'info',
+
+  storeId: null,
+
+  createdBy: 'admin_local'
+
+}
+
+🎯 [PRODUCTION] Creating in PostgreSQL DASHBOARD_MESSAGES table
+
+🎯 [PRODUCTION] Announcement created successfully in DB: {
+
+
+
+,
+
+  title: 'test',
+
+  content: 'test',
+
+  type: 'info',
+
+  storeId: null,
+
+  createdBy: 'admin',
+
+  createdAt: 2025-08-17T09:19:30.102Z,
+
+  author: { id: 'admin_local', firstName: 'Administrateur', lastName: '' },
+
+  group: null
+
+}
+
+POST /api/announcements 201 in 19ms
+
+📢 [SERVER] Fetching announcements for user: admin_local environment: production
+
+📢 [SERVER] User found: { username: 'admin', role: 'admin' }
+
+🎯 [PRODUCTION] Using PostgreSQL DASHBOARD_MESSAGES table
+
+🎯 [PRODUCTION] Found announcements: 0
+
+GET /api/announcements 200 in 8ms
+
+HEAD /api/health 200 in 0ms
+
+🎯 [SERVER] POST /api/announcements endpoint hit
+
+🎯 [SERVER] Request body: {
+
+  "title": "rzqr",
+
+  "content": "etset",
+
+  "type": "info",
+
+  "storeId": 1,
+
+  "createdBy": "admin"
+
+}
+
+🎯 [SERVER] User object: { hasClaims: false, hasId: true, userId: 'admin_local' }
+
+🎯 [SERVER] Extracted userId: admin_local
+
+🎯 [SERVER] User found: { username: 'admin', role: 'admin', id: 'admin_local' }
+
+🎯 [SERVER] User is admin, proceeding with validation
+
+🎯 [SERVER] Announcement data validated: {
+
+  title: 'rzqr',
+
+  content: 'etset',
+
+  type: 'info',
+
+  storeId: null,
+
+  createdBy: 'admin_local'
+
+}
+
+🎯 [PRODUCTION] Creating in PostgreSQL DASHBOARD_MESSAGES table
+
+🎯 [PRODUCTION] Announcement created successfully in DB: {
+
+
+
+,
+
+  title: 'rzqr',
+
+  content: 'etset',
+
+  type: 'info',
+
+  storeId: null,
+
+  createdBy: 'admin',
+
+  createdAt: 2025-08-17T09:19:37.509Z,
+
+  author: { id: 'admin_local', firstName: 'Administrateur', lastName: '' },
+
+  group: null
+
+}
+
+POST /api/announcements 201 in 10ms
+
+📢 [SERVER] Fetching announcements for user: admin_local environment: production
+
+📢 [SERVER] User found: { username: 'admin', role: 'admin' }
+
+🎯 [PRODUCTION] Using PostgreSQL DASHBOARD_MESSAGES table
+
+🎯 [PRODUCTION] Found announcements: 0
+
+GET /api/announcements 200 in 11ms
+

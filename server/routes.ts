@@ -45,7 +45,7 @@ import {
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, or, isNull } from "drizzle-orm";
 import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
 import { weatherService } from "./weatherService.js";
@@ -3032,26 +3032,38 @@ RÉSUMÉ DU SCAN
             createdAt: dashboardMessages.createdAt,
           }).from(dashboardMessages);
           
-          // Filtrage par magasin pour admin
+          // Filtrage par magasin pour admin : inclure les annonces globales + annonces du magasin
           if (user.role === 'admin' && req.query.storeId) {
-            query = query.where(eq(dashboardMessages.storeId, parseInt(req.query.storeId as string)));
+            const storeId = parseInt(req.query.storeId as string);
+            // Inclure les annonces globales (storeId = null) ET les annonces du magasin sélectionné
+            query = query.where(
+              or(
+                eq(dashboardMessages.storeId, storeId),
+                isNull(dashboardMessages.storeId)
+              )
+            );
           }
           
           const messages = await query.orderBy(desc(dashboardMessages.createdAt)).limit(5);
+          
+          console.log('🔍 [PRODUCTION] Raw messages from DB:', messages.length, 'items:', messages);
           
           // Ajouter les relations manuellement
           const announcements = await Promise.all(
             messages.map(async (message) => {
               // Récupérer l'auteur
-              let author = { id: message.createdBy, firstName: 'Utilisateur', lastName: 'Inconnu' };
+              let author = { id: message.createdBy, firstName: 'Utilisateur', lastName: 'Inconnu', username: message.createdBy };
               try {
                 // En production, createdBy est varchar, donc chercher par username
+                console.log('🔍 [PRODUCTION] Looking for user with username:', message.createdBy);
                 const [userResult] = await db.select().from(users).where(eq(users.username, message.createdBy));
+                console.log('🔍 [PRODUCTION] User search result:', userResult ? 'Found' : 'Not found');
                 if (userResult) {
                   author = {
                     id: userResult.id,
                     firstName: userResult.firstName || 'Utilisateur',
-                    lastName: userResult.lastName || 'Inconnu'
+                    lastName: userResult.lastName || 'Inconnu',
+                    username: userResult.username
                   };
                 }
               } catch (e) {
@@ -3138,8 +3150,8 @@ RÉSUMÉ DU SCAN
         title: req.body.title,
         content: req.body.content,
         type: req.body.type || 'info',
-        storeId: null, // Toutes les annonces sont globales
-        createdBy: user.id,
+        storeId: req.body.storeId || null, // Permettre les annonces par magasin OU globales
+        createdBy: user.username, // Utiliser username pour PostgreSQL
       });
 
       console.log('🎯 [SERVER] Announcement data validated:', announcementData);
