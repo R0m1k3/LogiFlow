@@ -250,10 +250,27 @@ export default function AnnouncementCard() {
     }
   };
 
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'error':
+        return AlertTriangle;
+      case 'warning':
+        return Bell;
+      case 'success':
+        return CheckCircle;
+      case 'info':
+      default:
+        return Info;
+    }
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">Informations</CardTitle>
+        <div className="flex items-center gap-2">
+          <Megaphone className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium">Informations</CardTitle>
+        </div>
         <div className="flex items-center gap-2">
           {user?.role === 'admin' && (
             <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
@@ -354,7 +371,6 @@ export default function AnnouncementCard() {
               </DialogContent>
             </Dialog>
           )}
-          <Megaphone className="h-4 w-4 text-muted-foreground" />
         </div>
       </CardHeader>
       <CardContent>
@@ -369,35 +385,37 @@ export default function AnnouncementCard() {
           <div className="space-y-3">
             {announcements.map((announcement) => {
               const priorityConfig = getPriorityConfig(announcement.type);
-              const PriorityIcon = priorityConfig.icon;
+              const TypeIcon = getTypeIcon(announcement.type);
               
               return (
-                <div key={announcement.id} className="flex items-start justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium text-sm truncate">
-                        {announcement.title}
-                      </h4>
-                      <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs">
-                        <PriorityIcon className="w-2.5 h-2.5" />
-                        {priorityConfig.label}
-                      </Badge>
-                    </div>
-                    
-                    {announcement.content && (
-                      <p className="text-xs text-muted-foreground mb-1 line-clamp-1">
-                        {announcement.content}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span>
-                        {safeFormat(safeDate(announcement.createdAt), 'dd/MM à HH:mm')}
-                      </span>
-                      <span>
-                        {announcement.author.firstName} {announcement.author.lastName}
-                        {announcement.group && ` • ${announcement.group.name}`}
-                      </span>
+                <div key={announcement.id} className="flex items-start justify-between p-3 bg-muted/30 transition-colors">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <TypeIcon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <h4 className="font-medium text-sm truncate">
+                          {announcement.title}
+                        </h4>
+                        <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs flex-shrink-0">
+                          {priorityConfig.label}
+                        </Badge>
+                      </div>
+                      
+                      {announcement.content && (
+                        <p className="text-xs text-muted-foreground mb-1 line-clamp-1">
+                          {announcement.content}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>
+                          {safeFormat(safeDate(announcement.createdAt), 'dd/MM à HH:mm')}
+                        </span>
+                        <span>
+                          {announcement.author.firstName} {announcement.author.lastName}
+                          {announcement.group && ` • ${announcement.group.name}`}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   {user?.role === 'admin' && (
