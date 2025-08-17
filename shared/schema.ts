@@ -70,6 +70,8 @@ export const userGroups = pgTable("user_groups", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+
+
 // Suppliers - Schema exact correspondant à la production
 export const suppliers = pgTable("suppliers", {
   id: serial("id").primaryKey(),
@@ -530,15 +532,12 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   dueDate: z.coerce.date().optional().nullable(), // Convertit automatiquement les chaînes en Date
 });
 
-export const insertAnnouncementSchema = createInsertSchema(dashboardMessages).omit({
+export const insertDashboardMessageSchema = createInsertSchema(dashboardMessages).omit({
   id: true,
   createdAt: true,
-}).extend({
-  type: z.enum(["info", "warning", "error", "success"]).default("info"),
 });
 
-// Mapping pour la compatibilité avec l'interface actuelle
-export const insertDashboardMessageSchema = insertAnnouncementSchema;
+export const insertAnnouncementSchema = insertDashboardMessageSchema;
 
 export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
   id: true,
