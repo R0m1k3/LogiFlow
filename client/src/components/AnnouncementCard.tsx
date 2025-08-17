@@ -388,7 +388,7 @@ export default function AnnouncementCard() {
               const TypeIcon = getTypeIcon(announcement.type);
               
               return (
-                <div key={announcement.id} className="flex items-start justify-between p-3 bg-muted/30 transition-colors">
+                <div key={announcement.id} className="flex items-start justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <TypeIcon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
