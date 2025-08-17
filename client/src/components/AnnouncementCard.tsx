@@ -315,7 +315,6 @@ export default function AnnouncementCard() {
               return (
                 <div key={announcement.id} className="flex items-start justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-blue-500">
                   <div className="flex items-start space-x-3 flex-1 min-w-0">
-                    <div className="h-2 w-2 bg-blue-500 mt-2 flex-shrink-0"></div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <priorityConfig.icon className={`h-4 w-4 ${priorityConfig.iconColor}`} />
