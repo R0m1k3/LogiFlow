@@ -3250,28 +3250,68 @@ RÉSUMÉ DU SCAN
   });
 
   app.delete('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
+    console.log('🗑️ [SERVER] DELETE /api/announcements/:id endpoint hit');
+    console.log('🗑️ [SERVER] Announcement ID:', req.params.id);
+    
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      console.log('🗑️ [SERVER] Extracted userId:', userId);
+      
       const user = await storage.getUserWithGroups(userId);
       if (!user) {
+        console.error('🗑️ [SERVER] User not found for ID:', userId);
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log('🗑️ [SERVER] User found:', { username: user.username, role: user.role, id: user.id });
+
       // Only admin can delete announcements
       if (user.role !== 'admin') {
+        console.error('🗑️ [SERVER] Access denied - user role:', user.role);
         return res.status(403).json({ message: "Only administrators can delete announcements" });
       }
 
       const id = parseInt(req.params.id);
-      const success = await storage.deleteAnnouncement(id);
-      
-      if (!success) {
-        return res.status(404).json({ message: "Announcement not found" });
-      }
+      console.log('🗑️ [SERVER] Parsed announcement ID:', id);
 
-      res.json({ message: "Announcement deleted successfully" });
+      if (environment === 'production') {
+        // PRODUCTION: Supprimer dans PostgreSQL DASHBOARD_MESSAGES
+        console.log('🗑️ [PRODUCTION] Deleting from PostgreSQL DASHBOARD_MESSAGES table');
+        try {
+          const deletedRows = await db.delete(dashboardMessages).where(eq(dashboardMessages.id, id)).returning();
+          
+          if (deletedRows.length === 0) {
+            console.error('🗑️ [PRODUCTION] Announcement not found:', id);
+            return res.status(404).json({ message: "Announcement not found" });
+          }
+          
+          console.log('🗑️ [PRODUCTION] Announcement deleted successfully from DB:', deletedRows[0]);
+          res.json({ message: "Announcement deleted successfully" });
+        } catch (dbError) {
+          console.error('🗑️ [PRODUCTION] DB error, fallback to memory:', dbError);
+          const success = await storage.deleteAnnouncement(id);
+          
+          if (!success) {
+            return res.status(404).json({ message: "Announcement not found" });
+          }
+          
+          res.json({ message: "Announcement deleted successfully" });
+        }
+      } else {
+        // DÉVELOPPEMENT: Supprimer en mémoire
+        console.log('🗑️ [DEV] Deleting from memory storage');
+        const success = await storage.deleteAnnouncement(id);
+        
+        if (!success) {
+          console.error('🗑️ [DEV] Announcement not found:', id);
+          return res.status(404).json({ message: "Announcement not found" });
+        }
+        
+        console.log('🗑️ [DEV] Announcement deleted from memory');
+        res.json({ message: "Announcement deleted successfully" });
+      }
     } catch (error) {
-      console.error("Error deleting announcement:", error);
+      console.error("🗑️ [SERVER] Error deleting announcement:", error);
       res.status(500).json({ message: "Failed to delete announcement" });
     }
   });
