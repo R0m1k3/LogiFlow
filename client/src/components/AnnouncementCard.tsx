@@ -293,13 +293,13 @@ export default function AnnouncementCard() {
               const priorityConfig = getPriorityConfig(announcement.type);
               
               return (
-                <div key={announcement.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-blue-500">
-                  <div className="flex items-center space-x-3">
-                    <div className="h-2 w-2 bg-blue-500"></div>
-                    <div>
+                <div key={announcement.id} className="flex items-start justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-blue-500">
+                  <div className="flex items-start space-x-3 flex-1 min-w-0">
+                    <div className="h-2 w-2 bg-blue-500 mt-2 flex-shrink-0"></div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium text-gray-900">{announcement.title}</p>
                       {announcement.content && (
-                        <p className="text-sm text-gray-600 truncate max-w-60">{announcement.content}</p>
+                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap break-words">{announcement.content}</p>
                       )}
                       <p className="text-xs text-gray-500 mt-1">
                         {announcement.author?.firstName} {announcement.author?.lastName}
