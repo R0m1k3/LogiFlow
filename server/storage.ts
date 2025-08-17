@@ -1298,7 +1298,33 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(invoiceVerificationCache)
       .where(eq(invoiceVerificationCache.cacheKey, cacheKey));
-    return cache;
+    
+    // ✅ Vérification d'expiration ajoutée pour production
+    if (cache) {
+      const now = new Date();
+      const expiresAt = new Date(cache.expiresAt);
+      
+      if (now < expiresAt) {
+        console.log('✅ [DATABASE-CACHE] Cache hit pour:', { 
+          cacheKey, 
+          expires: cache.expiresAt,
+          hoursRemaining: Math.round((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60))
+        });
+        return cache; // Cache valide
+      } else {
+        console.log('⏰ [DATABASE-CACHE] Cache expiré, suppression:', { 
+          cacheKey, 
+          expiredAt: cache.expiresAt 
+        });
+        // Supprimer le cache expiré
+        await db.delete(invoiceVerificationCache)
+          .where(eq(invoiceVerificationCache.cacheKey, cacheKey));
+        return undefined; // Cache expiré
+      }
+    }
+    
+    console.log('❌ [DATABASE-CACHE] Cache miss pour:', { cacheKey });
+    return undefined; // Pas de cache
   }
 
   async createInvoiceVerificationCache(cacheData: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
