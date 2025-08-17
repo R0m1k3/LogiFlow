@@ -39,15 +39,22 @@ import {
   insertSavTicketSchema,
   insertSavTicketHistorySchema,
   insertWeatherDataSchema,
-  insertWeatherSettingsSchema
+  insertWeatherSettingsSchema,
+  users, groups, userGroups, suppliers, orders, deliveries, publicities, publicityParticipations,
+  customerOrders, nocodbConfigs, dlcProducts, tasks, invoiceVerifications, dashboardMessages
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
+import { eq, desc } from "drizzle-orm";
 import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
 import { weatherService } from "./weatherService.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Detect environment
+  const environment = process.env.NODE_ENV || 'development';
+  console.log('🌍 Environment detected:', environment);
+
   // Health check endpoint for Docker
   app.get('/api/health', (req, res) => {
     res.status(200).json({
@@ -2997,33 +3004,102 @@ RÉSUMÉ DU SCAN
   });
 
   // Route de géolocalisation météo
-  // Announcement routes
+  // Announcement routes - PostgreSQL en production, mémoire en développement
   app.get('/api/announcements', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
+      console.log('📢 [SERVER] Fetching announcements for user:', userId, 'environment:', environment);
+      
       const user = await storage.getUserWithGroups(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Get user's group IDs for filtering
-      let groupIds: number[] = [];
-      if (user.role === 'admin') {
-        // Admin can see all announcements, but can filter by selected store
-        const storeId = req.query.storeId;
-        if (storeId) {
-          groupIds = [parseInt(storeId)];
+      console.log('📢 [SERVER] User found:', { username: user.username, role: user.role });
+
+      if (environment === 'production') {
+        // PRODUCTION: Utiliser PostgreSQL avec DASHBOARD_MESSAGES
+        console.log('🎯 [PRODUCTION] Using PostgreSQL DASHBOARD_MESSAGES table');
+        
+        try {
+          let query = db.select({
+            id: dashboardMessages.id,
+            title: dashboardMessages.title,
+            content: dashboardMessages.content,
+            type: dashboardMessages.type,
+            storeId: dashboardMessages.storeId,
+            createdBy: dashboardMessages.createdBy,
+            createdAt: dashboardMessages.createdAt,
+          }).from(dashboardMessages);
+          
+          // Filtrage par magasin pour admin
+          if (user.role === 'admin' && req.query.storeId) {
+            query = query.where(eq(dashboardMessages.storeId, parseInt(req.query.storeId as string)));
+          }
+          
+          const messages = await query.orderBy(desc(dashboardMessages.createdAt)).limit(5);
+          
+          // Ajouter les relations manuellement
+          const announcements = await Promise.all(
+            messages.map(async (message) => {
+              // Récupérer l'auteur
+              let author = { id: parseInt(message.createdBy) || 0, firstName: 'Utilisateur', lastName: 'Inconnu' };
+              try {
+                const [userResult] = await db.select().from(users).where(eq(users.id, message.createdBy));
+                if (userResult) {
+                  author = {
+                    id: parseInt(message.createdBy),
+                    firstName: userResult.firstName || 'Utilisateur',
+                    lastName: userResult.lastName || 'Inconnu'
+                  };
+                }
+              } catch (e) {
+                console.warn('Could not fetch author for message:', message.id);
+              }
+              
+              // Récupérer le groupe si storeId est défini
+              let group = null;
+              if (message.storeId) {
+                try {
+                  const [groupResult] = await db.select().from(groups).where(eq(groups.id, message.storeId));
+                  if (groupResult) {
+                    group = { id: groupResult.id, name: groupResult.name };
+                  }
+                } catch (e) {
+                  console.warn('Could not fetch group for message:', message.id);
+                }
+              }
+              
+              return {
+                ...message,
+                author,
+                group
+              };
+            })
+          );
+          
+          console.log('🎯 [PRODUCTION] Found announcements:', announcements.length);
+          res.json(announcements);
+          
+        } catch (dbError) {
+          console.error('🎯 [PRODUCTION] Database error:', dbError);
+          // Fallback au stockage mémoire en cas d'erreur DB
+          console.log('🧠 [FALLBACK] Using memory storage due to DB error');
+          const announcements = await storage.getAnnouncements();
+          res.json(announcements);
         }
       } else {
-        // Other roles see only their assigned groups + global announcements
-        const userGroups = (user as any).userGroups;
-        groupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+        // DÉVELOPPEMENT: Utiliser stockage mémoire
+        console.log('🧠 [DEV] Using memory storage for announcements');
+        const groupIds = user.role === 'admin' && req.query.storeId 
+          ? [parseInt(req.query.storeId as string)]
+          : undefined;
+        
+        const announcements = await storage.getAnnouncements(groupIds);
+        res.json(announcements);
       }
-
-      const announcements = await storage.getAnnouncements(groupIds.length > 0 ? groupIds : undefined);
-      res.json(announcements);
     } catch (error) {
-      console.error("Error fetching announcements:", error);
+      console.error("📢 [SERVER] Error fetching announcements:", error);
       res.status(500).json({ message: "Failed to fetch announcements" });
     }
   });
@@ -3067,10 +3143,37 @@ RÉSUMÉ DU SCAN
 
       console.log('🎯 [SERVER] Announcement data validated:', announcementData);
 
-      const announcement = await storage.createAnnouncement(announcementData);
-      console.log('🎯 [SERVER] Announcement created successfully:', announcement);
-      
-      res.status(201).json(announcement);
+      if (environment === 'production') {
+        // PRODUCTION: Créer dans PostgreSQL DASHBOARD_MESSAGES
+        console.log('🎯 [PRODUCTION] Creating in PostgreSQL DASHBOARD_MESSAGES table');
+        try {
+          const [newMessage] = await db.insert(dashboardMessages).values({
+            title: announcementData.title,
+            content: announcementData.content,
+            type: announcementData.type,
+            storeId: announcementData.storeId,
+            createdBy: user.id.toString(),
+          }).returning();
+          
+          const announcement = {
+            ...newMessage,
+            author: { id: user.id, firstName: user.firstName, lastName: user.lastName },
+            group: null
+          };
+          
+          console.log('🎯 [PRODUCTION] Announcement created successfully in DB:', announcement);
+          res.status(201).json(announcement);
+        } catch (dbError) {
+          console.error('🎯 [PRODUCTION] DB error, fallback to memory:', dbError);
+          const announcement = await storage.createAnnouncement(announcementData);
+          res.status(201).json(announcement);
+        }
+      } else {
+        // DÉVELOPPEMENT: Créer en mémoire
+        const announcement = await storage.createAnnouncement(announcementData);
+        console.log('🧠 [DEV] Announcement created in memory:', announcement);
+        res.status(201).json(announcement);
+      }
     } catch (error) {
       console.error('🎯 [SERVER] Error creating announcement:', error);
       if (error instanceof z.ZodError) {

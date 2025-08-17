@@ -267,10 +267,7 @@ export default function AnnouncementCard() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div className="flex items-center gap-2">
-          <Megaphone className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-medium">Informations</CardTitle>
-        </div>
+        <CardTitle className="text-sm font-medium">Informations</CardTitle>
         <div className="flex items-center gap-2">
           {user?.role === 'admin' && (
             <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
@@ -371,6 +368,7 @@ export default function AnnouncementCard() {
               </DialogContent>
             </Dialog>
           )}
+          <Megaphone className="h-4 w-4 text-muted-foreground" />
         </div>
       </CardHeader>
       <CardContent>
@@ -388,15 +386,15 @@ export default function AnnouncementCard() {
               const TypeIcon = getTypeIcon(announcement.type);
               
               return (
-                <div key={announcement.id} className="flex items-start justify-between p-3 bg-muted/30 transition-colors">
+                <div key={announcement.id} className="flex items-start justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <TypeIcon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                    <TypeIcon className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-medium text-sm truncate">
                           {announcement.title}
                         </h4>
-                        <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs flex-shrink-0">
+                        <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs">
                           {priorityConfig.label}
                         </Badge>
                       </div>
