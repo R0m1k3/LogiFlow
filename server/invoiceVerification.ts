@@ -19,10 +19,18 @@ export class InvoiceVerificationService {
   async checkCache(invoiceReference: string, groupId: number): Promise<any | null> {
     try {
       const cacheKey = this.generateCacheKey(invoiceReference, groupId);
+      console.log('🔍 [CACHE] Recherche cache pour:', { invoiceReference, groupId, cacheKey });
+      
       const cached = await storage.getInvoiceVerificationCache(cacheKey);
+      console.log('🔍 [CACHE] Résultat cache:', { 
+        found: !!cached, 
+        expired: cached ? new Date() >= new Date(cached.expiresAt) : 'N/A',
+        expiresAt: cached?.expiresAt,
+        currentTime: new Date().toISOString()
+      });
       
       if (cached && new Date() < new Date(cached.expiresAt)) {
-        console.log('💾 Cache hit pour:', { invoiceReference, groupId });
+        console.log('✅ [CACHE] Cache hit pour:', { invoiceReference, groupId, exists: cached.exists });
         return {
           exists: cached.exists,
           matchType: cached.matchType,
@@ -33,9 +41,15 @@ export class InvoiceVerificationService {
         };
       }
       
+      if (cached && new Date() >= new Date(cached.expiresAt)) {
+        console.log('⏰ [CACHE] Cache expiré pour:', { invoiceReference, groupId });
+      } else {
+        console.log('❌ [CACHE] Cache miss pour:', { invoiceReference, groupId });
+      }
+      
       return null;
     } catch (error) {
-      console.error('❌ Erreur lecture cache:', error);
+      console.error('❌ [CACHE] Erreur lecture cache:', error);
       return null;
     }
   }
@@ -49,7 +63,15 @@ export class InvoiceVerificationService {
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24); // Cache pendant 24h
       
-      await storage.saveInvoiceVerificationCache({
+      console.log('💾 [CACHE] Tentative sauvegarde:', { 
+        invoiceReference, 
+        groupId, 
+        cacheKey, 
+        exists: result.exists,
+        expiresAt: expiresAt.toISOString() 
+      });
+      
+      const cacheData = {
         cacheKey,
         groupId,
         invoiceReference,
@@ -60,16 +82,29 @@ export class InvoiceVerificationService {
         cacheHit: false,
         apiCallTime: null,
         expiresAt
-      });
+      };
       
-      console.log('💾 Résultat sauvé en cache:', { invoiceReference, groupId, exists: result.exists });
+      const savedCache = await storage.saveInvoiceVerificationCache(cacheData);
+      
+      console.log('✅ [CACHE] Résultat sauvé en cache:', { 
+        id: savedCache.id,
+        invoiceReference, 
+        groupId, 
+        exists: result.exists,
+        cacheKey
+      });
     } catch (error) {
       // Gérer spécifiquement les erreurs de contrainte unique (duplicate key)
       if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
-        console.log('🔄 Cache déjà existant pour cette clé, ignoré:', { invoiceReference, groupId });
+        console.log('🔄 [CACHE] Cache déjà existant pour cette clé, ignoré:', { invoiceReference, groupId });
         return;
       }
-      console.error('❌ Erreur sauvegarde cache:', error);
+      console.error('❌ [CACHE] Erreur sauvegarde cache:', error);
+      console.error('❌ [CACHE] Détails erreur:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : 'No stack'
+      });
     }
   }
 
@@ -86,7 +121,7 @@ export class InvoiceVerificationService {
     fromCache?: boolean;
   }> {
     try {
-      console.log('🔍 Début vérification facture:', { invoiceReference, groupId, forceRefresh });
+      console.log('🔍 [INVOICE] Début vérification facture:', { invoiceReference, groupId, forceRefresh });
       
       if (!invoiceReference || !invoiceReference.trim()) {
         return {
@@ -98,10 +133,15 @@ export class InvoiceVerificationService {
 
       // Vérifier le cache d'abord (sauf si refresh forcé)
       if (!forceRefresh) {
+        console.log('🔍 [INVOICE] Vérification cache...');
         const cachedResult = await this.checkCache(invoiceReference, groupId);
         if (cachedResult) {
+          console.log('✅ [INVOICE] Résultat depuis cache:', cachedResult);
           return cachedResult;
         }
+        console.log('🔍 [INVOICE] Pas de cache, requête API...');
+      } else {
+        console.log('🔄 [INVOICE] Refresh forcé, ignorant le cache');
       }
 
       // Récupérer la configuration du groupe
@@ -137,30 +177,42 @@ export class InvoiceVerificationService {
         
         // Simuler différents cas selon la référence
         if (invoiceReference.toLowerCase().includes('test')) {
-          return {
+          const result = {
             exists: true,
             matchType: 'invoice_reference',
             invoiceReference: invoiceReference,
             invoiceAmount: 123.45,
             supplierName: 'Fournisseur Test'
           };
+          
+          // Sauvegarder en cache
+          await this.saveToCache(invoiceReference, groupId, result, result.supplierName);
+          return result;
         }
         
         if (invoiceReference.toLowerCase().includes('bl')) {
-          return {
+          const result = {
             exists: true,
             matchType: 'bl_number',
             invoiceReference: `FACT_${invoiceReference}`,
             invoiceAmount: 67.89,
             supplierName: 'Fournisseur BL'
           };
+          
+          // Sauvegarder en cache
+          await this.saveToCache(invoiceReference, groupId, result, result.supplierName);
+          return result;
         }
 
-        return {
+        const result = {
           exists: false,
           matchType: 'none',
           errorMessage: 'Facture non trouvée (mode développement)'
         };
+        
+        // Sauvegarder même les résultats "non trouvé" pour éviter les rappels répétés
+        await this.saveToCache(invoiceReference, groupId, result);
+        return result;
       }
 
       // En production, faire l'appel réel à NocoDB

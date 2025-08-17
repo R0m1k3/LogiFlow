@@ -1919,6 +1919,7 @@ export class MemStorage implements IStorage {
   private announcements = new Map<number, Announcement>();
   private savTickets = new Map<number, SavTicket>();
   private savTicketHistories = new Map<number, SavTicketHistory[]>();
+  private invoiceVerificationCache = new Map<string, InvoiceVerificationCache>();
 
   private idCounters = {
     group: 1,
@@ -2220,7 +2221,18 @@ export class MemStorage implements IStorage {
   }
 
   async getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined> {
-    return undefined; // Pas de cache en développement
+    // Implémentation temporaire d'un cache en mémoire pour tester
+    const cached = this.invoiceVerificationCache.get(cacheKey);
+    if (cached && new Date() < new Date(cached.expiresAt)) {
+      console.log('✅ [MEMSTORAGE-CACHE] Cache hit pour:', { cacheKey, expires: cached.expiresAt });
+      return cached;
+    }
+    if (cached && new Date() >= new Date(cached.expiresAt)) {
+      console.log('⏰ [MEMSTORAGE-CACHE] Cache expiré, suppression:', { cacheKey });
+      this.invoiceVerificationCache.delete(cacheKey);
+    }
+    console.log('❌ [MEMSTORAGE-CACHE] Cache miss pour:', { cacheKey });
+    return undefined;
   }
 
   async createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
@@ -2243,7 +2255,15 @@ export class MemStorage implements IStorage {
   }
 
   async saveInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
-    return this.createInvoiceVerificationCache(cache);
+    const newCache = await this.createInvoiceVerificationCache(cache);
+    // Sauver en mémoire pour le cache temporaire
+    console.log('💾 [MEMSTORAGE-CACHE] Sauvegarde en cache:', { 
+      cacheKey: cache.cacheKey,
+      exists: cache.exists,
+      expiresAt: cache.expiresAt
+    });
+    this.invoiceVerificationCache.set(cache.cacheKey, newCache);
+    return newCache;
   }
 
   async clearExpiredCache(): Promise<void> {
@@ -3381,7 +3401,8 @@ console.log('🔗 Database initialization:', {
   dbHost: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'unknown'
 });
 
-export const storage: IStorage = isProduction ? new DatabaseStorage() : new MemStorage();
+// TEMPORARY: Force MemStorage for cache testing  
+export const storage: IStorage = new MemStorage();
 if (isProduction) {
   console.log('✅ Using DatabaseStorage (production PostgreSQL)');
 } else {
