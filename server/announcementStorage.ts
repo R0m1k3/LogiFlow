@@ -1,7 +1,90 @@
-import { Announcement, InsertAnnouncement, AnnouncementWithRelations, User, Group } from "@shared/schema";
+import { DashboardMessage, InsertDashboardMessage, DashboardMessageWithRelations, User, Group } from "@shared/schema";
+import { db } from "./db";
+import { dashboardMessages, users, groups } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 
-// Stockage en mémoire partagé pour les annonces (maximum 5)
-class AnnouncementMemoryStorage {
+// Type aliases pour compatibilité
+type Announcement = DashboardMessage;
+type InsertAnnouncement = InsertDashboardMessage;
+type AnnouncementWithRelations = DashboardMessageWithRelations;
+
+// Interface commune pour le stockage
+interface IAnnouncementStorage {
+  getAnnouncements(groupIds?: number[]): Promise<AnnouncementWithRelations[]>;
+  createAnnouncement(announcement: InsertAnnouncement): Promise<DashboardMessage>;
+  updateAnnouncement(id: number, announcement: Partial<InsertAnnouncement>): Promise<DashboardMessage>;
+  deleteAnnouncement(id: number): Promise<void>;
+}
+
+// Stockage PostgreSQL pour la production
+class AnnouncementDatabaseStorage implements IAnnouncementStorage {
+  async getAnnouncements(groupIds?: number[]): Promise<AnnouncementWithRelations[]> {
+    let query = db
+      .select({
+        id: dashboardMessages.id,
+        title: dashboardMessages.title,
+        content: dashboardMessages.content,
+        type: dashboardMessages.type,
+        storeId: dashboardMessages.storeId,
+        createdBy: dashboardMessages.createdBy,
+        createdAt: dashboardMessages.createdAt,
+        author: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+        },
+        group: {
+          id: groups.id,
+          name: groups.name,
+        },
+      })
+      .from(dashboardMessages)
+      .leftJoin(users, eq(dashboardMessages.createdBy, users.id))
+      .leftJoin(groups, eq(dashboardMessages.storeId, groups.id))
+      .orderBy(desc(dashboardMessages.createdAt));
+
+    const results = await query;
+    
+    return results.map(result => ({
+      id: result.id,
+      title: result.title,
+      content: result.content,
+      type: result.type,
+      storeId: result.storeId,
+      createdBy: result.createdBy,
+      createdAt: result.createdAt,
+      author: result.author as User,
+      group: result.group as Group | undefined,
+    }));
+  }
+
+  async createAnnouncement(announcement: InsertAnnouncement): Promise<DashboardMessage> {
+    const [created] = await db
+      .insert(dashboardMessages)
+      .values(announcement)
+      .returning();
+    return created;
+  }
+
+  async updateAnnouncement(id: number, announcement: Partial<InsertAnnouncement>): Promise<DashboardMessage> {
+    const [updated] = await db
+      .update(dashboardMessages)
+      .set(announcement)
+      .where(eq(dashboardMessages.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteAnnouncement(id: number): Promise<void> {
+    await db
+      .delete(dashboardMessages)
+      .where(eq(dashboardMessages.id, id));
+  }
+}
+
+// Stockage en mémoire pour le développement
+class AnnouncementMemoryStorage implements IAnnouncementStorage {
   private announcements = new Map<number, Announcement>();
   private idCounter = 1;
   private readonly MAX_ANNOUNCEMENTS = 5;
@@ -178,16 +261,30 @@ class AnnouncementMemoryStorage {
   }
 }
 
-// Instance globale partagée
-let globalAnnouncementStorage: AnnouncementMemoryStorage | null = null;
+// Instances globales pour les différents environnements
+let memoryInstance: AnnouncementMemoryStorage | null = null;
+let databaseInstance: AnnouncementDatabaseStorage | null = null;
 
 export function getAnnouncementStorage(
-  usersGetter: () => Promise<User[]>,
-  groupsGetter: () => Promise<Group[]>
-): AnnouncementMemoryStorage {
-  if (!globalAnnouncementStorage) {
-    globalAnnouncementStorage = new AnnouncementMemoryStorage(usersGetter, groupsGetter);
-    console.log('📢 Stockage mémoire des annonces initialisé');
+  usersGetter?: () => Promise<User[]>,
+  groupsGetter?: () => Promise<Group[]>
+): IAnnouncementStorage {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    if (!databaseInstance) {
+      databaseInstance = new AnnouncementDatabaseStorage();
+      console.log('📢 Stockage PostgreSQL des annonces initialisé pour la production');
+    }
+    return databaseInstance;
+  } else {
+    if (!memoryInstance) {
+      if (!usersGetter || !groupsGetter) {
+        throw new Error("usersGetter and groupsGetter are required for memory storage initialization");
+      }
+      memoryInstance = new AnnouncementMemoryStorage(usersGetter, groupsGetter);
+      console.log('📢 Stockage mémoire des annonces initialisé pour le développement');
+    }
+    return memoryInstance;
   }
-  return globalAnnouncementStorage;
 }
