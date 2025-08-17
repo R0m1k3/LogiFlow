@@ -3401,8 +3401,7 @@ console.log('🔗 Database initialization:', {
   dbHost: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'unknown'
 });
 
-// TEMPORARY: Force MemStorage for cache testing  
-export const storage: IStorage = new MemStorage();
+export const storage: IStorage = isProduction ? new DatabaseStorage() : new MemStorage();
 if (isProduction) {
   console.log('✅ Using DatabaseStorage (production PostgreSQL)');
 } else {
