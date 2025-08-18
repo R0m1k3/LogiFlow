@@ -323,10 +323,11 @@ export default function AnnouncementCard() {
                       {announcement.content && (
                         <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap break-words">{announcement.content}</p>
                       )}
-                      <p className="text-xs text-gray-500 mt-1">
-                        {announcement.author?.firstName} {announcement.author?.lastName}
-                        {announcement.group && ` • ${announcement.group.name}`}
-                      </p>
+                      {announcement.group && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {announcement.group.name}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="text-right flex items-center space-x-2">
