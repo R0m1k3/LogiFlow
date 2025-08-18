@@ -190,6 +190,38 @@ export default function SavTickets() {
     },
   });
 
+  // Update ticket status/priority mutation
+  const updateTicketMutation = useMutation({
+    mutationFn: async (data: { ticketId: number; status?: string; priority?: string; resolutionDescription?: string }) => {
+      const response = await apiRequest(`/api/sav/tickets/${data.ticketId}`, "PATCH", {
+        status: data.status,
+        priority: data.priority,
+        resolutionDescription: data.resolutionDescription,
+      });
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sav/tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sav/stats'] });
+      if (selectedTicket) {
+        queryClient.invalidateQueries({ queryKey: [`/api/sav/tickets/${selectedTicket.id}`] });
+      }
+      setTempStatus("");
+      setTempPriority("");
+      toast({
+        title: "Ticket mis à jour",
+        description: "Le statut du ticket a été modifié avec succès.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error?.message || "Impossible de modifier le ticket.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Delete ticket mutation
   const deleteTicketMutation = useMutation({
     mutationFn: async (ticketId: number) => {
@@ -263,7 +295,7 @@ export default function SavTickets() {
       problemDescription: formData.problemDescription,
       priority: formData.priority as "faible" | "normale" | "haute" | "critique",
       status: "nouveau" as const,
-      createdBy: 1, // Will be set by the backend from session
+      createdBy: "1", // Will be set by the backend from session
       clientName: formData.clientName || undefined,
       clientPhone: formData.clientPhone || undefined,
     };
@@ -284,6 +316,20 @@ export default function SavTickets() {
     enabled: !!selectedTicket && showDetailModal,
     staleTime: 0, // Toujours récupérer les derniers commentaires
   });
+
+  // Function to check if ticket has recent comments (last 24h)
+  const hasRecentComments = (ticket: SavTicketWithRelations) => {
+    if (!ticket.history || ticket.history.length === 0) return false;
+    
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    
+    return ticket.history.some(entry => 
+      entry.action === 'comment' && 
+      entry.createdAt && 
+      new Date(entry.createdAt) > oneDayAgo
+    );
+  };
 
   // Handle editing ticket
   const handleEditTicket = (ticket: SavTicketWithRelations) => {
@@ -370,160 +416,200 @@ export default function SavTickets() {
                 </DialogDescription>
               </DialogHeader>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Informations produit */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Informations produit</h3>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="productGencode">Code-barres produit *</Label>
-                    <Input
-                      id="productGencode"
-                      value={formData.productGencode}
-                      onChange={(e) => setFormData({...formData, productGencode: e.target.value})}
-                      placeholder="Code-barres du produit"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="productReference">Référence produit</Label>
-                    <Input
-                      id="productReference"
-                      value={formData.productReference}
-                      onChange={(e) => setFormData({...formData, productReference: e.target.value})}
-                      placeholder="Référence du produit"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="productDesignation">Désignation produit *</Label>
-                    <Input
-                      id="productDesignation"
-                      value={formData.productDesignation}
-                      onChange={(e) => setFormData({...formData, productDesignation: e.target.value})}
-                      placeholder="Nom/désignation du produit"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="supplierId">Fournisseur *</Label>
-                    <Select value={formData.supplierId} onValueChange={(value) => setFormData({...formData, supplierId: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un fournisseur" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {suppliersData.map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                            {supplier.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {availableGroups.length > 1 && (
-                    <div className="space-y-2">
-                      <Label htmlFor="groupId">Magasin</Label>
-                      <Select value={formData.groupId} onValueChange={(value) => setFormData({...formData, groupId: value})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un magasin" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableGroups.map((group) => (
-                            <SelectItem key={group.id} value={group.id.toString()}>
-                              {group.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  
-                  {availableGroups.length === 1 && (
-                    <div className="space-y-2">
-                      <Label>Magasin assigné</Label>
-                      <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
-                        <Building className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-700">{availableGroups[0].name}</span>
+              <div className="space-y-6">
+                {/* Section Informations Produit */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <Building className="h-5 w-5 mr-2" />
+                      Informations Produit
+                    </CardTitle>
+                    <CardDescription>
+                      Détails du produit concerné par le SAV
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="productGencode">Code-barres produit *</Label>
+                        <Input
+                          id="productGencode"
+                          value={formData.productGencode}
+                          onChange={(e) => setFormData({...formData, productGencode: e.target.value})}
+                          placeholder="Code-barres du produit"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="productReference">Référence produit</Label>
+                        <Input
+                          id="productReference"
+                          value={formData.productReference}
+                          onChange={(e) => setFormData({...formData, productReference: e.target.value})}
+                          placeholder="Référence du produit"
+                        />
                       </div>
                     </div>
-                  )}
-                  
-                  {availableGroups.length === 0 && (
+                    
                     <div className="space-y-2">
-                      <Label>Magasin</Label>
-                      <div className="p-2 bg-orange-50 border border-orange-200 rounded text-sm text-orange-700">
-                        Aucun magasin assigné. Contactez un administrateur.
-                      </div>
+                      <Label htmlFor="productDesignation">Désignation produit *</Label>
+                      <Input
+                        id="productDesignation"
+                        value={formData.productDesignation}
+                        onChange={(e) => setFormData({...formData, productDesignation: e.target.value})}
+                        placeholder="Nom/désignation du produit"
+                      />
                     </div>
-                  )}
-                </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="supplierId">Fournisseur *</Label>
+                        <Select value={formData.supplierId} onValueChange={(value) => setFormData({...formData, supplierId: value})}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner un fournisseur" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {suppliersData.map((supplier) => (
+                              <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                                {supplier.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {availableGroups.length > 1 && (
+                        <div className="space-y-2">
+                          <Label htmlFor="groupId">Magasin</Label>
+                          <Select value={formData.groupId} onValueChange={(value) => setFormData({...formData, groupId: value})}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionner un magasin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableGroups.map((group) => (
+                                <SelectItem key={group.id} value={group.id.toString()}>
+                                  {group.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {availableGroups.length === 1 && (
+                      <div className="space-y-2">
+                        <Label>Magasin assigné</Label>
+                        <div className="flex items-center space-x-2 p-2 bg-gray-50 rounded">
+                          <Building className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm text-gray-700">{availableGroups[0].name}</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {availableGroups.length === 0 && (
+                      <div className="space-y-2">
+                        <Label>Magasin</Label>
+                        <div className="p-2 bg-orange-50 border border-orange-200 rounded text-sm text-orange-700">
+                          Aucun magasin assigné. Contactez un administrateur.
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-                {/* Informations problème et client */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Problème et client</h3>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="problemType">Type de problème</Label>
-                    <Select value={formData.problemType} onValueChange={(value) => setFormData({...formData, problemType: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="defectueux">Défectueux</SelectItem>
-                        <SelectItem value="pieces_manquantes">Pièces manquantes</SelectItem>
-                        <SelectItem value="non_conforme">Non conforme</SelectItem>
-                        <SelectItem value="autre">Autre</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="priority">Priorité</Label>
-                    <Select value={formData.priority} onValueChange={(value) => setFormData({...formData, priority: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="faible">Faible</SelectItem>
-                        <SelectItem value="normale">Normale</SelectItem>
-                        <SelectItem value="haute">Haute</SelectItem>
-                        <SelectItem value="critique">Critique</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="problemDescription">Description du problème *</Label>
-                    <Textarea
-                      id="problemDescription"
-                      value={formData.problemDescription}
-                      onChange={(e) => setFormData({...formData, problemDescription: e.target.value})}
-                      placeholder="Décrivez le problème en détail..."
-                      rows={4}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="clientName">Nom du client</Label>
-                    <Input
-                      id="clientName"
-                      value={formData.clientName}
-                      onChange={(e) => setFormData({...formData, clientName: e.target.value})}
-                      placeholder="Nom du client"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="clientPhone">Téléphone client</Label>
-                    <Input
-                      id="clientPhone"
-                      value={formData.clientPhone}
-                      onChange={(e) => setFormData({...formData, clientPhone: e.target.value})}
-                      placeholder="Numéro de téléphone"
-                    />
-                  </div>
-                </div>
+                {/* Section Informations Client */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <User className="h-5 w-5 mr-2" />
+                      Informations Client
+                    </CardTitle>
+                    <CardDescription>
+                      Informations de contact du client (optionnel)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="clientName">Nom du client</Label>
+                        <Input
+                          id="clientName"
+                          value={formData.clientName}
+                          onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                          placeholder="Nom du client"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="clientPhone">Téléphone du client</Label>
+                        <Input
+                          id="clientPhone"
+                          value={formData.clientPhone}
+                          onChange={(e) => setFormData({...formData, clientPhone: e.target.value})}
+                          placeholder="Numéro de téléphone"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Section Problème et Priorité */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <AlertTriangle className="h-5 w-5 mr-2" />
+                      Problème et Priorité
+                    </CardTitle>
+                    <CardDescription>
+                      Description du problème rencontré
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="problemType">Type de problème</Label>
+                        <Select value={formData.problemType} onValueChange={(value) => setFormData({...formData, problemType: value})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="defectueux">Défectueux</SelectItem>
+                            <SelectItem value="pieces_manquantes">Pièces manquantes</SelectItem>
+                            <SelectItem value="non_conforme">Non conforme</SelectItem>
+                            <SelectItem value="autre">Autre</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="priority">Priorité</Label>
+                        <Select value={formData.priority} onValueChange={(value) => setFormData({...formData, priority: value})}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="faible">Faible</SelectItem>
+                            <SelectItem value="normale">Normale</SelectItem>
+                            <SelectItem value="haute">Haute</SelectItem>
+                            <SelectItem value="critique">Critique</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="problemDescription">Description du problème *</Label>
+                      <Textarea
+                        id="problemDescription"
+                        value={formData.problemDescription}
+                        onChange={(e) => setFormData({...formData, problemDescription: e.target.value})}
+                        placeholder="Décrivez le problème en détail..."
+                        rows={4}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
               
               <div className="flex justify-end space-x-2 mt-6">
@@ -719,9 +805,15 @@ export default function SavTickets() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <Wrench className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-gray-900 mr-2">
                               {ticket.ticketNumber}
                             </span>
+                            {hasRecentComments(ticket) && (
+                              <Badge className="bg-orange-100 text-orange-800 text-xs">
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                Nouveau
+                              </Badge>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -822,10 +914,15 @@ export default function SavTickets() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
               {/* Colonne de gauche - Détails et Actions */}
               <div className="space-y-6 overflow-y-auto max-h-[70vh] pr-2">
-                {/* Product Info */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Informations produit</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                {/* Section Informations Produit */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <Building className="h-5 w-5 mr-2" />
+                      Informations Produit
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium">Code-barres:</span>
                       <p>{selectedTicket.productGencode}</p>
@@ -838,35 +935,19 @@ export default function SavTickets() {
                       <span className="font-medium">Désignation:</span>
                       <p>{selectedTicket.productDesignation}</p>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
-                {/* Problem Info */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Problème</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium">Type:</span>
-                      <p>{selectedTicket.problemType}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium">Priorité:</span>
-                      <Badge className={priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.color}>
-                        {priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.label}
-                      </Badge>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="font-medium">Description:</span>
-                      <p className="mt-1 p-2 bg-gray-50 rounded">{selectedTicket.problemDescription}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Client Info */}
+                {/* Section Informations Client */}
                 {(selectedTicket.clientName || selectedTicket.clientPhone) && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Client</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <User className="h-5 w-5 mr-2" />
+                        Informations Client
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="font-medium">Nom:</span>
                         <p>{selectedTicket.clientName || "Non renseigné"}</p>
@@ -875,14 +956,47 @@ export default function SavTickets() {
                         <span className="font-medium">Téléphone:</span>
                         <p>{selectedTicket.clientPhone || "Non renseigné"}</p>
                       </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 )}
 
-                {/* Ticket Info */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Informations ticket</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                {/* Section Problème */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <AlertTriangle className="h-5 w-5 mr-2" />
+                      Problème
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium">Type:</span>
+                        <p>{selectedTicket.problemType}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium">Priorité:</span>
+                        <Badge className={priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.color}>
+                          {priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.label}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-medium">Description:</span>
+                      <p className="mt-1 p-2 bg-gray-50 rounded">{selectedTicket.problemDescription}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Section Informations Ticket */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center">
+                      <Wrench className="h-5 w-5 mr-2" />
+                      Informations Ticket
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium">Statut:</span>
                       <Badge className={statusConfig[selectedTicket.status as keyof typeof statusConfig]?.color}>
@@ -901,8 +1015,8 @@ export default function SavTickets() {
                       <span className="font-medium">Créé le:</span>
                       <p>{safeFormat(selectedTicket.createdAt, 'dd/MM/yyyy HH:mm')}</p>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
                 {/* Actions rapides */}
                 {canModify && (
@@ -911,11 +1025,11 @@ export default function SavTickets() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="quick-priority">Priorité</Label>
-                        <Select value={selectedTicket.priority} onValueChange={(value) => {
-                          // TODO: Implement priority update
-                          toast({
-                            title: "Fonction en développement",
-                            description: "La modification de priorité sera bientôt disponible.",
+                        <Select value={tempPriority || selectedTicket.priority} onValueChange={(value) => {
+                          setTempPriority(value);
+                          updateTicketMutation.mutate({
+                            ticketId: selectedTicket.id,
+                            priority: value
                           });
                         }}>
                           <SelectTrigger>
@@ -932,11 +1046,11 @@ export default function SavTickets() {
                       
                       <div className="space-y-2">
                         <Label htmlFor="quick-status">Statut</Label>
-                        <Select value={selectedTicket.status} onValueChange={(value) => {
-                          // TODO: Implement status update
-                          toast({
-                            title: "Fonction en développement",
-                            description: "La modification de statut sera bientôt disponible.",
+                        <Select value={tempStatus || selectedTicket.status} onValueChange={(value) => {
+                          setTempStatus(value);
+                          updateTicketMutation.mutate({
+                            ticketId: selectedTicket.id,
+                            status: value
                           });
                         }}>
                           <SelectTrigger>
