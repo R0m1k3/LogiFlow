@@ -84,6 +84,7 @@ COPY --from=build --chown=nextjs:nodejs /app/shared ./shared
 # Copy migration scripts and files
 COPY --chown=nextjs:nodejs scripts/ ./scripts/
 COPY --chown=nextjs:nodejs migrations/ ./migrations/
+COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 
 # Create symlink for public files to be accessible from dist
 RUN ln -sf /app/dist/public /app/dist/public
@@ -109,8 +110,9 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Make scripts executable
 RUN chmod +x /app/scripts/auto-migrate-production.sh && \
-    chmod +x /app/scripts/docker-entrypoint.sh
+    chmod +x /app/scripts/docker-entrypoint.sh && \
+    ls -la /app/scripts/ && \
+    test -f /app/scripts/docker-entrypoint.sh || echo "ERREUR: docker-entrypoint.sh manquant"
 
-# Use entrypoint script for automatic migrations
-ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
+# Start application normally (migration applied separately)
 CMD ["node", "dist/index.js"]

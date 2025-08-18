@@ -1,78 +1,57 @@
-# 🚨 SOLUTION IMMÉDIATE POUR LA PRODUCTION
-
-## 🎯 Objectif
-Créer **UNIQUEMENT** la table `announcements` manquante. Toutes les autres tables existent déjà en production et ne doivent pas être touchées.
+# SOLUTION IMMÉDIATE - Migration DLC Production
 
 ## Problème
-La table `announcements` n'existe pas dans votre base de données de production, ce qui cause l'erreur:
 ```
-Error: relation "announcements" does not exist
+exec /app/scripts/docker-entrypoint.sh: no such file or directory
 ```
 
-## Solution en 3 étapes simples
+## Solution Rapide (2 minutes)
 
-### 1. Connectez-vous à votre serveur de production
+### ÉTAPE 1: Appliquer la migration directement
 ```bash
-# SSH vers votre serveur
-ssh votre-serveur-production
-```
+# Sur votre serveur de production, exécutez :
+docker-compose exec logiflow-db psql -U logiflow_admin -d logiflow_db -c "
+ALTER TABLE dlc_products 
+ADD COLUMN IF NOT EXISTS stock_epuise boolean DEFAULT false NOT NULL,
+ADD COLUMN IF NOT EXISTS stock_epuise_by varchar(255),
+ADD COLUMN IF NOT EXISTS stock_epuise_at timestamp;
 
-### 2. Accédez au conteneur Docker
-```bash
-# Entrer dans le conteneur
-docker exec -it logiflow-logiflow-1 bash
-```
-
-### 3. Créer la table directement
-```bash
-# Dans le conteneur, exécuter cette commande :
-psql $DATABASE_URL -c "
-CREATE TABLE IF NOT EXISTS announcements (
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  content TEXT NOT NULL,
-  priority VARCHAR(20) NOT NULL DEFAULT 'normal',
-  author_id VARCHAR(255) NOT NULL,
-  group_id INTEGER,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  CONSTRAINT announcements_priority_check CHECK (priority IN ('normal', 'important', 'urgent')),
-  CONSTRAINT announcements_author_id_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE,
-  CONSTRAINT announcements_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_announcements_priority ON announcements(priority);
-CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON announcements(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_announcements_author_id ON announcements(author_id);
-CREATE INDEX IF NOT EXISTS idx_announcements_group_id ON announcements(group_id);
+CREATE INDEX IF NOT EXISTS idx_dlc_products_stock_epuise ON dlc_products(stock_epuise);
 "
 ```
 
-### 4. Vérifier que ça fonctionne
+### ÉTAPE 2: Redémarrer l'application
 ```bash
-# Vérifier que la table existe
-psql $DATABASE_URL -c "SELECT 'SUCCESS: Table announcements créée!' as status;"
+docker-compose restart logiflow
 ```
 
-### 5. Sortir du conteneur
+## Alternative avec script automatique
 ```bash
-exit
+# Utilisez le script de correction :
+chmod +x fix-docker-entrypoint.sh
+./fix-docker-entrypoint.sh
 ```
 
-## Résultat attendu
-Après ces étapes, le système d'annonces fonctionnera immédiatement sur votre production.
-
-## Alternative plus simple (une seule commande)
+## Vérification
 ```bash
-docker exec logiflow-logiflow-1 psql $DATABASE_URL -c "CREATE TABLE IF NOT EXISTS announcements (id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, content TEXT NOT NULL, priority VARCHAR(20) NOT NULL DEFAULT 'normal', author_id VARCHAR(255) NOT NULL, group_id INTEGER, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), CONSTRAINT announcements_priority_check CHECK (priority IN ('normal', 'important', 'urgent')), CONSTRAINT announcements_author_id_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE, CONSTRAINT announcements_group_id_fkey FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE);"
+# Vérifier que les colonnes existent :
+docker-compose exec logiflow-db psql -U logiflow_admin -d logiflow_db -c "
+SELECT column_name FROM information_schema.columns 
+WHERE table_name='dlc_products' 
+AND column_name LIKE '%stock_epuise%';
+"
 ```
 
-## Script minimal (nouvelle option)
-```bash
-# Copier et exécuter le script minimal
-docker cp scripts/fix-announcements-only.sh logiflow-logiflow-1:/app/scripts/
-docker exec logiflow-logiflow-1 chmod +x /app/scripts/fix-announcements-only.sh
-docker exec logiflow-logiflow-1 /app/scripts/fix-announcements-only.sh
+Résultat attendu :
+```
+ column_name     
+-----------------
+ stock_epuise
+ stock_epuise_by  
+ stock_epuise_at
 ```
 
-La correction du problème `Select.Item` value est déjà faite dans le code source.
+## Après cette correction
+- ✅ L'erreur "column does not exist" disparaîtra
+- ✅ L'interface DLC fonctionnera
+- ✅ Les boutons stock épuisé seront opérationnels
