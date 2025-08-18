@@ -40,7 +40,7 @@ class AnnouncementDatabaseStorage implements IAnnouncementStorage {
         },
       })
       .from(dashboardMessages)
-      .leftJoin(users, eq(dashboardMessages.createdBy, users.id))
+      .leftJoin(users, eq(dashboardMessages.createdBy, users.username))
       .leftJoin(groups, eq(dashboardMessages.storeId, groups.id))
       .orderBy(desc(dashboardMessages.createdAt));
 
@@ -68,11 +68,20 @@ class AnnouncementDatabaseStorage implements IAnnouncementStorage {
   }
 
   async updateAnnouncement(id: number, announcement: Partial<InsertAnnouncement>): Promise<DashboardMessage> {
+    console.log('📝 [DB] Updating announcement with data:', announcement);
+    
     const [updated] = await db
       .update(dashboardMessages)
       .set(announcement)
       .where(eq(dashboardMessages.id, id))
       .returning();
+      
+    console.log('📝 [DB] Updated announcement:', updated);
+    
+    if (!updated) {
+      throw new Error(`Announcement with id ${id} not found`);
+    }
+    
     return updated;
   }
 
