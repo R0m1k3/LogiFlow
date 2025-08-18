@@ -103,7 +103,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
 // Composant pour gérer l'overflow avec modal
 function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrders: any[], dayDeliveries: any[], onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const MAX_VISIBLE_ITEMS = 3; // Optimisé pour production
+  const MAX_VISIBLE_ITEMS = 4; // Production : 4 éléments visibles
   const totalItems = dayOrders.length + dayDeliveries.length;
   
   if (totalItems === 0) return null;
@@ -136,7 +136,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-5 text-xs bg-orange-200 hover:bg-orange-300 border-orange-400 text-orange-900 font-bold shadow-sm transition-all duration-150 border-2 relative z-50"
+              className="w-full h-5 text-xs bg-white hover:bg-gray-50 border-gray-400 text-gray-700 font-semibold shadow-sm transition-all duration-150 border relative z-50"
               style={{display: 'block !important', position: 'relative', zIndex: 9999}}
               onClick={(e) => {
                 e.stopPropagation();
@@ -409,7 +409,7 @@ export default function CalendarGrid({
           return (
             <div
               key={index}
-              className={`h-32 relative group cursor-pointer transition-all duration-200 ${
+              className={`h-36 relative group cursor-pointer transition-all duration-200 ${
                 isTodayDate
                   ? "bg-blue-100 hover:bg-blue-200 border-2 border-blue-600"
                   : isWeekend && isCurrentMonth
@@ -440,7 +440,7 @@ export default function CalendarGrid({
                 </div>
                 
                 {/* Orders and Deliveries - Production optimisé */}
-                <div className="flex-1 relative" style={{minHeight: '60px', overflow: 'visible'}}>
+                <div className="flex-1 relative" style={{minHeight: '80px', overflow: 'visible'}}>
                   <DayItemsContainer
                     dayOrders={dayOrders}
                     dayDeliveries={dayDeliveries}
