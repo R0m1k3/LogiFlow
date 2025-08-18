@@ -95,8 +95,8 @@ else
     log "⚠️ Erreur lors de la migration - vérification manuelle nécessaire"
 fi
 
-# Démarrage complet de l'application
-log "🚀 Démarrage complet de l'application..."
+# Démarrage complet de l'application (la migration sera automatique)
+log "🚀 Démarrage complet de l'application avec migration automatique..."
 docker-compose up -d
 
 # Attendre que l'application soit prête
