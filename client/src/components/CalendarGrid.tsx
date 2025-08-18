@@ -128,7 +128,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 relative z-20">
       {/* Éléments visibles */}
       {visibleItems.map((item, index) => (
         <CalendarItem
@@ -139,21 +139,27 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
         />
       ))}
 
-      {/* Badge "+X autres" avec modal moderne */}
+      {/* Badge "+X autres" avec modal moderne - TOUJOURS VISIBLE */}
+      {hiddenCount > 0 && (
+        <div className="w-full bg-red-500 border-4 border-red-800 p-2 text-white font-black text-center z-50 relative" style={{display: 'block !important', position: 'relative', zIndex: 9999}}>
+          DEBUG: {hiddenCount} éléments cachés - BOUTON DOIT APPARAÎTRE
+        </div>
+      )}
       {hiddenCount > 0 && (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-6 text-xs bg-orange-200 hover:bg-orange-300 border-orange-400 text-orange-900 font-bold shadow-lg transition-all duration-150 border-2"
+              className="w-full h-8 text-sm bg-red-600 hover:bg-red-700 border-red-800 text-white font-bold shadow-lg transition-all duration-150 border-4 relative z-50"
+              style={{display: 'block !important', position: 'relative', zIndex: 9999, backgroundColor: 'red', color: 'white'}}
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(true);
               }}
             >
-              <MoreHorizontal className="w-3 h-3 mr-1" />
-              +{hiddenCount} autres
+              <MoreHorizontal className="w-4 h-4 mr-2" />
+              +{hiddenCount} autres (DEBUG)
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden">
@@ -429,7 +435,7 @@ export default function CalendarGrid({
               } ${!isCurrentMonth ? 'opacity-50' : ''}`}
               onClick={() => onDateClick(date)}
             >
-              <div className="p-3 h-full flex flex-col">
+              <div className="p-3 h-full flex flex-col relative">
                 {/* Numéro du jour avec design moderne */}
                 <div className="flex items-center justify-between mb-2">
                   <span className={`text-sm font-bold tracking-tight ${
@@ -449,7 +455,7 @@ export default function CalendarGrid({
                 </div>
                 
                 {/* Orders and Deliveries avec design moderne */}
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 overflow-visible relative z-10">
                   <DayItemsContainer
                     dayOrders={dayOrders}
                     dayDeliveries={dayDeliveries}
