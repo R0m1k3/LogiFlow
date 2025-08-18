@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Plus, Eye, Edit, Trash2, CheckCircle, Package, Clock, AlertCircle, Filter, Download, FileText } from "lucide-react";
+import { AlertTriangle, Plus, Eye, Edit, Trash2, CheckCircle, Package, Clock, AlertCircle, Filter, Download, FileText, PackageX, RotateCcw } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -190,6 +190,40 @@ export default function DlcPage() {
     },
   });
 
+  // Stock épuisé mutation - accessible à tous
+  const markStockEpuiseMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/stock-epuise`, "PUT"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
+      toast({ title: "Produit marqué comme stock épuisé" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur lors du marquage",
+        description: error.message || "Une erreur est survenue",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Restaurer stock mutation - réservé aux admins, directeurs et managers
+  const restoreStockMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/restore-stock`, "PUT"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
+      toast({ title: "Stock restauré avec succès" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur lors de la restauration",
+        description: error.message || "Une erreur est survenue",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: DlcFormData) => {
     // Calculer la date d'expiration et le seuil d'alerte (15 jours avant)
     const dlcDate = new Date(data.dlcDate);
@@ -275,6 +309,14 @@ export default function DlcPage() {
     validateMutation.mutate(id);
   };
 
+  const handleMarkStockEpuise = (id: number) => {
+    markStockEpuiseMutation.mutate(id);
+  };
+
+  const handleRestoreStock = (id: number) => {
+    restoreStockMutation.mutate(id);
+  };
+
   // Fonction pour déterminer si un produit doit afficher le bouton de validation
   const shouldShowValidateButton = (product: DlcProductWithRelations) => {
     const today = new Date();
@@ -286,12 +328,17 @@ export default function DlcPage() {
     return (daysUntilExpiry <= 15 && product.status !== "valides");
   };
 
-  const getStatusBadge = (status: string, dlcDate: string | null) => {
+  const getStatusBadge = (status: string, dlcDate: string | null, stockEpuise?: boolean) => {
     if (!dlcDate) return <Badge variant="outline">Non défini</Badge>;
     
-    // LOGIQUE SIMPLIFIÉE ET COHÉRENTE :
-    // 1. Si le statut en base est "valides", afficher "Validé" (peu importe la date)
-    // 2. Sinon, calculer selon la date d'expiration
+    // LOGIQUE MISE À JOUR :
+    // 1. Si stock épuisé, afficher "Stock épuisé" avec style spécifique
+    // 2. Si le statut en base est "valides", afficher "Validé" (peu importe la date) 
+    // 3. Sinon, calculer selon la date d'expiration
+    
+    if (stockEpuise) {
+      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">Stock épuisé</Badge>;
+    }
     
     if (status === "valides") {
       return <Badge variant="outline" className="bg-gray-100 text-gray-800">Validé</Badge>;
@@ -767,7 +814,10 @@ export default function DlcPage() {
                     {paginatedProducts.map((product) => (
                       <TableRow 
                         key={product.id} 
-                        className={product.status === "valide" ? "opacity-60 bg-gray-50 dark:bg-gray-800" : ""}
+                        className={
+                          product.status === "valides" ? "opacity-60 bg-gray-50 dark:bg-gray-800" : 
+                          product.stockEpuise ? "opacity-50 bg-yellow-50 dark:bg-yellow-900/20" : ""
+                        }
                       >
                         <TableCell className="font-medium">{product.productName}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
@@ -782,7 +832,7 @@ export default function DlcPage() {
                           {product.expiryDate ? format(new Date(product.expiryDate), "dd/MM/yyyy", { locale: fr }) : 'Date non définie'}
                         </TableCell>
                         <TableCell>{product.supplier?.name || 'Non défini'}</TableCell>
-                        <TableCell>{getStatusBadge(product.status, product.expiryDate)}</TableCell>
+                        <TableCell>{getStatusBadge(product.status, product.expiryDate, product.stockEpuise)}</TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
                             <Button
@@ -801,6 +851,32 @@ export default function DlcPage() {
                                 className="bg-green-600 hover:bg-green-700"
                               >
                                 <CheckCircle className="w-4 h-4" />
+                              </Button>
+                            )}
+                            
+                            {/* Bouton Stock épuisé - accessible à tous */}
+                            {!product.stockEpuise && product.status !== "valides" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleMarkStockEpuise(product.id)}
+                                disabled={markStockEpuiseMutation.isPending}
+                                className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                              >
+                                <PackageX className="w-4 h-4" />
+                              </Button>
+                            )}
+                            
+                            {/* Bouton Restaurer stock - réservé aux admins, directeurs et managers */}
+                            {product.stockEpuise && (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRestoreStock(product.id)}
+                                disabled={restoreStockMutation.isPending}
+                                className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                              >
+                                <RotateCcw className="w-4 h-4" />
                               </Button>
                             )}
                             <Button
