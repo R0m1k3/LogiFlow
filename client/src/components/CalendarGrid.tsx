@@ -1,9 +1,9 @@
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
 import { safeDate } from "@/lib/dateUtils";
-import { Plus, Check, MoreHorizontal } from "lucide-react";
+import { Plus, Check, MoreHorizontal, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useState } from "react";
 import type { OrderWithRelations, DeliveryWithRelations } from "@shared/schema";
 
@@ -123,49 +123,51 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
         />
       ))}
 
-      {/* Badge "+X autres" avec popover moderne */}
+      {/* Badge "+X autres" avec modal moderne */}
       {hiddenCount > 0 && (
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger asChild>
             <Button
               variant="outline"
               size="sm"
               className="w-full h-6 text-xs bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800 font-bold shadow-md transition-all duration-150 border-2"
               onClick={(e) => {
                 e.stopPropagation();
-                setIsOpen(!isOpen);
+                setIsOpen(true);
               }}
             >
               <MoreHorizontal className="w-3 h-3 mr-1" />
               +{hiddenCount} autres
             </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-80 p-4 bg-white border-2 border-gray-400 shadow-2xl"
-            align="start"
-            side="right"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="space-y-3">
-              <h4 className="font-semibold text-sm text-slate-800 border-b border-gray-100 pb-2">
-                Tous les éléments ({totalItems})
-              </h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {allItems.map((item) => (
-                  <CalendarItem
-                    key={`popup-${item.itemType}-${item.id}`}
-                    item={item}
-                    type={item.itemType}
-                    onItemClick={(clickedItem, type) => {
-                      onItemClick(clickedItem, type);
-                      setIsOpen(false);
-                    }}
-                  />
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Tous les éléments du jour ({totalItems})
+              </DialogTitle>
+            </DialogHeader>
+            <div className="mt-4">
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                {allItems.map((item, index) => (
+                  <div
+                    key={`modal-${item.itemType}-${item.id}-${index}`}
+                    className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <CalendarItem
+                      item={item}
+                      type={item.itemType}
+                      onItemClick={(clickedItem, type) => {
+                        onItemClick(clickedItem, type);
+                        setIsOpen(false);
+                      }}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
-          </PopoverContent>
-        </Popover>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
