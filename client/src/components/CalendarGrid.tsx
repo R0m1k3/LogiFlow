@@ -94,11 +94,22 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
   );
 }
 
-// Composant pour gérer l'overflow avec popover
+// Composant pour gérer l'overflow avec modal
 function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrders: any[], dayDeliveries: any[], onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const MAX_VISIBLE_ITEMS = 4;
   const totalItems = dayOrders.length + dayDeliveries.length;
+  
+  // Debug logs pour production
+  if (totalItems > 0) {
+    console.log('🔍 DayItemsContainer:', {
+      orders: dayOrders.length,
+      deliveries: dayDeliveries.length,
+      totalItems,
+      MAX_VISIBLE_ITEMS,
+      shouldShowButton: totalItems > MAX_VISIBLE_ITEMS
+    });
+  }
   
   if (totalItems === 0) return null;
 
@@ -110,6 +121,11 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
 
   const visibleItems = allItems.slice(0, MAX_VISIBLE_ITEMS);
   const hiddenCount = Math.max(0, totalItems - MAX_VISIBLE_ITEMS);
+  
+  // Debug supplémentaire
+  if (hiddenCount > 0) {
+    console.log('✅ Button "+X autres" should appear:', hiddenCount);
+  }
 
   return (
     <div className="space-y-1.5">
