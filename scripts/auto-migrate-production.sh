@@ -42,4 +42,29 @@ else
     echo "ℹ️ [AUTO-MIGRATE] Table announcements existe déjà - aucune action nécessaire"
 fi
 
+# Vérifier et ajouter les colonnes DLC stock épuisé
+echo "🔄 [AUTO-MIGRATE] Vérification des colonnes DLC stock épuisé..."
+
+if psql "$DATABASE_URL" -tAc "SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_name='dlc_products' AND column_name='stock_epuise');" | grep -q "f"; then
+    echo "🔧 [AUTO-MIGRATE] Ajout des colonnes stock épuisé à dlc_products..."
+    psql "$DATABASE_URL" << 'EOF'
+-- Migration sécurisée pour ajouter les champs stock épuisé
+ALTER TABLE dlc_products 
+ADD COLUMN IF NOT EXISTS stock_epuise boolean DEFAULT false NOT NULL,
+ADD COLUMN IF NOT EXISTS stock_epuise_by varchar(255),
+ADD COLUMN IF NOT EXISTS stock_epuise_at timestamp;
+
+-- Commentaires pour documenter les nouveaux champs
+COMMENT ON COLUMN dlc_products.stock_epuise IS 'Indique si le produit est marqué comme stock épuisé (différent de périmé)';
+COMMENT ON COLUMN dlc_products.stock_epuise_by IS 'ID de l''utilisateur qui a marqué le produit comme stock épuisé';
+COMMENT ON COLUMN dlc_products.stock_epuise_at IS 'Date et heure de marquage du stock épuisé';
+
+-- Index pour améliorer les performances sur les requêtes de stock épuisé
+CREATE INDEX IF NOT EXISTS idx_dlc_products_stock_epuise ON dlc_products(stock_epuise);
+EOF
+    echo "✅ [AUTO-MIGRATE] Colonnes stock épuisé ajoutées avec succès"
+else
+    echo "ℹ️ [AUTO-MIGRATE] Colonnes stock épuisé existent déjà"
+fi
+
 echo "✅ [AUTO-MIGRATE] Migration terminée!"
