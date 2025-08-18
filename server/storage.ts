@@ -168,6 +168,8 @@ export interface IStorage {
   updateDlcProduct(id: number, dlcProduct: Partial<InsertDlcProduct>): Promise<DlcProductFrontend>;
   deleteDlcProduct(id: number): Promise<void>;
   validateDlcProduct(id: number, validatedBy: string): Promise<DlcProductFrontend>;
+  markDlcProductStockEpuise(id: number, markedBy: string): Promise<DlcProductFrontend>;
+  restoreDlcProductStock(id: number): Promise<DlcProductFrontend>;
   getDlcStats(groupIds?: number[]): Promise<{ active: number; expiringSoon: number; expired: number; }>;
 
   // Task operations
@@ -1520,6 +1522,35 @@ export class DatabaseStorage implements IStorage {
       .set({ 
         validatedBy,
         validatedAt: new Date(),
+        status: "valides",
+        updatedAt: new Date()
+      })
+      .where(eq(dlcProducts.id, id))
+      .returning();
+    return dlcProduct as DlcProductFrontend;
+  }
+
+  async markDlcProductStockEpuise(id: number, markedBy: string): Promise<DlcProductFrontend> {
+    const [dlcProduct] = await db
+      .update(dlcProducts)
+      .set({ 
+        stockEpuise: true,
+        stockEpuiseBy: markedBy,
+        stockEpuiseAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(dlcProducts.id, id))
+      .returning();
+    return dlcProduct as DlcProductFrontend;
+  }
+
+  async restoreDlcProductStock(id: number): Promise<DlcProductFrontend> {
+    const [dlcProduct] = await db
+      .update(dlcProducts)
+      .set({ 
+        stockEpuise: false,
+        stockEpuiseBy: null,
+        stockEpuiseAt: null,
         updatedAt: new Date()
       })
       .where(eq(dlcProducts.id, id))
@@ -2716,6 +2747,37 @@ export class MemStorage implements IStorage {
       ...existingProduct, 
       validatedBy,
       validatedAt: new Date(),
+      status: "valides",
+      updatedAt: new Date() 
+    };
+    this.dlcProducts.set(id, updatedProduct);
+    return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
+  }
+
+  async markDlcProductStockEpuise(id: number, markedBy: string): Promise<DlcProductFrontend> {
+    const existingProduct = this.dlcProducts.get(id);
+    if (!existingProduct) throw new Error('DLC Product not found');
+    
+    const updatedProduct = { 
+      ...existingProduct, 
+      stockEpuise: true,
+      stockEpuiseBy: markedBy,
+      stockEpuiseAt: new Date(),
+      updatedAt: new Date() 
+    };
+    this.dlcProducts.set(id, updatedProduct);
+    return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
+  }
+
+  async restoreDlcProductStock(id: number): Promise<DlcProductFrontend> {
+    const existingProduct = this.dlcProducts.get(id);
+    if (!existingProduct) throw new Error('DLC Product not found');
+    
+    const updatedProduct = { 
+      ...existingProduct, 
+      stockEpuise: false,
+      stockEpuiseBy: null,
+      stockEpuiseAt: null,
       updatedAt: new Date() 
     };
     this.dlcProducts.set(id, updatedProduct);
@@ -2853,6 +2915,9 @@ export class MemStorage implements IStorage {
       alertThreshold: 5,
       validatedBy: null as string | null,
       validatedAt: null,
+      stockEpuise: false,
+      stockEpuiseBy: null,
+      stockEpuiseAt: null,
       createdAt: new Date('2025-08-10'),
       updatedAt: new Date('2025-08-10'),
     };
@@ -2874,6 +2939,9 @@ export class MemStorage implements IStorage {
       alertThreshold: 3,
       validatedBy: null as string | null,
       validatedAt: null,
+      stockEpuise: false,
+      stockEpuiseBy: null,
+      stockEpuiseAt: null,
       createdAt: new Date('2025-08-08'),
       updatedAt: new Date('2025-08-13'),
     };

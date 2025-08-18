@@ -1235,6 +1235,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route pour marquer un produit DLC comme stock épuisé - accessible à tous
+  app.put('/api/dlc-products/:id/stock-epuise', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const dlcProduct = await storage.getDlcProduct(id);
+      
+      if (!dlcProduct) {
+        return res.status(404).json({ message: "DLC Product not found" });
+      }
+
+      // For non-admin users, check if they have access to the product's group
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(dlcProduct.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group's DLC products" });
+        }
+      }
+
+      console.log('🔍 DLC Stock épuisé attempt:', { 
+        userId: user.id,
+        userRole: user.role, 
+        dlcProductId: id,
+        dlcGroupId: dlcProduct.groupId
+      });
+
+      const markedProduct = await storage.markDlcProductStockEpuise(id, user.id);
+      console.log('✅ DLC Product marked as stock épuisé by:', user.role, user.id);
+      
+      res.json(markedProduct);
+    } catch (error) {
+      console.error("Error marking DLC product as stock épuisé:", error);
+      res.status(500).json({ message: "Failed to mark DLC product as stock épuisé" });
+    }
+  });
+
+  // Route pour restaurer le stock d'un produit DLC - réservé aux admins, directeurs et managers
+  app.put('/api/dlc-products/:id/restore-stock', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user has permission to restore stock (admin, directeur, manager)
+      if (!['admin', 'directeur', 'manager'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions to restore DLC product stock" });
+      }
+
+      const id = parseInt(req.params.id);
+      const dlcProduct = await storage.getDlcProduct(id);
+      
+      if (!dlcProduct) {
+        return res.status(404).json({ message: "DLC Product not found" });
+      }
+
+      // For non-admin users, check if they have access to the product's group
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(dlcProduct.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group's DLC products" });
+        }
+      }
+
+      console.log('🔍 DLC Stock restore attempt:', { 
+        userId: user.id,
+        userRole: user.role, 
+        dlcProductId: id,
+        dlcGroupId: dlcProduct.groupId
+      });
+
+      const restoredProduct = await storage.restoreDlcProductStock(id);
+      console.log('✅ DLC Product stock restored by:', user.role, user.id);
+      
+      res.json(restoredProduct);
+    } catch (error) {
+      console.error("Error restoring DLC product stock:", error);
+      res.status(500).json({ message: "Failed to restore DLC product stock" });
+    }
+  });
+
   // Tasks routes
   app.get('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {

@@ -232,6 +232,9 @@ export const dlcProducts = pgTable("dlc_products", {
   location: varchar("location").notNull().default("Magasin"), // Emplacement (fixe par défaut)
   alertThreshold: integer("alert_threshold").notNull().default(15), // Seuil d'alerte fixe à 15 jours
   status: varchar("status").notNull().default("en_cours"), // Statut: en_cours, expires_soon, expires, valides
+  stockEpuise: boolean("stock_epuise").default(false), // Produit épuisé en stock (pas périmé)
+  stockEpuiseBy: varchar("stock_epuise_by"), // Marqué comme épuisé par (optionnel)
+  stockEpuiseAt: timestamp("stock_epuise_at"), // Date de marquage épuisé (optionnel)
   notes: text("notes"), // Notes (optionnel)
   createdBy: varchar("created_by").notNull(), // Créateur
   validatedBy: varchar("validated_by"), // Validé par (optionnel)
