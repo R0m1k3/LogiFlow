@@ -28,28 +28,28 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
     const getOrderStyle = () => {
       switch (item.status) {
         case 'delivered':
-          return 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-md';
+          return 'bg-gray-500 text-white shadow-lg border-l-4 border-gray-700';
         case 'planned':
-          return 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md border border-amber-300';
+          return 'bg-yellow-500 text-black shadow-lg border-l-4 border-yellow-700 font-medium';
         default:
-          return 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md';
+          return 'bg-blue-500 text-white shadow-lg border-l-4 border-blue-700';
       }
     };
     
     return (
       <div
-        className={`text-xs px-3 py-2 flex items-center justify-between cursor-pointer group/order rounded-lg transform hover:scale-[1.02] transition-all duration-200 ${getOrderStyle()}`}
+        className={`text-xs px-3 py-2 flex items-center justify-between cursor-pointer group/order transform hover:scale-[1.03] transition-all duration-150 ${getOrderStyle()}`}
         onClick={(e) => {
           e.stopPropagation();
           onItemClick(item, 'order');
         }}
       >
-        <span className="truncate font-medium">
+        <span className="truncate font-semibold">
           {item.supplier.name}
         </span>
         <div className="flex items-center ml-2 flex-shrink-0">
           {item.status === 'planned' && (
-            <div className="w-2 h-2 bg-amber-200 rounded-full mr-1" title="Commande planifiée (liée à une livraison)" />
+            <div className="w-2 h-2 bg-yellow-800 mr-1" title="Commande planifiée (liée à une livraison)" />
           )}
           {item.status === 'delivered' && (
             <Check className="w-3 h-3" />
@@ -63,28 +63,28 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
   const getDeliveryStyle = () => {
     switch (item.status) {
       case 'delivered':
-        return 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-md';
+        return 'bg-gray-500 text-white shadow-lg border-l-4 border-gray-700';
       case 'pending':
-        return 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md border border-orange-300';
+        return 'bg-green-500 text-white shadow-lg border-l-4 border-green-700';
       default:
-        return 'bg-gradient-to-r from-slate-500 to-gray-500 text-white shadow-md';
+        return 'bg-green-500 text-white shadow-lg border-l-4 border-green-700';
     }
   };
 
   return (
     <div
-      className={`text-xs px-3 py-2 flex items-center justify-between cursor-pointer rounded-lg transform hover:scale-[1.02] transition-all duration-200 ${getDeliveryStyle()}`}
+      className={`text-xs px-3 py-2 flex items-center justify-between cursor-pointer transform hover:scale-[1.03] transition-all duration-150 ${getDeliveryStyle()}`}
       onClick={(e) => {
         e.stopPropagation();
         onItemClick(item, 'delivery');
       }}
     >
-      <span className="truncate font-medium">
+      <span className="truncate font-semibold">
         {item.supplier.name} - {formatQuantity(item.quantity, item.unit)}
       </span>
       <div className="flex items-center ml-2 flex-shrink-0">
         {item.status === 'pending' && (
-          <div className="w-2 h-2 bg-orange-200 rounded-full mr-1" title="En attente de validation" />
+          <div className="w-2 h-2 bg-green-800 mr-1" title="En attente de validation" />
         )}
         {item.status === 'delivered' && (
           <Check className="w-3 h-3" />
@@ -130,7 +130,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-7 text-xs bg-gradient-to-r from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100 border-slate-200 text-slate-700 font-medium rounded-lg shadow-sm transition-all duration-200"
+              className="w-full h-6 text-xs bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800 font-bold shadow-md transition-all duration-150 border-2"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(!isOpen);
@@ -141,7 +141,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-80 p-4 bg-white/95 backdrop-blur-sm border border-gray-200/60 shadow-xl rounded-xl"
+            className="w-80 p-4 bg-white border-2 border-gray-400 shadow-2xl"
             align="start"
             side="right"
             onClick={(e) => e.stopPropagation()}
@@ -373,23 +373,23 @@ export default function CalendarGrid({
   };
 
   return (
-    <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden backdrop-blur-sm">
-      {/* Calendar Header - Design moderne */}
-      <div className="grid grid-cols-7 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-gray-200/60">
+    <div className="bg-white shadow-xl border-2 border-gray-300 overflow-hidden">
+      {/* Calendar Header - Design moderne épuré */}
+      <div className="grid grid-cols-7 bg-gradient-to-r from-slate-100 to-gray-100 border-b-2 border-gray-400">
         {weekDays.map((day, index) => (
           <div 
             key={day} 
-            className={`p-4 text-center text-sm font-semibold tracking-wide ${
-              index >= 5 ? 'text-slate-600' : 'text-slate-700'
-            } uppercase`}
+            className={`p-4 text-center text-sm font-bold tracking-wider ${
+              index >= 5 ? 'text-slate-700' : 'text-slate-800'
+            } uppercase border-r border-gray-300 last:border-r-0`}
           >
             {day}
           </div>
         ))}
       </div>
 
-      {/* Calendar Days - Grid moderne */}
-      <div className="grid grid-cols-7 gap-px bg-gray-200/40">
+      {/* Calendar Days - Grid moderne sans arrondi */}
+      <div className="grid grid-cols-7">
         {paddedDays.map((date, index) => {
           const isCurrentMonth = isSameMonth(date, currentDate);
           const isTodayDate = isToday(date);
@@ -400,15 +400,15 @@ export default function CalendarGrid({
           return (
             <div
               key={index}
-              className={`h-32 relative group cursor-pointer transition-all duration-300 ease-in-out transform hover:scale-[1.02] hover:z-10 ${
+              className={`h-32 relative group cursor-pointer transition-all duration-200 border-r border-b border-gray-400 ${
                 isTodayDate
-                  ? "bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 shadow-md ring-2 ring-blue-200/50"
+                  ? "bg-blue-100 hover:bg-blue-200 border-2 border-blue-500"
                   : isWeekend && isCurrentMonth
-                  ? "bg-gradient-to-br from-slate-25 to-gray-25 hover:from-slate-50 hover:to-gray-50"
+                  ? "bg-gray-50 hover:bg-gray-100"
                   : isCurrentMonth
-                  ? "bg-white hover:bg-gradient-to-br hover:from-gray-25 hover:to-slate-25 hover:shadow-md"
-                  : "bg-gray-25 hover:bg-gray-50/70"
-              } ${!isCurrentMonth ? 'opacity-40' : ''}`}
+                  ? "bg-white hover:bg-gray-50"
+                  : "bg-gray-100"
+              } ${!isCurrentMonth ? 'opacity-50' : ''} last:border-r-0`}
               onClick={() => onDateClick(date)}
             >
               <div className="p-3 h-full flex flex-col">
@@ -416,17 +416,17 @@ export default function CalendarGrid({
                 <div className="flex items-center justify-between mb-2">
                   <span className={`text-sm font-bold tracking-tight ${
                     isTodayDate 
-                      ? "text-blue-700 bg-blue-100 px-2 py-1 rounded-full text-xs shadow-sm" 
+                      ? "text-white bg-blue-600 px-2 py-1 text-xs shadow-md" 
                       : isCurrentMonth 
-                      ? "text-slate-800" 
-                      : "text-gray-400"
+                      ? "text-slate-900" 
+                      : "text-gray-500"
                   }`}>
                     {format(date, 'd')}
                   </span>
                   
                   {/* Indicateur weekend moderne */}
                   {isWeekend && isCurrentMonth && (
-                    <div className="w-1.5 h-1.5 bg-slate-300 rounded-full"></div>
+                    <div className="w-2 h-2 bg-slate-400"></div>
                   )}
                 </div>
                 
@@ -440,38 +440,38 @@ export default function CalendarGrid({
                 </div>
               </div>
               
-              {/* Publicities avec design moderne */}
+              {/* Publicities avec design épuré */}
               {dayPublicities.length > 0 && (
-                <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5">
+                <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
                   {dayPublicities.slice(0, 2).map((pub, idx) => (
                     <div
                       key={`${pub.id}-${idx}`}
-                      className="bg-gradient-to-r from-purple-500 to-violet-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg cursor-help transform hover:scale-105 transition-transform duration-200"
+                      className="bg-purple-600 text-white text-xs px-2 py-1 font-bold shadow-lg cursor-help transform hover:scale-105 transition-transform duration-150 border border-purple-800"
                       title={`Pub ${pub.pubNumber}: ${pub.designation}${pub.participations ? ` - Magasins: ${pub.participations.map((pg: any) => pg.group?.name).join(', ')}` : ''}`}
                     >
                       {pub.pubNumber}
                     </div>
                   ))}
                   {dayPublicities.length > 2 && (
-                    <div className="bg-gradient-to-r from-violet-600 to-purple-700 text-white text-xs px-2 py-1 rounded-full font-bold shadow-lg cursor-help transform hover:scale-105 transition-transform duration-200">
+                    <div className="bg-purple-700 text-white text-xs px-2 py-1 font-bold shadow-lg cursor-help transform hover:scale-105 transition-transform duration-150 border border-purple-900">
                       +{dayPublicities.length - 2}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Quick Create Button moderne */}
+              {/* Quick Create Button épuré */}
               {isCurrentMonth && (
-                <div className={`absolute ${dayPublicities.length === 0 ? 'top-2 right-2' : 'bottom-2 right-2'} opacity-0 group-hover:opacity-100 transition-all duration-300`}>
+                <div className={`absolute ${dayPublicities.length === 0 ? 'top-2 right-2' : 'bottom-2 right-2'} opacity-0 group-hover:opacity-100 transition-all duration-200`}>
                   <Button
                     size="sm"
-                    className="w-7 h-7 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full p-0 hover:from-orange-600 hover:to-amber-600 shadow-lg transform hover:scale-110 transition-all duration-200"
+                    className="w-6 h-6 bg-orange-600 text-white p-0 hover:bg-orange-700 shadow-md transform hover:scale-110 transition-all duration-150 border border-orange-800"
                     onClick={(e) => {
                       e.stopPropagation();
                       onDateClick(date);
                     }}
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3 h-3" />
                   </Button>
                 </div>
               )}
