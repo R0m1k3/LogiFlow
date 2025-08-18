@@ -146,8 +146,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-6 text-xs bg-orange-200 hover:bg-orange-300 border-orange-400 text-orange-900 font-bold shadow-lg transition-all duration-150 border-2 !important z-10"
-              style={{ display: 'block !important', visibility: 'visible !important' }}
+              className="w-full h-6 text-xs bg-orange-200 hover:bg-orange-300 border-orange-400 text-orange-900 font-bold shadow-lg transition-all duration-150 border-2"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(true);
