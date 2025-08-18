@@ -38,20 +38,20 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
     
     return (
       <div
-        className={`text-xs px-1 py-1 cursor-pointer hover:opacity-90 transition-opacity ${getOrderStyle()}`}
+        className={`text-xs px-2 py-2 cursor-pointer hover:opacity-90 transition-opacity ${getOrderStyle()} rounded-sm`}
         onClick={(e) => {
           e.stopPropagation();
           onItemClick(item, 'order');
         }}
-        style={{marginBottom: '2px', display: 'block', width: '100%'}}
+        style={{marginBottom: '3px', display: 'block', width: '100%', minHeight: '24px'}}
       >
         <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%'}}>
-          <span className="truncate font-semibold" style={{fontSize: '10px'}}>
+          <span className="truncate font-semibold" style={{fontSize: '11px', lineHeight: '1.2'}}>
             {item.supplier?.name || 'Commande'}
           </span>
-          <div style={{display: 'flex', alignItems: 'center'}}>
+          <div style={{display: 'flex', alignItems: 'center', marginLeft: '4px'}}>
             {item.status === 'planned' && (
-              <div className="w-1.5 h-1.5 bg-yellow-600" title="Planifié" />
+              <div className="w-2 h-2 bg-yellow-600 rounded-full" title="Planifié" />
             )}
             {item.status === 'delivered' && (
               <Check className="w-3 h-3" />
@@ -76,20 +76,20 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
 
   return (
     <div
-      className={`text-xs px-1 py-1 cursor-pointer hover:opacity-90 transition-opacity ${getDeliveryStyle()}`}
+      className={`text-xs px-2 py-2 cursor-pointer hover:opacity-90 transition-opacity ${getDeliveryStyle()} rounded-sm`}
       onClick={(e) => {
         e.stopPropagation();
         onItemClick(item, 'delivery');
       }}
-      style={{marginBottom: '2px', display: 'block', width: '100%'}}
+      style={{marginBottom: '3px', display: 'block', width: '100%', minHeight: '24px'}}
     >
       <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%'}}>
-        <span className="truncate font-semibold" style={{fontSize: '10px'}}>
+        <span className="truncate font-semibold" style={{fontSize: '11px', lineHeight: '1.2'}}>
           {item.supplier?.name || 'Livraison'} - {formatQuantity(item.quantity, item.unit)}
         </span>
-        <div style={{display: 'flex', alignItems: 'center'}}>
+        <div style={{display: 'flex', alignItems: 'center', marginLeft: '4px'}}>
           {item.status === 'pending' && (
-            <div className="w-1.5 h-1.5 bg-green-600" title="En attente" />
+            <div className="w-2 h-2 bg-green-600 rounded-full" title="En attente" />
           )}
           {item.status === 'delivered' && (
             <Check className="w-3 h-3" />
@@ -118,7 +118,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
   const hiddenCount = Math.max(0, totalItems - MAX_VISIBLE_ITEMS);
 
   return (
-    <div className="space-y-1 relative" style={{minHeight: '60px'}} data-modal-trigger="container">
+    <div className="space-y-1 relative" style={{minHeight: '70px'}} data-modal-trigger="container">
       {/* Éléments visibles - IDENTIQUE DEV/PROD */}
       {visibleItems.map((item, index) => (
         <CalendarItem
@@ -138,7 +138,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                 variant="outline"
                 size="sm"
                 data-modal-trigger="button"
-                className="w-full h-5 text-xs bg-white hover:bg-gray-50 border-gray-400 text-gray-700 font-semibold shadow-sm transition-all duration-150 border"
+                className="w-full h-6 text-xs bg-white hover:bg-gray-50 border-gray-400 text-gray-700 font-semibold shadow-sm transition-all duration-150 border rounded-sm"
                 style={{display: 'block !important', position: 'relative', zIndex: 50}}
                 onClick={(e) => {
                   e.preventDefault();
@@ -150,51 +150,92 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                 +{hiddenCount} autres
               </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg max-h-[70vh] overflow-hidden fixed z-[9999]" style={{zIndex: 9999}}>
-            <DialogHeader>
-              <DialogTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                <Package className="w-4 h-4" />
-                Éléments du jour ({totalItems})
+          <DialogContent className="max-w-2xl w-full max-h-[85vh] fixed z-[9999] p-0" style={{zIndex: 9999}}>
+            <DialogHeader className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <DialogTitle className="text-lg font-bold text-gray-900 flex items-center gap-3">
+                <Package className="w-5 h-5 text-blue-600" />
+                Éléments du jour - {totalItems} élément{totalItems > 1 ? 's' : ''}
               </DialogTitle>
             </DialogHeader>
-            <div className="mt-3">
-              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-                {allItems.map((item, index) => (
-                  <div
-                    key={`modal-${item.itemType}-${item.id}-${index}`}
-                    className="border border-gray-200 hover:bg-gray-50 transition-colors p-2 rounded cursor-pointer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onItemClick(item, item.itemType);
-                      setIsOpen(false);
-                    }}
-                  >
-                    <div className={`text-sm px-2 py-2 ${
-                      item.itemType === 'order' 
-                        ? item.status === 'delivered'
-                          ? 'bg-gray-400 text-white'
-                          : item.status === 'planned'
-                          ? 'bg-yellow-300 text-gray-800'
-                          : 'bg-blue-300 text-gray-800'
-                        : item.status === 'delivered'
-                        ? 'bg-gray-400 text-white'
-                        : 'bg-green-300 text-gray-800'
-                    }`}>
-                      <div className="font-semibold">
-                        {item.supplier?.name || (item.itemType === 'order' ? 'Commande' : 'Livraison')}
-                      </div>
-                      {item.itemType === 'delivery' && (
-                        <div className="text-xs mt-1">
-                          Quantité: {item.quantity}{item.unit === 'palettes' ? 'P' : 'C'}
+            
+            <div className="p-6">
+              <div className="grid gap-4" style={{maxHeight: '60vh'}}>
+                {allItems.map((item, index) => {
+                  const isOrder = item.itemType === 'order';
+                  const statusColor = item.status === 'delivered' 
+                    ? 'bg-gray-100 border-gray-300' 
+                    : item.status === 'planned'
+                    ? 'bg-yellow-50 border-yellow-300'
+                    : isOrder 
+                    ? 'bg-blue-50 border-blue-300'
+                    : 'bg-green-50 border-green-300';
+                  
+                  const statusText = item.status === 'delivered' ? 'Livré' : 
+                                   item.status === 'planned' ? 'Planifié' : 'En attente';
+                  
+                  const statusIcon = item.status === 'delivered' 
+                    ? <Check className="w-4 h-4 text-gray-600" />
+                    : item.status === 'planned'
+                    ? <div className="w-3 h-3 bg-yellow-500 rounded-full" />
+                    : isOrder
+                    ? <div className="w-3 h-3 bg-blue-500 rounded-full" />
+                    : <div className="w-3 h-3 bg-green-500 rounded-full" />;
+                  
+                  return (
+                    <div
+                      key={`modal-${item.itemType}-${item.id}-${index}`}
+                      className={`${statusColor} border-2 rounded-lg p-4 cursor-pointer hover:shadow-md transition-all duration-200 transform hover:scale-[1.02]`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onItemClick(item, item.itemType);
+                        setIsOpen(false);
+                      }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            {statusIcon}
+                            <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                              {isOrder ? 'Commande' : 'Livraison'}
+                            </span>
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              item.status === 'delivered' ? 'bg-gray-200 text-gray-700' :
+                              item.status === 'planned' ? 'bg-yellow-200 text-yellow-800' :
+                              isOrder ? 'bg-blue-200 text-blue-800' : 'bg-green-200 text-green-800'
+                            }`}>
+                              {statusText}
+                            </span>
+                          </div>
+                          
+                          <h3 className="font-bold text-lg text-gray-900 mb-1">
+                            {item.supplier?.name || (isOrder ? 'Commande sans fournisseur' : 'Livraison sans fournisseur')}
+                          </h3>
+                          
+                          {!isOrder && (
+                            <div className="text-sm text-gray-700 mb-1">
+                              <span className="font-medium">Quantité:</span> {item.quantity} {item.unit === 'palettes' ? 'palette(s)' : 'colis'}
+                            </div>
+                          )}
+                          
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Date:</span> {
+                              item.scheduledDate ? new Date(item.scheduledDate).toLocaleDateString('fr-FR') :
+                              item.deliveredDate ? new Date(item.deliveredDate).toLocaleDateString('fr-FR') :
+                              new Date(item.createdAt).toLocaleDateString('fr-FR')
+                            }
+                          </div>
+                          
+                          {item.notes && (
+                            <div className="text-sm text-gray-600 mt-2">
+                              <span className="font-medium">Notes:</span> {item.notes}
+                            </div>
+                          )}
                         </div>
-                      )}
-                      <div className="text-xs mt-1 opacity-75">
-                        Statut: {item.status === 'delivered' ? 'Livré' : item.status === 'planned' ? 'Planifié' : 'En attente'}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </DialogContent>
@@ -474,7 +515,7 @@ export default function CalendarGrid({
                 </div>
                 
                 {/* Orders and Deliveries - DEV = PRODUCTION */}
-                <div className="flex-1 relative" style={{minHeight: '80px', overflow: 'visible'}}>
+                <div className="flex-1 relative" style={{minHeight: '90px', overflow: 'visible'}}>
                   <DayItemsContainer
                     dayOrders={dayOrders}
                     dayDeliveries={dayDeliveries}
