@@ -11,6 +11,7 @@ type AnnouncementWithRelations = DashboardMessageWithRelations;
 // Interface commune pour le stockage
 interface IAnnouncementStorage {
   getAnnouncements(groupIds?: number[]): Promise<AnnouncementWithRelations[]>;
+  getAnnouncement(id: number): Promise<AnnouncementWithRelations | null>;
   createAnnouncement(announcement: InsertAnnouncement): Promise<DashboardMessage>;
   updateAnnouncement(id: number, announcement: Partial<InsertAnnouncement>): Promise<DashboardMessage>;
   deleteAnnouncement(id: number): Promise<void>;
@@ -57,6 +58,56 @@ class AnnouncementDatabaseStorage implements IAnnouncementStorage {
       author: result.author as User,
       group: result.group as Group | undefined,
     }));
+  }
+
+  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | null> {
+    console.log('🔍 [DB] Getting single announcement:', id);
+    
+    const result = await db
+      .select({
+        id: dashboardMessages.id,
+        title: dashboardMessages.title,
+        content: dashboardMessages.content,
+        type: dashboardMessages.type,
+        storeId: dashboardMessages.storeId,
+        createdBy: dashboardMessages.createdBy,
+        createdAt: dashboardMessages.createdAt,
+        author: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+        },
+        group: {
+          id: groups.id,
+          name: groups.name,
+        },
+      })
+      .from(dashboardMessages)
+      .leftJoin(users, eq(dashboardMessages.createdBy, users.username))
+      .leftJoin(groups, eq(dashboardMessages.storeId, groups.id))
+      .where(eq(dashboardMessages.id, id))
+      .limit(1);
+
+    if (result.length === 0) {
+      console.log('❌ [DB] Announcement not found:', id);
+      return null;
+    }
+
+    const announcement = result[0];
+    console.log('✅ [DB] Found announcement:', announcement.id, announcement.title);
+
+    return {
+      id: announcement.id,
+      title: announcement.title,
+      content: announcement.content,
+      type: announcement.type,
+      storeId: announcement.storeId,
+      createdBy: announcement.createdBy,
+      createdAt: announcement.createdAt,
+      author: announcement.author as User,
+      group: announcement.group as Group | undefined,
+    };
   }
 
   async createAnnouncement(announcement: InsertAnnouncement): Promise<DashboardMessage> {
@@ -131,6 +182,26 @@ class AnnouncementMemoryStorage implements IAnnouncementStorage {
       createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Hier
     };
     this.announcements.set(testAnnouncement2.id, testAnnouncement2);
+  }
+
+  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | null> {
+    const announcement = this.announcements.get(id);
+    if (!announcement) {
+      return null;
+    }
+
+    // Ajouter les relations
+    const users = await this.usersGetter();
+    const groups = await this.groupsGetter();
+
+    const author = users.find(u => u.id === announcement.createdBy || u.username === announcement.createdBy);
+    const group = announcement.storeId ? groups.find(g => g.id === announcement.storeId) : undefined;
+
+    return {
+      ...announcement,
+      author: author || { id: announcement.createdBy, firstName: 'Utilisateur', lastName: 'Inconnu', username: announcement.createdBy } as User,
+      group,
+    };
   }
 
   async getAnnouncements(groupIds?: number[]): Promise<AnnouncementWithRelations[]> {
