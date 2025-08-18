@@ -97,7 +97,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
 // Composant pour gérer l'overflow avec popover
 function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrders: any[], dayDeliveries: any[], onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const MAX_VISIBLE_ITEMS = 2;
+  const MAX_VISIBLE_ITEMS = 4;
   const totalItems = dayOrders.length + dayDeliveries.length;
   
   if (totalItems === 0) return null;
