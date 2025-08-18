@@ -365,7 +365,7 @@ export default function CalendarGrid({
   return (
     <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
       {/* Calendar Header */}
-      <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+      <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-300">
         {weekDays.map(day => (
           <div key={day} className="p-4 text-center text-sm font-medium text-gray-700">
             {day}
@@ -385,11 +385,11 @@ export default function CalendarGrid({
           return (
             <div
               key={index}
-              className={`h-32 border-r border-b border-gray-100 relative group cursor-pointer transition-colors ${
+              className={`h-32 border-r border-b border-gray-300 relative group cursor-pointer transition-colors ${
                 isTodayDate
                   ? "bg-blue-50 hover:bg-blue-100 ring-1 ring-blue-200"
                   : isWeekend && isCurrentMonth
-                  ? "bg-gray-100 hover:bg-gray-200"
+                  ? "bg-gray-50 hover:bg-gray-100"
                   : isCurrentMonth
                   ? "bg-white hover:bg-gray-50"
                   : "bg-gray-50"
