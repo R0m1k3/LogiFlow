@@ -1,12 +1,24 @@
 #!/bin/bash
-# Script de migration automatique - Crée UNIQUEMENT la table announcements
-# Toutes les autres tables existent déjà en production
+# Script de migration automatique - Production
+# Crée la table announcements et ajoute les champs DLC stock épuisé
 
 set -e
 
-echo "🔄 [AUTO-MIGRATE] Vérification de la table announcements..."
+echo "🔄 [AUTO-MIGRATE] Début des migrations automatiques..."
+
+# Construire DATABASE_URL si nécessaire
+if [ -z "$DATABASE_URL" ]; then
+    if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ] && [ -n "$POSTGRES_DB" ]; then
+        export DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@logiflow-db:5432/${POSTGRES_DB}"
+        echo "🔧 [AUTO-MIGRATE] URL de base de données construite"
+    else
+        echo "❌ [AUTO-MIGRATE] Variables de base de données manquantes"
+        exit 1
+    fi
+fi
 
 # Vérifier si la base de données est accessible
+echo "🔗 [AUTO-MIGRATE] Test de connexion à la base de données..."
 if ! psql "$DATABASE_URL" -c "SELECT 1;" > /dev/null 2>&1; then
     echo "❌ [AUTO-MIGRATE] Impossible de se connecter à la base de données"
     exit 1

@@ -81,8 +81,9 @@ RUN npm ci --only=production && npm cache clean --force
 COPY --from=build --chown=nextjs:nodejs /app/dist ./dist
 COPY --from=build --chown=nextjs:nodejs /app/shared ./shared
 
-# Copy migration scripts
+# Copy migration scripts and files
 COPY --chown=nextjs:nodejs scripts/ ./scripts/
+COPY --chown=nextjs:nodejs migrations/ ./migrations/
 
 # Create symlink for public files to be accessible from dist
 RUN ln -sf /app/dist/public /app/dist/public

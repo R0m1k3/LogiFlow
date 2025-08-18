@@ -13,6 +13,9 @@ services:
       SESSION_SECRET: LogiFlow_Super_Secret_Session_Key_2025_Production
       PORT: 3000
       USE_LOCAL_AUTH: "true"
+      POSTGRES_USER: logiflow_admin
+      POSTGRES_PASSWORD: LogiFlow2025!
+      POSTGRES_DB: logiflow_db
     ports:
       - "3000:3000"
     networks:
