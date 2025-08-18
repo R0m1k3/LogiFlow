@@ -389,7 +389,7 @@ export default function CalendarGrid({
       </div>
 
       {/* Calendar Days - Grid moderne sans arrondi */}
-      <div className="grid grid-cols-7 gap-0.5 bg-gray-500 p-0.5">
+      <div className="grid grid-cols-7 gap-px bg-gray-300 p-px">
         {paddedDays.map((date, index) => {
           const isCurrentMonth = isSameMonth(date, currentDate);
           const isTodayDate = isToday(date);
