@@ -26,7 +26,8 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Ban
+  Ban,
+  Settings
 } from "lucide-react";
 import { safeFormat } from "@/lib/dateUtils";
 import type { SavTicketWithRelations, Supplier, Group, InsertSavTicket } from "@shared/schema";
@@ -111,6 +112,16 @@ export default function SavTickets() {
     queryKey: ['/api/sav/stats'],
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
+
+  // Query pour récupérer les détails actuels du ticket sélectionné
+  const { data: currentTicketDetails } = useQuery<SavTicketWithRelations>({
+    queryKey: [`/api/sav/tickets/${selectedTicket?.id}`],
+    enabled: !!selectedTicket?.id && showDetailModal,
+    staleTime: 0, // Toujours frais pour voir les changements en temps réel
+  });
+
+  // Utiliser les détails actuels ou fallback sur selectedTicket
+  const displayedTicket = currentTicketDetails || selectedTicket;
 
   // Create ticket mutation
   const createTicketMutation = useMutation({
@@ -902,18 +913,18 @@ export default function SavTickets() {
       </Card>
 
       {/* Detail Modal */}
-      {selectedTicket && (
+      {displayedTicket && (
         <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
             <DialogHeader>
-              <DialogTitle>Détails du ticket {selectedTicket.ticketNumber}</DialogTitle>
+              <DialogTitle>Détails du ticket {displayedTicket.ticketNumber}</DialogTitle>
               <DialogDescription>
                 Informations complètes du ticket SAV et suivi
               </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Colonne de gauche - Détails et Actions */}
-              <div className="space-y-6 overflow-y-auto max-h-[70vh] pr-2">
+              <div className="space-y-4">
                 {/* Section Informations Produit */}
                 <Card>
                   <CardHeader>
@@ -925,21 +936,21 @@ export default function SavTickets() {
                   <CardContent className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium">Code-barres:</span>
-                      <p>{selectedTicket.productGencode}</p>
+                      <p>{displayedTicket.productGencode}</p>
                     </div>
                     <div>
                       <span className="font-medium">Référence:</span>
-                      <p>{selectedTicket.productReference || "Non renseignée"}</p>
+                      <p>{displayedTicket.productReference || "Non renseignée"}</p>
                     </div>
                     <div className="col-span-2">
                       <span className="font-medium">Désignation:</span>
-                      <p>{selectedTicket.productDesignation}</p>
+                      <p>{displayedTicket.productDesignation}</p>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Section Informations Client */}
-                {(selectedTicket.clientName || selectedTicket.clientPhone) && (
+                {(displayedTicket.clientName || displayedTicket.clientPhone) && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center">
@@ -950,11 +961,11 @@ export default function SavTickets() {
                     <CardContent className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="font-medium">Nom:</span>
-                        <p>{selectedTicket.clientName || "Non renseigné"}</p>
+                        <p>{displayedTicket.clientName || "Non renseigné"}</p>
                       </div>
                       <div>
                         <span className="font-medium">Téléphone:</span>
-                        <p>{selectedTicket.clientPhone || "Non renseigné"}</p>
+                        <p>{displayedTicket.clientPhone || "Non renseigné"}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -972,18 +983,18 @@ export default function SavTickets() {
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="font-medium">Type:</span>
-                        <p>{selectedTicket.problemType}</p>
+                        <p>{displayedTicket.problemType}</p>
                       </div>
                       <div>
                         <span className="font-medium">Priorité:</span>
-                        <Badge className={priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.color}>
-                          {priorityConfig[selectedTicket.priority as keyof typeof priorityConfig]?.label}
+                        <Badge className={priorityConfig[displayedTicket.priority as keyof typeof priorityConfig]?.color}>
+                          {priorityConfig[displayedTicket.priority as keyof typeof priorityConfig]?.label}
                         </Badge>
                       </div>
                     </div>
                     <div>
                       <span className="font-medium">Description:</span>
-                      <p className="mt-1 p-2 bg-gray-50 rounded">{selectedTicket.problemDescription}</p>
+                      <p className="mt-1 p-2 bg-gray-50 rounded">{displayedTicket.problemDescription}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -999,40 +1010,52 @@ export default function SavTickets() {
                   <CardContent className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium">Statut:</span>
-                      <Badge className={statusConfig[selectedTicket.status as keyof typeof statusConfig]?.color}>
-                        {statusConfig[selectedTicket.status as keyof typeof statusConfig]?.label}
+                      <Badge className={statusConfig[displayedTicket.status as keyof typeof statusConfig]?.color}>
+                        {statusConfig[displayedTicket.status as keyof typeof statusConfig]?.label}
                       </Badge>
                     </div>
                     <div>
                       <span className="font-medium">Fournisseur:</span>
-                      <p>{selectedTicket.supplier?.name}</p>
+                      <p>{displayedTicket.supplier?.name}</p>
                     </div>
                     <div>
                       <span className="font-medium">Magasin:</span>
-                      <p>{selectedTicket.group?.name}</p>
+                      <p>{displayedTicket.group?.name}</p>
                     </div>
                     <div>
                       <span className="font-medium">Créé le:</span>
-                      <p>{safeFormat(selectedTicket.createdAt, 'dd/MM/yyyy HH:mm')}</p>
+                      <p>{safeFormat(displayedTicket.createdAt, 'dd/MM/yyyy HH:mm')}</p>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Actions rapides */}
                 {canModify && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Actions rapides</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="quick-priority">Priorité</Label>
-                        <Select value={tempPriority || selectedTicket.priority} onValueChange={(value) => {
-                          setTempPriority(value);
-                          updateTicketMutation.mutate({
-                            ticketId: selectedTicket.id,
-                            priority: value
-                          });
-                        }}>
-                          <SelectTrigger>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center">
+                        <Settings className="h-5 w-5 mr-2" />
+                        Actions Rapides
+                      </CardTitle>
+                      <CardDescription>
+                        Modifier rapidement le statut et la priorité
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="quick-priority" className="flex items-center">
+                            <AlertTriangle className="h-4 w-4 mr-1" />
+                            Priorité
+                          </Label>
+                          <Select value={tempPriority || displayedTicket.priority} onValueChange={(value) => {
+                            setTempPriority(value);
+                            updateTicketMutation.mutate({
+                              ticketId: displayedTicket.id,
+                              priority: value
+                            });
+                          }}>
+                            <SelectTrigger className="w-full">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1044,30 +1067,34 @@ export default function SavTickets() {
                         </Select>
                       </div>
                       
-                      <div className="space-y-2">
-                        <Label htmlFor="quick-status">Statut</Label>
-                        <Select value={tempStatus || selectedTicket.status} onValueChange={(value) => {
-                          setTempStatus(value);
-                          updateTicketMutation.mutate({
-                            ticketId: selectedTicket.id,
-                            status: value
-                          });
-                        }}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="nouveau">Nouveau</SelectItem>
-                            <SelectItem value="en_cours">En cours</SelectItem>
-                            <SelectItem value="attente_pieces">Attente pièces</SelectItem>
-                            <SelectItem value="attente_echange">Attente échange</SelectItem>
-                            <SelectItem value="resolu">Résolu</SelectItem>
-                            <SelectItem value="ferme">Fermé</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="space-y-2">
+                          <Label htmlFor="quick-status" className="flex items-center">
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Statut
+                          </Label>
+                          <Select value={tempStatus || displayedTicket.status} onValueChange={(value) => {
+                            setTempStatus(value);
+                            updateTicketMutation.mutate({
+                              ticketId: displayedTicket.id,
+                              status: value
+                            });
+                          }}>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="nouveau">Nouveau</SelectItem>
+                              <SelectItem value="en_cours">En cours</SelectItem>
+                              <SelectItem value="attente_pieces">Attente pièces</SelectItem>
+                              <SelectItem value="attente_echange">Attente échange</SelectItem>
+                              <SelectItem value="resolu">Résolu</SelectItem>
+                              <SelectItem value="ferme">Fermé</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
 
@@ -1076,9 +1103,9 @@ export default function SavTickets() {
                 <h3 className="text-lg font-medium">Historique et commentaires</h3>
                 
                 {/* Affichage de l'historique existant */}
-                {(ticketDetails as any)?.history && (ticketDetails as any).history.length > 0 ? (
+                {(displayedTicket as any)?.history && (displayedTicket as any).history.length > 0 ? (
                   <div className="space-y-3 flex-1 overflow-y-auto">
-                    {(ticketDetails as any).history.map((entry: any, index: number) => (
+                    {(displayedTicket as any).history.map((entry: any, index: number) => (
                       <div key={index} className="bg-gray-50 rounded-lg p-3 text-sm">
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-medium text-gray-900">
@@ -1125,7 +1152,7 @@ export default function SavTickets() {
                             });
                             return;
                           }
-                          addCommentMutation.mutate({ ticketId: selectedTicket.id, comment: newComment.trim() });
+                          addCommentMutation.mutate({ ticketId: displayedTicket.id, comment: newComment.trim() });
                         }}
                         disabled={addCommentMutation.isPending}
                       >
