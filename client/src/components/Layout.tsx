@@ -52,8 +52,14 @@ export default function Layout({ children }: LayoutProps) {
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     // Restaurer l'état de la sidebar depuis localStorage, mais forcer collapsed sur mobile
-    const saved = localStorage.getItem('sidebarCollapsed');
-    return isMobile ? true : (saved ? JSON.parse(saved) : false);
+    try {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      console.log('🔧 Layout - Restoring sidebar state:', { saved, isMobile });
+      return isMobile ? true : (saved ? JSON.parse(saved) : false);
+    } catch (error) {
+      console.error('Error reading sidebar state from localStorage:', error);
+      return isMobile ? true : false;
+    }
   });
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
