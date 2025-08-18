@@ -13,10 +13,24 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: CalendarProps) {
+  // Définir le modificateur pour les weekends (samedi = 6, dimanche = 0)
+  const isWeekend = (date: Date) => {
+    const day = date.getDay();
+    return day === 0 || day === 6; // Dimanche ou Samedi
+  };
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
+      modifiers={{
+        weekend: isWeekend,
+        ...props.modifiers,
+      }}
+      modifiersClassNames={{
+        weekend: "bg-gray-100 dark:bg-gray-800",
+        ...props.modifiersClassNames,
+      }}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
