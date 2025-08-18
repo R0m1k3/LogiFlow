@@ -325,3 +325,29 @@ button[aria-current="date"]:focus-visible,
   outline: 2px solid #2563eb !important;
   outline-offset: 2px !important;
 }
+
+/* Style pour les weekends dans le calendrier - FOND GRIS CLAIR */
+.weekend-day,
+.rdp-day.weekend-day,
+.rdp-button.weekend-day {
+  background-color: #f3f4f6 !important; /* bg-gray-100 */
+}
+
+.dark .weekend-day,
+.dark .rdp-day.weekend-day,
+.dark .rdp-button.weekend-day {
+  background-color: #1f2937 !important; /* bg-gray-800 */
+}
+
+/* Forcer le style weekend sur tous les samedis et dimanches */
+[data-day-weekend="true"],
+button[data-day-weekend="true"],
+.rdp-day[data-day-weekend="true"] {
+  background-color: #f3f4f6 !important;
+}
+
+.dark [data-day-weekend="true"],
+.dark button[data-day-weekend="true"],
+.dark .rdp-day[data-day-weekend="true"] {
+  background-color: #1f2937 !important;
+}

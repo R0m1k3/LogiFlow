@@ -28,8 +28,12 @@ function Calendar({
         ...props.modifiers,
       }}
       modifiersClassNames={{
-        weekend: "bg-gray-100 dark:bg-gray-800",
+        weekend: "weekend-day",
         ...props.modifiersClassNames,
+      }}
+      modifiersStyles={{
+        weekend: { backgroundColor: '#f3f4f6' },
+        ...props.modifiersStyles,
       }}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
