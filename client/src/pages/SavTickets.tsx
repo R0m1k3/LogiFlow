@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useStore } from "@/components/Layout";
 import { 
   Plus, 
   Search, 
@@ -52,6 +53,7 @@ export default function SavTickets() {
   const { user } = useAuthUnified();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { selectedStoreId, storeInitialized } = useStore();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -79,16 +81,22 @@ export default function SavTickets() {
     clientPhone: ""
   });
 
-  // Build query parameters
+  // Build query parameters with store filtering
   const queryParams = new URLSearchParams();
   if (statusFilter !== 'all') queryParams.append('status', statusFilter);
   if (priorityFilter !== 'all') queryParams.append('priority', priorityFilter);
   if (supplierFilter !== 'all') queryParams.append('supplierId', supplierFilter);
   
+  // Add store filtering for admin users
+  if (selectedStoreId && user?.role === 'admin') {
+    queryParams.append('groupId', selectedStoreId.toString());
+  }
+  
   const ticketsUrl = `/api/sav/tickets${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
 
   const { data: ticketsData = [], isLoading } = useQuery<SavTicketWithRelations[]>({
-    queryKey: [ticketsUrl],
+    queryKey: [ticketsUrl, selectedStoreId],
+    enabled: !!user && (user.role !== 'admin' || storeInitialized),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
@@ -109,7 +117,24 @@ export default function SavTickets() {
     resolvedTickets: number;
     criticalTickets: number;
   }>({
-    queryKey: ['/api/sav/stats'],
+    queryKey: ['/api/sav/stats', selectedStoreId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedStoreId && user?.role === 'admin') {
+        params.append('groupId', selectedStoreId.toString());
+      }
+      
+      const response = await fetch(`/api/sav/stats?${params.toString()}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    enabled: !!user && (user.role !== 'admin' || storeInitialized),
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
 

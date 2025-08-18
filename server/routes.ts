@@ -2623,12 +2623,21 @@ RÉSUMÉ DU SCAN
       // Get user's group IDs for filtering
       let groupIds: number[] = [];
       if (user.role === 'admin') {
-        // Admin can see all tickets
-        groupIds = [];
+        // Admin can see all tickets if no specific store is selected
+        // But if a store is selected in the UI, filter by that store
+        const selectedGroupId = req.query.groupId ? parseInt(req.query.groupId) : null;
+        if (selectedGroupId) {
+          groupIds = [selectedGroupId];
+          console.log(`🎫 [SAV] Admin filtering by selected store: ${selectedGroupId}`);
+        } else {
+          groupIds = []; // See all tickets
+          console.log(`🎫 [SAV] Admin viewing all tickets`);
+        }
       } else {
         // Other roles see only their assigned groups
         const userGroups = (user as any).userGroups;
         groupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+        console.log(`🎫 [SAV] User ${user.username} (${user.role}) can see stores:`, groupIds);
       }
 
       // Parse query filters
@@ -2891,12 +2900,21 @@ RÉSUMÉ DU SCAN
       // Get user's group IDs for filtering
       let groupIds: number[] = [];
       if (user.role === 'admin') {
-        // Admin can see all stats
-        groupIds = [];
+        // Admin can see all stats if no specific store is selected
+        // But if a store is selected in the UI, filter by that store
+        const selectedGroupId = req.query.groupId ? parseInt(req.query.groupId) : null;
+        if (selectedGroupId) {
+          groupIds = [selectedGroupId];
+          console.log(`📊 [SAV STATS] Admin filtering by selected store: ${selectedGroupId}`);
+        } else {
+          groupIds = []; // See all stats
+          console.log(`📊 [SAV STATS] Admin viewing all stats`);
+        }
       } else {
         // Other roles see only their assigned groups
         const userGroups = (user as any).userGroups;
         groupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+        console.log(`📊 [SAV STATS] User ${user.username} (${user.role}) can see stores:`, groupIds);
       }
 
       const stats = await storage.getSavTicketStats(groupIds.length > 0 ? groupIds : undefined);
