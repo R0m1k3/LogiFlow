@@ -2688,8 +2688,8 @@ RÉSUMÉ DU SCAN
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Check permissions: admin, manager, directeur can create
-      if (!['admin', 'manager', 'directeur'].includes(user.role)) {
+      // Check permissions: admin, manager, directeur, employee can create
+      if (!['admin', 'manager', 'directeur', 'employee'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions to create tickets" });
       }
 
@@ -2698,9 +2698,11 @@ RÉSUMÉ DU SCAN
       if (user.role === 'admin') {
         const allGroups = await storage.getGroups();
         availableGroupIds = allGroups.map(g => g.id);
+        console.log(`🎫 [SAV] Admin ${user.username} can access all groups:`, availableGroupIds);
       } else {
         const userGroups = (user as any).userGroups;
         availableGroupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
+        console.log(`🎫 [SAV] User ${user.username} (${user.role}) has groups:`, availableGroupIds);
       }
 
       if (availableGroupIds.length === 0) {
@@ -2712,9 +2714,12 @@ RÉSUMÉ DU SCAN
       const ticketNumber = `SAV-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}-${Date.now().toString().slice(-6)}`;
 
       // Parse and validate request body
+      const assignedGroupId = req.body.groupId || availableGroupIds[0];
+      console.log(`🎫 [SAV] Creating ticket for user ${user.username} with groupId: ${assignedGroupId} (requested: ${req.body.groupId}, available: ${availableGroupIds})`);
+      
       const ticketData = insertSavTicketSchema.parse({
         ...req.body,
-        groupId: req.body.groupId || availableGroupIds[0], // Use first available group if not specified
+        groupId: assignedGroupId, // Use first available group if not specified
         createdBy: user.id,
       });
 
@@ -2730,6 +2735,12 @@ RÉSUMÉ DU SCAN
       }
 
       const ticket = await storage.createSavTicket(ticketDataWithNumber);
+      console.log(`🎫 [SAV] Ticket created successfully:`, {
+        ticketNumber: ticket.ticketNumber,
+        groupId: ticket.groupId,
+        createdBy: ticket.createdBy,
+        userRole: user.role
+      });
       res.status(201).json(ticket);
     } catch (error) {
       console.error("Error creating SAV ticket:", error);
