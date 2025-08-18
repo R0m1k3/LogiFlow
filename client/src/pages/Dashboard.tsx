@@ -1,17 +1,20 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Package, ShoppingCart, TrendingUp, Clock, MapPin, User, AlertTriangle, CheckCircle, Truck, FileText, BarChart3, Megaphone, Shield, XCircle, CheckSquare, Circle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar, Package, ShoppingCart, TrendingUp, Clock, MapPin, User, AlertTriangle, CheckCircle, Truck, FileText, BarChart3, Megaphone, Shield, XCircle, CheckSquare, Circle, Info, Star, Sparkles, X } from "lucide-react";
 import { safeFormat, safeDate } from "@/lib/dateUtils";
-import type { PublicityWithRelations } from "@shared/schema";
+import type { PublicityWithRelations, DashboardMessage } from "@shared/schema";
 import AnnouncementCard from "@/components/AnnouncementCard";
 
 export default function Dashboard() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
 
   const { data: stats } = useQuery({
     queryKey: ['/api/stats/monthly', selectedStoreId],
@@ -55,6 +58,106 @@ export default function Dashboard() {
   const { data: customerOrders = [] } = useQuery({
     queryKey: [customerOrdersUrl, selectedStoreId],
   });
+
+  // Récupérer la dernière annonce récente (créée il y a moins de 2 jours)
+  const { data: recentAnnouncement } = useQuery<DashboardMessage | null>({
+    queryKey: ['/api/announcements/recent', selectedStoreId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedStoreId && user?.role === 'admin') {
+        params.append('storeId', selectedStoreId.toString());
+      }
+      params.append('recent', 'true');
+      
+      const response = await fetch(`/api/announcements?${params.toString()}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        return null;
+      }
+      
+      const announcements: DashboardMessage[] = await response.json();
+      
+      // Filtrer les annonces créées il y a moins de 2 jours côté client
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      
+      const recentAnnouncements = announcements.filter(announcement => {
+        if (!announcement.createdAt) return false;
+        const createdAt = safeDate(announcement.createdAt);
+        return createdAt && createdAt >= twoDaysAgo;
+      });
+      
+      // Retourner la plus récente
+      return recentAnnouncements.length > 0 
+        ? recentAnnouncements.sort((a, b) => {
+            const dateA = safeDate(a.createdAt);
+            const dateB = safeDate(b.createdAt);
+            return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
+          })[0]
+        : null;
+    },
+    enabled: !!user,
+  });
+
+  // Fonction pour obtenir la configuration des priorités d'annonces
+  const getAnnouncementPriorityConfig = (type: string) => {
+    switch (type) {
+      case 'error':
+        return { 
+          label: 'Nouveauté', 
+          color: 'bg-purple-100 text-purple-800',
+          icon: Sparkles,
+          iconColor: 'text-purple-600'
+        };
+      case 'warning':
+        return { 
+          label: 'Attention', 
+          color: 'bg-orange-100 text-orange-800',
+          icon: AlertTriangle,
+          iconColor: 'text-orange-600'
+        };
+      case 'success':
+        return { 
+          label: 'Important', 
+          color: 'bg-red-100 text-red-800',
+          icon: Star,
+          iconColor: 'text-red-600'
+        };
+      case 'info':
+      default:
+        return { 
+          label: 'Information', 
+          color: 'bg-blue-100 text-blue-800',
+          icon: Info,
+          iconColor: 'text-blue-600'
+        };
+    }
+  };
+
+  // Effet pour afficher automatiquement le modal si une annonce récente existe
+  useEffect(() => {
+    if (recentAnnouncement && !showAnnouncementModal) {
+      // Vérifier si l'utilisateur a déjà vu cette annonce (localStorage)
+      const dismissedAnnouncements = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');
+      if (!dismissedAnnouncements.includes(recentAnnouncement.id)) {
+        setShowAnnouncementModal(true);
+      }
+    }
+  }, [recentAnnouncement, showAnnouncementModal]);
+
+  // Fonction pour fermer le modal et marquer l'annonce comme vue
+  const handleCloseAnnouncementModal = () => {
+    setShowAnnouncementModal(false);
+    if (recentAnnouncement) {
+      const dismissedAnnouncements = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');
+      if (!dismissedAnnouncements.includes(recentAnnouncement.id)) {
+        dismissedAnnouncements.push(recentAnnouncement.id);
+        localStorage.setItem('dismissedAnnouncements', JSON.stringify(dismissedAnnouncements));
+      }
+    }
+  };
 
   // Récupérer les publicités à venir (chercher dans 2024 ET 2025) - TOUTES les publicités
   const { data: upcomingPublicities = [] } = useQuery<PublicityWithRelations[]>({
@@ -508,8 +611,7 @@ export default function Dashboard() {
                     <div className="text-right space-y-1">
                       <div className="flex items-center justify-end space-x-2">
                         <Badge 
-                          variant={priorityConfig.color}
-                          className="text-xs flex items-center gap-1"
+                          className={`text-xs flex items-center gap-1 ${priorityConfig.color}`}
                         >
                           <PriorityIcon className="h-3 w-3" />
                           {priorityConfig.label}
@@ -530,6 +632,69 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal pour les annonces récentes */}
+      <Dialog open={showAnnouncementModal} onOpenChange={handleCloseAnnouncementModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-blue-600" />
+              Nouvelle Annonce
+            </DialogTitle>
+          </DialogHeader>
+          
+          {recentAnnouncement && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const config = getAnnouncementPriorityConfig(recentAnnouncement.type);
+                    const IconComponent = config.icon;
+                    return (
+                      <>
+                        <IconComponent className={`h-4 w-4 ${config.iconColor}`} />
+                        <Badge className={config.color}>
+                          {config.label}
+                        </Badge>
+                      </>
+                    );
+                  })()}
+                </div>
+                <p className="text-sm text-gray-500">
+                  {safeFormat(recentAnnouncement.createdAt, "d MMMM yyyy 'à' HH:mm")}
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {recentAnnouncement.title}
+                </h3>
+                <div className="prose prose-sm max-w-none">
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {recentAnnouncement.content}
+                  </p>
+                </div>
+              </div>
+              
+              {recentAnnouncement.createdBy && (
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                  <User className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-600">
+                    Publié par {recentAnnouncement.createdBy}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <div className="flex justify-end pt-4">
+            <Button onClick={handleCloseAnnouncementModal} className="flex items-center gap-2">
+              <X className="h-4 w-4" />
+              Fermer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
