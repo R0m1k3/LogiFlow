@@ -114,5 +114,5 @@ RUN chmod +x /app/scripts/auto-migrate-production.sh && \
     ls -la /app/scripts/ && \
     test -f /app/scripts/docker-entrypoint.sh || echo "ERREUR: docker-entrypoint.sh manquant"
 
-# Start application normally (migration applied separately)
-CMD ["node", "dist/index.js"]
+# Apply migrations and start application
+CMD ["sh", "-c", "if [ -f /app/scripts/auto-sync-migrations.sh ]; then /app/scripts/auto-sync-migrations.sh; fi && node dist/index.js"]

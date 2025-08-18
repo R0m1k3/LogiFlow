@@ -1,19 +1,73 @@
 #!/bin/bash
-# Script d'urgence pour corriger la production immédiatement
 
-echo "🚨 CORRECTION URGENTE - Création de la table announcements"
+# Script de correction urgente pour la production
+# Applique la migration DLC immédiatement
 
-# Option 1: Copier le fichier SQL dans le conteneur et l'exécuter
-echo "📋 Copie du script SQL dans le conteneur..."
-docker cp create_announcements_production.sql logiflow-logiflow-1:/tmp/
+set -e
 
-echo "🔧 Exécution du script SQL..."
-docker exec logiflow-logiflow-1 psql $DATABASE_URL -f /tmp/create_announcements_production.sql
+echo "🚨 CORRECTION URGENTE - Migration DLC Production"
+echo "================================================"
 
-echo "✅ Script exécuté. Vérification..."
-docker exec logiflow-logiflow-1 psql $DATABASE_URL -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='announcements') as table_exists;"
+# Vérifier que Docker Compose est disponible
+if ! command -v docker-compose &> /dev/null; then
+    echo "❌ docker-compose non trouvé"
+    exit 1
+fi
 
-echo "🎯 Redémarrage de l'application..."
-docker restart logiflow-logiflow-1
+# Vérifier que le conteneur PostgreSQL est en cours d'exécution
+if ! docker-compose ps | grep -q logiflow-db; then
+    echo "❌ Conteneur logiflow-db non trouvé"
+    echo "Containers disponibles:"
+    docker-compose ps
+    exit 1
+fi
 
-echo "✅ CORRECTION TERMINÉE"
+echo "✅ Conteneur PostgreSQL trouvé"
+
+# Appliquer la migration DLC
+echo "🔄 Application de la migration DLC..."
+
+docker-compose exec -T logiflow-db psql -U logiflow_admin -d logiflow_db << 'EOF'
+-- Migration DLC Stock Épuisé
+ALTER TABLE dlc_products 
+ADD COLUMN IF NOT EXISTS stock_epuise boolean DEFAULT false NOT NULL,
+ADD COLUMN IF NOT EXISTS stock_epuise_by varchar(255),
+ADD COLUMN IF NOT EXISTS stock_epuise_at timestamp;
+
+-- Index pour performance
+CREATE INDEX IF NOT EXISTS idx_dlc_products_stock_epuise ON dlc_products(stock_epuise);
+
+-- Vérification
+SELECT 'Migration DLC appliquée avec succès' as status;
+
+-- Afficher les colonnes ajoutées
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'dlc_products' 
+AND column_name LIKE '%stock_epuise%'
+ORDER BY column_name;
+EOF
+
+if [ $? -eq 0 ]; then
+    echo "✅ Migration DLC appliquée avec succès"
+else
+    echo "❌ Erreur lors de la migration"
+    exit 1
+fi
+
+# Redémarrer l'application
+echo "🔄 Redémarrage de l'application..."
+docker-compose restart logiflow
+
+if [ $? -eq 0 ]; then
+    echo "✅ Application redémarrée"
+else
+    echo "❌ Erreur lors du redémarrage"
+    exit 1
+fi
+
+echo ""
+echo "🎉 CORRECTION TERMINÉE"
+echo "L'erreur 'column does not exist' devrait maintenant être résolue"
+echo ""
+echo "Vérifiez dans les logs que l'API /api/dlc-products fonctionne maintenant"
