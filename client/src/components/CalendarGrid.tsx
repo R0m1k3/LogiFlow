@@ -378,6 +378,7 @@ export default function CalendarGrid({
         {paddedDays.map((date, index) => {
           const isCurrentMonth = isSameMonth(date, currentDate);
           const isTodayDate = isToday(date);
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6; // Dimanche (0) ou Samedi (6)
           const { orders: dayOrders, deliveries: dayDeliveries } = getItemsForDate(date);
           const dayPublicities = getPublicitiesForDate(date);
           
@@ -387,6 +388,8 @@ export default function CalendarGrid({
               className={`h-32 border-r border-b border-gray-100 relative group cursor-pointer transition-colors ${
                 isTodayDate
                   ? "bg-blue-50 hover:bg-blue-100 ring-1 ring-blue-200"
+                  : isWeekend && isCurrentMonth
+                  ? "bg-gray-100 hover:bg-gray-200"
                   : isCurrentMonth
                   ? "bg-white hover:bg-gray-50"
                   : "bg-gray-50"
