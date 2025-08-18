@@ -8,6 +8,13 @@
       "when": 1752862907657,
       "tag": "0000_flashy_blur",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1755510400000,
+      "tag": "002_add_dlc_stock_epuise",
+      "breakpoints": true
     }
   ]
 }
