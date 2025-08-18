@@ -136,9 +136,11 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
             <Button
               variant="outline"
               size="sm"
+              data-modal-trigger="true"
               className="w-full h-5 text-xs bg-white hover:bg-gray-50 border-gray-400 text-gray-700 font-semibold shadow-sm transition-all duration-150 border"
-              style={{display: 'block !important', position: 'relative', zIndex: 9999}}
+              style={{display: 'block !important', position: 'relative', zIndex: 50}}
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 setIsOpen(true);
               }}
@@ -147,7 +149,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
               +{hiddenCount} autres
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg max-h-[70vh] overflow-hidden">
+          <DialogContent className="sm:max-w-lg max-h-[70vh] overflow-hidden fixed z-[9999]" style={{zIndex: 9999}}>
             <DialogHeader>
               <DialogTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
                 <Package className="w-4 h-4" />
@@ -159,16 +161,37 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                 {allItems.map((item, index) => (
                   <div
                     key={`modal-${item.itemType}-${item.id}-${index}`}
-                    className="border border-gray-200 hover:bg-gray-50 transition-colors"
+                    className="border border-gray-200 hover:bg-gray-50 transition-colors p-2 rounded cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onItemClick(item, item.itemType);
+                      setIsOpen(false);
+                    }}
                   >
-                    <CalendarItem
-                      item={item}
-                      type={item.itemType}
-                      onItemClick={(clickedItem, type) => {
-                        onItemClick(clickedItem, type);
-                        setIsOpen(false);
-                      }}
-                    />
+                    <div className={`text-sm px-2 py-2 ${
+                      item.itemType === 'order' 
+                        ? item.status === 'delivered'
+                          ? 'bg-gray-400 text-white'
+                          : item.status === 'planned'
+                          ? 'bg-yellow-300 text-gray-800'
+                          : 'bg-blue-300 text-gray-800'
+                        : item.status === 'delivered'
+                        ? 'bg-gray-400 text-white'
+                        : 'bg-green-300 text-gray-800'
+                    }`}>
+                      <div className="font-semibold">
+                        {item.supplier?.name || (item.itemType === 'order' ? 'Commande' : 'Livraison')}
+                      </div>
+                      {item.itemType === 'delivery' && (
+                        <div className="text-xs mt-1">
+                          Quantité: {item.quantity}{item.unit === 'palettes' ? 'P' : 'C'}
+                        </div>
+                      )}
+                      <div className="text-xs mt-1 opacity-75">
+                        Statut: {item.status === 'delivered' ? 'Livré' : item.status === 'planned' ? 'Planifié' : 'En attente'}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -418,7 +441,14 @@ export default function CalendarGrid({
                   ? "bg-white hover:bg-gray-50"
                   : "bg-gray-150"
               } ${!isCurrentMonth ? 'opacity-50' : ''}`}
-              onClick={() => onDateClick(date)}
+              onClick={(e) => {
+                // Ne pas ouvrir le modal de création si on clique sur le bouton "+X autres"
+                const target = e.target as HTMLElement;
+                if (target.closest('button[data-modal-trigger="true"]')) {
+                  return;
+                }
+                onDateClick(date);
+              }}
             >
               <div className="p-3 h-full flex flex-col relative">
                 {/* Numéro du jour avec design moderne */}
