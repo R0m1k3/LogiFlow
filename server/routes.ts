@@ -2688,8 +2688,8 @@ RÉSUMÉ DU SCAN
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Check permissions: admin, manager, directeur, employee can create
-      if (!['admin', 'manager', 'directeur', 'employee'].includes(user.role)) {
+      // Check permissions: admin, manager, directeur can create (employee can only view)
+      if (!['admin', 'manager', 'directeur'].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions to create tickets" });
       }
 

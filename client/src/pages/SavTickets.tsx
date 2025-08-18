@@ -259,6 +259,7 @@ export default function SavTickets() {
 
   // Check permissions AFTER all hooks are called
   const canView = ['admin', 'directeur', 'manager', 'employee'].includes(user?.role || '');
+  const canCreate = ['admin', 'directeur', 'manager'].includes(user?.role || ''); // Employee can only view
   const canModify = ['admin', 'directeur', 'manager'].includes(user?.role || '');
   const canDelete = ['admin', 'directeur'].includes(user?.role || '');
 
@@ -436,7 +437,7 @@ export default function SavTickets() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Service Après-Vente</h1>
           <p className="text-gray-600 mt-1">Gestion des tickets SAV et suivi des réparations</p>
         </div>
-        {canModify && (
+        {canCreate && (
           <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
             <DialogTrigger asChild>
               <Button className="w-full sm:w-auto">
