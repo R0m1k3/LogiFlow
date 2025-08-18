@@ -114,5 +114,5 @@ RUN chmod +x /app/scripts/auto-migrate-production.sh && \
     ls -la /app/scripts/ && \
     test -f /app/scripts/docker-entrypoint.sh || echo "ERREUR: docker-entrypoint.sh manquant"
 
-# Apply migrations and start application
-CMD ["sh", "-c", "if [ -f /app/scripts/auto-sync-migrations.sh ]; then /app/scripts/auto-sync-migrations.sh; fi && node dist/index.js"]
+# Apply DLC migration directly and start application
+CMD ["sh", "-c", "echo 'Applying DLC migration...'; if [ -n \"$DATABASE_URL\" ]; then psql \"$DATABASE_URL\" -c 'ALTER TABLE dlc_products ADD COLUMN IF NOT EXISTS stock_epuise boolean DEFAULT false NOT NULL, ADD COLUMN IF NOT EXISTS stock_epuise_by varchar(255), ADD COLUMN IF NOT EXISTS stock_epuise_at timestamp; CREATE INDEX IF NOT EXISTS idx_dlc_products_stock_epuise ON dlc_products(stock_epuise);' || echo 'Migration already applied or failed'; fi; node dist/index.js"]

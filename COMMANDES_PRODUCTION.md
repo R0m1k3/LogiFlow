@@ -1,21 +1,38 @@
-# MIGRATION PRODUCTION URGENTE - DLC Stock Épuisé
+# COMMANDES PRODUCTION - Solution Immédiate
 
-## Problème
-```
-Error: column dlc_products.stock_epuise does not exist
-```
+## SOLUTION URGENTE (2 minutes)
 
-## Solution Rapide
-
-### Option 1: Migration SQL directe
+### Commande 1: Appliquer la migration DLC
 ```bash
-# Connectez-vous à votre base PostgreSQL de production
-psql -h [VOTRE_HOST] -U [VOTRE_USER] -d [VOTRE_DB] -f MIGRATION_PRODUCTION_URGENTE.sql
+docker-compose exec logiflow-db psql -U logiflow_admin -d logiflow_db -f - << 'EOF'
+ALTER TABLE dlc_products 
+ADD COLUMN IF NOT EXISTS stock_epuise boolean DEFAULT false NOT NULL,
+ADD COLUMN IF NOT EXISTS stock_epuise_by varchar(255),
+ADD COLUMN IF NOT EXISTS stock_epuise_at timestamp;
+
+CREATE INDEX IF NOT EXISTS idx_dlc_products_stock_epuise ON dlc_products(stock_epuise);
+
+UPDATE dlc_products SET stock_epuise = false WHERE stock_epuise IS NULL;
+
+SELECT 'Migration DLC terminée' as status;
+EOF
 ```
 
-### Option 2: Commandes manuelles
-```sql
--- Connectez-vous à votre base et exécutez :
+### Commande 2: Redémarrer l'application
+```bash
+docker-compose restart logiflow
+```
+
+### Alternative si la première ne marche pas:
+```bash
+# Option A: Via fichier SQL
+docker cp MIGRATION_PRODUCTION_URGENTE.sql [CONTAINER_NAME]:/tmp/migration.sql
+docker-compose exec logiflow-db psql -U logiflow_admin -d logiflow_db -f /tmp/migration.sql
+
+# Option B: Connexion directe
+docker-compose exec logiflow-db psql -U logiflow_admin -d logiflow_db
+
+# Dans psql, coller:
 ALTER TABLE dlc_products 
 ADD COLUMN IF NOT EXISTS stock_epuise boolean DEFAULT false NOT NULL,
 ADD COLUMN IF NOT EXISTS stock_epuise_by varchar(255),
@@ -24,34 +41,27 @@ ADD COLUMN IF NOT EXISTS stock_epuise_at timestamp;
 CREATE INDEX IF NOT EXISTS idx_dlc_products_stock_epuise ON dlc_products(stock_epuise);
 ```
 
-### Option 3: Via Docker (si vous utilisez notre docker-compose)
+## Vérification
 ```bash
-# Sur votre serveur de production
-./scripts/production-deploy-dlc-stock.sh
+# Vérifier que les colonnes existent
+docker-compose exec logiflow-db psql -U logiflow_admin -d logiflow_db -c "
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name='dlc_products' 
+AND column_name LIKE '%stock_epuise%';
+"
+
+# Vérifier les logs de l'application
+docker-compose logs logiflow | tail -20
 ```
 
-## Vérification après migration
-```sql
-SELECT EXISTS (
-    SELECT FROM information_schema.columns 
-    WHERE table_name='dlc_products' 
-    AND column_name='stock_epuise'
-);
+## Résultat attendu
+```
+    column_name     |     data_type
+--------------------+-------------------
+ stock_epuise       | boolean
+ stock_epuise_at    | timestamp without time zone
+ stock_epuise_by    | character varying
 ```
 
-Résultat attendu: `t` (true)
-
-## Redémarrage application
-Après la migration, redémarrez votre application :
-```bash
-# Si Docker
-docker-compose restart logiflow
-
-# Ou selon votre setup
-systemctl restart votre-service
-```
-
-## Vérification fonctionnelle
-1. L'erreur "column does not exist" doit disparaître
-2. L'interface DLC doit afficher les boutons PackageX et RotateCcw
-3. Les fonctionnalités stock épuisé doivent être opérationnelles
+L'erreur "column does not exist" disparaîtra immédiatement.
