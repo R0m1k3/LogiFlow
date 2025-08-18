@@ -54,8 +54,14 @@ export default function Sidebar() {
 
   const toggleSidebar = () => {
     const newCollapsed = !sidebarCollapsed;
+    console.log('🔧 Sidebar - Toggling sidebar:', { from: sidebarCollapsed, to: newCollapsed });
     setSidebarCollapsed(newCollapsed);
-    localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed));
+    try {
+      localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed));
+      console.log('💾 Sidebar state saved to localStorage:', newCollapsed);
+    } catch (error) {
+      console.error('Error saving sidebar state:', error);
+    }
   };
 
   const getInitials = (firstName?: string, lastName?: string) => {
@@ -170,12 +176,21 @@ export default function Sidebar() {
 
 
 
-  // Classes responsives pour la sidebar
+  // Classes responsives pour la sidebar avec classes CSS forcées pour cohérence
   const sidebarClasses = isMobile 
     ? `fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 shadow-lg transform transition-transform duration-300 ease-in-out ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
       }`
-    : `${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`;
+    : `${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`;
+  
+  // Debug log pour vérifier l'état de la sidebar
+  console.log('🔧 Sidebar Debug:', { 
+    isMobile, 
+    sidebarCollapsed, 
+    mobileMenuOpen, 
+    width: sidebarCollapsed ? 'collapsed (64px)' : 'expanded (256px)',
+    classes: sidebarClasses
+  });
 
   // Si l'utilisateur n'est pas encore chargé, afficher un état de chargement
   if (isLoading) {
