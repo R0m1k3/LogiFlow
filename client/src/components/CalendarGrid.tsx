@@ -118,7 +118,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
   const hiddenCount = Math.max(0, totalItems - MAX_VISIBLE_ITEMS);
 
   return (
-    <div className="space-y-1 relative" style={{minHeight: '60px'}}>
+    <div className="space-y-1 relative" style={{minHeight: '60px'}} data-modal-trigger="container">
       {/* Éléments visibles - IDENTIQUE DEV/PROD */}
       {visibleItems.map((item, index) => (
         <CalendarItem
@@ -131,23 +131,24 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
 
       {/* Badge "+X autres" - BLANC/GRIS UNIFORME */}
       {hiddenCount > 0 && (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              data-modal-trigger="true"
-              className="w-full h-5 text-xs bg-white hover:bg-gray-50 border-gray-400 text-gray-700 font-semibold shadow-sm transition-all duration-150 border"
-              style={{display: 'block !important', position: 'relative', zIndex: 50}}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsOpen(true);
-              }}
-            >
-              <MoreHorizontal className="w-3 h-3 mr-1" />
-              +{hiddenCount} autres
-            </Button>
+        <div data-modal-trigger="wrapper" onClick={(e) => e.stopPropagation()}>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                data-modal-trigger="button"
+                className="w-full h-5 text-xs bg-white hover:bg-gray-50 border-gray-400 text-gray-700 font-semibold shadow-sm transition-all duration-150 border"
+                style={{display: 'block !important', position: 'relative', zIndex: 50}}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsOpen(true);
+                }}
+              >
+                <MoreHorizontal className="w-3 h-3 mr-1" />
+                +{hiddenCount} autres
+              </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg max-h-[70vh] overflow-hidden fixed z-[9999]" style={{zIndex: 9999}}>
             <DialogHeader>
@@ -197,7 +198,8 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
               </div>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       )}
     </div>
   );
@@ -442,9 +444,11 @@ export default function CalendarGrid({
                   : "bg-gray-150"
               } ${!isCurrentMonth ? 'opacity-50' : ''}`}
               onClick={(e) => {
-                // Ne pas ouvrir le modal de création si on clique sur le bouton "+X autres"
+                // Ne pas ouvrir le modal de création si on clique sur le bouton "+X autres" ou à l'intérieur
                 const target = e.target as HTMLElement;
-                if (target.closest('button[data-modal-trigger="true"]')) {
+                if (target.closest('button') || target.closest('[role="dialog"]') || target.closest('[data-modal-trigger]')) {
+                  e.preventDefault();
+                  e.stopPropagation();
                   return;
                 }
                 onDateClick(date);
