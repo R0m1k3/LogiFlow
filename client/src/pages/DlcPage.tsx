@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Plus, Eye, Edit, Trash2, CheckCircle, Package, Clock, AlertCircle, Filter, Download, FileText, PackageX, RotateCcw } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -856,28 +857,52 @@ export default function DlcPage() {
                             
                             {/* Bouton Stock épuisé - accessible à tous */}
                             {!product.stockEpuise && product.status !== "valides" && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleMarkStockEpuise(product.id)}
-                                disabled={markStockEpuiseMutation.isPending}
-                                className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
-                              >
-                                <PackageX className="w-4 h-4" />
-                              </Button>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleMarkStockEpuise(product.id)}
+                                      disabled={markStockEpuiseMutation.isPending}
+                                      className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                                    >
+                                      <PackageX className="w-4 h-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Marquer comme stock épuisé</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Indique que ce produit n'est plus en stock (différent de périmé)
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                             
                             {/* Bouton Restaurer stock - réservé aux admins, directeurs et managers */}
                             {product.stockEpuise && (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur') && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRestoreStock(product.id)}
-                                disabled={restoreStockMutation.isPending}
-                                className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                              >
-                                <RotateCcw className="w-4 h-4" />
-                              </Button>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleRestoreStock(product.id)}
+                                      disabled={restoreStockMutation.isPending}
+                                      className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                                    >
+                                      <RotateCcw className="w-4 h-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Restaurer le stock</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Marquer ce produit comme à nouveau disponible en stock
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                             <Button
                               variant="destructive"
