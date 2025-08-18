@@ -38,7 +38,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
     
     return (
       <div
-        className={`text-xs px-3 py-2 flex items-center justify-between cursor-pointer group/order transform hover:scale-[1.03] transition-all duration-150 ${getOrderStyle()}`}
+        className={`text-xs px-2 py-1.5 flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity duration-150 ${getOrderStyle()}`}
         onClick={(e) => {
           e.stopPropagation();
           onItemClick(item, 'order');
@@ -73,7 +73,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
 
   return (
     <div
-      className={`text-xs px-3 py-2 flex items-center justify-between cursor-pointer transform hover:scale-[1.03] transition-all duration-150 ${getDeliveryStyle()}`}
+      className={`text-xs px-2 py-1.5 flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity duration-150 ${getDeliveryStyle()}`}
       onClick={(e) => {
         e.stopPropagation();
         onItemClick(item, 'delivery');
@@ -100,17 +100,6 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
   const MAX_VISIBLE_ITEMS = 4;
   const totalItems = dayOrders.length + dayDeliveries.length;
   
-  // Debug logs pour production
-  if (totalItems > 0) {
-    console.log('🔍 DayItemsContainer:', {
-      orders: dayOrders.length,
-      deliveries: dayDeliveries.length,
-      totalItems,
-      MAX_VISIBLE_ITEMS,
-      shouldShowButton: totalItems > MAX_VISIBLE_ITEMS
-    });
-  }
-  
   if (totalItems === 0) return null;
 
   // Combiner tous les éléments avec leur type
@@ -121,11 +110,6 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
 
   const visibleItems = allItems.slice(0, MAX_VISIBLE_ITEMS);
   const hiddenCount = Math.max(0, totalItems - MAX_VISIBLE_ITEMS);
-  
-  // Debug supplémentaire
-  if (hiddenCount > 0) {
-    console.log('✅ Button "+X autres" should appear:', hiddenCount);
-  }
 
   return (
     <div className="space-y-1.5 relative z-20">
@@ -139,42 +123,36 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
         />
       ))}
 
-      {/* Badge "+X autres" avec modal moderne - TOUJOURS VISIBLE */}
-      {hiddenCount > 0 && (
-        <div className="w-full bg-red-500 border-4 border-red-800 p-2 text-white font-black text-center z-50 relative" style={{display: 'block !important', position: 'relative', zIndex: 9999}}>
-          DEBUG: {hiddenCount} éléments cachés - BOUTON DOIT APPARAÎTRE
-        </div>
-      )}
+      {/* Badge "+X autres" avec modal moderne */}
       {hiddenCount > 0 && (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-8 text-sm bg-red-600 hover:bg-red-700 border-red-800 text-white font-bold shadow-lg transition-all duration-150 border-4 relative z-50"
-              style={{display: 'block !important', position: 'relative', zIndex: 9999, backgroundColor: 'red', color: 'white'}}
+              className="w-full h-6 text-xs bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700 font-semibold shadow-sm transition-all duration-150 border relative z-50"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(true);
               }}
             >
-              <MoreHorizontal className="w-4 h-4 mr-2" />
-              +{hiddenCount} autres (DEBUG)
+              <MoreHorizontal className="w-3 h-3 mr-1" />
+              +{hiddenCount} autres
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden">
+          <DialogContent className="sm:max-w-lg max-h-[70vh] overflow-hidden">
             <DialogHeader>
-              <DialogTitle className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                Tous les éléments du jour ({totalItems})
+              <DialogTitle className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Éléments du jour ({totalItems})
               </DialogTitle>
             </DialogHeader>
-            <div className="mt-4">
-              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="mt-3">
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
                 {allItems.map((item, index) => (
                   <div
                     key={`modal-${item.itemType}-${item.id}-${index}`}
-                    className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="border border-gray-200 hover:bg-gray-50 transition-colors"
                   >
                     <CalendarItem
                       item={item}
