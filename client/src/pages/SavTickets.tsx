@@ -259,20 +259,31 @@ export default function SavTickets() {
 
   // Check permissions AFTER all hooks are called
   const canView = ['admin', 'directeur', 'manager', 'employee'].includes(user?.role || '');
+  const canCreate = ['admin', 'directeur', 'manager'].includes(user?.role || ''); // Employee can only view
   const canModify = ['admin', 'directeur', 'manager'].includes(user?.role || '');
   const canDelete = ['admin', 'directeur'].includes(user?.role || '');
 
   // Get user's available groups for auto-assignment
   const getUserGroups = () => {
     if (!user || user.role === 'admin') {
+      console.log('🎫 [CLIENT] Admin user - can access all groups:', groupsData?.length || 0);
       return groupsData; // Admin can access all groups
     }
     
     // For other users, get their assigned groups
     const userGroups = (user as any).userGroups || [];
-    return groupsData.filter(group => 
+    const filteredGroups = groupsData.filter(group => 
       userGroups.some((ug: any) => ug.groupId === group.id)
     );
+    
+    console.log('🎫 [CLIENT] Non-admin user groups:', {
+      userRole: user.role,
+      userUsername: user.username,
+      allUserGroups: userGroups,
+      filteredGroups: filteredGroups.map(g => ({ id: g.id, name: g.name }))
+    });
+    
+    return filteredGroups;
   };
 
   const availableGroups = getUserGroups();
@@ -288,12 +299,20 @@ export default function SavTickets() {
       return;
     }
 
-    // Auto-assign group if user has only one group or if admin didn't select one
+    // Auto-assign group based on user role and available groups
     let selectedGroupId = formData.groupId ? parseInt(formData.groupId) : null;
+    
+    console.log('🎫 [CLIENT] User groups analysis:', {
+      userRole: user?.role,
+      formDataGroupId: formData.groupId,
+      availableGroups: availableGroups.map(g => ({ id: g.id, name: g.name })),
+      selectedGroupId
+    });
     
     if (!selectedGroupId && availableGroups.length > 0) {
       // Auto-assign first available group
       selectedGroupId = availableGroups[0].id;
+      console.log('🎫 [CLIENT] Auto-assigned group:', selectedGroupId, availableGroups[0].name);
     }
 
     const ticketData: InsertSavTicket = {
@@ -311,7 +330,14 @@ export default function SavTickets() {
       clientPhone: formData.clientPhone || undefined,
     };
 
-    console.log('Creating ticket with data:', ticketData);
+    console.log('🎫 [CLIENT] Creating ticket with data:', {
+      ...ticketData,
+      userInfo: {
+        role: user?.role,
+        username: user?.username,
+        availableGroups: availableGroups.length
+      }
+    });
     createTicketMutation.mutate(ticketData);
   };
 
@@ -411,7 +437,7 @@ export default function SavTickets() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Service Après-Vente</h1>
           <p className="text-gray-600 mt-1">Gestion des tickets SAV et suivi des réparations</p>
         </div>
-        {canModify && (
+        {canCreate && (
           <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
             <DialogTrigger asChild>
               <Button className="w-full sm:w-auto">
