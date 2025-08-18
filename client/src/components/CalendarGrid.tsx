@@ -28,11 +28,11 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
     const getOrderStyle = () => {
       switch (item.status) {
         case 'delivered':
-          return 'bg-gray-500 text-white shadow-lg border-l-4 border-gray-700';
+          return 'bg-gray-400 text-white shadow-md border-l-4 border-gray-500';
         case 'planned':
-          return 'bg-yellow-500 text-black shadow-lg border-l-4 border-yellow-700 font-medium';
+          return 'bg-yellow-300 text-gray-800 shadow-md border-l-4 border-yellow-500 font-medium';
         default:
-          return 'bg-blue-500 text-white shadow-lg border-l-4 border-blue-700';
+          return 'bg-blue-300 text-gray-800 shadow-md border-l-4 border-blue-500';
       }
     };
     
@@ -49,7 +49,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
         </span>
         <div className="flex items-center ml-2 flex-shrink-0">
           {item.status === 'planned' && (
-            <div className="w-2 h-2 bg-yellow-800 mr-1" title="Commande planifiée (liée à une livraison)" />
+            <div className="w-2 h-2 bg-yellow-600 mr-1" title="Commande planifiée (liée à une livraison)" />
           )}
           {item.status === 'delivered' && (
             <Check className="w-3 h-3" />
@@ -63,11 +63,11 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
   const getDeliveryStyle = () => {
     switch (item.status) {
       case 'delivered':
-        return 'bg-gray-500 text-white shadow-lg border-l-4 border-gray-700';
+        return 'bg-gray-400 text-white shadow-md border-l-4 border-gray-500';
       case 'pending':
-        return 'bg-green-500 text-white shadow-lg border-l-4 border-green-700';
+        return 'bg-green-300 text-gray-800 shadow-md border-l-4 border-green-500';
       default:
-        return 'bg-green-500 text-white shadow-lg border-l-4 border-green-700';
+        return 'bg-green-300 text-gray-800 shadow-md border-l-4 border-green-500';
     }
   };
 
@@ -84,7 +84,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
       </span>
       <div className="flex items-center ml-2 flex-shrink-0">
         {item.status === 'pending' && (
-          <div className="w-2 h-2 bg-green-800 mr-1" title="En attente de validation" />
+          <div className="w-2 h-2 bg-green-600 mr-1" title="En attente de validation" />
         )}
         {item.status === 'delivered' && (
           <Check className="w-3 h-3" />
@@ -446,14 +446,14 @@ export default function CalendarGrid({
                   {dayPublicities.slice(0, 2).map((pub, idx) => (
                     <div
                       key={`${pub.id}-${idx}`}
-                      className="bg-purple-600 text-white text-xs px-2 py-1 font-bold shadow-lg cursor-help transform hover:scale-105 transition-transform duration-150 border border-purple-800"
+                      className="bg-purple-300 text-purple-800 text-xs px-2 py-1 font-bold shadow-md cursor-help transform hover:scale-105 transition-transform duration-150 border border-purple-400"
                       title={`Pub ${pub.pubNumber}: ${pub.designation}${pub.participations ? ` - Magasins: ${pub.participations.map((pg: any) => pg.group?.name).join(', ')}` : ''}`}
                     >
                       {pub.pubNumber}
                     </div>
                   ))}
                   {dayPublicities.length > 2 && (
-                    <div className="bg-purple-700 text-white text-xs px-2 py-1 font-bold shadow-lg cursor-help transform hover:scale-105 transition-transform duration-150 border border-purple-900">
+                    <div className="bg-purple-400 text-purple-900 text-xs px-2 py-1 font-bold shadow-md cursor-help transform hover:scale-105 transition-transform duration-150 border border-purple-500">
                       +{dayPublicities.length - 2}
                     </div>
                   )}
@@ -465,7 +465,7 @@ export default function CalendarGrid({
                 <div className={`absolute ${dayPublicities.length === 0 ? 'top-2 right-2' : 'bottom-2 right-2'} opacity-0 group-hover:opacity-100 transition-all duration-200`}>
                   <Button
                     size="sm"
-                    className="w-6 h-6 bg-orange-600 text-white p-0 hover:bg-orange-700 shadow-md transform hover:scale-110 transition-all duration-150 border border-orange-800"
+                    className="w-6 h-6 bg-orange-300 text-orange-800 p-0 hover:bg-orange-400 shadow-md transform hover:scale-110 transition-all duration-150 border border-orange-500"
                     onClick={(e) => {
                       e.stopPropagation();
                       onDateClick(date);
