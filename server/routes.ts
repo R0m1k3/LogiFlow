@@ -3170,15 +3170,28 @@ RÉSUMÉ DU SCAN
               try {
                 // En production, createdBy est varchar, donc chercher par username
                 console.log('🔍 [PRODUCTION] Looking for user with username:', message.createdBy);
-                const [userResult] = await db.select().from(users).where(eq(users.username, message.createdBy));
+                const [userResult] = await db.select({
+                  id: users.id,
+                  username: users.username,
+                  firstName: users.firstName,
+                  lastName: users.lastName,
+                  name: users.name
+                }).from(users).where(eq(users.username, message.createdBy));
                 console.log('🔍 [PRODUCTION] User search result:', userResult ? 'Found' : 'Not found');
                 if (userResult) {
+                  // Utiliser name s'il existe, sinon firstName + lastName, sinon username
+                  const displayName = userResult.name || 
+                    (userResult.firstName && userResult.lastName ? `${userResult.firstName} ${userResult.lastName}` : '') ||
+                    userResult.username;
+                  
                   author = {
                     id: userResult.id,
-                    firstName: userResult.firstName || 'Utilisateur',
-                    lastName: userResult.lastName || 'Inconnu',
+                    firstName: userResult.firstName || displayName.split(' ')[0] || userResult.username,
+                    lastName: userResult.lastName || displayName.split(' ').slice(1).join(' ') || '',
                     username: userResult.username
                   };
+                } else {
+                  console.warn('❌ [PRODUCTION] User not found with username:', message.createdBy);
                 }
               } catch (e) {
                 console.warn('❌ [PRODUCTION] Could not fetch author for message:', message.id, e);
