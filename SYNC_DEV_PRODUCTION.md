@@ -6,7 +6,7 @@ Le fichier `client/src/components/CalendarGrid.tsx` est maintenant unifié pour 
 ## CHANGEMENTS APPLIQUÉS
 
 ### ✅ Paramètres uniformisés
-- `MAX_VISIBLE_ITEMS = 4` (identique dev/prod)
+- `MAX_VISIBLE_ITEMS = 2` (identique dev/prod)
 - Bouton "+X autres" blanc/gris (fini l'orange)
 - Hauteur cellules `h-36` (plus d'espace)
 - Styles forcés pour compatibilité production
@@ -33,7 +33,7 @@ Le fichier `client/src/components/CalendarGrid.tsx` est maintenant unifié pour 
 3. **Redémarrez votre application**
 
 ## RÉSULTAT ATTENDU
-- ✅ 4 éléments max visibles par jour
+- ✅ 2 éléments max visibles par jour
 - ✅ Bouton "+X autres" blanc/gris
 - ✅ Modal qui s'ouvre correctement
 - ✅ Interface identique dev/production

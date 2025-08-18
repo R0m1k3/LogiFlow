@@ -103,7 +103,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
 // Composant pour gérer l'overflow avec modal - DEV = PRODUCTION
 function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrders: any[], dayDeliveries: any[], onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const MAX_VISIBLE_ITEMS = 4; // FORCÉ : 4 éléments en dev ET production
+  const MAX_VISIBLE_ITEMS = 2; // FORCÉ : 2 éléments en dev ET production
   const totalItems = dayOrders.length + dayDeliveries.length;
   
   if (totalItems === 0) return null;
