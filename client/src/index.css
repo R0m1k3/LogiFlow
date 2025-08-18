@@ -380,3 +380,8 @@ button[data-day-weekend="true"],
 .hover\:to-gray-50:hover {
   --tw-gradient-to: #f9fafb var(--tw-gradient-to-position);
 }
+
+/* Couleur grise personnalisée pour les jours hors mois */
+.bg-gray-150 {
+  background-color: #f1f3f4;
+}

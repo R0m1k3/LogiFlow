@@ -389,7 +389,7 @@ export default function CalendarGrid({
       </div>
 
       {/* Calendar Days - Grid moderne sans arrondi */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 gap-px bg-gray-300 p-px">
         {paddedDays.map((date, index) => {
           const isCurrentMonth = isSameMonth(date, currentDate);
           const isTodayDate = isToday(date);
@@ -400,15 +400,15 @@ export default function CalendarGrid({
           return (
             <div
               key={index}
-              className={`h-32 relative group cursor-pointer transition-all duration-200 border-r border-b border-gray-400 ${
+              className={`h-32 relative group cursor-pointer transition-all duration-200 ${
                 isTodayDate
-                  ? "bg-blue-100 hover:bg-blue-200 border-2 border-blue-500"
+                  ? "bg-blue-100 hover:bg-blue-200 border-2 border-blue-600"
                   : isWeekend && isCurrentMonth
-                  ? "bg-gray-50 hover:bg-gray-100"
+                  ? "bg-gray-200 hover:bg-gray-300"
                   : isCurrentMonth
                   ? "bg-white hover:bg-gray-50"
-                  : "bg-gray-100"
-              } ${!isCurrentMonth ? 'opacity-50' : ''} last:border-r-0`}
+                  : "bg-gray-150"
+              } ${!isCurrentMonth ? 'opacity-50' : ''}`}
               onClick={() => onDateClick(date)}
             >
               <div className="p-3 h-full flex flex-col">
