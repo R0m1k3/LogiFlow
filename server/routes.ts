@@ -41,7 +41,7 @@ import {
   insertWeatherDataSchema,
   insertWeatherSettingsSchema,
   users, groups, userGroups, suppliers, orders, deliveries, publicities, publicityParticipations,
-  customerOrders, nocodbConfigs, dlcProducts, tasks, invoiceVerifications, dashboardMessages
+  customerOrders, nocodbConfig, dlcProducts, tasks, invoiceVerificationCache, dashboardMessages
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
@@ -3164,7 +3164,7 @@ RÉSUMÉ DU SCAN
           
           // Ajouter les relations manuellement
           const announcements = await Promise.all(
-            messages.map(async (message) => {
+            messages.map(async (message: any) => {
               // Récupérer l'auteur
               let author = { id: message.createdBy, firstName: 'Utilisateur', lastName: 'Inconnu', username: message.createdBy };
               try {
