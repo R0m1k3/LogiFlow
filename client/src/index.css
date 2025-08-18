@@ -351,3 +351,32 @@ button[data-day-weekend="true"],
 .dark .rdp-day[data-day-weekend="true"] {
   background-color: #1f2937 !important;
 }
+
+/* Nouvelles couleurs pour le calendrier moderne */
+.bg-gray-25 {
+  background-color: #fafafa;
+}
+
+.bg-slate-25 {
+  background-color: #f8fafc;
+}
+
+.hover\:from-gray-25:hover {
+  --tw-gradient-from: #fafafa var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(250 250 250 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.hover\:to-slate-25:hover {
+  --tw-gradient-to: #f8fafc var(--tw-gradient-to-position);
+}
+
+.hover\:from-slate-50:hover {
+  --tw-gradient-from: #f8fafc var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(248 250 252 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.hover\:to-gray-50:hover {
+  --tw-gradient-to: #f9fafb var(--tw-gradient-to-position);
+}

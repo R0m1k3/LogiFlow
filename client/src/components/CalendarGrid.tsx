@@ -25,26 +25,31 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
   };
 
   if (type === 'order') {
-    const colorClass = item.status === 'delivered' 
-      ? 'bg-delivered text-white' 
-      : item.status === 'planned'
-      ? 'bg-yellow-200 text-gray-800 border-2 border-yellow-300'
-      : 'bg-primary text-white';
+    const getOrderStyle = () => {
+      switch (item.status) {
+        case 'delivered':
+          return 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-md';
+        case 'planned':
+          return 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md border border-amber-300';
+        default:
+          return 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md';
+      }
+    };
     
     return (
       <div
-        className={`text-xs px-2 py-1 flex items-center justify-between cursor-pointer group/order ${colorClass}`}
+        className={`text-xs px-3 py-2 flex items-center justify-between cursor-pointer group/order rounded-lg transform hover:scale-[1.02] transition-all duration-200 ${getOrderStyle()}`}
         onClick={(e) => {
           e.stopPropagation();
           onItemClick(item, 'order');
         }}
       >
-        <span className="truncate">
+        <span className="truncate font-medium">
           {item.supplier.name}
         </span>
-        <div className="flex items-center ml-1 flex-shrink-0">
+        <div className="flex items-center ml-2 flex-shrink-0">
           {item.status === 'planned' && (
-            <span className="w-2 h-2 bg-yellow-600 mr-1" title="Commande planifiée (liée à une livraison)" />
+            <div className="w-2 h-2 bg-amber-200 rounded-full mr-1" title="Commande planifiée (liée à une livraison)" />
           )}
           {item.status === 'delivered' && (
             <Check className="w-3 h-3" />
@@ -55,26 +60,31 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
   }
 
   // Livraison
+  const getDeliveryStyle = () => {
+    switch (item.status) {
+      case 'delivered':
+        return 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-md';
+      case 'pending':
+        return 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md border border-orange-300';
+      default:
+        return 'bg-gradient-to-r from-slate-500 to-gray-500 text-white shadow-md';
+    }
+  };
+
   return (
     <div
-      className={`text-xs px-2 py-1 flex items-center justify-between cursor-pointer ${
-        item.status === 'delivered' 
-          ? 'bg-delivered text-white' 
-          : item.status === 'pending'
-          ? 'bg-yellow-500 text-white border-2 border-yellow-300'
-          : 'bg-secondary text-white'
-      }`}
+      className={`text-xs px-3 py-2 flex items-center justify-between cursor-pointer rounded-lg transform hover:scale-[1.02] transition-all duration-200 ${getDeliveryStyle()}`}
       onClick={(e) => {
         e.stopPropagation();
         onItemClick(item, 'delivery');
       }}
     >
-      <span className="truncate">
+      <span className="truncate font-medium">
         {item.supplier.name} - {formatQuantity(item.quantity, item.unit)}
       </span>
-      <div className="flex items-center ml-1 flex-shrink-0">
+      <div className="flex items-center ml-2 flex-shrink-0">
         {item.status === 'pending' && (
-          <span className="w-2 h-2 bg-orange-300 mr-1" title="En attente de validation" />
+          <div className="w-2 h-2 bg-orange-200 rounded-full mr-1" title="En attente de validation" />
         )}
         {item.status === 'delivered' && (
           <Check className="w-3 h-3" />
@@ -102,7 +112,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
   const hiddenCount = Math.max(0, totalItems - MAX_VISIBLE_ITEMS);
 
   return (
-    <div className="mt-1 space-y-1">
+    <div className="space-y-1.5">
       {/* Éléments visibles */}
       {visibleItems.map((item, index) => (
         <CalendarItem
@@ -113,14 +123,14 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
         />
       ))}
 
-      {/* Badge "+X autres" avec popover */}
+      {/* Badge "+X autres" avec popover moderne */}
       {hiddenCount > 0 && (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-6 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 border-gray-300"
+              className="w-full h-7 text-xs bg-gradient-to-r from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100 border-slate-200 text-slate-700 font-medium rounded-lg shadow-sm transition-all duration-200"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(!isOpen);
@@ -131,16 +141,16 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="w-80 p-3"
+            className="w-80 p-4 bg-white/95 backdrop-blur-sm border border-gray-200/60 shadow-xl rounded-xl"
             align="start"
             side="right"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm text-gray-900">
+            <div className="space-y-3">
+              <h4 className="font-semibold text-sm text-slate-800 border-b border-gray-100 pb-2">
                 Tous les éléments ({totalItems})
               </h4>
-              <div className="space-y-1 max-h-60 overflow-y-auto">
+              <div className="space-y-2 max-h-60 overflow-y-auto">
                 {allItems.map((item) => (
                   <CalendarItem
                     key={`popup-${item.itemType}-${item.id}`}
@@ -363,104 +373,105 @@ export default function CalendarGrid({
   };
 
   return (
-    <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
-      {/* Calendar Header */}
-      <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-300">
-        {weekDays.map(day => (
-          <div key={day} className="p-4 text-center text-sm font-medium text-gray-700">
+    <div className="bg-white shadow-lg rounded-xl border border-gray-200/50 overflow-hidden backdrop-blur-sm">
+      {/* Calendar Header - Design moderne */}
+      <div className="grid grid-cols-7 bg-gradient-to-r from-slate-50 to-gray-50 border-b border-gray-200/60">
+        {weekDays.map((day, index) => (
+          <div 
+            key={day} 
+            className={`p-4 text-center text-sm font-semibold tracking-wide ${
+              index >= 5 ? 'text-slate-600' : 'text-slate-700'
+            } uppercase`}
+          >
             {day}
           </div>
         ))}
       </div>
 
-      {/* Calendar Days */}
-      <div className="grid grid-cols-7">
+      {/* Calendar Days - Grid moderne */}
+      <div className="grid grid-cols-7 gap-px bg-gray-200/40">
         {paddedDays.map((date, index) => {
           const isCurrentMonth = isSameMonth(date, currentDate);
           const isTodayDate = isToday(date);
-          const isWeekend = date.getDay() === 0 || date.getDay() === 6; // Dimanche (0) ou Samedi (6)
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
           const { orders: dayOrders, deliveries: dayDeliveries } = getItemsForDate(date);
           const dayPublicities = getPublicitiesForDate(date);
           
           return (
             <div
               key={index}
-              className={`h-32 border-r border-b border-gray-300 relative group cursor-pointer transition-colors ${
+              className={`h-32 relative group cursor-pointer transition-all duration-300 ease-in-out transform hover:scale-[1.02] hover:z-10 ${
                 isTodayDate
-                  ? "bg-blue-50 hover:bg-blue-100 ring-1 ring-blue-200"
+                  ? "bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 shadow-md ring-2 ring-blue-200/50"
                   : isWeekend && isCurrentMonth
-                  ? "bg-gray-50 hover:bg-gray-100"
+                  ? "bg-gradient-to-br from-slate-25 to-gray-25 hover:from-slate-50 hover:to-gray-50"
                   : isCurrentMonth
-                  ? "bg-white hover:bg-gray-50"
-                  : "bg-gray-50"
-              }`}
+                  ? "bg-white hover:bg-gradient-to-br hover:from-gray-25 hover:to-slate-25 hover:shadow-md"
+                  : "bg-gray-25 hover:bg-gray-50/70"
+              } ${!isCurrentMonth ? 'opacity-40' : ''}`}
               onClick={() => onDateClick(date)}
             >
-              <div className="p-2">
-                <span className={`text-sm font-medium ${
-                  isTodayDate 
-                    ? "text-blue-700 font-semibold" 
-                    : isCurrentMonth ? "text-gray-900" : "text-gray-400"
-                }`}>
-                  {format(date, 'd')}
-                </span>
+              <div className="p-3 h-full flex flex-col">
+                {/* Numéro du jour avec design moderne */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-sm font-bold tracking-tight ${
+                    isTodayDate 
+                      ? "text-blue-700 bg-blue-100 px-2 py-1 rounded-full text-xs shadow-sm" 
+                      : isCurrentMonth 
+                      ? "text-slate-800" 
+                      : "text-gray-400"
+                  }`}>
+                    {format(date, 'd')}
+                  </span>
+                  
+                  {/* Indicateur weekend moderne */}
+                  {isWeekend && isCurrentMonth && (
+                    <div className="w-1.5 h-1.5 bg-slate-300 rounded-full"></div>
+                  )}
+                </div>
                 
-                {/* Orders and Deliveries avec système d'overflow */}
-                <DayItemsContainer
-                  dayOrders={dayOrders}
-                  dayDeliveries={dayDeliveries}
-                  onItemClick={onItemClick}
-                />
+                {/* Orders and Deliveries avec design moderne */}
+                <div className="flex-1 overflow-hidden">
+                  <DayItemsContainer
+                    dayOrders={dayOrders}
+                    dayDeliveries={dayDeliveries}
+                    onItemClick={onItemClick}
+                  />
+                </div>
               </div>
               
-              {/* Publicities in top-right corner */}
+              {/* Publicities avec design moderne */}
               {dayPublicities.length > 0 && (
-                <div className="absolute top-1 right-1 flex flex-col items-end gap-1">
-                  {dayPublicities.slice(0, 3).map((pub, idx) => (
+                <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5">
+                  {dayPublicities.slice(0, 2).map((pub, idx) => (
                     <div
                       key={`${pub.id}-${idx}`}
-                      className="bg-purple-100 text-purple-800 text-xs px-1.5 py-0.5 rounded-sm border border-purple-200 font-medium shadow-sm cursor-help"
+                      className="bg-gradient-to-r from-purple-500 to-violet-600 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg cursor-help transform hover:scale-105 transition-transform duration-200"
                       title={`Pub ${pub.pubNumber}: ${pub.designation}${pub.participations ? ` - Magasins: ${pub.participations.map((pg: any) => pg.group?.name).join(', ')}` : ''}`}
                     >
                       {pub.pubNumber}
                     </div>
                   ))}
-                  {dayPublicities.length > 3 && (
-                    <div className="bg-purple-200 text-purple-700 text-xs px-1.5 py-0.5 rounded-sm border border-purple-300 font-medium">
-                      +{dayPublicities.length - 3}
+                  {dayPublicities.length > 2 && (
+                    <div className="bg-gradient-to-r from-violet-600 to-purple-700 text-white text-xs px-2 py-1 rounded-full font-bold shadow-lg cursor-help transform hover:scale-105 transition-transform duration-200">
+                      +{dayPublicities.length - 2}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Quick Create Button */}
-              {isCurrentMonth && dayPublicities.length === 0 && (
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Quick Create Button moderne */}
+              {isCurrentMonth && (
+                <div className={`absolute ${dayPublicities.length === 0 ? 'top-2 right-2' : 'bottom-2 right-2'} opacity-0 group-hover:opacity-100 transition-all duration-300`}>
                   <Button
                     size="sm"
-                    className="w-6 h-6 bg-accent text-white rounded-full p-0 hover:bg-orange-600"
+                    className="w-7 h-7 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-full p-0 hover:from-orange-600 hover:to-amber-600 shadow-lg transform hover:scale-110 transition-all duration-200"
                     onClick={(e) => {
                       e.stopPropagation();
                       onDateClick(date);
                     }}
                   >
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                </div>
-              )}
-              
-              {/* Quick Create Button when publicities are present */}
-              {isCurrentMonth && dayPublicities.length > 0 && (
-                <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    size="sm"
-                    className="w-6 h-6 bg-accent text-white rounded-full p-0 hover:bg-orange-600"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDateClick(date);
-                    }}
-                  >
-                    <Plus className="w-3 h-3" />
+                    <Plus className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               )}
