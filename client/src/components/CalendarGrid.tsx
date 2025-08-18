@@ -100,10 +100,10 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
   );
 }
 
-// Composant pour gérer l'overflow avec modal
+// Composant pour gérer l'overflow avec modal - DEV = PRODUCTION
 function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrders: any[], dayDeliveries: any[], onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const MAX_VISIBLE_ITEMS = 4; // Production : 4 éléments visibles
+  const MAX_VISIBLE_ITEMS = 2; // FORCÉ : 2 éléments en dev ET production
   const totalItems = dayOrders.length + dayDeliveries.length;
   
   if (totalItems === 0) return null;
@@ -118,8 +118,8 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
   const hiddenCount = Math.max(0, totalItems - MAX_VISIBLE_ITEMS);
 
   return (
-    <div className="space-y-1.5 relative z-20">
-      {/* Éléments visibles */}
+    <div className="space-y-1 relative" style={{minHeight: '60px'}}>
+      {/* Éléments visibles - IDENTIQUE DEV/PROD */}
       {visibleItems.map((item, index) => (
         <CalendarItem
           key={`${item.itemType}-${item.id}`}
@@ -129,14 +129,14 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
         />
       ))}
 
-      {/* Badge "+X autres" avec modal moderne */}
+      {/* Badge "+X autres" - BLANC/GRIS UNIFORME */}
       {hiddenCount > 0 && (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-5 text-xs bg-white hover:bg-gray-50 border-gray-400 text-gray-700 font-semibold shadow-sm transition-all duration-150 border relative z-50"
+              className="w-full h-5 text-xs bg-white hover:bg-gray-50 border-gray-400 text-gray-700 font-semibold shadow-sm transition-all duration-150 border"
               style={{display: 'block !important', position: 'relative', zIndex: 9999}}
               onClick={(e) => {
                 e.stopPropagation();
@@ -439,7 +439,7 @@ export default function CalendarGrid({
                   )}
                 </div>
                 
-                {/* Orders and Deliveries - Production optimisé */}
+                {/* Orders and Deliveries - DEV = PRODUCTION */}
                 <div className="flex-1 relative" style={{minHeight: '80px', overflow: 'visible'}}>
                   <DayItemsContainer
                     dayOrders={dayOrders}
