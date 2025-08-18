@@ -150,41 +150,41 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                 +{hiddenCount} autres
               </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl w-full max-h-[85vh] fixed z-[9999] p-0" style={{zIndex: 9999}}>
-            <DialogHeader className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <DialogTitle className="text-lg font-bold text-gray-900 flex items-center gap-3">
-                <Package className="w-5 h-5 text-blue-600" />
-                Éléments du jour - {totalItems} élément{totalItems > 1 ? 's' : ''}
+          <DialogContent className="max-w-lg w-full max-h-[80vh] fixed z-[9999] p-0" style={{zIndex: 9999}}>
+            <DialogHeader className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+              <DialogTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <Package className="w-4 h-4 text-blue-600" />
+                Éléments du jour - {totalItems}
               </DialogTitle>
             </DialogHeader>
             
-            <div className="p-6">
-              <div className="grid gap-4" style={{maxHeight: '60vh'}}>
+            <div className="p-3" style={{maxHeight: '65vh', overflowY: 'auto'}}>
+              <div className="space-y-2">
                 {allItems.map((item, index) => {
                   const isOrder = item.itemType === 'order';
                   const statusColor = item.status === 'delivered' 
                     ? 'bg-gray-100 border-gray-300' 
                     : item.status === 'planned'
-                    ? 'bg-yellow-50 border-yellow-300'
+                    ? 'bg-yellow-50 border-yellow-200'
                     : isOrder 
-                    ? 'bg-blue-50 border-blue-300'
-                    : 'bg-green-50 border-green-300';
+                    ? 'bg-blue-50 border-blue-200'
+                    : 'bg-green-50 border-green-200';
                   
                   const statusText = item.status === 'delivered' ? 'Livré' : 
                                    item.status === 'planned' ? 'Planifié' : 'En attente';
                   
                   const statusIcon = item.status === 'delivered' 
-                    ? <Check className="w-4 h-4 text-gray-600" />
+                    ? <Check className="w-3 h-3 text-gray-600" />
                     : item.status === 'planned'
-                    ? <div className="w-3 h-3 bg-yellow-500 rounded-full" />
+                    ? <div className="w-2 h-2 bg-yellow-500 rounded-full" />
                     : isOrder
-                    ? <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                    : <div className="w-3 h-3 bg-green-500 rounded-full" />;
+                    ? <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                    : <div className="w-2 h-2 bg-green-500 rounded-full" />;
                   
                   return (
                     <div
                       key={`modal-${item.itemType}-${item.id}-${index}`}
-                      className={`${statusColor} border-2 rounded-lg p-4 cursor-pointer hover:shadow-md transition-all duration-200 transform hover:scale-[1.02]`}
+                      className={`${statusColor} border rounded p-2 cursor-pointer hover:shadow-sm transition-all duration-150`}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -192,14 +192,14 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                         setIsOpen(false);
                       }}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
                             {statusIcon}
-                            <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
-                              {isOrder ? 'Commande' : 'Livraison'}
+                            <span className="text-xs font-medium text-gray-600 uppercase">
+                              {isOrder ? 'COMMANDE' : 'LIVRAISON'}
                             </span>
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                               item.status === 'delivered' ? 'bg-gray-200 text-gray-700' :
                               item.status === 'planned' ? 'bg-yellow-200 text-yellow-800' :
                               isOrder ? 'bg-blue-200 text-blue-800' : 'bg-green-200 text-green-800'
@@ -208,29 +208,21 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                             </span>
                           </div>
                           
-                          <h3 className="font-bold text-lg text-gray-900 mb-1">
-                            {item.supplier?.name || (isOrder ? 'Commande sans fournisseur' : 'Livraison sans fournisseur')}
-                          </h3>
-                          
-                          {!isOrder && (
-                            <div className="text-sm text-gray-700 mb-1">
-                              <span className="font-medium">Quantité:</span> {item.quantity} {item.unit === 'palettes' ? 'palette(s)' : 'colis'}
-                            </div>
-                          )}
-                          
-                          <div className="text-sm text-gray-600">
-                            <span className="font-medium">Date:</span> {
-                              item.scheduledDate ? new Date(item.scheduledDate).toLocaleDateString('fr-FR') :
-                              item.deliveredDate ? new Date(item.deliveredDate).toLocaleDateString('fr-FR') :
-                              new Date(item.createdAt).toLocaleDateString('fr-FR')
-                            }
+                          <div className="font-semibold text-sm text-gray-900 truncate">
+                            {item.supplier?.name || (isOrder ? 'Commande' : 'Livraison')}
                           </div>
                           
-                          {item.notes && (
-                            <div className="text-sm text-gray-600 mt-2">
-                              <span className="font-medium">Notes:</span> {item.notes}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-3 text-xs text-gray-600 mt-1">
+                            {!isOrder && (
+                              <span>{item.quantity} {item.unit === 'palettes' ? 'P' : 'C'}</span>
+                            )}
+                            <span>
+                              {item.scheduledDate ? new Date(item.scheduledDate).toLocaleDateString('fr-FR') :
+                               item.deliveredDate ? new Date(item.deliveredDate).toLocaleDateString('fr-FR') :
+                               new Date(item.createdAt).toLocaleDateString('fr-FR')
+                              }
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
