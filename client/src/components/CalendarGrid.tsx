@@ -68,9 +68,9 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
       case 'delivered':
         return 'bg-gray-400 text-white shadow-md border-l-4 border-gray-500';
       case 'pending':
-        return 'bg-green-300 text-gray-800 shadow-md border-l-4 border-green-500';
+        return 'bg-emerald-200 text-gray-800 shadow-md border-l-4 border-emerald-400';
       default:
-        return 'bg-green-300 text-gray-800 shadow-md border-l-4 border-green-500';
+        return 'bg-emerald-200 text-gray-800 shadow-md border-l-4 border-emerald-400';
     }
   };
 
@@ -89,7 +89,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
         </span>
         <div style={{display: 'flex', alignItems: 'center', marginLeft: '4px'}}>
           {item.status === 'pending' && (
-            <div className="w-2 h-2 bg-green-600 rounded-full" title="En attente" />
+            <div className="w-2 h-2 bg-emerald-500 rounded-full" title="En attente" />
           )}
           {item.status === 'delivered' && (
             <Check className="w-3 h-3" />
@@ -168,7 +168,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                     ? 'bg-yellow-50 border-yellow-200'
                     : isOrder 
                     ? 'bg-blue-50 border-blue-200'
-                    : 'bg-green-50 border-green-200';
+                    : 'bg-emerald-50 border-emerald-200';
                   
                   const statusText = item.status === 'delivered' ? 'Livré' : 
                                    item.status === 'planned' ? 'Planifié' : 'En attente';
@@ -179,7 +179,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                     ? <div className="w-2 h-2 bg-yellow-500 rounded-full" />
                     : isOrder
                     ? <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                    : <div className="w-2 h-2 bg-green-500 rounded-full" />;
+                    : <div className="w-2 h-2 bg-emerald-500 rounded-full" />;
                   
                   return (
                     <div
@@ -202,7 +202,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                               item.status === 'delivered' ? 'bg-gray-200 text-gray-700' :
                               item.status === 'planned' ? 'bg-yellow-200 text-yellow-800' :
-                              isOrder ? 'bg-blue-200 text-blue-800' : 'bg-green-200 text-green-800'
+                              isOrder ? 'bg-blue-200 text-blue-800' : 'bg-emerald-200 text-emerald-800'
                             }`}>
                               {statusText}
                             </span>
