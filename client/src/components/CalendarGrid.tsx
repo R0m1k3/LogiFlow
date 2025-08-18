@@ -38,22 +38,25 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
     
     return (
       <div
-        className={`text-xs px-2 py-1.5 flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity duration-150 ${getOrderStyle()}`}
+        className={`text-xs px-1 py-1 cursor-pointer hover:opacity-90 transition-opacity ${getOrderStyle()}`}
         onClick={(e) => {
           e.stopPropagation();
           onItemClick(item, 'order');
         }}
+        style={{marginBottom: '2px', display: 'block', width: '100%'}}
       >
-        <span className="truncate font-semibold">
-          {item.supplier.name}
-        </span>
-        <div className="flex items-center ml-2 flex-shrink-0">
-          {item.status === 'planned' && (
-            <div className="w-2 h-2 bg-yellow-600 mr-1" title="Commande planifiée (liée à une livraison)" />
-          )}
-          {item.status === 'delivered' && (
-            <Check className="w-3 h-3" />
-          )}
+        <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%'}}>
+          <span className="truncate font-semibold" style={{fontSize: '10px'}}>
+            {item.supplier?.name || 'Commande'}
+          </span>
+          <div style={{display: 'flex', alignItems: 'center'}}>
+            {item.status === 'planned' && (
+              <div className="w-1.5 h-1.5 bg-yellow-600" title="Planifié" />
+            )}
+            {item.status === 'delivered' && (
+              <Check className="w-3 h-3" />
+            )}
+          </div>
         </div>
       </div>
     );
@@ -73,22 +76,25 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
 
   return (
     <div
-      className={`text-xs px-2 py-1.5 flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity duration-150 ${getDeliveryStyle()}`}
+      className={`text-xs px-1 py-1 cursor-pointer hover:opacity-90 transition-opacity ${getDeliveryStyle()}`}
       onClick={(e) => {
         e.stopPropagation();
         onItemClick(item, 'delivery');
       }}
+      style={{marginBottom: '2px', display: 'block', width: '100%'}}
     >
-      <span className="truncate font-semibold">
-        {item.supplier.name} - {formatQuantity(item.quantity, item.unit)}
-      </span>
-      <div className="flex items-center ml-2 flex-shrink-0">
-        {item.status === 'pending' && (
-          <div className="w-2 h-2 bg-green-600 mr-1" title="En attente de validation" />
-        )}
-        {item.status === 'delivered' && (
-          <Check className="w-3 h-3" />
-        )}
+      <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%'}}>
+        <span className="truncate font-semibold" style={{fontSize: '10px'}}>
+          {item.supplier?.name || 'Livraison'} - {formatQuantity(item.quantity, item.unit)}
+        </span>
+        <div style={{display: 'flex', alignItems: 'center'}}>
+          {item.status === 'pending' && (
+            <div className="w-1.5 h-1.5 bg-green-600" title="En attente" />
+          )}
+          {item.status === 'delivered' && (
+            <Check className="w-3 h-3" />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -97,7 +103,7 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
 // Composant pour gérer l'overflow avec modal
 function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrders: any[], dayDeliveries: any[], onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const MAX_VISIBLE_ITEMS = 4;
+  const MAX_VISIBLE_ITEMS = 3; // Optimisé pour production
   const totalItems = dayOrders.length + dayDeliveries.length;
   
   if (totalItems === 0) return null;
@@ -130,7 +136,8 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-6 text-xs bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700 font-semibold shadow-sm transition-all duration-150 border relative z-50"
+              className="w-full h-5 text-xs bg-orange-200 hover:bg-orange-300 border-orange-400 text-orange-900 font-bold shadow-sm transition-all duration-150 border-2 relative z-50"
+              style={{display: 'block !important', position: 'relative', zIndex: 9999}}
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(true);
@@ -432,8 +439,8 @@ export default function CalendarGrid({
                   )}
                 </div>
                 
-                {/* Orders and Deliveries avec design moderne */}
-                <div className="flex-1 overflow-visible relative z-10">
+                {/* Orders and Deliveries - Production optimisé */}
+                <div className="flex-1 relative" style={{minHeight: '60px', overflow: 'visible'}}>
                   <DayItemsContainer
                     dayOrders={dayOrders}
                     dayDeliveries={dayDeliveries}
