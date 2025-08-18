@@ -24,7 +24,7 @@ The platform is built with a clear separation of concerns, utilizing a modern fu
 - **Database:** PostgreSQL is used as the primary data store, with Drizzle ORM facilitating interaction. Database migrations ensure schema consistency.
 - **Authentication:** Secure role-based access control (RBAC) is implemented for granular permissions.
 - **Multi-tenancy:** The system supports multi-tenant operations with group and permission management.
-- **Module for Backup:** An integrated PostgreSQL backup manager allows manual and scheduled backups, with tracking in a `DATABASE_BACKUPS` table.
+- **Module for Backup:** An integrated PostgreSQL backup manager allows manual and scheduled backups, with tracking in a `DATABASE_BACKUPS` table. **PRODUCTION FIX (Août 2025)** : Correction critique du système de sauvegarde automatique en production - le service de sauvegarde n'était pas initialisé dans `index.production.ts`, empêchant la planification automatique quotidienne à 2h00. Fix appliqué avec import du service et configuration Docker complète (répertoire `/app/backups`, variables d'environnement, volumes persistants).
 - **Error Handling:** Robust error management ensures graceful degradation and informative logging, especially for production environments. API responses are logged conditionally to reduce console clutter in production.
 - **Data Synchronization:** Logic is implemented to ensure data consistency between development (in-memory storage) and production (PostgreSQL) environments, particularly for order status and relationships.
 
