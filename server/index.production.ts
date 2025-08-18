@@ -41,6 +41,10 @@ app.use((req, res, next) => {
 // Import all routes for production
 import { registerRoutes } from "./routes.js";
 
+// Initialize backup service for automatic backups
+import { backupService } from "./backupService.js";
+console.log('💾 [PRODUCTION] Backup service initialized for automatic daily backups');
+
 async function registerProductionRoutes(app: Express): Promise<void> {
   console.log('🔧 Registering all production routes...');
   
