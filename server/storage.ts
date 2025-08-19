@@ -1710,21 +1710,54 @@ export class DatabaseStorage implements IStorage {
       dueDateType: typeof taskData.dueDate,
       dueDateISO: taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate
     });
+
+    // Validation des données avant update
+    if (!taskData || typeof taskData !== 'object') {
+      throw new Error('Invalid task data provided');
+    }
+
+    // Nettoyer les données pour éviter les problèmes de type
+    const cleanData: any = {};
     
-    const [task] = await db
-      .update(tasks)
-      .set({ ...taskData, updatedAt: new Date() })
-      .where(eq(tasks.id, id))
-      .returning();
+    if (taskData.title !== undefined) cleanData.title = taskData.title;
+    if (taskData.description !== undefined) cleanData.description = taskData.description;
+    if (taskData.priority !== undefined) cleanData.priority = taskData.priority;
+    if (taskData.status !== undefined) cleanData.status = taskData.status;
+    if (taskData.assignedTo !== undefined) cleanData.assignedTo = taskData.assignedTo;
+    if (taskData.startDate !== undefined) {
+      cleanData.startDate = taskData.startDate === '' ? null : taskData.startDate;
+    }
+    if (taskData.dueDate !== undefined) {
+      cleanData.dueDate = taskData.dueDate === '' ? null : taskData.dueDate;
+    }
+    
+    cleanData.updatedAt = new Date();
+    
+    console.log('🧹 Cleaned data for database update:', cleanData);
+    
+    try {
+      const [task] = await db
+        .update(tasks)
+        .set(cleanData)
+        .where(eq(tasks.id, id))
+        .returning();
+        
+      console.log('✅ DatabaseStorage.updateTask - Success:', {
+        taskId: task.id,
+        title: task.title,
+        dueDate: task.dueDate,
+        dueDateType: typeof task.dueDate
+      });
       
-    console.log('💾 DatabaseStorage.updateTask - Result:', {
-      taskId: task.id,
-      title: task.title,
-      dueDate: task.dueDate,
-      dueDateType: typeof task.dueDate
-    });
-    
-    return task;
+      return task;
+    } catch (error) {
+      console.error('❌ DatabaseStorage.updateTask - Database Error:', {
+        taskId: id,
+        error: error instanceof Error ? error.message : String(error),
+        cleanData
+      });
+      throw new Error(`Failed to update task in database: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async deleteTask(id: number): Promise<void> {
