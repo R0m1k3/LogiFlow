@@ -221,7 +221,7 @@ export default function Deliveries() {
   };
 
   const handleViewDelivery = (delivery: DeliveryWithRelations) => {
-    setSelectedDelivery(delivery);
+    setSelectedDelivery({ ...delivery, type: 'delivery' } as any);
     setShowDetailModal(true);
   };
 

@@ -199,7 +199,7 @@ export default function Orders() {
   };
 
   const handleViewOrder = (order: OrderWithRelations) => {
-    setSelectedOrder(order);
+    setSelectedOrder({ ...order, type: 'order' } as any);
     setShowDetailModal(true);
   };
 
