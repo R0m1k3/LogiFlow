@@ -18,7 +18,6 @@ import { z } from "zod";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-// Supprimer complètement l'utilisation de cn pour éviter toute erreur de production
 
 // Schéma robuste avec dates de début et d'échéance pour production
 const taskFormSchema = z.object({
@@ -119,21 +118,24 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
         startDate: data.startDate || null,
         dueDate: data.dueDate || null
       };
-      return apiRequest("/api/tasks", "POST", taskData);
+      return apiRequest("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify(taskData),
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       toast({
         title: "Succès",
         description: "Tâche créée avec succès",
       });
       onClose();
     },
-    onError: (error: any) => {
-      console.error("Error creating task:", error);
+    onError: (error) => {
+      console.error('Erreur création tâche:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de créer la tâche",
+        description: "Erreur lors de la création de la tâche",
         variant: "destructive",
       });
     },
@@ -141,21 +143,24 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
 
   const updateMutation = useMutation({
     mutationFn: (data: any) => {
-      return apiRequest(`/api/tasks/${task?.id}`, "PUT", data);
+      return apiRequest(`/api/tasks/${task?.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       toast({
         title: "Succès",
         description: "Tâche modifiée avec succès",
       });
       onClose();
     },
-    onError: (error: any) => {
-      console.error("Error updating task:", error);
+    onError: (error) => {
+      console.error('Erreur modification tâche:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de modifier la tâche",
+        description: "Erreur lors de la modification de la tâche",
         variant: "destructive",
       });
     },
@@ -190,6 +195,9 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
             ⏰ Date d'échéance = Quand la tâche doit être terminée
           </p>
         </div>
+        <Button variant="outline" onClick={onClose}>
+          Annuler
+        </Button>
       </div>
 
       <Form {...form}>
@@ -293,10 +301,7 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
                       <FormControl>
                         <Button
                           variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
+                          className={field.value ? "w-full pl-3 text-left font-normal" : "w-full pl-3 text-left font-normal text-muted-foreground"}
                         >
                           {field.value ? (
                             format(field.value, "PPP", { locale: fr })
@@ -337,10 +342,7 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
                       <FormControl>
                         <Button
                           variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
+                          className={field.value ? "w-full pl-3 text-left font-normal" : "w-full pl-3 text-left font-normal text-muted-foreground"}
                         >
                           {field.value ? (
                             format(field.value, "PPP", { locale: fr })
@@ -375,34 +377,31 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
               <FormItem>
                 <FormLabel>Assigné à *</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="Nom de la personne assignée"
-                    {...field} 
-                  />
+                  <Input placeholder="Nom d'utilisateur" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* Boutons d'action */}
-          <div className="flex justify-end space-x-3 pt-6 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
               Annuler
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
             >
-              {createMutation.isPending || updateMutation.isPending ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {task ? "Modification..." : "Création..."}
-                </div>
-              ) : (
-                task ? "Modifier la tâche" : "Créer la tâche"
-              )}
+              {createMutation.isPending || updateMutation.isPending
+                ? "En cours..."
+                : task
+                ? "Modifier"
+                : "Créer"}
             </Button>
           </div>
         </form>
