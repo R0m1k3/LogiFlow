@@ -174,9 +174,6 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between border-b pb-4">
         <div>
-          <h2 className="text-xl font-semibold">
-            {task ? "Modifier la tâche" : "Nouvelle tâche"}
-          </h2>
           <p className="text-sm text-muted-foreground">
             📅 Date de début = Quand la tâche devient visible<br/>
             ⏰ Date d'échéance = Quand la tâche doit être terminée
