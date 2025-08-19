@@ -135,20 +135,7 @@ function TaskFormInline({ task, onClose }: any) {
           📅 Date de début = Quand la tâche devient visible<br/>
           ⏰ Date d'échéance = Quand la tâche doit être terminée
         </p>
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            float: 'right',
-            padding: '8px 16px',
-            border: '1px solid #d1d5db',
-            borderRadius: '0px',
-            backgroundColor: 'white',
-            cursor: 'pointer'
-          }}
-        >
-          Annuler
-        </button>
+
       </div>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
