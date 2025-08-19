@@ -19,8 +19,7 @@ import CustomerOrders from "@/pages/CustomerOrders";
 import DlcPage from "@/pages/DlcPage";
 import BackupManager from "@/pages/BackupManager";
 import Utilities from "@/pages/Utilities";
-import Tasks from "@/pages/Tasks";
-import TasksSimplified from "@/pages/TasksSimplified";
+import TasksProductionSimple from "@/pages/TasksProductionSimple";
 import SavTickets from "@/pages/SavTickets";
 import WeatherSettings from "@/pages/WeatherSettings";
 import Layout from "@/components/Layout";
@@ -95,7 +94,7 @@ function RouterProduction() {
         <Route path="/customer-orders" component={CustomerOrders} />
         <Route path="/dlc" component={DlcPage} />
         <Route path="/utilities" component={Utilities} />
-        <Route path="/tasks" component={Tasks} />
+        <Route path="/tasks" component={TasksProductionSimple} />
         <Route path="/sav" component={SavTickets} />
         
         {/* Routes de compatibilité - redirection vers utilities */}
