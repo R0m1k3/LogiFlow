@@ -1622,16 +1622,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTask(taskData: InsertTask): Promise<Task> {
+    console.log('💾 DatabaseStorage.createTask - Input:', {
+      taskData,
+      dueDate: taskData.dueDate,
+      dueDateType: typeof taskData.dueDate,
+      dueDateISO: taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate
+    });
+    
     const [task] = await db.insert(tasks).values(taskData).returning();
+    
+    console.log('💾 DatabaseStorage.createTask - Result:', {
+      taskId: task.id,
+      title: task.title,
+      dueDate: task.dueDate,
+      dueDateType: typeof task.dueDate
+    });
+    
     return task;
   }
 
   async updateTask(id: number, taskData: Partial<InsertTask>): Promise<Task> {
+    console.log('💾 DatabaseStorage.updateTask - Input:', {
+      taskId: id,
+      taskData,
+      dueDate: taskData.dueDate,
+      dueDateType: typeof taskData.dueDate,
+      dueDateISO: taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate
+    });
+    
     const [task] = await db
       .update(tasks)
       .set({ ...taskData, updatedAt: new Date() })
       .where(eq(tasks.id, id))
       .returning();
+      
+    console.log('💾 DatabaseStorage.updateTask - Result:', {
+      taskId: task.id,
+      title: task.title,
+      dueDate: task.dueDate,
+      dueDateType: typeof task.dueDate
+    });
+    
     return task;
   }
 
