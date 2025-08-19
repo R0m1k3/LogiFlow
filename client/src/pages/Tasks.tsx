@@ -699,23 +699,57 @@ export default function Tasks() {
               </TabsList>
             </Tabs>
             
-            {canCreateTasks && (
-              <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-                <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-md">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nouvelle Tâche
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Créer une nouvelle tâche</DialogTitle>
-                  </DialogHeader>
-                  <TaskFormInline
-                    onClose={() => setShowCreateModal(false)}
-                  />
-                </DialogContent>
-              </Dialog>
+{canCreateTasks && (
+              <>
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nouvelle Tâche
+                </Button>
+                
+                {showCreateModal && (
+                  <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    zIndex: 1000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <div style={{
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      maxWidth: '600px',
+                      width: '90%',
+                      maxHeight: '90vh',
+                      overflow: 'auto',
+                      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                    }}>
+                      <div style={{
+                        padding: '24px 24px 16px',
+                        borderBottom: '1px solid #e5e7eb'
+                      }}>
+                        <h2 style={{
+                          fontSize: '18px',
+                          fontWeight: '600',
+                          margin: '0'
+                        }}>
+                          Créer une nouvelle tâche
+                        </h2>
+                      </div>
+                      <TaskFormInline
+                        onClose={() => setShowCreateModal(false)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1195,13 +1229,41 @@ export default function Tasks() {
         </div>
       </div>
 
-      {/* Modal d'édition */}
-      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Modifier la tâche</DialogTitle>
-          </DialogHeader>
-          {selectedTask && (
+{/* Modal d'édition */}
+      {showEditModal && selectedTask && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            <div style={{
+              padding: '24px 24px 16px',
+              borderBottom: '1px solid #e5e7eb'
+            }}>
+              <h2 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                margin: '0'
+              }}>
+                Modifier la tâche
+              </h2>
+            </div>
             <TaskFormInline
               task={selectedTask}
               onClose={() => {
@@ -1209,48 +1271,99 @@ export default function Tasks() {
                 setSelectedTask(null);
               }}
             />
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
 
-      {/* Modal de confirmation de suppression */}
-      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="w-5 h-5" />
-              Confirmer la suppression
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-gray-700">
-              Êtes-vous sûr de vouloir supprimer la tâche "{taskToDelete?.title}" ?
-            </p>
-            <p className="text-sm text-gray-500 mt-2">
-              Cette action est irréversible.
-            </p>
+{/* Modal de confirmation de suppression */}
+      {showDeleteModal && taskToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            maxWidth: '400px',
+            width: '90%',
+            padding: '24px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              margin: '0 0 16px 0',
+              color: '#dc2626',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              ⚠️ Confirmer la suppression
+            </h2>
+            <div style={{ marginBottom: '24px' }}>
+              <p style={{
+                color: '#374151',
+                lineHeight: '1.5',
+                margin: '0 0 8px 0'
+              }}>
+                Êtes-vous sûr de vouloir supprimer la tâche "{taskToDelete.title}" ?
+              </p>
+              <p style={{
+                fontSize: '14px',
+                color: '#6b7280',
+                margin: '0'
+              }}>
+                Cette action est irréversible.
+              </p>
+            </div>
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setTaskToDelete(null);
+                }}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  backgroundColor: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+              <button 
+                onClick={handleConfirmDelete}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  backgroundColor: '#dc2626',
+                  color: 'white',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                🗑️ Supprimer
+              </button>
+            </div>
           </div>
-          <div className="flex gap-3 justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowDeleteModal(false);
-                setTaskToDelete(null);
-              }}
-            >
-              Annuler
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Supprimer
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }
