@@ -1390,6 +1390,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: user.id,
       };
 
+      console.log('📝 POST /api/tasks - Received data:', {
+        originalBody: req.body,
+        processedData: data,
+        dueDate: data.dueDate,
+        dueDateType: typeof data.dueDate,
+        dueDateValue: data.dueDate
+      });
+
       // Check if user has access to the group
       if (user.role !== 'admin') {
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
@@ -1399,6 +1407,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const task = await storage.createTask(data);
+      console.log('✅ Task created:', {
+        id: task.id,
+        title: task.title,
+        dueDate: task.dueDate,
+        dueDateType: typeof task.dueDate
+      });
       res.json(task);
     } catch (error) {
       console.error("Error creating task:", error);
@@ -1420,6 +1434,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Task not found" });
       }
 
+      console.log('🔄 PUT /api/tasks/:id - Received data:', {
+        taskId: id,
+        originalTask: {
+          id: task.id,
+          title: task.title,
+          dueDate: task.dueDate,
+          dueDateType: typeof task.dueDate
+        },
+        updateBody: req.body,
+        newDueDate: req.body.dueDate,
+        newDueDateType: typeof req.body.dueDate
+      });
+
       // Check permissions
       if (user.role !== 'admin') {
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
@@ -1429,6 +1456,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedTask = await storage.updateTask(id, req.body);
+      console.log('✅ Task updated:', {
+        id: updatedTask.id,
+        title: updatedTask.title,
+        dueDate: updatedTask.dueDate,
+        dueDateType: typeof updatedTask.dueDate
+      });
       res.json(updatedTask);
     } catch (error) {
       console.error("Error updating task:", error);

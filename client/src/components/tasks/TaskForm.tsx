@@ -134,7 +134,12 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
         createdBy: user?.id,
         dueDate: data.dueDate || null
       };
-      console.log('🚀 Creating task with data:', taskData);
+      console.log('🚀 Creating task with data:', {
+        ...taskData,
+        dueDate: taskData.dueDate,
+        dueDateType: typeof taskData.dueDate,
+        dueDateISO: taskData.dueDate?.toISOString?.()
+      });
       return apiRequest("/api/tasks", "POST", taskData);
     },
     onSuccess: () => {
@@ -156,7 +161,16 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => apiRequest(`/api/tasks/${task?.id}`, "PUT", data),
+    mutationFn: (data: any) => {
+      console.log('🔄 Updating task with data:', {
+        taskId: task?.id,
+        data,
+        dueDate: data.dueDate,
+        dueDateType: typeof data.dueDate,
+        dueDateISO: data.dueDate?.toISOString?.()
+      });
+      return apiRequest(`/api/tasks/${task?.id}`, "PUT", data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       toast({
@@ -176,6 +190,17 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
   });
 
   const onSubmit = (data: TaskFormData) => {
+    // Debug: log des données de soumission
+    console.log('📝 TaskForm onSubmit:', {
+      isEdit: !!task,
+      taskId: task?.id,
+      formData: data,
+      dueDate: data.dueDate,
+      dueDateType: typeof data.dueDate,
+      dueDateISO: data.dueDate?.toISOString(),
+      localSelectedStoreId
+    });
+
     // Vérifier qu'un magasin est auto-sélectionné
     if (!localSelectedStoreId) {
       toast({
@@ -196,9 +221,11 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
         assignedTo: data.assignedTo,
         dueDate: data.dueDate || null,
       };
+      console.log('🔄 Update task submitData:', submitData);
       updateMutation.mutate(submitData);
     } else {
       // Création d'une nouvelle tâche - le groupId sera ajouté dans createMutation
+      console.log('➕ Create task data:', data);
       createMutation.mutate(data);
     }
   };
