@@ -257,7 +257,7 @@ export default function NewTaskForm({ task, onClose }: NewTaskFormProps) {
         <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-6">
           {/* Affichage du magasin auto-sélectionné */}
           {localSelectedStoreId && (
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+            <div className="bg-blue-50 border border-blue-200 p-3">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <Info className="h-5 w-5 text-blue-400" />
@@ -270,7 +270,7 @@ export default function NewTaskForm({ task, onClose }: NewTaskFormProps) {
                       return selectedGroup ? (
                         <span className="inline-flex items-center gap-2">
                           <div 
-                            className="w-3 h-3 rounded-full" 
+                            className="w-3 h-3" 
                             style={{ backgroundColor: selectedGroup.color || "#1976D2" }}
                           />
                           {selectedGroup.name}
@@ -285,7 +285,7 @@ export default function NewTaskForm({ task, onClose }: NewTaskFormProps) {
           
           {/* Avertissement si aucun magasin n'est disponible */}
           {!localSelectedStoreId && groups.length === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+            <div className="bg-yellow-50 border border-yellow-200 p-3">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <AlertTriangle className="h-5 w-5 text-yellow-400" />
@@ -337,7 +337,7 @@ export default function NewTaskForm({ task, onClose }: NewTaskFormProps) {
           />
 
           {/* Section des dates avec design clair */}
-          <div className="border rounded-lg p-4 bg-gray-50">
+          <div className="border p-4 bg-gray-50">
             <div className="flex items-center mb-4">
               <Clock className="h-5 w-5 text-blue-600 mr-2" />
               <h3 className="font-medium text-gray-900">Planification temporelle</h3>
@@ -432,7 +432,7 @@ export default function NewTaskForm({ task, onClose }: NewTaskFormProps) {
             </div>
 
             {/* Information sur les règles de visibilité */}
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200">
               <div className="flex items-start">
                 <Info className="h-4 w-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-blue-700">
@@ -525,7 +525,7 @@ export default function NewTaskForm({ task, onClose }: NewTaskFormProps) {
             >
               {createMutation.isPending || updateMutation.isPending ? (
                 <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="animate-spin h-4 w-4 border-b-2 border-white mr-2"></div>
                   {task ? "Modification..." : "Création..."}
                 </div>
               ) : (
