@@ -1455,7 +1455,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const updatedTask = await storage.updateTask(id, req.body);
+      // Nettoyer les données reçues pour éviter les problèmes de types
+      const cleanData = {
+        ...(req.body.title && { title: req.body.title }),
+        ...(req.body.description !== undefined && { description: req.body.description }),
+        ...(req.body.priority && { priority: req.body.priority }),
+        ...(req.body.status && { status: req.body.status }),
+        ...(req.body.assignedTo && { assignedTo: req.body.assignedTo }),
+        ...(req.body.startDate !== undefined && { startDate: req.body.startDate === '' ? null : req.body.startDate }),
+        ...(req.body.dueDate !== undefined && { dueDate: req.body.dueDate === '' ? null : req.body.dueDate }),
+      };
+
+      console.log('🧹 Cleaned data for update:', cleanData);
+
+      const updatedTask = await storage.updateTask(id, cleanData);
       console.log('✅ Task updated:', {
         id: updatedTask.id,
         title: updatedTask.title,
