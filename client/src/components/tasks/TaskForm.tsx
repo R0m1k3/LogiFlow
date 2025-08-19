@@ -1,2 +1,2 @@
-// Version ULTRA PROPRE pour production - ZÉRO dépendance externe
-export { default } from "./TaskFormProduction";
+// Version ULTRA SIMPLE - HTML pur sans dépendances UI
+export { default } from "./TaskFormUltraSimple";
