@@ -78,20 +78,28 @@ function TaskFormInline({ task, onClose }: any) {
       };
 
       const url = task ? `/api/tasks/${task.id}` : '/api/tasks';
-      const method = task ? 'PATCH' : 'POST';
+      const method = task ? 'PUT' : 'POST';
 
       if (!task) {
         (taskData as any).groupId = 1;
         (taskData as any).createdBy = 'admin';
       }
 
+      console.log('📤 Sending request:', { url, method, taskData });
+      
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(taskData),
       });
 
-      if (!response.ok) throw new Error(`Erreur ${response.status}`);
+      console.log('📥 Response:', { status: response.status, ok: response.ok });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error:', { status: response.status, error: errorText });
+        throw new Error(`Erreur ${response.status}: ${errorText}`);
+      }
 
       alert(task ? "Tâche modifiée avec succès" : "Tâche créée avec succès");
       window.location.reload();
