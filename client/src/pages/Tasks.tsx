@@ -570,18 +570,14 @@ export default function Tasks() {
                           const startDateStatus = getStartDateStatus(task.startDate);
                           
                           return (
-                            <Card key={task.id} className={cn(
-                              "hover:shadow-md transition-all duration-200",
-                              isFuture ? "bg-gray-50 border-dashed border-gray-300 opacity-75" : "bg-white border-solid"
-                            )}>
+                            <Card key={task.id} className={isFuture ? 
+                              "hover:shadow-md transition-all duration-200 bg-gray-50 border-dashed border-gray-300 opacity-75" : 
+                              "hover:shadow-md transition-all duration-200 bg-white border-solid"}>
                               <CardContent className="p-4">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-3 mb-2">
-                                      <h5 className={cn(
-                                        "font-medium truncate",
-                                        isFuture ? "text-gray-600 italic" : "text-gray-900"
-                                      )}>
+                                      <h5 className={isFuture ? "font-medium truncate text-gray-600 italic" : "font-medium truncate text-gray-900"}>
                                         {task.title}
                                         {isFuture && " (Programmée)"}
                                       </h5>
@@ -690,10 +686,7 @@ export default function Tasks() {
                                         size="sm"
                                         variant="outline"
                                         onClick={() => handleDeleteClick(task)}
-                                        className={cn(
-                                          "text-red-600 hover:text-red-700",
-                                          isFuture && "opacity-60"
-                                        )}
+                                        className={isFuture ? "text-red-600 hover:text-red-700 opacity-60" : "text-red-600 hover:text-red-700"}
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </Button>
