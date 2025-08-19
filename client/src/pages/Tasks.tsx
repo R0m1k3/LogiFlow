@@ -142,7 +142,7 @@ function TaskFormInline({ task, onClose }: any) {
             float: 'right',
             padding: '8px 16px',
             border: '1px solid #d1d5db',
-            borderRadius: '6px',
+            borderRadius: '0px',
             backgroundColor: 'white',
             cursor: 'pointer'
           }}
@@ -166,7 +166,7 @@ function TaskFormInline({ task, onClose }: any) {
               width: '100%',
               padding: '8px 12px',
               border: '1px solid #d1d5db',
-              borderRadius: '6px',
+              borderRadius: '0px',
               fontSize: '14px'
             }}
           />
@@ -185,7 +185,7 @@ function TaskFormInline({ task, onClose }: any) {
               width: '100%',
               padding: '8px 12px',
               border: '1px solid #d1d5db',
-              borderRadius: '6px',
+              borderRadius: '0px',
               fontSize: '14px',
               resize: 'vertical'
             }}
@@ -204,7 +204,7 @@ function TaskFormInline({ task, onClose }: any) {
                 width: '100%',
                 padding: '8px 12px',
                 border: '1px solid #d1d5db',
-                borderRadius: '6px',
+                borderRadius: '0px',
                 fontSize: '14px'
               }}
             >
@@ -225,7 +225,7 @@ function TaskFormInline({ task, onClose }: any) {
                 width: '100%',
                 padding: '8px 12px',
                 border: '1px solid #d1d5db',
-                borderRadius: '6px',
+                borderRadius: '0px',
                 fontSize: '14px'
               }}
             >
@@ -248,7 +248,7 @@ function TaskFormInline({ task, onClose }: any) {
                 width: '100%',
                 padding: '8px 12px',
                 border: '1px solid #d1d5db',
-                borderRadius: '6px',
+                borderRadius: '0px',
                 fontSize: '14px'
               }}
             />
@@ -266,7 +266,7 @@ function TaskFormInline({ task, onClose }: any) {
                 width: '100%',
                 padding: '8px 12px',
                 border: '1px solid #d1d5db',
-                borderRadius: '6px',
+                borderRadius: '0px',
                 fontSize: '14px'
               }}
             />
@@ -280,14 +280,14 @@ function TaskFormInline({ task, onClose }: any) {
           <input
             name="assignedTo"
             type="text"
-            defaultValue={task?.assignedTo || "admin"}
+            defaultValue={task?.assignedTo || ""}
             placeholder="Nom de la personne assignée"
             required
             style={{
               width: '100%',
               padding: '8px 12px',
               border: '1px solid #d1d5db',
-              borderRadius: '6px',
+              borderRadius: '0px',
               fontSize: '14px'
             }}
           />
@@ -300,7 +300,7 @@ function TaskFormInline({ task, onClose }: any) {
             style={{
               padding: '8px 16px',
               border: '1px solid #d1d5db',
-              borderRadius: '6px',
+              borderRadius: '0px',
               backgroundColor: 'white',
               cursor: 'pointer'
             }}
@@ -312,7 +312,7 @@ function TaskFormInline({ task, onClose }: any) {
             style={{
               padding: '8px 16px',
               border: 'none',
-              borderRadius: '6px',
+              borderRadius: '0px',
               backgroundColor: '#3b82f6',
               color: 'white',
               cursor: 'pointer'
@@ -1361,7 +1361,7 @@ export default function Tasks() {
                 style={{
                   padding: '8px 16px',
                   border: '1px solid #d1d5db',
-                  borderRadius: '6px',
+                  borderRadius: '0px',
                   backgroundColor: 'white',
                   cursor: 'pointer'
                 }}
@@ -1373,7 +1373,7 @@ export default function Tasks() {
                 style={{
                   padding: '8px 16px',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '0px',
                   backgroundColor: '#dc2626',
                   color: 'white',
                   cursor: 'pointer',
