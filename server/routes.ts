@@ -1456,15 +1456,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Nettoyer les données reçues pour éviter les problèmes de types
-      const cleanData = {
-        ...(req.body.title && { title: req.body.title }),
-        ...(req.body.description !== undefined && { description: req.body.description }),
-        ...(req.body.priority && { priority: req.body.priority }),
-        ...(req.body.status && { status: req.body.status }),
-        ...(req.body.assignedTo && { assignedTo: req.body.assignedTo }),
-        ...(req.body.startDate !== undefined && { startDate: req.body.startDate === '' ? null : req.body.startDate }),
-        ...(req.body.dueDate !== undefined && { dueDate: req.body.dueDate === '' ? null : req.body.dueDate }),
-      };
+      const cleanData: any = {};
+      
+      // Ne pas utiliser de conditions qui ignorent les valeurs falsy légitimes
+      if (req.body.title !== undefined) cleanData.title = req.body.title;
+      if (req.body.description !== undefined) cleanData.description = req.body.description;
+      if (req.body.priority !== undefined) cleanData.priority = req.body.priority;
+      if (req.body.status !== undefined) cleanData.status = req.body.status;
+      if (req.body.assignedTo !== undefined) cleanData.assignedTo = req.body.assignedTo;
+      if (req.body.startDate !== undefined) {
+        cleanData.startDate = req.body.startDate === '' ? null : req.body.startDate;
+      }
+      if (req.body.dueDate !== undefined) {
+        cleanData.dueDate = req.body.dueDate === '' ? null : req.body.dueDate;
+      }
 
       console.log('🧹 Cleaned data for update:', cleanData);
 
@@ -1477,8 +1482,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.json(updatedTask);
     } catch (error) {
-      console.error("Error updating task:", error);
-      res.status(500).json({ message: "Failed to update task" });
+      console.error("❌ Error updating task:", {
+        taskId: id,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        reqBody: req.body
+      });
+      res.status(500).json({ 
+        message: "Failed to update task",
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
