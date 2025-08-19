@@ -194,7 +194,7 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
         priority: data.priority,
         status: data.status,
         assignedTo: data.assignedTo,
-        dueDate: data.dueDate?.toISOString(),
+        dueDate: data.dueDate || null,
       };
       updateMutation.mutate(submitData);
     } else {
@@ -405,9 +405,6 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
                     mode="single"
                     selected={field.value}
                     onSelect={field.onChange}
-                    disabled={(date) =>
-                      date < new Date(new Date().setHours(0, 0, 0, 0))
-                    }
                     initialFocus
                     locale={fr}
                   />
