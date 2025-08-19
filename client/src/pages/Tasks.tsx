@@ -40,6 +40,7 @@ type TaskWithRelations = Task & {
 
 // Composant TaskForm inline - Version production ultra-simple
 function TaskFormInline({ task, onClose }: any) {
+  const { toast } = useToast();
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -53,12 +54,20 @@ function TaskFormInline({ task, onClose }: any) {
     const dueDate = formData.get('dueDate') as string;
 
     if (!title?.trim()) {
-      alert("Le titre est requis");
+      toast({
+        title: "Erreur",
+        description: "Le titre est requis",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!assignedTo?.trim()) {
-      alert("L'assignation est requise");
+      toast({
+        title: "Erreur", 
+        description: "L'assignation est requise",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -101,12 +110,19 @@ function TaskFormInline({ task, onClose }: any) {
         throw new Error(`Erreur ${response.status}: ${errorText}`);
       }
 
-      alert(task ? "Tâche modifiée avec succès" : "Tâche créée avec succès");
+      toast({
+        title: "Succès",
+        description: task ? "Tâche modifiée avec succès" : "Tâche créée avec succès",
+      });
       window.location.reload();
       
     } catch (error) {
       console.error('Erreur:', error);
-      alert("Erreur lors de l'opération");
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'opération",
+        variant: "destructive",
+      });
       submitBtn.disabled = false;
       submitBtn.textContent = task ? "Modifier" : "Créer";
     }

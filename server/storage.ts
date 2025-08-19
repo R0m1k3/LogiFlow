@@ -1612,7 +1612,7 @@ export class DatabaseStorage implements IStorage {
         )
       );
     }
-    // Admin et directeur voient toutes les tâches (pas de filtre additionnel)
+    // Admin et directeur voient toutes les tâches, y compris les tâches programmées
 
     if (whereConditions.length > 0) {
       query = query.where(and(...whereConditions));
@@ -2950,17 +2950,32 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async getTasks(groupIds?: number[]): Promise<TaskWithRelations[]> {
+  async getTasks(groupIds?: number[], userRole?: string): Promise<TaskWithRelations[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     let tasks = Array.from(this.tasks.values());
     
     if (groupIds && groupIds.length > 0) {
       tasks = tasks.filter(task => groupIds.includes(task.groupId));
     }
     
+    // Filtrage par rôle pour la date de départ
+    if (userRole === 'manager' || userRole === 'employee') {
+      // Managers et employés : seulement les tâches dont la date de départ est atteinte ou passée
+      tasks = tasks.filter(task => {
+        if (!task.startDate) return true; // Tâches sans date de départ (toujours visibles)
+        const startDate = new Date(task.startDate);
+        return startDate <= today; // Tâches dont la date de départ est arrivée
+      });
+    }
+    // Admin et directeur voient toutes les tâches, y compris les tâches programmées
+    
     return tasks.map(task => ({
       ...task,
       group: this.groups.get(task.groupId)!,
-      creator: this.users.get(task.createdBy)!
+      creator: this.users.get(task.createdBy)!,
+      isFutureTask: task.startDate ? new Date(task.startDate) > today : false
     }));
   }
 
