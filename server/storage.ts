@@ -172,8 +172,8 @@ export interface IStorage {
   restoreDlcProductStock(id: number): Promise<DlcProductFrontend>;
   getDlcStats(groupIds?: number[]): Promise<{ active: number; expiringSoon: number; expired: number; }>;
 
-  // Task operations
-  getTasks(groupIds?: number[]): Promise<any[]>;
+  // Task operations  
+  getTasks(groupIds?: number[], userRole?: string): Promise<any[]>;
   getTask(id: number): Promise<any | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
@@ -1584,7 +1584,10 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getTasks(groupIds?: number[]): Promise<TaskWithRelations[]> {
+  async getTasks(groupIds?: number[], userRole?: string): Promise<TaskWithRelations[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     let query = db
       .select({
         task: tasks,
@@ -1593,14 +1596,34 @@ export class DatabaseStorage implements IStorage {
       .from(tasks)
       .leftJoin(groups, eq(tasks.groupId, groups.id));
 
+    // Appliquer le filtrage par magasin si spécifié
+    let whereConditions = [];
     if (groupIds && groupIds.length > 0) {
-      query = query.where(inArray(tasks.groupId, groupIds));
+      whereConditions.push(inArray(tasks.groupId, groupIds));
+    }
+
+    // Filtrage par rôle pour la date de départ
+    if (userRole === 'manager' || userRole === 'employee') {
+      // Managers et employés : seulement les tâches dont la date de départ est atteinte ou passée
+      whereConditions.push(
+        or(
+          isNull(tasks.startDate), // Tâches sans date de départ (toujours visibles)
+          lte(tasks.startDate, today) // Tâches dont la date de départ est arrivée
+        )
+      );
+    }
+    // Admin et directeur voient toutes les tâches (pas de filtre additionnel)
+
+    if (whereConditions.length > 0) {
+      query = query.where(and(...whereConditions));
     }
 
     const results = await query.orderBy(desc(tasks.createdAt));
     return results.map((row: any) => ({
       ...row.task,
-      group: row.group
+      group: row.group,
+      // Ajouter le statut "future" pour les tâches futures (admin/directeur)  
+      isFutureTask: row.task.startDate && new Date(row.task.startDate) > today
     }));
   }
 

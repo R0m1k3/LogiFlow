@@ -32,9 +32,10 @@ import TaskForm from "@/components/tasks/TaskForm";
 import { Task } from "@shared/schema";
 
 type TaskWithRelations = Task & {
-  assignedUser: { id: string; username: string; firstName?: string; lastName?: string; };
-  creator: { id: string; username: string; firstName?: string; lastName?: string; };
-  group: { id: number; name: string; color: string; };
+  assignedUser?: { id: string; username: string; firstName?: string; lastName?: string; };
+  creator?: { id: string; username: string; firstName?: string; lastName?: string; };
+  group?: { id: number; name: string; color: string; };
+  isFutureTask?: boolean; // Pour les tâches futures (admin/directeur uniquement)
 };
 
 export default function Tasks() {
@@ -314,6 +315,45 @@ export default function Tasks() {
     };
   };
 
+  const getStartDateStatus = (startDate: Date | string | null) => {
+    if (!startDate) return null;
+    
+    const start = new Date(startDate);
+    const now = new Date();
+    const daysDiff = differenceInDays(start, now);
+    
+    if (isPast(start)) {
+      return {
+        type: 'started',
+        color: 'default' as const,
+        icon: CheckCircle,
+        label: 'Démarrée',
+        text: 'Active'
+      };
+    } else if (isToday(start)) {
+      return {
+        type: 'today',
+        color: 'secondary' as const,
+        icon: CalendarClock,
+        label: "Démarre aujourd'hui",
+        text: "Aujourd'hui"
+      };
+    } else {
+      return {
+        type: 'future',
+        color: 'outline' as const,
+        icon: Clock,
+        label: `Démarre dans ${daysDiff} jour${daysDiff > 1 ? 's' : ''}`,
+        text: `+${daysDiff}j`
+      };
+    }
+  };
+
+  // Fonction pour déterminer si une tâche est future (pas encore commencée)
+  const isTaskFuture = (task: TaskWithRelations) => {
+    return task.isFutureTask || (task.startDate && !isPast(new Date(task.startDate)));
+  };
+
   const canCreateTasks = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur';
   const canEditTasks = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur';
 
@@ -485,19 +525,35 @@ export default function Tasks() {
                           const priorityConfig = getPriorityConfig(task.priority);
                           const PriorityIcon = priorityConfig.icon;
                           
+                          const isFuture = isTaskFuture(task);
+                          const startDateStatus = getStartDateStatus(task.startDate);
+                          
                           return (
-                            <Card key={task.id} className="hover:shadow-md transition-shadow">
+                            <Card key={task.id} className={cn(
+                              "hover:shadow-md transition-all duration-200",
+                              isFuture ? "bg-gray-50 border-dashed border-gray-300 opacity-75" : "bg-white border-solid"
+                            )}>
                               <CardContent className="p-4">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-3 mb-2">
-                                      <h5 className="font-medium text-gray-900 truncate">
+                                      <h5 className={cn(
+                                        "font-medium truncate",
+                                        isFuture ? "text-gray-600 italic" : "text-gray-900"
+                                      )}>
                                         {task.title}
+                                        {isFuture && " (Programmée)"}
                                       </h5>
                                       <Badge variant={priorityConfig.color} className="flex items-center gap-1">
                                         <PriorityIcon className="w-3 h-3" />
                                         {priorityConfig.label}
                                       </Badge>
+                                      {isFuture && (
+                                        <Badge variant="outline" className="flex items-center gap-1 text-xs border-orange-300 text-orange-700 bg-orange-50">
+                                          <Clock className="w-3 h-3" />
+                                          Future
+                                        </Badge>
+                                      )}
                                     </div>
                                     
                                     {task.description && (
@@ -514,37 +570,61 @@ export default function Tasks() {
                                         Créée: {format(new Date(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
                                       </span>
                                     </div>
-                                    
-                                    {/* Affichage de l'échéance */}
-                                    {(() => {
-                                      const dueDateStatus = getDueDateStatus(task.dueDate, task.status);
-                                      if (dueDateStatus) {
-                                        const DueDateIcon = dueDateStatus.icon;
-                                        return (
-                                          <div className="flex items-center gap-2">
-                                            <Badge variant={dueDateStatus.color} className="flex items-center gap-1 text-xs">
-                                              <DueDateIcon className="w-3 h-3" />
-                                              {dueDateStatus.text}
-                                            </Badge>
-                                            <span className="text-xs text-gray-500">{dueDateStatus.label}</span>
-                                          </div>
-                                        );
-                                      } else if (task.dueDate) {
-                                        return (
-                                          <div className="flex items-center gap-2">
-                                            <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                                              <Calendar className="w-3 h-3" />
-                                              {format(new Date(task.dueDate), 'dd/MM', { locale: fr })}
-                                            </Badge>
-                                          </div>
-                                        );
-                                      }
-                                      return null;
-                                    })()}
+
+                                    {/* Affichage des dates : départ et échéance */}
+                                    <div className="flex items-center gap-4 mb-2">{[
+                                      // Date de départ
+                                      startDateStatus && (
+                                        <div key="start" className="flex items-center gap-2">
+                                          <Badge variant={startDateStatus.color} className="flex items-center gap-1 text-xs">
+                                            <startDateStatus.icon className="w-3 h-3" />
+                                            📅 {startDateStatus.text}
+                                          </Badge>
+                                          <span className="text-xs text-gray-500">
+                                            {startDateStatus.label}
+                                            {task.startDate && ` (${format(new Date(task.startDate), 'dd/MM/yyyy', { locale: fr })})`}
+                                          </span>
+                                        </div>
+                                      ),
+                                      // Date d'échéance
+                                      (() => {
+                                        const dueDateStatus = getDueDateStatus(task.dueDate, task.status);
+                                        if (dueDateStatus) {
+                                          const DueDateIcon = dueDateStatus.icon;
+                                          return (
+                                            <div key="due" className="flex items-center gap-2">
+                                              <Badge variant={dueDateStatus.color} className="flex items-center gap-1 text-xs">
+                                                <DueDateIcon className="w-3 h-3" />
+                                                ⏰ {dueDateStatus.text}
+                                              </Badge>
+                                              <span className="text-xs text-gray-500">{dueDateStatus.label}</span>
+                                            </div>
+                                          );
+                                        } else if (task.dueDate) {
+                                          return (
+                                            <div key="due-normal" className="flex items-center gap-2">
+                                              <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                                                <Calendar className="w-3 h-3" />
+                                                ⏰ {format(new Date(task.dueDate), 'dd/MM', { locale: fr })}
+                                              </Badge>
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      })()
+                                    ].filter(Boolean)}</div>
+
                                   </div>
                                   
                                   <div className="flex items-center gap-2 ml-4">
-                                    {canEditTasks && (
+                                    {/* Avertissement pour les tâches futures (admin/directeur) */}
+                                    {isFuture && (
+                                      <div className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded mr-2">
+                                        Visible en avance ({user?.role})
+                                      </div>
+                                    )}
+                                    
+                                    {canEditTasks && !isFuture && (
                                       <Button
                                         size="sm"
                                         variant="outline"
@@ -559,6 +639,7 @@ export default function Tasks() {
                                         size="sm"
                                         variant="outline"
                                         onClick={() => handleEditTask(task)}
+                                        className={isFuture ? "opacity-60" : ""}
                                       >
                                         <Edit className="w-4 h-4" />
                                       </Button>
@@ -568,7 +649,10 @@ export default function Tasks() {
                                         size="sm"
                                         variant="outline"
                                         onClick={() => handleDeleteClick(task)}
-                                        className="text-red-600 hover:text-red-700"
+                                        className={cn(
+                                          "text-red-600 hover:text-red-700",
+                                          isFuture && "opacity-60"
+                                        )}
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </Button>

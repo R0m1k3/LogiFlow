@@ -248,6 +248,7 @@ export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   title: varchar("title").notNull(), // Titre de la tâche (requis)
   description: text("description"), // Description de la tâche (optionnel)
+  startDate: timestamp("start_date"), // Date de départ (optionnel) - aligné avec production
   dueDate: date("due_date"), // Date d'échéance (optionnel)
   priority: varchar("priority").notNull().default("medium"), // low, medium, high
   status: varchar("status").notNull().default("pending"), // pending, completed
@@ -532,7 +533,8 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   completedAt: true,
   completedBy: true,
 }).extend({
-  dueDate: z.coerce.date().optional().nullable(), // Convertit automatiquement les chaînes en Date
+  startDate: z.coerce.date().optional().nullable(), // Date de départ (optionnel)
+  dueDate: z.coerce.date().optional().nullable(), // Date d'échéance (optionnel)
 });
 
 export const insertDashboardMessageSchema = createInsertSchema(dashboardMessages).omit({
@@ -648,8 +650,9 @@ export type InvoiceVerificationCache = typeof invoiceVerificationCache.$inferSel
 
 // Task with relations type
 export type TaskWithRelations = Task & {
-  creator: User;
-  group: Group;
+  creator?: User;
+  group?: Group;
+  isFutureTask?: boolean; // Pour distinguer les tâches futures (admin/directeur)
 };
 
 // Dashboard Message with relations type
