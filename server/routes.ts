@@ -1362,7 +1362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString()
       });
       
-      const tasks = await storage.getTasks(groupIds);
+      const tasks = await storage.getTasks(groupIds, user.role);
       console.log('📋 Tasks returned:', {
         count: tasks.length,
         userId: user.id,
