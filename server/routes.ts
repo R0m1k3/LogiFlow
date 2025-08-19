@@ -1482,11 +1482,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.json(updatedTask);
     } catch (error) {
-      console.error("❌ Error updating task:", {
-        taskId: id,
+      const taskId = parseInt(req.params.id);
+      console.error("❌ Error updating task in route:", {
+        taskId: taskId,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
-        reqBody: req.body
+        reqBody: req.body,
+        cleanData: req.body ? {
+          title: req.body.title,
+          description: req.body.description,
+          priority: req.body.priority,
+          status: req.body.status,
+          assignedTo: req.body.assignedTo,
+          startDate: req.body.startDate,
+          dueDate: req.body.dueDate,
+        } : null
       });
       res.status(500).json({ 
         message: "Failed to update task",

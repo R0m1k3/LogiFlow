@@ -1725,10 +1725,10 @@ export class DatabaseStorage implements IStorage {
     if (taskData.status !== undefined) cleanData.status = taskData.status;
     if (taskData.assignedTo !== undefined) cleanData.assignedTo = taskData.assignedTo;
     if (taskData.startDate !== undefined) {
-      cleanData.startDate = taskData.startDate === '' ? null : taskData.startDate;
+      cleanData.startDate = taskData.startDate === '' || taskData.startDate === null ? null : taskData.startDate;
     }
     if (taskData.dueDate !== undefined) {
-      cleanData.dueDate = taskData.dueDate === '' ? null : taskData.dueDate;
+      cleanData.dueDate = taskData.dueDate === '' || taskData.dueDate === null ? null : taskData.dueDate;
     }
     
     cleanData.updatedAt = new Date();
@@ -1754,7 +1754,9 @@ export class DatabaseStorage implements IStorage {
       console.error('❌ DatabaseStorage.updateTask - Database Error:', {
         taskId: id,
         error: error instanceof Error ? error.message : String(error),
-        cleanData
+        stack: error instanceof Error ? error.stack : undefined,
+        cleanData,
+        originalTaskData: taskData
       });
       throw new Error(`Failed to update task in database: ${error instanceof Error ? error.message : String(error)}`);
     }
