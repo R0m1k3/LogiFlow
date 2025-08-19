@@ -735,7 +735,7 @@ export default function Tasks() {
                   }}>
                     <div style={{
                       backgroundColor: 'white',
-                      borderRadius: '8px',
+                      borderRadius: '0px',
                       maxWidth: '600px',
                       width: '90%',
                       maxHeight: '90vh',
@@ -744,7 +744,8 @@ export default function Tasks() {
                     }}>
                       <div style={{
                         padding: '24px 24px 16px',
-                        borderBottom: '1px solid #e5e7eb'
+                        borderBottom: '1px solid #e5e7eb',
+                        position: 'relative'
                       }}>
                         <h2 style={{
                           fontSize: '18px',
@@ -753,6 +754,26 @@ export default function Tasks() {
                         }}>
                           Créer une nouvelle tâche
                         </h2>
+                        <button
+                          onClick={() => setShowCreateModal(false)}
+                          style={{
+                            position: 'absolute',
+                            top: '16px',
+                            right: '16px',
+                            background: 'none',
+                            border: 'none',
+                            fontSize: '20px',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRadius: '0px',
+                            color: '#6b7280',
+                            transition: 'color 0.2s'
+                          }}
+                          onMouseEnter={(e) => (e.target as HTMLButtonElement).style.color = '#374151'}
+                          onMouseLeave={(e) => (e.target as HTMLButtonElement).style.color = '#6b7280'}
+                        >
+                          ✕
+                        </button>
                       </div>
                       <TaskFormInline
                         onClose={() => setShowCreateModal(false)}
@@ -1256,7 +1277,7 @@ export default function Tasks() {
         }}>
           <div style={{
             backgroundColor: 'white',
-            borderRadius: '8px',
+            borderRadius: '0px',
             maxWidth: '600px',
             width: '90%',
             maxHeight: '90vh',
@@ -1265,7 +1286,8 @@ export default function Tasks() {
           }}>
             <div style={{
               padding: '24px 24px 16px',
-              borderBottom: '1px solid #e5e7eb'
+              borderBottom: '1px solid #e5e7eb',
+              position: 'relative'
             }}>
               <h2 style={{
                 fontSize: '18px',
@@ -1274,6 +1296,29 @@ export default function Tasks() {
               }}>
                 Modifier la tâche
               </h2>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedTask(null);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '0px',
+                  color: '#6b7280',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.color = '#374151'}
+                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.color = '#6b7280'}
+              >
+                ✕
+              </button>
             </div>
             <TaskFormInline
               task={selectedTask}
@@ -1302,7 +1347,7 @@ export default function Tasks() {
         }}>
           <div style={{
             backgroundColor: 'white',
-            borderRadius: '8px',
+            borderRadius: '0px',
             maxWidth: '400px',
             width: '90%',
             padding: '24px',
