@@ -1724,16 +1724,34 @@ export class DatabaseStorage implements IStorage {
     if (taskData.priority !== undefined) cleanData.priority = taskData.priority;
     if (taskData.status !== undefined) cleanData.status = taskData.status;
     if (taskData.assignedTo !== undefined) cleanData.assignedTo = taskData.assignedTo;
+    
+    // Gestion spéciale des dates selon les types PostgreSQL
     if (taskData.startDate !== undefined) {
-      cleanData.startDate = taskData.startDate === '' || taskData.startDate === null ? null : taskData.startDate;
+      if (taskData.startDate === '' || taskData.startDate === null) {
+        cleanData.startDate = null;
+      } else {
+        // start_date est un timestamp en PostgreSQL - on peut passer une date
+        cleanData.startDate = new Date(taskData.startDate);
+      }
     }
+    
     if (taskData.dueDate !== undefined) {
-      cleanData.dueDate = taskData.dueDate === '' || taskData.dueDate === null ? null : taskData.dueDate;
+      if (taskData.dueDate === '' || taskData.dueDate === null) {
+        cleanData.dueDate = null;
+      } else {
+        // due_date est un date en PostgreSQL - on passe la chaîne directement
+        cleanData.dueDate = taskData.dueDate;
+      }
     }
     
     cleanData.updatedAt = new Date();
     
-    console.log('🧹 Cleaned data for database update:', cleanData);
+    console.log('🧹 Cleaned data for database update:', {
+      ...cleanData,
+      startDateType: cleanData.startDate ? typeof cleanData.startDate : 'null',
+      dueDateType: cleanData.dueDate ? typeof cleanData.dueDate : 'null',
+      startDateIsDate: cleanData.startDate instanceof Date,
+    });
     
     try {
       const [task] = await db
