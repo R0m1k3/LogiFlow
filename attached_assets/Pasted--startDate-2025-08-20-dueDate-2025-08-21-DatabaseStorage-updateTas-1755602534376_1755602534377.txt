@@ -1,0 +1,200 @@
+
+      
+  startDate: '2025-08-20',
+
+  dueDate: '2025-08-21'
+
+}
+
+💾 DatabaseStorage.updateTask - Input: {
+
+  taskId: 99,
+
+  taskData: {
+
+    title: 'test',
+
+    description: 'test',
+
+    priority: 'medium',
+
+    status: 'pending',
+
+    assignedTo: 'test',
+
+    startDate: '2025-08-20',
+
+    dueDate: '2025-08-21'
+
+  },
+
+  dueDate: '2025-08-21',
+
+  dueDateType: 'string',
+
+  dueDateISO: '2025-08-21'
+
+}
+
+🧹 Cleaned data for database update: {
+
+  title: 'test',
+
+  description: 'test',
+
+  priority: 'medium',
+
+  status: 'pending',
+
+  assignedTo: 'test',
+
+  startDate: '2025-08-20',
+
+  dueDate: '2025-08-21',
+
+  updatedAt: 2025-08-19T11:21:56.027Z
+
+}
+
+❌ DatabaseStorage.updateTask - Database Error: {
+
+  taskId: 99,
+
+  error: 'value.toISOString is not a function',
+
+  cleanData: {
+
+    title: 'test',
+
+    description: 'test',
+
+    priority: 'medium',
+
+    status: 'pending',
+
+    assignedTo: 'test',
+
+    startDate: '2025-08-20',
+
+    dueDate: '2025-08-21',
+
+    updatedAt: 2025-08-19T11:21:56.027Z
+
+  }
+
+}
+
+file:///app/dist/index.js:6700
+
+        taskId: id,
+
+                ^
+
+ReferenceError: id is not defined
+
+    at file:///app/dist/index.js:6700:17
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+Node.js v20.19.4
+
+Applying DLC migration...
+
+NOTICE:  column "stock_epuise" of relation "dlc_products" already exists, skipping
+
+NOTICE:  column "stock_epuise_by" of relation "dlc_products" already exists, skipping
+
+NOTICE:  column "stock_epuise_at" of relation "dlc_products" already exists, skipping
+
+NOTICE:  relation "idx_dlc_products_stock_epuise" already exists, skipping
+
+ALTER TABLE
+
+CREATE INDEX
+
+🔗 Database initialization: {
+
+  NODE_ENV: 'production',
+
+  isProduction: true,
+
+  hasDbUrl: true,
+
+  dbHost: 'logiflow-db'
+
+}
+
+🐳 PRODUCTION: Using standard PostgreSQL
+
+✅ PostgreSQL connection test successful
+
+🔗 Database initialization: {
+
+  NODE_ENV: 'production',
+
+  isProduction: true,
+
+  hasDbUrl: true,
+
+  dbHost: 'logiflow-db:5432'
+
+}
+
+✅ Using DatabaseStorage (production PostgreSQL)
+
+⏰ Automatic backup scheduled for 2:00 AM daily (native timer)
+
+🔍 Using development storage and authentication
+
+🐳 PRODUCTION: Starting LogiFlow application
+
+🐳 Environment: { NODE_ENV: 'production', DATABASE_URL: 'Present', PORT: '3000' }
+
+💾 [PRODUCTION] Backup service initialized for automatic daily backups
+
+🔧 Registering all production routes...
+
+🔄 Running automatic production migrations...
+
+🔄 MIGRATION: Starting SAV production migrations...
+
+🔄 MIGRATION: Database URL configured: postgresql://logiflow_admin:Lo...
+
+✅ MIGRATION: Connected to PostgreSQL database
+
+🔄 MIGRATION: Checking if priority column exists...
+
+🔄 MIGRATION: Priority column check result: 1
+
+✅ MIGRATION: Priority column already exists, skipping migration
+
+🔌 MIGRATION: Database connection closed
+
+🌤️ [PRODUCTION] Initializing weather system...
+
+🌤️ [AUTO-CONFIG] Initializing weather configuration...
+
+✅ [AUTO-CONFIG] Weather settings already configured and active
+
+✅ [PRODUCTION] Weather system initialized
+
+🌍 Environment detected: production
+
+🔧 Using memory session store for development
+
+Warning: connect.session() MemoryStore is not
+
+designed for a production environment, as it will leak
+
+memory, and will not scale past a single process.
+
+✅ All routes registered successfully for production
+
+🐳 Serving static files from: /app/dist/public
+
+🐳 PRODUCTION: LogiFlow serving on port 3000
+
+HEAD /api/health 200 in 8ms
+
+
+      
