@@ -248,7 +248,7 @@ export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   title: varchar("title").notNull(), // Titre de la tâche (requis)
   description: text("description"), // Description de la tâche (optionnel)
-  dueDate: timestamp("due_date"), // Date d'échéance (optionnel)
+  dueDate: date("due_date"), // Date d'échéance (optionnel)
   priority: varchar("priority").notNull().default("medium"), // low, medium, high
   status: varchar("status").notNull().default("pending"), // pending, completed
   assignedTo: text("assigned_to").notNull(), // Utilisateur responsable (champ libre)
