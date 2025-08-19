@@ -442,13 +442,13 @@ export default function CalendarGrid({
   return (
     <div className="bg-white shadow-xl border-2 border-gray-300 overflow-hidden">
       {/* Calendar Header - Design moderne épuré */}
-      <div className="grid grid-cols-7 bg-gradient-to-r from-slate-100 to-gray-100 border-b-2 border-gray-400">
+      <div className="grid grid-cols-7 bg-white border-b border-gray-200">
         {weekDays.map((day, index) => (
           <div 
             key={day} 
             className={`p-4 text-center text-sm font-bold tracking-wider ${
               index >= 5 ? 'text-slate-700' : 'text-slate-800'
-            } uppercase border-r border-gray-300 last:border-r-0`}
+            } uppercase border-r border-gray-100 last:border-r-0`}
           >
             {day}
           </div>
@@ -456,7 +456,7 @@ export default function CalendarGrid({
       </div>
 
       {/* Calendar Days - Grid moderne sans arrondi */}
-      <div className="grid grid-cols-7 gap-px bg-gray-300 p-px">
+      <div className="grid grid-cols-7 gap-px bg-gray-100 p-px">
         {paddedDays.map((date, index) => {
           const isCurrentMonth = isSameMonth(date, currentDate);
           const isTodayDate = isToday(date);
