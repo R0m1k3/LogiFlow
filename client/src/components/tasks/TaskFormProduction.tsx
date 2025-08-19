@@ -1,179 +1,99 @@
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { useStore } from "@/components/Layout";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { apiRequest } from "@/lib/queryClient";
-import { insertTaskSchema, Task, Group } from "@shared/schema";
-import { z } from "zod";
 import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 
-// Schéma robuste avec dates de début et d'échéance pour production
-const taskFormSchema = z.object({
-  title: z.string().min(1, "Le titre est requis"),
-  description: z.string().optional(),
-  priority: z.enum(["low", "medium", "high"]).default("medium"),
-  status: z.enum(["pending", "completed"]).default("pending"),
-  assignedTo: z.string().min(1, "L'assignation est requise"),
-  startDate: z.date().optional(), // Date de début
-  dueDate: z.date().optional(), // Date d'échéance
-}).refine((data) => {
-  // Validation : la date d'échéance ne peut pas être antérieure à la date de début
-  if (data.startDate && data.dueDate) {
-    return data.dueDate >= data.startDate;
-  }
-  return true;
-}, {
-  message: "La date d'échéance ne peut pas être antérieure à la date de début",
-  path: ["dueDate"]
-});
+// Version PRODUCTION - Zero dépendance externe problématique
+export default function TaskFormProduction({ task, onClose }: any) {
+  const [title, setTitle] = useState(task?.title || "");
+  const [description, setDescription] = useState(task?.description || "");
+  const [priority, setPriority] = useState(task?.priority || "medium");
+  const [status, setStatus] = useState(task?.status || "pending");
+  const [assignedTo, setAssignedTo] = useState(task?.assignedTo || "admin");
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    task?.startDate ? new Date(task.startDate) : undefined
+  );
+  const [dueDate, setDueDate] = useState<Date | undefined>(
+    task?.dueDate ? new Date(task.dueDate) : undefined
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-type TaskFormData = z.infer<typeof taskFormSchema>;
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
 
-type TaskWithRelations = Task & {
-  assignedUser?: { id: string; username: string; firstName?: string; lastName?: string; };
-  creator?: { id: string; username: string; firstName?: string; lastName?: string; };
-  group?: { id: number; name: string; color: string; };
-};
-
-interface TaskFormProps {
-  task?: TaskWithRelations;
-  onClose: () => void;
-}
-
-export default function TaskForm({ task, onClose }: TaskFormProps) {
-  const { user } = useAuthUnified();
-  const { selectedStoreId } = useStore();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  // État local pour gérer le magasin sélectionné
-  const [localSelectedStoreId, setLocalSelectedStoreId] = useState<number | null>(null);
-
-  // Récupération sécurisée des magasins
-  const { data: groupsData = [], error: groupsError } = useQuery<Group[]>({
-    queryKey: ['/api/groups'],
-    enabled: !!user,
-  });
-  
-  // Log des erreurs de groupes si nécessaire
-  if (groupsError) {
-    console.warn('Erreur lors du chargement des magasins:', groupsError);
-  }
-  
-  const groups = Array.isArray(groupsData) ? groupsData.filter(g => g && typeof g === 'object' && g.id) : [];
-
-  // Auto-sélection du magasin
-  useEffect(() => {
-    if (groups.length > 0 && !localSelectedStoreId) {
-      let defaultStoreId: number | null = null;
-      
-      if (user?.role === 'admin') {
-        if (selectedStoreId && groups.find(g => g.id === selectedStoreId)) {
-          defaultStoreId = selectedStoreId;
-        } else {
-          defaultStoreId = groups[0].id;
-        }
-      } else {
-        defaultStoreId = groups[0].id;
-      }
-      
-      if (defaultStoreId) {
-        setLocalSelectedStoreId(defaultStoreId);
-      }
-    }
-  }, [groups, selectedStoreId, user?.role, localSelectedStoreId]);
-
-  const form = useForm<TaskFormData>({
-    resolver: zodResolver(taskFormSchema),
-    defaultValues: {
-      title: task?.title || "",
-      description: task?.description || "",
-      priority: (task?.priority as "low" | "medium" | "high") || "medium",
-      status: (task?.status as "pending" | "completed") || "pending",
-      assignedTo: task?.assignedTo || "",
-      startDate: task?.startDate ? new Date(task.startDate) : undefined,
-      dueDate: task?.dueDate ? new Date(task.dueDate) : undefined,
-    },
-  });
-
-  // Mutations sécurisées
-  const createMutation = useMutation({
-    mutationFn: (data: any) => {
-      const taskData = {
-        ...data,
-        groupId: localSelectedStoreId,
-        createdBy: user?.id,
-        startDate: data.startDate || null,
-        dueDate: data.dueDate || null
-      };
-      return apiRequest("/api/tasks", "POST", taskData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      toast({
-        title: "Succès",
-        description: "Tâche créée avec succès",
-      });
-      onClose();
-    },
-    onError: (error) => {
-      console.error('Erreur création tâche:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la création de la tâche",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (data: any) => {
-      return apiRequest(`/api/tasks/${task?.id}`, "PATCH", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      toast({
-        title: "Succès",
-        description: "Tâche modifiée avec succès",
-      });
-      onClose();
-    },
-    onError: (error) => {
-      console.error('Erreur modification tâche:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la modification de la tâche",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const onSubmit = (data: TaskFormData) => {
-    if (!localSelectedStoreId) {
-      toast({
-        title: "Erreur",
-        description: "Aucun magasin disponible",
-        variant: "destructive",
-      });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!title.trim()) {
+      alert("Le titre est requis");
       return;
     }
 
-    if (task) {
-      updateMutation.mutate(data);
-    } else {
-      createMutation.mutate(data);
+    if (!assignedTo.trim()) {
+      alert("L'assignation est requise");
+      return;
+    }
+
+    if (startDate && dueDate && dueDate < startDate) {
+      alert("La date d'échéance ne peut pas être antérieure à la date de début");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const taskData = {
+        title: title.trim(),
+        description: description.trim(),
+        priority,
+        status,
+        assignedTo: assignedTo.trim(),
+        startDate: startDate ? startDate.toISOString() : null,
+        dueDate: dueDate ? dueDate.toISOString() : null,
+      };
+
+      const url = task ? `/api/tasks/${task.id}` : '/api/tasks';
+      const method = task ? 'PATCH' : 'POST';
+
+      if (!task) {
+        // Créer nouvelle tâche
+        (taskData as any).groupId = 1; // Store ID par défaut
+        (taskData as any).createdBy = 'admin'; // User ID par défaut
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}`);
+      }
+
+      // Succès
+      alert(task ? "Tâche modifiée avec succès" : "Tâche créée avec succès");
+      
+      // Force reload de la page pour actualiser les données
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert("Erreur lors de l'opération");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -181,10 +101,7 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between border-b pb-4">
         <div>
-          <h2 className="text-xl font-semibold">
-            {task ? "Modifier la tâche" : "Nouvelle tâche"}
-          </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-600">
             📅 Date de début = Quand la tâche devient visible<br/>
             ⏰ Date d'échéance = Quand la tâche doit être terminée
           </p>
@@ -194,212 +111,137 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
         </Button>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Titre */}
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Titre *</FormLabel>
-                <FormControl>
-                  <Input placeholder="Titre de la tâche" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label className="text-sm font-medium">Titre *</label>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Titre de la tâche"
+            required
           />
+        </div>
 
-          {/* Description */}
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Description de la tâche (optionnel)"
-                    rows={3}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+        <div>
+          <label className="text-sm font-medium">Description</label>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Description de la tâche (optionnel)"
+            rows={3}
           />
+        </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* Priorité */}
-            <FormField
-              control={form.control}
-              name="priority"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Priorité *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une priorité" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="low">🟢 Faible</SelectItem>
-                      <SelectItem value="medium">🟡 Moyenne</SelectItem>
-                      <SelectItem value="high">🔴 Élevée</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Statut */}
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Statut</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un statut" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="pending">⏳ En cours</SelectItem>
-                      <SelectItem value="completed">✅ Terminée</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium">Priorité *</label>
+            <Select value={priority} onValueChange={setPriority}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner une priorité" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">🟢 Faible</SelectItem>
+                <SelectItem value="medium">🟡 Moyenne</SelectItem>
+                <SelectItem value="high">🔴 Élevée</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Date de début */}
-            <FormField
-              control={form.control}
-              name="startDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel className="flex items-center gap-2">
-                    📅 Date de début
-                    <span className="text-xs text-muted-foreground">(optionnel)</span>
-                  </FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={field.value ? "w-full pl-3 text-left font-normal" : "w-full pl-3 text-left font-normal text-muted-foreground"}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP", { locale: fr })
-                          ) : (
-                            <span>Sélectionner une date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        locale={fr}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <div>
+            <label className="text-sm font-medium">Statut</label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">⏳ En cours</SelectItem>
+                <SelectItem value="completed">✅ Terminée</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-            {/* Date d'échéance */}
-            <FormField
-              control={form.control}
-              name="dueDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel className="flex items-center gap-2">
-                    ⏰ Date d'échéance
-                    <span className="text-xs text-muted-foreground">(optionnel)</span>
-                  </FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={field.value ? "w-full pl-3 text-left font-normal" : "w-full pl-3 text-left font-normal text-muted-foreground"}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP", { locale: fr })
-                          ) : (
-                            <span>Sélectionner une date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        locale={fr}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col">
+            <label className="text-sm font-medium flex items-center gap-2 mb-2">
+              📅 Date de début
+              <span className="text-xs text-gray-500">(optionnel)</span>
+            </label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={startDate ? "w-full pl-3 text-left font-normal" : "w-full pl-3 text-left font-normal text-gray-500"}
+                >
+                  {startDate ? (
+                    formatDate(startDate)
+                  ) : (
+                    <span>Sélectionner une date</span>
+                  )}
+                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
-          {/* Assigné à */}
-          <FormField
-            control={form.control}
-            name="assignedTo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Assigné à *</FormLabel>
-                <FormControl>
-                  <Input placeholder="Nom d'utilisateur" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+          <div className="flex flex-col">
+            <label className="text-sm font-medium flex items-center gap-2 mb-2">
+              ⏰ Date d'échéance
+              <span className="text-xs text-gray-500">(optionnel)</span>
+            </label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={dueDate ? "w-full pl-3 text-left font-normal" : "w-full pl-3 text-left font-normal text-gray-500"}
+                >
+                  {dueDate ? (
+                    formatDate(dueDate)
+                  ) : (
+                    <span>Sélectionner une date</span>
+                  )}
+                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dueDate}
+                  onSelect={setDueDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">Assigné à *</label>
+          <Input
+            value={assignedTo}
+            onChange={(e) => setAssignedTo(e.target.value)}
+            placeholder="Nom de la personne assignée"
+            required
           />
+        </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
-              Annuler
-            </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
-              {createMutation.isPending || updateMutation.isPending
-                ? "En cours..."
-                : task
-                ? "Modifier"
-                : "Créer"}
-            </Button>
-          </div>
-        </form>
-      </Form>
+        <div className="flex gap-3 justify-end">
+          <Button variant="outline" type="button" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "..." : (task ? "Modifier" : "Créer")}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
