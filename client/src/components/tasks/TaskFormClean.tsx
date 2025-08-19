@@ -26,10 +26,9 @@ const taskFormSchema = z.object({
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   status: z.enum(["pending", "completed"]).default("pending"),
   assignedTo: z.string().min(1, "L'assignation est requise"),
-  startDate: z.date().optional(), // Date de début
-  dueDate: z.date().optional(), // Date d'échéance
+  startDate: z.date().optional(),
+  dueDate: z.date().optional(),
 }).refine((data) => {
-  // Validation : la date d'échéance ne peut pas être antérieure à la date de début
   if (data.startDate && data.dueDate) {
     return data.dueDate >= data.startDate;
   }
@@ -57,24 +56,19 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // État local pour gérer le magasin sélectionné
   const [localSelectedStoreId, setLocalSelectedStoreId] = useState<number | null>(null);
 
-  // Récupération sécurisée des magasins
   const { data: groupsData = [], error: groupsError } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
     enabled: !!user,
   });
   
-  // Log des erreurs de groupes si nécessaire
   if (groupsError) {
     console.warn('Erreur lors du chargement des magasins:', groupsError);
   }
   
   const groups = Array.isArray(groupsData) ? groupsData.filter(g => g && typeof g === 'object' && g.id) : [];
 
-  // Auto-sélection du magasin
   useEffect(() => {
     if (groups.length > 0 && !localSelectedStoreId) {
       let defaultStoreId: number | null = null;
@@ -108,7 +102,6 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
     },
   });
 
-  // Mutations sécurisées
   const createMutation = useMutation({
     mutationFn: (data: any) => {
       const taskData = {
@@ -196,7 +189,6 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Titre */}
           <FormField
             control={form.control}
             name="title"
@@ -211,7 +203,6 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
             )}
           />
 
-          {/* Description */}
           <FormField
             control={form.control}
             name="description"
@@ -231,7 +222,6 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
           />
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Priorité */}
             <FormField
               control={form.control}
               name="priority"
@@ -255,7 +245,6 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
               )}
             />
 
-            {/* Statut */}
             <FormField
               control={form.control}
               name="status"
@@ -280,7 +269,6 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Date de début */}
             <FormField
               control={form.control}
               name="startDate"
@@ -321,7 +309,6 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
               )}
             />
 
-            {/* Date d'échéance */}
             <FormField
               control={form.control}
               name="dueDate"
@@ -363,7 +350,6 @@ export default function TaskForm({ task, onClose }: TaskFormProps) {
             />
           </div>
 
-          {/* Assigné à */}
           <FormField
             control={form.control}
             name="assignedTo"

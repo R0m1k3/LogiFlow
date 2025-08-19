@@ -1,2 +1,2 @@
-// Version SANS CN pour production - élimine toutes les erreurs de dépendance
-export { default } from "./TaskFormProduction";
+// Version ULTRA PROPRE pour production - ZÉRO dépendance externe
+export { default } from "./TaskFormClean";
