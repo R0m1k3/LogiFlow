@@ -56,7 +56,7 @@ export default function SimpleTaskForm({ task, onClose }: SimpleTaskFormProps) {
   const { data: groupsData = [] } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
     enabled: !!user,
-    onError: () => console.warn('Erreur lors du chargement des magasins')
+    onError: (error) => console.warn('Erreur lors du chargement des magasins:', error)
   });
   
   const groups = Array.isArray(groupsData) ? groupsData.filter(g => g && g.id) : [];
