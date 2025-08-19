@@ -18,7 +18,10 @@ import { z } from "zod";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+// Fonction utilitaire cn intégrée pour éviter les erreurs de dépendance en production
+function cn(...classes: (string | undefined | null | false)[]): string {
+  return classes.filter(Boolean).join(' ');
+}
 
 // Schéma robuste avec dates de début et d'échéance pour production
 const taskFormSchema = z.object({
