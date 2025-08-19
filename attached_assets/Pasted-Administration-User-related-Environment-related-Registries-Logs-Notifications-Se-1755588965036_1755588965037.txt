@@ -1,0 +1,238 @@
+Administration
+
+User-related
+
+
+Environment-related
+
+Registries
+
+Logs
+
+Notifications
+
+Settings
+
+New version available 2.27.9
+DismissSee what's new
+Community Edition
+2.27.6 LTS
+Containers>logiflow-logiflow-1>Logs
+Container logs
+
+
+admin
+Log viewer settings
+Auto-refresh logs
+Wrap lines
+Display timestamps
+Fetch
+All logs
+Search
+Filter...
+Lines
+100
+Actions
+ 
+ 
+ 
+      
+  taskGroups: [
+
+    { id: 99, title: 'test', groupId: 1 },
+
+    { id: 98, title: 'test', groupId: 1 },
+
+    { id: 91, title: 'refaire podium lot assiettes', groupId: 2 }
+
+  ]
+
+}
+
+GET /api/tasks 200 in 461ms
+
+GET /api/user 304 in 37ms
+
+📢 [SERVER] User found: { username: 'admin', role: 'admin' }
+
+🎯 [PRODUCTION] Using PostgreSQL DASHBOARD_MESSAGES table
+
+🔍 [PRODUCTION] Raw messages from DB: 2 items: [
+
+  {
+
+    id: 16,
+
+    title: 'Mise à jour Prix',
+
+    content: 'Merci de mettre vos prix a jour tous les matins, certain magasin ne le font pas.',
+
+    type: 'success',
+
+    storeId: null,
+
+    createdBy: 'admin',
+
+    createdAt: 2025-08-18T10:45:08.585Z
+
+  },
+
+  {
+
+    id: 8,
+
+    title: 'Bon de Livraison',
+
+    content: 'Lorsque vous rentrez un numéro de bon de livraison, faite le a l identique, même les majuscules. Pour My candy Shop, prendre le numéro de commande.',
+
+    type: 'info',
+
+    storeId: null,
+
+    createdBy: 'admin_local',
+
+    createdAt: 2025-08-07T11:04:38.123Z
+
+  }
+
+]
+
+🔍 [PRODUCTION] Looking for user with username: admin
+
+🔍 [PRODUCTION] Looking for user with username: admin_local
+
+🔍 [PRODUCTION] User search result: Found
+
+🔍 [PRODUCTION] User search result: Not found
+
+🎯 [PRODUCTION] Found announcements: 2
+
+❌ [PRODUCTION] User not found with username: admin_local
+
+GET /api/announcements 200 in 36ms
+
+GET /api/publicities 304 in 28ms
+
+GET /api/user 304 in 6ms
+
+Orders API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  userRole: 'admin'
+
+}
+
+Admin filtering with groupIds: [ 1 ]
+
+Fetching all orders
+
+📢 [SERVER] Fetching announcements for user: admin_local environment: production
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+Admin filtering deliveries with groupIds: [ 1 ]
+
+Fetching all deliveries
+
+🔗 PRODUCTION: getOrders() récupéré 33 commandes avec relations
+
+Orders returned: 33 items
+
+GET /api/orders 200 in 94ms
+
+📢 [SERVER] User found: { username: 'admin', role: 'admin' }
+
+🎯 [PRODUCTION] Using PostgreSQL DASHBOARD_MESSAGES table
+
+Customer Orders API called with: { groupIds: [ 1 ], userRole: 'admin' }
+
+🔗 PRODUCTION: getDeliveries() récupéré 49 livraisons avec relations
+
+Deliveries returned: 49 items
+
+GET /api/deliveries 304 in 150ms
+
+GET /api/groups 304 in 94ms
+
+🔍 [PRODUCTION] Raw messages from DB: 2 items: [
+
+  {
+
+    id: 16,
+
+    title: 'Mise à jour Prix',
+
+    content: 'Merci de mettre vos prix a jour tous les matins, certain magasin ne le font pas.',
+
+    type: 'success',
+
+    storeId: null,
+
+    createdBy: 'admin',
+
+    createdAt: 2025-08-18T10:45:08.585Z
+
+  },
+
+  {
+
+    id: 8,
+
+    title: 'Bon de Livraison',
+
+    content: 'Lorsque vous rentrez un numéro de bon de livraison, faite le a l identique, même les majuscules. Pour My candy Shop, prendre le numéro de commande.',
+
+    type: 'info',
+
+    storeId: null,
+
+    createdBy: 'admin_local',
+
+    createdAt: 2025-08-07T11:04:38.123Z
+
+  }
+
+]
+
+🔍 [PRODUCTION] Looking for user with username: admin
+
+🔍 [PRODUCTION] Looking for user with username: admin_local
+
+Customer Orders returned: 10 items
+
+GET /api/customer-orders 304 in 156ms
+
+🔍 [PRODUCTION] User search result: Found
+
+🔍 [PRODUCTION] User search result: Not found
+
+❌ [PRODUCTION] User not found with username: admin_local
+
+🎯 [PRODUCTION] Found announcements: 2
+
+GET /api/announcements 200 in 157ms
+
+GET /api/user 304 in 7ms
+
+GET /api/publicities 304 in 12ms
+
+GET /api/publicities 200 in 10ms
+
+HEAD /api/health 200 in 0ms

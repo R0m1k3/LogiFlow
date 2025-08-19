@@ -66,13 +66,14 @@ export default function NewTaskForm({ task, onClose }: NewTaskFormProps) {
   // Récupération des magasins pour l'auto-sélection
   const { data: groupsData = [] } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
+    enabled: !!user, // Seulement si l'utilisateur est connecté
   });
   
   // Filtrer les groupes selon le magasin sélectionné pour les admins
   const groups = Array.isArray(groupsData) ? (
     user?.role === 'admin' && selectedStoreId 
-      ? groupsData.filter(g => g.id === selectedStoreId)
-      : groupsData
+      ? groupsData.filter(g => g && g.id === selectedStoreId)
+      : groupsData.filter(g => g)
   ) : [];
 
   // Auto-sélectionner le magasin selon les règles
