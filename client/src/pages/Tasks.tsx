@@ -59,27 +59,55 @@ export default function Tasks() {
   const [taskToDelete, setTaskToDelete] = useState<TaskWithRelations | null>(null);
 
   // Fetch tasks - attendre que l'initialisation des stores soit terminée pour les admins
-  const { data: tasks = [], isLoading } = useQuery({
+  const { data: tasks = [], isLoading, error } = useQuery({
     queryKey: ["/api/tasks", selectedStoreId],
-    queryFn: () => {
-      const params = new URLSearchParams();
-      if (selectedStoreId && user?.role === 'admin') {
-        params.append('storeId', selectedStoreId.toString());
-      }
-      console.log('📋 TASKS QUERY - Fetching with params:', { 
-        selectedStoreId, 
-        userRole: user?.role,
-        storeInitialized,
-        url: `/api/tasks?${params.toString()}`
-      });
-      return fetch(`/api/tasks?${params.toString()}`, {
-        credentials: 'include'
-      }).then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
+    queryFn: async () => {
+      try {
+        const params = new URLSearchParams();
+        if (selectedStoreId && user?.role === 'admin') {
+          params.append('storeId', selectedStoreId.toString());
         }
-        return res.json();
-      });
+        console.log('📋 TASKS QUERY - Fetching with params:', { 
+          selectedStoreId, 
+          userRole: user?.role,
+          storeInitialized,
+          url: `/api/tasks?${params.toString()}`
+        });
+        
+        const response = await fetch(`/api/tasks?${params.toString()}`, {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        console.log('📋 TASKS QUERY - Response received:', {
+          dataType: typeof data,
+          isArray: Array.isArray(data),
+          length: data?.length,
+          firstTask: data?.[0] ? {
+            id: data[0].id,
+            title: data[0].title,
+            hasStartDate: !!data[0].startDate,
+            hasGroup: !!data[0].group
+          } : null
+        });
+        
+        // Valider et nettoyer les données reçues
+        if (!Array.isArray(data)) {
+          console.error('Tasks API returned non-array data:', data);
+          return [];
+        }
+        
+        return data.filter(task => task && typeof task === 'object' && task.id);
+        
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        throw error;
+      }
     },
     enabled: !!user && (user.role !== 'admin' || storeInitialized),
   });
@@ -318,40 +346,53 @@ export default function Tasks() {
   const getStartDateStatus = (startDate: Date | string | null) => {
     if (!startDate) return null;
     
-    const start = new Date(startDate);
-    const now = new Date();
-    const daysDiff = differenceInDays(start, now);
-    
-    if (isPast(start)) {
-      return {
-        type: 'started',
-        color: 'default' as const,
-        icon: CheckCircle,
-        label: 'Démarrée',
-        text: 'Active'
-      };
-    } else if (isToday(start)) {
-      return {
-        type: 'today',
-        color: 'secondary' as const,
-        icon: CalendarClock,
-        label: "Démarre aujourd'hui",
-        text: "Aujourd'hui"
-      };
-    } else {
-      return {
-        type: 'future',
-        color: 'outline' as const,
-        icon: Clock,
-        label: `Démarre dans ${daysDiff} jour${daysDiff > 1 ? 's' : ''}`,
-        text: `+${daysDiff}j`
-      };
+    try {
+      const start = new Date(startDate);
+      if (isNaN(start.getTime())) return null;
+      
+      const now = new Date();
+      const daysDiff = differenceInDays(start, now);
+      
+      if (isPast(start)) {
+        return {
+          type: 'started',
+          color: 'default' as const,
+          icon: CheckCircle,
+          label: 'Démarrée',
+          text: 'Active'
+        };
+      } else if (isToday(start)) {
+        return {
+          type: 'today',
+          color: 'secondary' as const,
+          icon: CalendarClock,
+          label: "Démarre aujourd'hui",
+          text: "Aujourd'hui"
+        };
+      } else {
+        return {
+          type: 'future',
+          color: 'outline' as const,
+          icon: Clock,
+          label: `Démarre dans ${daysDiff} jour${daysDiff > 1 ? 's' : ''}`,
+          text: `+${daysDiff}j`
+        };
+      }
+    } catch (error) {
+      console.warn('Error parsing start date:', error, startDate);
+      return null;
     }
   };
 
   // Fonction pour déterminer si une tâche est future (pas encore commencée)
   const isTaskFuture = (task: TaskWithRelations) => {
-    return task.isFutureTask || (task.startDate && !isPast(new Date(task.startDate)));
+    if (!task) return false;
+    try {
+      return task.isFutureTask || (task.startDate && !isPast(new Date(task.startDate)));
+    } catch (error) {
+      console.warn('Error checking if task is future:', error, task);
+      return false;
+    }
   };
 
   const canCreateTasks = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur';

@@ -1619,12 +1619,50 @@ export class DatabaseStorage implements IStorage {
     }
 
     const results = await query.orderBy(desc(tasks.createdAt));
-    return results.map((row: any) => ({
-      ...row.task,
-      group: row.group,
-      // Ajouter le statut "future" pour les tâches futures (admin/directeur)  
-      isFutureTask: row.task.startDate && new Date(row.task.startDate) > today
-    }));
+    
+    console.log('📋 DatabaseStorage.getTasks - Raw results:', {
+      resultCount: results.length,
+      userRole,
+      sampleTasks: results.slice(0, 2).map(r => ({
+        taskExists: !!r.task,
+        taskId: r.task?.id,
+        title: r.task?.title,
+        startDate: r.task?.startDate,
+        groupExists: !!r.group
+      }))
+    });
+
+    return results
+      .filter((row: any) => row.task) // Filtrer les tâches nulles
+      .map((row: any) => {
+        try {
+          const task = row.task;
+          const group = row.group || null;
+          
+          // Calculer si la tâche est future de manière sécurisée
+          let isFutureTask = false;
+          if (task.startDate) {
+            try {
+              const startDate = new Date(task.startDate);
+              if (!isNaN(startDate.getTime())) {
+                isFutureTask = startDate > today;
+              }
+            } catch (error) {
+              console.warn('Error parsing startDate:', error, task.startDate);
+            }
+          }
+
+          return {
+            ...task,
+            group,
+            isFutureTask
+          };
+        } catch (error) {
+          console.error('Error processing task row:', error, row);
+          return null;
+        }
+      })
+      .filter(Boolean);
   }
 
   async getTask(id: number): Promise<TaskWithRelations | undefined> {
