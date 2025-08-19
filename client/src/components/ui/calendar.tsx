@@ -13,7 +13,7 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: CalendarProps) {
-  // Définir le modificateur pour les weekends (samedi = 6, dimanche = 0)
+  // Week-ends stylés mais TOUJOURS SÉLECTIONNABLES pour les tâches
   const isWeekend = (date: Date) => {
     const day = date.getDay();
     return day === 0 || day === 6; // Dimanche ou Samedi
@@ -32,7 +32,7 @@ function Calendar({
         ...props.modifiersClassNames,
       }}
       modifiersStyles={{
-        weekend: { backgroundColor: '#f3f4f6' },
+        weekend: { backgroundColor: '#f0f9ff', border: '1px solid #bfdbfe' }, // Bleu clair pour week-ends
         ...props.modifiersStyles,
       }}
       classNames={{

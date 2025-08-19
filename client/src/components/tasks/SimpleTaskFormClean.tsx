@@ -19,16 +19,17 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
-// Schéma robuste avec dates de début et d'échéance pour production
+// Schéma SANS restriction de week-end - tâches assignables 7j/7
 const taskFormSchema = z.object({
   title: z.string().min(1, "Le titre est requis"),
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   status: z.enum(["pending", "completed"]).default("pending"),
   assignedTo: z.string().min(1, "L'assignation est requise"),
-  startDate: z.date().optional(),
-  dueDate: z.date().optional(),
+  startDate: z.date().optional(), // AUTORISÉ : week-ends inclus
+  dueDate: z.date().optional(),   // AUTORISÉ : week-ends inclus
 }).refine((data) => {
+  // Validation basique : échéance >= début (AUCUNE restriction de jour de semaine)
   if (data.startDate && data.dueDate) {
     return data.dueDate >= data.startDate;
   }
