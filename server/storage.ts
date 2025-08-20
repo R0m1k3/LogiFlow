@@ -968,6 +968,36 @@ export class DatabaseStorage implements IStorage {
       .set({ ...deliveryData, updatedAt: new Date() })
       .where(eq(deliveries.id, id))
       .returning();
+    
+    // CRITICAL FIX: Si une commande est liée lors de l'édition, la marquer comme "planned"
+    if (deliveryData.orderId) {
+      try {
+        console.log(`🔗 CALENDAR EDIT: Delivery #${delivery.id} linked to order #${deliveryData.orderId}, updating order status to 'planned'`);
+        
+        // Récupérer la commande actuelle
+        const [currentOrder] = await db
+          .select()
+          .from(orders)
+          .where(eq(orders.id, deliveryData.orderId));
+        
+        if (currentOrder && currentOrder.status === 'pending') {
+          await db
+            .update(orders)
+            .set({ 
+              status: 'planned',
+              updatedAt: new Date() 
+            })
+            .where(eq(orders.id, deliveryData.orderId));
+          
+          console.log(`✅ CALENDAR EDIT: Order #${deliveryData.orderId} status updated to 'planned'`);
+        } else if (currentOrder) {
+          console.log(`ℹ️ CALENDAR EDIT: Order #${deliveryData.orderId} status is '${currentOrder.status}', no update needed`);
+        }
+      } catch (error) {
+        console.error(`❌ CALENDAR EDIT: Failed to update order #${deliveryData.orderId} status to planned:`, error);
+      }
+    }
+    
     return delivery;
   }
 
@@ -2715,6 +2745,23 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
     };
     this.deliveries.set(id, updatedDelivery);
+    
+    // CRITICAL FIX: Si une commande est liée lors de l'édition, la marquer comme "planned"
+    if (deliveryData.orderId) {
+      try {
+        const order = this.orders.get(deliveryData.orderId);
+        if (order && order.status === 'pending') {
+          console.log(`🔗 CALENDAR EDIT (DEV): Delivery #${id} linked to order #${deliveryData.orderId}, updating order status to 'planned'`);
+          await this.updateOrder(deliveryData.orderId, { status: 'planned' });
+          console.log(`✅ CALENDAR EDIT (DEV): Order #${deliveryData.orderId} status updated to 'planned'`);
+        } else if (order) {
+          console.log(`ℹ️ CALENDAR EDIT (DEV): Order #${deliveryData.orderId} status is '${order.status}', no update needed`);
+        }
+      } catch (error) {
+        console.error(`❌ CALENDAR EDIT (DEV): Failed to update order #${deliveryData.orderId} status to planned:`, error);
+      }
+    }
+    
     return updatedDelivery;
   }
 

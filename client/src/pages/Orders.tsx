@@ -69,7 +69,8 @@ export default function Orders() {
   const [orderToDelete, setOrderToDelete] = useState<OrderWithRelations | null>(null);
 
   // Construire l'URL pour l'historique complet sans filtrage par date
-  const ordersUrl = `/api/orders${selectedStoreId && user?.role === 'admin' ? `?storeId=${selectedStoreId}` : ''}`;
+  // CRITICAL FIX: Appliquer le filtrage par storeId pour TOUS les rôles, pas seulement admin
+  const ordersUrl = `/api/orders${selectedStoreId ? `?storeId=${selectedStoreId}` : ''}`;
   
   const { data: ordersData = [], isLoading } = useQuery<OrderWithRelations[]>({
     queryKey: [ordersUrl, selectedStoreId],
