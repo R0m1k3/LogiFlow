@@ -345,9 +345,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If admin selected a specific store, filter by it
         if (storeId) {
           groupIds = [parseInt(storeId as string)];
+          console.log('🔍 Admin orders filtering by store:', { storeId, groupIds });
+        } else {
+          console.log('🔍 Admin orders - showing all stores');
         }
-        
-        console.log('Admin filtering with groupIds:', groupIds);
         
         // Only filter by date if both startDate and endDate are provided
         if (startDate && endDate) {
@@ -359,8 +360,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else {
         // For all non-admin roles (manager, employee, directeur), filter by their assigned groups
-        const groupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
-        console.log('Non-admin filtering with groupIds:', groupIds);
+        const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
+        let groupIds: number[] | undefined;
+        
+        if (storeId) {
+          // If a specific store is requested, verify user has access to it
+          const requestedStoreId = parseInt(storeId as string);
+          if (userGroupIds.includes(requestedStoreId)) {
+            groupIds = [requestedStoreId];
+            console.log('🔍 Non-admin orders - filtering by accessible store:', { 
+              userId: user.id, 
+              role: user.role, 
+              requestedStoreId 
+            });
+          } else {
+            // User doesn't have access to this store, return empty array
+            console.log('🚫 Non-admin orders - user has no access to requested store:', {
+              userId: user.id,
+              role: user.role,
+              requestedStoreId,
+              userGroups: userGroupIds
+            });
+            return res.json([]);
+          }
+        } else {
+          // IMPORTANT FIX: For directeur/manager roles, when no specific store is selected,
+          // return empty result to force explicit store selection
+          console.log('🔍 Non-admin orders - no store selection, returning empty:', {
+            userId: user.id,
+            role: user.role,
+            userGroups: userGroupIds
+          });
+          return res.json([]);
+        }
         
         // Only filter by date if both startDate and endDate are provided
         if (startDate && endDate) {
@@ -626,9 +658,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If admin selected a specific store, filter by it
         if (storeId) {
           groupIds = [parseInt(storeId as string)];
+          console.log('🔍 Admin deliveries filtering by store:', { storeId, groupIds });
+        } else {
+          console.log('🔍 Admin deliveries - showing all stores');
         }
-        
-        console.log('Admin filtering deliveries with groupIds:', groupIds);
         
         // Only filter by date if both startDate and endDate are provided
         if (startDate && endDate) {
@@ -639,9 +672,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deliveries = await storage.getDeliveries(groupIds);
         }
       } else {
-        // For non-admin users (managers, employees, directeurs), only show their assigned stores
-        const groupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
-        console.log('Non-admin filtering deliveries with groupIds:', groupIds);
+        // For non-admin users (managers, employees, directeurs), filter by their assigned groups
+        const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
+        let groupIds: number[] | undefined;
+        
+        if (storeId) {
+          // If a specific store is requested, verify user has access to it
+          const requestedStoreId = parseInt(storeId as string);
+          if (userGroupIds.includes(requestedStoreId)) {
+            groupIds = [requestedStoreId];
+            console.log('🔍 Non-admin deliveries - filtering by accessible store:', { 
+              userId: user.id, 
+              role: user.role, 
+              requestedStoreId 
+            });
+          } else {
+            // User doesn't have access to this store, return empty array
+            console.log('🚫 Non-admin deliveries - user has no access to requested store:', {
+              userId: user.id,
+              role: user.role,
+              requestedStoreId,
+              userGroups: userGroupIds
+            });
+            return res.json([]);
+          }
+        } else {
+          // IMPORTANT FIX: For directeur/manager roles, when no specific store is selected,
+          // return empty result to force explicit store selection
+          console.log('🔍 Non-admin deliveries - no store selection, returning empty:', {
+            userId: user.id,
+            role: user.role,
+            userGroups: userGroupIds
+          });
+          return res.json([]);
+        }
         
         // Only filter by date if both startDate and endDate are provided
         if (startDate && endDate) {
@@ -1334,8 +1398,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === 'admin') {
         // Admin can see all tasks or filter by specific store
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
+        console.log('🔍 Admin tasks filtering:', { 
+          storeId, 
+          groupIds,
+          message: storeId ? `Filtering by store ${storeId}` : 'Showing all stores' 
+        });
       } else {
-        // Non-admin users can only see tasks from their assigned groups
+        // For directeur and other non-admin users: always restrict to their assigned groups
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
         
         if (storeId) {
@@ -1343,13 +1412,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const requestedStoreId = parseInt(storeId as string);
           if (userGroupIds.includes(requestedStoreId)) {
             groupIds = [requestedStoreId];
+            console.log('🔍 Non-admin user requesting specific accessible store:', { 
+              userId: user.id,
+              role: user.role,
+              requestedStoreId,
+              hasAccess: true
+            });
           } else {
             // User doesn't have access to this store, return empty array
+            console.log('🚫 Non-admin user requesting inaccessible store:', {
+              userId: user.id,
+              role: user.role,
+              requestedStoreId,
+              userGroups: userGroupIds,
+              hasAccess: false
+            });
             return res.json([]);
           }
         } else {
-          // No specific store requested, return tasks from user's groups only
-          groupIds = userGroupIds;
+          // IMPORTANT FIX: For directeur/manager roles, when no specific store is selected,
+          // we should NOT show data from all their groups. This was causing the issue
+          // where after page refresh, data from multiple groups was displayed.
+          // Return empty result to force explicit store selection for non-admin users.
+          console.log('🔍 Non-admin user with no store selection - returning empty result:', {
+            userId: user.id,
+            role: user.role,
+            userGroups: userGroupIds,
+            message: 'Forcing explicit store selection'
+          });
+          return res.json([]);
         }
       }
 
