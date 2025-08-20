@@ -71,7 +71,8 @@ export default function Deliveries() {
   const [deliveryToDelete, setDeliveryToDelete] = useState<DeliveryWithRelations | null>(null);
 
   // Construire l'URL pour l'historique complet sans filtrage par date
-  const deliveriesUrl = `/api/deliveries${selectedStoreId && user?.role === 'admin' ? `?storeId=${selectedStoreId}` : ''}`;
+  // CRITICAL FIX: Appliquer le filtrage par storeId pour TOUS les rôles, pas seulement admin
+  const deliveriesUrl = `/api/deliveries${selectedStoreId ? `?storeId=${selectedStoreId}` : ''}`;
   
   const { data: deliveriesData = [], isLoading } = useQuery<DeliveryWithRelations[]>({
     queryKey: ['/api/deliveries', selectedStoreId, user?.role],

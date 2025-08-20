@@ -339,14 +339,16 @@ export default function Tasks() {
     queryFn: async () => {
       try {
         const params = new URLSearchParams();
-        if (selectedStoreId && user?.role === 'admin') {
+        // CRITICAL FIX: Appliquer le filtrage par storeId pour TOUS les rôles, pas seulement admin
+        if (selectedStoreId) {
           params.append('storeId', selectedStoreId.toString());
         }
         console.log('📋 TASKS QUERY - Fetching with params:', { 
           selectedStoreId, 
           userRole: user?.role,
           storeInitialized,
-          url: `/api/tasks?${params.toString()}`
+          url: `/api/tasks?${params.toString()}`,
+          willFilterByStore: !!selectedStoreId
         });
         
         const response = await fetch(`/api/tasks?${params.toString()}`, {

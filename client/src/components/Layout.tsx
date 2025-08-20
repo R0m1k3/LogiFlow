@@ -2,7 +2,7 @@ import { ReactNode, useState, createContext, useContext, useEffect } from "react
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { LogOut, Store, Menu } from "lucide-react";
+import { LogOut, Store, Menu, AlertTriangle } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Sidebar from "./Sidebar";
@@ -72,29 +72,52 @@ export default function Layout({ children }: LayoutProps) {
   // Effet pour marquer l'initialisation comme terminée
   useEffect(() => {
     if (user && stores.length > 0) {
-      // Pour les admins, vérifier que selectedStoreId est cohérent avec les stores disponibles
-      if (user.role === 'admin' && selectedStoreId) {
+      let needsUpdate = false;
+      
+      // Pour tous les rôles, vérifier que selectedStoreId est cohérent avec les stores disponibles
+      if (selectedStoreId) {
         const storeExists = stores.find(store => store.id === selectedStoreId);
         if (!storeExists) {
-          console.log('🏪 Selected store not found in available stores, clearing selection');
+          console.log('🏪 Selected store not found in available stores, clearing selection:', {
+            selectedStoreId,
+            userRole: user.role,
+            availableStores: stores.map(s => s.id)
+          });
           setSelectedStoreId(null);
           localStorage.removeItem('selectedStoreId');
+          needsUpdate = true;
+        } else {
+          console.log('🏪 Selected store validated successfully:', {
+            selectedStoreId,
+            userRole: user.role,
+            storeName: storeExists.name
+          });
         }
       }
       
       // IMPORTANT FIX: Pour les rôles directeur/manager, forcer la sélection d'un magasin spécifique
       // si aucun n'est sélectionné et qu'ils n'ont accès qu'à un seul magasin
-      if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1) {
+      if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1 && !needsUpdate) {
         console.log('🏪 Auto-selecting single available store for directeur/manager:', stores[0].id);
         const singleStoreId = stores[0].id;
         setSelectedStoreId(singleStoreId);
         localStorage.setItem('selectedStoreId', singleStoreId.toString());
       }
       
+      // VALIDATION CRITIQUE: Pour les directeurs/managers, s'assurer qu'un magasin est toujours sélectionné
+      if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && !needsUpdate) {
+        console.log('🚨 CRITICAL: Directeur/Manager has no store selected, this will cause empty data display:', {
+          userId: user.id,
+          userRole: user.role,
+          availableStores: stores.map(s => ({ id: s.id, name: s.name }))
+        });
+      }
+      
       console.log('🏪 Store initialization complete:', { 
         user: user.role, 
         selectedStoreId, 
         storesCount: stores.length,
+        validatedStore: selectedStoreId ? stores.find(s => s.id === selectedStoreId)?.name : 'None',
         autoSelected: (user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1
       });
       setStoreInitialized(true);
@@ -205,6 +228,23 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             )}
           </header>
+
+          {/* Alert for directeur/manager without store selection */}
+          {user && (user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && storeInitialized && (
+            <div className="bg-red-50 border-l-4 border-red-400 p-4 m-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-red-400" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">
+                    <strong>Action requise :</strong> Veuillez sélectionner un magasin pour afficher les données.
+                    Vos permissions ne permettent pas de voir les données de tous les magasins.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex-1 bg-gray-50 p-6 h-full overflow-y-auto">
             {children}
