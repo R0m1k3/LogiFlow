@@ -44,7 +44,8 @@ export default function Calendar() {
         startDate: format(monthStart, 'yyyy-MM-dd'),
         endDate: format(monthEnd, 'yyyy-MM-dd')
       });
-      if (selectedStoreId && user?.role === 'admin') {
+      // CRITICAL FIX: Appliquer le filtrage par storeId pour TOUS les rôles, pas seulement admin
+      if (selectedStoreId) {
         params.append('storeId', selectedStoreId.toString());
       }
       
@@ -92,7 +93,8 @@ export default function Calendar() {
         startDate: format(monthStart, 'yyyy-MM-dd'),
         endDate: format(monthEnd, 'yyyy-MM-dd')
       });
-      if (selectedStoreId && user?.role === 'admin') {
+      // CRITICAL FIX: Appliquer le filtrage par storeId pour TOUS les rôles, pas seulement admin
+      if (selectedStoreId) {
         params.append('storeId', selectedStoreId.toString());
       }
       
