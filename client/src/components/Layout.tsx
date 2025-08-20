@@ -82,10 +82,20 @@ export default function Layout({ children }: LayoutProps) {
         }
       }
       
+      // IMPORTANT FIX: Pour les rôles directeur/manager, forcer la sélection d'un magasin spécifique
+      // si aucun n'est sélectionné et qu'ils n'ont accès qu'à un seul magasin
+      if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1) {
+        console.log('🏪 Auto-selecting single available store for directeur/manager:', stores[0].id);
+        const singleStoreId = stores[0].id;
+        setSelectedStoreId(singleStoreId);
+        localStorage.setItem('selectedStoreId', singleStoreId.toString());
+      }
+      
       console.log('🏪 Store initialization complete:', { 
         user: user.role, 
         selectedStoreId, 
-        storesCount: stores.length 
+        storesCount: stores.length,
+        autoSelected: (user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1
       });
       setStoreInitialized(true);
     }
@@ -131,14 +141,18 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             </div>
 
-            {/* Store selector for admin - responsive */}
-            {user?.role === 'admin' && stores.length > 0 && (
+            {/* Store selector for admin, directeur, and manager - responsive */}
+            {user && (user.role === 'admin' || user.role === 'directeur' || user.role === 'manager') && stores.length > 0 && (
               <div className="flex items-center gap-2">
                 <Store className="h-4 w-4 text-gray-500 hidden sm:block" />
                 <Select
-                  value={selectedStoreId?.toString() || "all"}
+                  value={selectedStoreId?.toString() || (user.role === 'admin' ? "all" : "")}
                   onValueChange={(value) => {
-                    console.log('🏪 Store selector changed:', { value, parsed: value === "all" ? null : parseInt(value) });
+                    console.log('🏪 Store selector changed:', { 
+                      value, 
+                      userRole: user.role, 
+                      parsed: value === "all" ? null : parseInt(value) 
+                    });
                     const newStoreId = value === "all" ? null : parseInt(value);
                     
                     // Invalider toutes les variantes de queryKey pour changement magasin
@@ -163,15 +177,18 @@ export default function Layout({ children }: LayoutProps) {
                   }}
                 >
                   <SelectTrigger className="w-32 sm:w-64 border border-gray-300">
-                    <SelectValue placeholder="Magasin" />
+                    <SelectValue placeholder="Sélectionnez un magasin" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-gray-400"></div>
-                        <span>Tous les magasins</span>
-                      </div>
-                    </SelectItem>
+                    {/* Only show "Tous les magasins" option for admin */}
+                    {user.role === 'admin' && (
+                      <SelectItem value="all">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-gray-400"></div>
+                          <span>Tous les magasins</span>
+                        </div>
+                      </SelectItem>
+                    )}
                     {stores.map((store) => (
                       <SelectItem key={store.id} value={store.id.toString()}>
                         <div className="flex items-center gap-2">

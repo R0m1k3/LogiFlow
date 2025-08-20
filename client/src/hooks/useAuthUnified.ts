@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Hook d'authentification unifié qui s'adapte automatiquement
 // En production utilise fetch direct, en développement utilise React Query
@@ -104,6 +104,7 @@ export function useAuthUnified() {
     } else {
       // En développement, forcer un refetch avec invalidation du cache
       console.log('🔄 Development mode - invalidating cache and refetching');
+      const queryClient = useQueryClient();
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       
       // Attendre un court délai pour la propagation
