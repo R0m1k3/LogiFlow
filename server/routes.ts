@@ -2224,6 +2224,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { year, storeId } = req.query;
       const filterYear = year ? parseInt(year as string) : undefined;
 
+      // DEBUG: Log pour identifier le problème avec 2025
+      console.log(`📋 API PUBLICITIES REQUEST:`, { year, filterYear, storeId, userRole: user.role });
+
       let groupIds: number[] | undefined;
       
       if (user.role === 'admin') {
@@ -2234,10 +2237,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         groupIds = user.userGroups.map(ug => ug.groupId);
       }
 
+      console.log(`📋 CALLING storage.getPublicities:`, { filterYear, groupIds });
       const publicities = await storage.getPublicities(filterYear, groupIds);
+      console.log(`📋 PUBLICITIES RETURNED:`, { count: publicities.length });
+      
       res.json(publicities);
     } catch (error) {
-      console.error("Error fetching publicities:", error);
+      console.error(`❌ ERROR fetching publicities for year ${year}:`, error);
       res.status(500).json({ message: "Failed to fetch publicities", error: (error as Error).message });
     }
   });
