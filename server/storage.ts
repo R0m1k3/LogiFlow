@@ -1209,7 +1209,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(publicities.year, year));
     }
 
-    const results = await query.orderBy(desc(publicities.pubNumber));
+    const results = await query.orderBy(asc(publicities.pubNumber));
 
     const publicityIds = results.map((p: any) => p.id);
     const participations = publicityIds.length > 0 
