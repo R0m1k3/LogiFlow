@@ -339,15 +339,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Orders API called with:', { startDate, endDate, storeId, userRole: user.role });
 
-      if (user.role === 'admin') {
+      if (user.role === 'admin' || user.role === 'directeur') {
         let groupIds: number[] | undefined;
         
-        // If admin selected a specific store, filter by it
+        // If admin/directeur selected a specific store, filter by it
         if (storeId) {
           groupIds = [parseInt(storeId as string)];
-          console.log('🔍 Admin orders filtering by store:', { storeId, groupIds });
+          console.log('🔍 Admin/Directeur orders filtering by store:', { storeId, groupIds, role: user.role });
         } else {
-          console.log('🔍 Admin orders - showing all stores');
+          console.log('🔍 Admin/Directeur orders - showing all stores', { role: user.role });
         }
         
         // Only filter by date if both startDate and endDate are provided
@@ -359,7 +359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           orders = await storage.getOrders(groupIds);
         }
       } else {
-        // For all non-admin roles (manager, employee, directeur), filter by their assigned groups
+        // For manager and employee roles, filter by their assigned groups
         const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         let groupIds: number[] | undefined;
         
@@ -384,14 +384,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.json([]);
           }
         } else {
-          // IMPORTANT FIX: For directeur/manager roles, when no specific store is selected,
-          // return empty result to force explicit store selection
-          console.log('🔍 Non-admin orders - no store selection, returning empty:', {
-            userId: user.id,
-            role: user.role,
-            userGroups: userGroupIds
-          });
-          return res.json([]);
+          // For manager role, when no specific store is selected, show orders from all their assigned groups
+          if (user.role === 'manager') {
+            groupIds = userGroupIds.length > 0 ? userGroupIds : undefined;
+            console.log('🔍 Manager orders - showing all accessible stores:', {
+              userId: user.id,
+              role: user.role,
+              userGroups: userGroupIds,
+              groupIds
+            });
+          } else {
+            // For employee role, require explicit store selection
+            console.log('🔍 Employee orders - no store selection, returning empty:', {
+              userId: user.id,
+              role: user.role,
+              userGroups: userGroupIds
+            });
+            return res.json([]);
+          }
         }
         
         // Only filter by date if both startDate and endDate are provided
@@ -425,8 +435,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
 
-      // Check if user has access to this order (only admin can access all orders)
-      if (user.role !== 'admin') {
+      // Check if user has access to this order (admin and directeur can access all orders)
+      if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(order.groupId)) {
           return res.status(403).json({ message: "Access denied" });
@@ -527,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions to edit orders" });
       }
 
-      if (user.role !== 'admin') {
+      if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(order.groupId)) {
           return res.status(403).json({ message: "Access denied" });
@@ -562,7 +572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions to delete orders" });
       }
 
-      if (user.role !== 'admin') {
+      if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(order.groupId)) {
           return res.status(403).json({ message: "Access denied" });
@@ -652,15 +662,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Deliveries API called with:', { startDate, endDate, storeId, withBL, userRole: user.role });
 
-      if (user.role === 'admin') {
+      if (user.role === 'admin' || user.role === 'directeur') {
         let groupIds: number[] | undefined;
         
-        // If admin selected a specific store, filter by it
+        // If admin/directeur selected a specific store, filter by it
         if (storeId) {
           groupIds = [parseInt(storeId as string)];
-          console.log('🔍 Admin deliveries filtering by store:', { storeId, groupIds });
+          console.log('🔍 Admin/Directeur deliveries filtering by store:', { storeId, groupIds, role: user.role });
         } else {
-          console.log('🔍 Admin deliveries - showing all stores');
+          console.log('🔍 Admin/Directeur deliveries - showing all stores', { role: user.role });
         }
         
         // Only filter by date if both startDate and endDate are provided
@@ -672,7 +682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deliveries = await storage.getDeliveries(groupIds);
         }
       } else {
-        // For non-admin users (managers, employees, directeurs), filter by their assigned groups
+        // For manager and employee roles, filter by their assigned groups
         const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         let groupIds: number[] | undefined;
         
@@ -697,14 +707,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.json([]);
           }
         } else {
-          // IMPORTANT FIX: For directeur/manager roles, when no specific store is selected,
-          // return empty result to force explicit store selection
-          console.log('🔍 Non-admin deliveries - no store selection, returning empty:', {
-            userId: user.id,
-            role: user.role,
-            userGroups: userGroupIds
-          });
-          return res.json([]);
+          // For manager role, when no specific store is selected, show deliveries from all their assigned groups
+          if (user.role === 'manager') {
+            groupIds = userGroupIds.length > 0 ? userGroupIds : undefined;
+            console.log('🔍 Manager deliveries - showing all accessible stores:', {
+              userId: user.id,
+              role: user.role,
+              userGroups: userGroupIds,
+              groupIds
+            });
+          } else {
+            // For employee role, require explicit store selection
+            console.log('🔍 Employee deliveries - no store selection, returning empty:', {
+              userId: user.id,
+              role: user.role,
+              userGroups: userGroupIds
+            });
+            return res.json([]);
+          }
         }
         
         // Only filter by date if both startDate and endDate are provided
@@ -777,7 +797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions to edit deliveries" });
       }
 
-      if (user.role !== 'admin') {
+      if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(delivery.groupId)) {
           return res.status(403).json({ message: "Access denied" });
@@ -943,7 +963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions to delete deliveries" });
       }
 
-      if (user.role !== 'admin') {
+      if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(delivery.groupId)) {
           return res.status(403).json({ message: "Access denied" });
