@@ -384,15 +384,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.json([]);
           }
         } else {
-          // For manager role, when no specific store is selected, show orders from all their assigned groups
+          // For manager role, automatically use their assigned store
           if (user.role === 'manager') {
-            groupIds = userGroupIds.length > 0 ? userGroupIds : undefined;
-            console.log('🔍 Manager orders - showing all accessible stores:', {
-              userId: user.id,
-              role: user.role,
-              userGroups: userGroupIds,
-              groupIds
-            });
+            if (userGroupIds.length > 0) {
+              groupIds = [userGroupIds[0]]; // Use first assigned store automatically
+              console.log('🔍 Manager orders - using assigned store automatically:', {
+                userId: user.id,
+                role: user.role,
+                assignedStore: userGroupIds[0],
+                allUserGroups: userGroupIds
+              });
+            } else {
+              console.log('🚫 Manager has no assigned stores:', {
+                userId: user.id,
+                role: user.role
+              });
+              return res.json([]);
+            }
           } else {
             // For employee role, require explicit store selection
             console.log('🔍 Employee orders - no store selection, returning empty:', {
@@ -707,15 +715,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.json([]);
           }
         } else {
-          // For manager role, when no specific store is selected, show deliveries from all their assigned groups
+          // For manager role, automatically use their assigned store
           if (user.role === 'manager') {
-            groupIds = userGroupIds.length > 0 ? userGroupIds : undefined;
-            console.log('🔍 Manager deliveries - showing all accessible stores:', {
-              userId: user.id,
-              role: user.role,
-              userGroups: userGroupIds,
-              groupIds
-            });
+            if (userGroupIds.length > 0) {
+              groupIds = [userGroupIds[0]]; // Use first assigned store automatically
+              console.log('🔍 Manager deliveries - using assigned store automatically:', {
+                userId: user.id,
+                role: user.role,
+                assignedStore: userGroupIds[0],
+                allUserGroups: userGroupIds
+              });
+            } else {
+              console.log('🚫 Manager has no assigned stores:', {
+                userId: user.id,
+                role: user.role
+              });
+              return res.json([]);
+            }
           } else {
             // For employee role, require explicit store selection
             console.log('🔍 Employee deliveries - no store selection, returning empty:', {
