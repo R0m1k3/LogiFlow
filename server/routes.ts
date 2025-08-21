@@ -2243,7 +2243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(publicities);
     } catch (error) {
-      console.error(`❌ ERROR fetching publicities for year ${year}:`, error);
+      console.error("❌ ERROR fetching publicities:", error);
       res.status(500).json({ message: "Failed to fetch publicities", error: (error as Error).message });
     }
   });
