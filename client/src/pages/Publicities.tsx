@@ -34,11 +34,9 @@ export default function Publicities() {
   // Seuls les admins peuvent modifier/supprimer
   const canModify = user?.role === 'admin';
 
-  // Generate year options (2020 to current year + 5 years)
+  // Generate year options (current year + 5 years ahead)
   const currentYear = new Date().getFullYear();
-  const startYear = 2020;
-  const endYear = currentYear + 5;
-  const yearOptions = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
+  const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear + i);
 
   const { data: publicities = [], isLoading } = useQuery({
     queryKey: ['/api/publicities', selectedYear, selectedStoreId],
@@ -288,9 +286,10 @@ export default function Publicities() {
             <Select
               value={selectedYear.toString()}
               onValueChange={(value) => setSelectedYear(parseInt(value))}
+              defaultValue={new Date().getFullYear().toString()}
             >
               <SelectTrigger className="w-32">
-                <SelectValue />
+                <SelectValue placeholder={selectedYear.toString()} />
               </SelectTrigger>
               <SelectContent>
                 {yearOptions.map((year) => (
