@@ -803,6 +803,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const data = insertDeliverySchema.partial().parse(transformedData);
+      
+      // CRITICAL FIX: Si une commande est liée lors de la modification, vérifier qu'elle appartient au même magasin
+      if (data.orderId !== undefined) {
+        if (data.orderId !== null) {
+          const linkedOrder = await storage.getOrder(data.orderId);
+          if (!linkedOrder) {
+            return res.status(400).json({ message: "La commande liée n'existe pas" });
+          }
+          if (linkedOrder.groupId !== delivery.groupId) {
+            return res.status(400).json({ 
+              message: `Impossible de lier une livraison du magasin ${delivery.groupId} avec une commande du magasin ${linkedOrder.groupId}` 
+            });
+          }
+          console.log(`✅ Validation OK: Livraison #${id} et commande #${data.orderId} appartiennent au même magasin ${delivery.groupId}`);
+        }
+      }
+      
       const updatedDelivery = await storage.updateDelivery(id, data);
       console.log('✅ Delivery updated successfully:', { id, updatedDelivery });
       
@@ -873,6 +890,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!userGroupIds.includes(data.groupId)) {
           return res.status(403).json({ message: "Access denied to this group" });
         }
+      }
+
+      // CRITICAL FIX: Si une commande est liée, vérifier qu'elle appartient au même magasin
+      if (data.orderId) {
+        const linkedOrder = await storage.getOrder(data.orderId);
+        if (!linkedOrder) {
+          return res.status(400).json({ message: "La commande liée n'existe pas" });
+        }
+        if (linkedOrder.groupId !== data.groupId) {
+          return res.status(400).json({ 
+            message: `Impossible de lier une livraison du magasin ${data.groupId} avec une commande du magasin ${linkedOrder.groupId}` 
+          });
+        }
+        console.log(`✅ Validation OK: Livraison et commande #${data.orderId} appartiennent au même magasin ${data.groupId}`);
       }
 
       const delivery = await storage.createDelivery(data);
