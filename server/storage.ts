@@ -725,7 +725,13 @@ export class DatabaseStorage implements IStorage {
               .where(eq(orders.id, delivery.orderId));
 
             if (orderData) {
-              associatedOrder = orderData;
+              // CRITICAL FIX: Vérifier que la commande appartient au même magasin que la livraison
+              if (orderData.groupId !== delivery.groupId) {
+                console.error(`❌ PRODUCTION: Delivery #${delivery.id} (store ${delivery.groupId}) linked to order #${delivery.orderId} (store ${orderData.groupId}) - STORE MISMATCH DETECTED!`);
+                // Ne pas inclure la commande si elle n'appartient pas au bon magasin
+              } else {
+                associatedOrder = orderData;
+              }
             }
           } catch (error) {
             console.error(`❌ PRODUCTION: Failed to retrieve associated order #${delivery.orderId} for delivery #${delivery.id}:`, error);
@@ -835,7 +841,13 @@ export class DatabaseStorage implements IStorage {
               .where(eq(orders.id, delivery.orderId));
 
             if (orderData) {
-              associatedOrder = orderData;
+              // CRITICAL FIX: Vérifier que la commande appartient au même magasin que la livraison
+              if (orderData.groupId !== delivery.groupId) {
+                console.error(`❌ PRODUCTION: Delivery #${delivery.id} (store ${delivery.groupId}) linked to order #${delivery.orderId} (store ${orderData.groupId}) - STORE MISMATCH DETECTED!`);
+                // Ne pas inclure la commande si elle n'appartient pas au bon magasin
+              } else {
+                associatedOrder = orderData;
+              }
             }
           } catch (error) {
             console.error(`❌ PRODUCTION: Failed to retrieve associated order #${delivery.orderId} for delivery #${delivery.id}:`, error);
@@ -908,8 +920,14 @@ export class DatabaseStorage implements IStorage {
         console.log(`🔗 PRODUCTION: getDelivery #${id} retrieving associated order #${delivery.orderId}`);
         const orderData = await this.getOrder(delivery.orderId);
         if (orderData) {
-          associatedOrder = orderData;
-          console.log(`✅ PRODUCTION: getDelivery #${id} found associated order #${delivery.orderId} with status: ${orderData.status}`);
+          // CRITICAL FIX: Vérifier que la commande appartient au même magasin que la livraison
+          if (orderData.groupId !== delivery.groupId) {
+            console.error(`❌ PRODUCTION: getDelivery #${id} (store ${delivery.groupId}) linked to order #${delivery.orderId} (store ${orderData.groupId}) - STORE MISMATCH DETECTED!`);
+            // Ne pas inclure la commande si elle n'appartient pas au bon magasin
+          } else {
+            associatedOrder = orderData;
+            console.log(`✅ PRODUCTION: getDelivery #${id} found associated order #${delivery.orderId} with status: ${orderData.status}`);
+          }
         }
       } catch (error) {
         console.error(`❌ PRODUCTION: Failed to retrieve associated order #${delivery.orderId} for delivery #${id}:`, error);
