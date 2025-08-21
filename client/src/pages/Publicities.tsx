@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Calendar, Edit, Trash2, Eye, Filter, Grid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -166,68 +166,62 @@ export default function Publicities() {
 
   // Year overview - Generate weeks for the selected year
   const getYearWeeks = () => {
-    const yearStart = startOfYear(new Date(selectedYear, 0, 1));
-    const yearEnd = endOfYear(new Date(selectedYear, 11, 31));
-    
-    const weeks = eachWeekOfInterval(
-      { start: yearStart, end: yearEnd },
-      { weekStartsOn: 1 }
-    );
+    try {
+      // SAFE: Use simple Date constructor to avoid issues with specific years
+      const yearStart = new Date(selectedYear, 0, 1); // 1er janvier
+      const yearEnd = new Date(selectedYear, 11, 31); // 31 décembre
+      
+      const weeks = eachWeekOfInterval(
+        { start: yearStart, end: yearEnd },
+        { weekStartsOn: 1 }
+      );
 
-    console.log(`📅 getYearWeeks debug pour ${selectedYear}:`, {
-      yearStart: format(yearStart, 'yyyy-MM-dd EEEE', { locale: fr }),
-      yearEnd: format(yearEnd, 'yyyy-MM-dd EEEE', { locale: fr }),
-      totalWeeks: weeks.length
-    });
+      // SAFE: Limit the number of weeks to prevent performance issues
+      const limitedWeeks = weeks.slice(0, 54); // Maximum 54 semaines par année
 
-    return weeks.map((weekStart, index) => {
-      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-      // Utiliser l'index + 1 pour une numérotation séquentielle cohérente
-      // plutôt que getWeek() qui peut créer des doublons en fin d'année
-      const weekNumber = index + 1;
-      
-      // Déterminer le mois basé sur la majorité des jours de la semaine
-      // Si la semaine chevauche deux mois, prendre le mois qui contient le plus de jours
-      const weekMidpoint = new Date(weekStart.getTime() + (3.5 * 24 * 60 * 60 * 1000)); // Milieu de la semaine
-      let month = getMonth(weekMidpoint);
-      
-      // Si c'est une semaine qui chevauche décembre de l'année précédente et janvier de l'année sélectionnée,
-      // la placer en janvier (mois 0) si elle contient plus de jours de janvier
-      if (weekStart.getFullYear() < selectedYear && weekEnd.getFullYear() === selectedYear) {
-        month = 0; // Janvier
-      }
-      // Si c'est une semaine qui chevauche décembre et janvier de l'année suivante,
-      // la placer en décembre (mois 11) si elle contient plus de jours de décembre
-      else if (weekStart.getFullYear() === selectedYear && weekEnd.getFullYear() > selectedYear) {
-        month = 11; // Décembre
-      }
-      
-      const participation = getWeekParticipation(weekStart, weekEnd);
-      
-      // Debug première et dernières semaines pour vérifier
-      if (index < 3 || index >= weeks.length - 3) {
-        console.log(`📅 Semaine ${weekNumber} (index ${index}):`, {
-          debut: format(weekStart, 'yyyy-MM-dd EEEE', { locale: fr }),
-          fin: format(weekEnd, 'yyyy-MM-dd EEEE', { locale: fr }),
-          weekStartYear: weekStart.getFullYear(),
-          weekEndYear: weekEnd.getFullYear(),
-          selectedYear,
-          mois: month + 1, // +1 car getMonth retourne 0-11
-          participations: participation.publicities.length
-        });
-      }
-      
-      return {
-        weekStart,
-        weekEnd,
-        weekNumber,
-        month,
-        ...participation
-      };
-    });
+      console.log(`📅 getYearWeeks debug pour ${selectedYear}:`, {
+        yearStart: format(yearStart, 'yyyy-MM-dd', { locale: fr }),
+        yearEnd: format(yearEnd, 'yyyy-MM-dd', { locale: fr }),
+        totalWeeks: limitedWeeks.length
+      });
+
+      return limitedWeeks.map((weekStart, index) => {
+        const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+        const weekNumber = index + 1;
+        
+        // SIMPLE: Use week midpoint to determine month
+        const weekMidpoint = new Date(weekStart.getTime() + (3 * 24 * 60 * 60 * 1000));
+        const month = weekMidpoint.getMonth();
+        
+        const participation = getWeekParticipation(weekStart, weekEnd);
+        
+        return {
+          weekStart,
+          weekEnd,
+          weekNumber,
+          month,
+          ...participation
+        };
+      });
+    } catch (error) {
+      console.error(`❌ Erreur getYearWeeks pour ${selectedYear}:`, error);
+      return []; // Retourner un tableau vide en cas d'erreur
+    }
   };
 
-  const yearWeeks = getYearWeeks();
+  // SAFE: Only calculate yearWeeks if we have valid data
+  const yearWeeks = useMemo(() => {
+    try {
+      if (!selectedYear || selectedYear < 1900 || selectedYear > 2100) {
+        console.warn(`📅 Année invalide ignorée: ${selectedYear}`);
+        return [];
+      }
+      return getYearWeeks();
+    } catch (error) {
+      console.error(`❌ Erreur calcul yearWeeks pour ${selectedYear}:`, error);
+      return [];
+    }
+  }, [selectedYear, publicities]);
 
   const handleView = (publicity: PublicityWithRelations) => {
     setSelectedPublicity(publicity);
