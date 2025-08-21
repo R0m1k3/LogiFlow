@@ -174,48 +174,20 @@ export default function Publicities() {
       { weekStartsOn: 1 }
     );
 
-    console.log(`📅 getYearWeeks debug pour ${selectedYear}:`, {
-      yearStart: format(yearStart, 'yyyy-MM-dd EEEE', { locale: fr }),
-      yearEnd: format(yearEnd, 'yyyy-MM-dd EEEE', { locale: fr }),
-      totalWeeks: weeks.length
-    });
-
     return weeks.map((weekStart, index) => {
       const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-      // Utiliser l'index + 1 pour une numérotation séquentielle cohérente
-      // plutôt que getWeek() qui peut créer des doublons en fin d'année
       const weekNumber = index + 1;
       
-      // Déterminer le mois basé sur la majorité des jours de la semaine
-      // Si la semaine chevauche deux mois, prendre le mois qui contient le plus de jours
-      const weekMidpoint = new Date(weekStart.getTime() + (3.5 * 24 * 60 * 60 * 1000)); // Milieu de la semaine
+      const weekMidpoint = new Date(weekStart.getTime() + (3.5 * 24 * 60 * 60 * 1000)); 
       let month = getMonth(weekMidpoint);
       
-      // Si c'est une semaine qui chevauche décembre de l'année précédente et janvier de l'année sélectionnée,
-      // la placer en janvier (mois 0) si elle contient plus de jours de janvier
       if (weekStart.getFullYear() < selectedYear && weekEnd.getFullYear() === selectedYear) {
         month = 0; // Janvier
-      }
-      // Si c'est une semaine qui chevauche décembre et janvier de l'année suivante,
-      // la placer en décembre (mois 11) si elle contient plus de jours de décembre
-      else if (weekStart.getFullYear() === selectedYear && weekEnd.getFullYear() > selectedYear) {
+      } else if (weekStart.getFullYear() === selectedYear && weekEnd.getFullYear() > selectedYear) {
         month = 11; // Décembre
       }
       
       const participation = getWeekParticipation(weekStart, weekEnd);
-      
-      // Debug première et dernières semaines pour vérifier
-      if (index < 3 || index >= weeks.length - 3) {
-        console.log(`📅 Semaine ${weekNumber} (index ${index}):`, {
-          debut: format(weekStart, 'yyyy-MM-dd EEEE', { locale: fr }),
-          fin: format(weekEnd, 'yyyy-MM-dd EEEE', { locale: fr }),
-          weekStartYear: weekStart.getFullYear(),
-          weekEndYear: weekEnd.getFullYear(),
-          selectedYear,
-          mois: month + 1, // +1 car getMonth retourne 0-11
-          participations: participation.publicities.length
-        });
-      }
       
       return {
         weekStart,
