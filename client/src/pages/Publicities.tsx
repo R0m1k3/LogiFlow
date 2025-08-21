@@ -52,7 +52,22 @@ export default function Publicities() {
       }
       const data = await response.json();
       console.log('📢 Publicities received:', data.length, 'items', data.slice(0, 2));
-      return Array.isArray(data) ? data : [];
+      
+      // CRITICAL FIX: Force frontend sorting by pubNumber to ensure correct order
+      const sortedData = Array.isArray(data) 
+        ? data.sort((a, b) => {
+            const numA = parseInt(a.pubNumber) || 0;
+            const numB = parseInt(b.pubNumber) || 0;
+            return numA - numB;
+          })
+        : [];
+        
+      console.log('📢 Publicities after frontend sort:', {
+        first5: sortedData.slice(0, 5).map(p => `N°${p.pubNumber}`),
+        total: sortedData.length
+      });
+      
+      return sortedData;
     },
   });
 
@@ -107,7 +122,7 @@ export default function Publicities() {
   // Generate month options
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: i,
-    label: format(new Date(2024, i, 1), 'MMMM', { locale: fr })
+    label: format(new Date(selectedYear, i, 1), 'MMMM', { locale: fr })
   }));
 
   // Calendar helper functions
@@ -413,7 +428,7 @@ export default function Publicities() {
             {/* Months Grid */}
             <div className="grid grid-cols-12 gap-2">
               {Array.from({ length: 12 }, (_, monthIndex) => {
-                const monthName = format(new Date(2024, monthIndex, 1), 'MMM', { locale: fr });
+                const monthName = format(new Date(selectedYear, monthIndex, 1), 'MMM', { locale: fr });
                 const monthWeeks = yearWeeks.filter(week => week.month === monthIndex);
                 
                 return (
@@ -683,7 +698,6 @@ export default function Publicities() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {publicities
-                    .sort((a, b) => safeCompareDate(b.startDate, a.startDate))
                     .map((publicity) => {
                       const now = new Date();
                       const start = safeDate(publicity.startDate);
