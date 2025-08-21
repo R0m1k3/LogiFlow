@@ -1209,13 +1209,13 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(publicities.year, year));
     }
 
-    const results = await query.orderBy(sql`CAST(${publicities.pubNumber} AS INTEGER) ASC`);
+    // SAFE: Use simple column ordering instead of SQL CAST which fails in production
+    const results = await query.orderBy(publicities.pubNumber);
     
-    // LOG: Debug du tri des publicités avec détails complets
-    console.log(`📋 PUBLICITES: Tri par pubNumber croissant (CAST AS INTEGER) - ${results.length} résultats:`);
-    console.log('🔍 PREMIERS RESULTATS:', results.slice(0, 5).map((p, i) => `${i+1}. N°${p.pubNumber} - ${p.designation}`));
-    if (results.length > 5) {
-      console.log('🔍 DERNIERS RESULTATS:', results.slice(-2).map((p, i) => `${results.length-1+i}. N°${p.pubNumber} - ${p.designation}`));
+    // LOG: Debug des publicités récupérées
+    console.log(`📋 PUBLICITES FETCHED: ${results.length} résultats pour année ${year || 'toutes'}`);
+    if (results.length > 0) {
+      console.log('🔍 PREMIERS RESULTATS:', results.slice(0, 3).map((p, i) => `${i+1}. N°${p.pubNumber} - ${p.designation}`));
     }
 
     const publicityIds = results.map((p: any) => p.id);
@@ -1231,7 +1231,14 @@ export class DatabaseStorage implements IStorage {
           .where(inArray(publicityParticipations.publicityId, publicityIds))
       : [];
 
-    return results.map((publicity: any) => ({
+    // Sort by pubNumber as integer on the server side for consistency
+    const sortedResults = results.sort((a, b) => {
+      const numA = parseInt(a.pubNumber) || 0;
+      const numB = parseInt(b.pubNumber) || 0;
+      return numA - numB;
+    });
+
+    return sortedResults.map((publicity: any) => ({
       ...publicity,
       participations: participations
         .filter((p: any) => p.publicityId === publicity.id)
