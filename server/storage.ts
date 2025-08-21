@@ -1210,6 +1210,12 @@ export class DatabaseStorage implements IStorage {
     }
 
     const results = await query.orderBy(asc(publicities.pubNumber));
+    
+    // LOG: Debug du tri des publicités
+    console.log(`📋 PUBLICITES: Tri par pubNumber croissant - ${results.length} résultats:`, 
+      results.slice(0, 3).map(p => `N°${p.pubNumber}(${p.designation})`).join(', ') + 
+      (results.length > 3 ? '...' : '')
+    );
 
     const publicityIds = results.map((p: any) => p.id);
     const participations = publicityIds.length > 0 
