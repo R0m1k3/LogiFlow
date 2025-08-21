@@ -286,9 +286,10 @@ export default function Publicities() {
             <Select
               value={selectedYear.toString()}
               onValueChange={(value) => setSelectedYear(parseInt(value))}
+              defaultValue={new Date().getFullYear().toString()}
             >
               <SelectTrigger className="w-32">
-                <SelectValue />
+                <SelectValue placeholder={selectedYear.toString()} />
               </SelectTrigger>
               <SelectContent>
                 {yearOptions.map((year) => (
