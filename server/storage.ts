@@ -1209,13 +1209,14 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(publicities.year, year));
     }
 
-    const results = await query.orderBy(asc(publicities.pubNumber));
+    const results = await query.orderBy(sql`CAST(${publicities.pubNumber} AS INTEGER) ASC`);
     
-    // LOG: Debug du tri des publicités
-    console.log(`📋 PUBLICITES: Tri par pubNumber croissant - ${results.length} résultats:`, 
-      results.slice(0, 3).map(p => `N°${p.pubNumber}(${p.designation})`).join(', ') + 
-      (results.length > 3 ? '...' : '')
-    );
+    // LOG: Debug du tri des publicités avec détails complets
+    console.log(`📋 PUBLICITES: Tri par pubNumber croissant (CAST AS INTEGER) - ${results.length} résultats:`);
+    console.log('🔍 PREMIERS RESULTATS:', results.slice(0, 5).map((p, i) => `${i+1}. N°${p.pubNumber} - ${p.designation}`));
+    if (results.length > 5) {
+      console.log('🔍 DERNIERS RESULTATS:', results.slice(-2).map((p, i) => `${results.length-1+i}. N°${p.pubNumber} - ${p.designation}`));
+    }
 
     const publicityIds = results.map((p: any) => p.id);
     const participations = publicityIds.length > 0 
