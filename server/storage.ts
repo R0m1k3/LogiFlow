@@ -2173,6 +2173,7 @@ export class MemStorage implements IStorage {
   private dlcProducts = new Map<number, DlcProduct>();
   private tasks = new Map<number, Task>();
   private announcements = new Map<number, Announcement>();
+  private publicities = new Map<number, Publicity>();
   private savTickets = new Map<number, SavTicket>();
   private savTicketHistories = new Map<number, SavTicketHistory[]>();
   private invoiceVerificationCache = new Map<string, InvoiceVerificationCache>();
@@ -2814,7 +2815,29 @@ export class MemStorage implements IStorage {
 
   async getMonthlyStats(): Promise<any> { return {}; }
 
-  async getPublicities(): Promise<PublicityWithRelations[]> { return []; }
+  async getPublicities(year?: number, groupIds?: number[]): Promise<PublicityWithRelations[]> {
+    let publicities = Array.from(this.publicities.values());
+    
+    // Filter by year if provided
+    if (year) {
+      publicities = publicities.filter(pub => pub.year === year);
+    }
+    
+    // Sort by pubNumber in ASCENDING order (smallest first)
+    publicities.sort((a, b) => a.pubNumber - b.pubNumber);
+    
+    // LOG: Debug du tri des publicités
+    console.log(`📋 PUBLICITES (DEV): Tri par pubNumber croissant - ${publicities.length} résultats:`, 
+      publicities.slice(0, 3).map(p => `N°${p.pubNumber}(${p.designation})`).join(', ') + 
+      (publicities.length > 3 ? '...' : '')
+    );
+    
+    // Return with empty participations for now (since we're using MemStorage)
+    return publicities.map(pub => ({
+      ...pub,
+      participations: []
+    }));
+  }
   async getPublicity(): Promise<PublicityWithRelations | undefined> { return undefined; }
   async createPublicity(): Promise<Publicity> { return {} as Publicity; }
   async updatePublicity(): Promise<Publicity> { return {} as Publicity; }
@@ -3217,6 +3240,113 @@ export class MemStorage implements IStorage {
     this.tasks.set(1, testTask1);
     this.tasks.set(2, testTask2);
     this.idCounters.task = 3;
+
+    // Add test publicity data
+    const testPublicity1: Publicity = {
+      id: 1,
+      pubNumber: 2517,
+      designation: 'Prix Fracassés',
+      startDate: new Date('2025-10-27'),
+      endDate: new Date('2025-11-02'),
+      year: 2025,
+      createdBy: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const testPublicity2: Publicity = {
+      id: 2,
+      pubNumber: 2520,
+      designation: 'Halloween',
+      startDate: new Date('2025-10-08'),
+      endDate: new Date('2025-10-12'),
+      year: 2025,
+      createdBy: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const testPublicity3: Publicity = {
+      id: 3,
+      pubNumber: 2521,
+      designation: 'Prix Fous',
+      startDate: new Date('2025-10-20'),
+      endDate: new Date('2025-10-26'),
+      year: 2025,
+      createdBy: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const testPublicity4: Publicity = {
+      id: 4,
+      pubNumber: 2518,
+      designation: 'Le mois anniversaire 1',
+      startDate: new Date('2025-11-17'),
+      endDate: new Date('2025-11-23'),
+      year: 2025,
+      createdBy: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const testPublicity5: Publicity = {
+      id: 5,
+      pubNumber: 2523,
+      designation: 'Noël',
+      startDate: new Date('2025-11-05'),
+      endDate: new Date('2025-11-09'),
+      year: 2025,
+      createdBy: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const testPublicity6: Publicity = {
+      id: 6,
+      pubNumber: 2524,
+      designation: 'Cadeaux et noel',
+      startDate: new Date('2025-11-17'),
+      endDate: new Date('2025-11-23'),
+      year: 2025,
+      createdBy: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const testPublicity7: Publicity = {
+      id: 7,
+      pubNumber: 2525,
+      designation: 'Deco et Table en Fete',
+      startDate: new Date('2025-11-24'),
+      endDate: new Date('2025-11-30'),
+      year: 2025,
+      createdBy: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const testPublicity8: Publicity = {
+      id: 8,
+      pubNumber: 2526,
+      designation: 'Sous le Sapin',
+      startDate: new Date('2025-12-03'),
+      endDate: new Date('2025-12-07'),
+      year: 2025,
+      createdBy: 'admin',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    this.publicities.set(1, testPublicity1);
+    this.publicities.set(2, testPublicity2);
+    this.publicities.set(3, testPublicity3);
+    this.publicities.set(4, testPublicity4);
+    this.publicities.set(5, testPublicity5);
+    this.publicities.set(6, testPublicity6);
+    this.publicities.set(7, testPublicity7);
+    this.publicities.set(8, testPublicity8);
+    this.idCounters.publicity = 9;
 
     // Initialize test SAV data
     this.initializeSavTestData();
