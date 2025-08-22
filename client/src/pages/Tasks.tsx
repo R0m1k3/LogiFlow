@@ -39,7 +39,7 @@ type TaskWithRelations = Task & {
 };
 
 // Composant TaskForm inline - Version production ultra-simple
-function TaskFormInline({ task, onClose }: any) {
+function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
   const { toast } = useToast();
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -90,8 +90,9 @@ function TaskFormInline({ task, onClose }: any) {
       const method = task ? 'PUT' : 'POST';
 
       if (!task) {
-        (taskData as any).groupId = 1;
-        (taskData as any).createdBy = 'admin';
+        // Utiliser le magasin sélectionné ou le premier disponible comme fallback
+        (taskData as any).groupId = selectedStoreId ? parseInt(selectedStoreId.toString()) : 1;
+        (taskData as any).createdBy = user?.username || 'admin';
       }
 
       console.log('📤 Sending request:', { url, method, taskData });
@@ -778,6 +779,8 @@ export default function Tasks() {
                         </button>
                       </div>
                       <TaskFormInline
+                        selectedStoreId={selectedStoreId}
+                        user={user}
                         onClose={() => setShowCreateModal(false)}
                       />
                     </div>
@@ -1324,6 +1327,8 @@ export default function Tasks() {
             </div>
             <TaskFormInline
               task={selectedTask}
+              selectedStoreId={selectedStoreId}
+              user={user}
               onClose={() => {
                 setShowEditModal(false);
                 setSelectedTask(null);
