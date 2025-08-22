@@ -54,7 +54,6 @@ export default function BLReconciliation() {
   // État pour le modal d'envoi de facture
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedDeliveryForInvoice, setSelectedDeliveryForInvoice] = useState<any>(null);
-  const [invoiceType, setInvoiceType] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
@@ -305,7 +304,6 @@ export default function BLReconciliation() {
   // Nouvelles fonctions pour le modal d'envoi de facture
   const handleOpenInvoiceModal = (delivery: any) => {
     setSelectedDeliveryForInvoice(delivery);
-    setInvoiceType("");
     setSelectedFile(null);
     setShowInvoiceModal(true);
   };
@@ -313,7 +311,6 @@ export default function BLReconciliation() {
   const handleCloseInvoiceModal = () => {
     setShowInvoiceModal(false);
     setSelectedDeliveryForInvoice(null);
-    setInvoiceType("");
     setSelectedFile(null);
     setIsUploading(false);
   };
@@ -332,10 +329,10 @@ export default function BLReconciliation() {
   };
 
   const handleSendInvoice = async () => {
-    if (!selectedDeliveryForInvoice || !invoiceType || !selectedFile) {
+    if (!selectedDeliveryForInvoice || !selectedFile) {
       toast({
         title: "Erreur",
-        description: "Veuillez remplir tous les champs",
+        description: "Veuillez sélectionner un fichier PDF",
         variant: "destructive",
       });
       return;
@@ -357,7 +354,7 @@ export default function BLReconciliation() {
       formData.append('file', selectedFile);
       formData.append('supplier', selectedDeliveryForInvoice.supplier?.name || '');
       formData.append('blNumber', selectedDeliveryForInvoice.blNumber || '');
-      formData.append('type', invoiceType);
+      formData.append('type', 'Facture');
 
       const response = await fetch(selectedDeliveryForInvoice.group.webhookUrl, {
         method: 'POST',
@@ -370,14 +367,14 @@ export default function BLReconciliation() {
 
       toast({
         title: "Succès",
-        description: `${invoiceType} envoyée avec succès via le webhook`,
+        description: "Facture envoyée avec succès via le webhook",
       });
 
       handleCloseInvoiceModal();
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: `Impossible d'envoyer la ${invoiceType.toLowerCase()}: ${error.message}`,
+        description: `Impossible d'envoyer la facture: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -1087,7 +1084,7 @@ export default function BLReconciliation() {
       <Dialog open={showInvoiceModal} onOpenChange={setShowInvoiceModal}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Envoyer Facture/Avoir</DialogTitle>
+            <DialogTitle>Envoyer Facture</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {selectedDeliveryForInvoice && (
@@ -1103,19 +1100,6 @@ export default function BLReconciliation() {
                 </div>
               </div>
             )}
-            
-            <div className="grid gap-2">
-              <Label htmlFor="invoice-type">Type de document</Label>
-              <Select value={invoiceType} onValueChange={setInvoiceType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionnez le type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Facture">Facture</SelectItem>
-                  <SelectItem value="Avoir">Avoir</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
             <div className="grid gap-2">
               <Label htmlFor="pdf-file">Fichier PDF</Label>
@@ -1146,7 +1130,7 @@ export default function BLReconciliation() {
             </Button>
             <Button 
               onClick={handleSendInvoice}
-              disabled={!invoiceType || !selectedFile || isUploading}
+              disabled={!selectedFile || isUploading}
             >
               {isUploading ? "Envoi..." : "Envoyer"}
             </Button>
