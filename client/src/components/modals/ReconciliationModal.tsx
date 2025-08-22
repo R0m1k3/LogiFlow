@@ -197,7 +197,7 @@ export default function ReconciliationModal({
             </div>
 
             {/* Actions */}
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-end pt-4">
               <div className="flex space-x-2">
                 <Button
                   type="button"
