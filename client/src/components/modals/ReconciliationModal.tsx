@@ -86,19 +86,8 @@ export default function ReconciliationModal({
     });
   };
 
-  const handleValidateReconciliation = () => {
-    updateDeliveryMutation.mutate({
-      blNumber: formData.blNumber.trim() || null,
-      blAmount: formData.blAmount ? formData.blAmount.toString() : null,
-      invoiceReference: formData.invoiceReference.trim() || null,
-      invoiceAmount: formData.invoiceAmount ? formData.invoiceAmount.toString() : null,
-      reconciled: true,
-      validatedAt: new Date().toISOString()
-    });
-  };
 
   const isAutomaticMode = delivery?.supplier?.automaticReconciliation;
-  const canValidate = true; // Plus de restriction sur le numéro BL
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -229,15 +218,6 @@ export default function ReconciliationModal({
                 </Button>
               </div>
 
-              <Button
-                type="button"
-                onClick={handleValidateReconciliation}
-                disabled={!canValidate || updateDeliveryMutation.isPending}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <Check className="w-4 h-4 mr-2 border border-gray-300 rounded p-0.5" />
-                {updateDeliveryMutation.isPending ? "Validation..." : "Valider le rapprochement"}
-              </Button>
             </div>
           </form>
 
