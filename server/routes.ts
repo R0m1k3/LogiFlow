@@ -1124,6 +1124,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       await storage.validateDelivery(id, blData);
       
+      // MISE À JOUR DU CACHE : Marquer le cache comme permanent pour cette livraison validée
+      try {
+        if (delivery.invoiceReference && delivery.invoiceReference.trim()) {
+          console.log('🔄 [CACHE] Mise à jour cache permanent après validation livraison');
+          await invoiceVerificationService.updateCacheAsReconciled(delivery.invoiceReference, delivery.groupId);
+        }
+        if (delivery.blNumber && delivery.blNumber.trim()) {
+          console.log('🔄 [CACHE] Mise à jour cache permanent BL après validation livraison');
+          await invoiceVerificationService.updateCacheAsReconciled(delivery.blNumber, delivery.groupId);
+        }
+      } catch (error) {
+        console.error('❌ Erreur mise à jour cache après validation:', error);
+      }
+      
       // SYNCHRONISATION AUTOMATIQUE : Quand validation, marquer la commande associée comme "delivered"
       if (delivery.orderId) {
         try {
@@ -1139,6 +1153,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error validating delivery:", error);
       res.status(500).json({ message: "Failed to validate delivery" });
+    }
+  });
+
+  // Route pour mettre à jour les caches existants des livraisons validées
+  app.post('/api/cache/update-reconciled', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Vérifier que c'est un admin
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Seuls les admins peuvent exécuter cette opération" });
+      }
+
+      console.log('🔧 [ADMIN] Exécution mise à jour des caches permanents...');
+      await invoiceVerificationService.updateExistingReconciledCaches();
+      
+      res.json({ 
+        message: "Mise à jour des caches permanents terminée avec succès",
+        success: true 
+      });
+    } catch (error) {
+      console.error("Erreur mise à jour caches:", error);
+      res.status(500).json({ 
+        message: "Erreur lors de la mise à jour des caches",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
