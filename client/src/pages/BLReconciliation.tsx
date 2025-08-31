@@ -242,23 +242,57 @@ export default function BLReconciliation() {
       console.log('🔄 Déclenchement vérifications automatiques...');
     }
     
+    // Pré-populer les résultats pour les livraisons déjà réconciliées
+    const newVerificationResults = { ...verificationResults };
+    let hasNewReconciledResults = false;
+    
     deliveriesWithBL.forEach((delivery: any) => {
-      // Vérifier seulement si on a une référence de facture ou un BL et pas déjà de résultat
+      // Si la livraison est déjà réconciliée, marquer comme vérifiée avec succès
+      if (delivery.reconciled && !verificationResults[delivery.id]) {
+        newVerificationResults[delivery.id] = {
+          exists: true,
+          matchType: delivery.invoiceReference ? 'invoice_reference' : 'bl_number',
+          fromCache: true,
+          permanent: true,
+          reconciled: true
+        };
+        hasNewReconciledResults = true;
+        
+        if (import.meta.env.DEV) {
+          console.log(`✅ Livraison ${delivery.id} déjà réconciliée, marquée comme vérifiée`);
+        }
+      }
+    });
+    
+    // Mettre à jour les résultats si on a de nouvelles livraisons réconciliées
+    if (hasNewReconciledResults) {
+      setVerificationResults(newVerificationResults);
+    }
+    
+    deliveriesWithBL.forEach((delivery: any) => {
+      // ⛔ EXCLURE COMPLÈTEMENT les livraisons déjà réconciliées
+      // Une fois validées avec coche verte, on ne contrôle plus JAMAIS
+      if (delivery.reconciled) {
+        return; // Livraison déjà validée = AUCUNE vérification nécessaire
+      }
+      
+      // Vérifier seulement les livraisons NON validées
       const hasVerifiableData = delivery.invoiceReference || delivery.blNumber;
       const notAlreadyProcessed = !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id);
       
       if (hasVerifiableData && notAlreadyProcessed) {
         if (import.meta.env.DEV) {
-          console.log(`🔍 Vérification auto pour livraison ${delivery.id}:`, {
+          console.log(`🔍 Vérification auto pour livraison NON réconciliée ${delivery.id}:`, {
             invoiceRef: delivery.invoiceReference,
-            blNumber: delivery.blNumber
+            blNumber: delivery.blNumber,
+            reconciled: delivery.reconciled
           });
         }
         
-        // Délai pour éviter de surcharger le serveur - le cache évitera les appels inutiles
+        // Délai pour éviter de surcharger le serveur
         setTimeout(() => {
-          handleVerifyInvoice(delivery, false); // Pas de force refresh, utilise le cache
-        }, Math.random() * 1000); // Délai aléatoire entre 0 et 1 seconde
+          handleVerifyInvoice(delivery, false);
+        }, Math.random() * 1000);
       }
     });
   }, [deliveriesWithBL, suppliers, verificationResults, verifyingDeliveries]);

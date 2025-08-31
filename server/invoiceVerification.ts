@@ -30,9 +30,13 @@ export class InvoiceVerificationService {
         currentTime: new Date().toISOString()
       });
       
-      // Cache permanent si facture validée (isReconciled = true)
-      if (cached && cached.isReconciled) {
-        console.log('✅ [CACHE] Cache PERMANENT pour facture validée:', { invoiceReference, groupId, exists: cached.exists });
+      // ✅ CACHE PERMANENT : Facture validée avec coche verte = JAMAIS re-vérifier
+      if (cached && cached.isReconciled && cached.exists) {
+        console.log('🛡️ [CACHE] PERMANENT - Facture validée avec coche verte, AUCUNE vérification:', { 
+          invoiceReference, 
+          groupId, 
+          exists: cached.exists 
+        });
         return {
           exists: cached.exists,
           matchType: cached.matchType,
