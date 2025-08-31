@@ -1156,6 +1156,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route pour diagnostiquer le cache des livraisons
+  app.get('/api/cache/diagnosis', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Vérifier que c'est un admin
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Seuls les admins peuvent exécuter cette opération" });
+      }
+
+      // Récupérer des statistiques sur le cache
+      const deliveries = await storage.getDeliveries();
+      const reconciledCount = deliveries.filter(d => d.reconciled).length;
+      const totalCount = deliveries.length;
+      
+      // Vérifier quelques caches
+      const sampleCaches = [];
+      const reconciledDeliveries = deliveries.filter(d => d.reconciled).slice(0, 5); // Prendre 5 exemples
+      
+      for (const delivery of reconciledDeliveries) {
+        if (delivery.invoiceReference) {
+          const cacheKey = `${delivery.invoiceReference.toLowerCase()}_${delivery.groupId}`;
+          const cached = await storage.getInvoiceVerificationCache(cacheKey);
+          sampleCaches.push({
+            deliveryId: delivery.id,
+            invoiceRef: delivery.invoiceReference,
+            groupId: delivery.groupId,
+            reconciled: delivery.reconciled,
+            cacheExists: !!cached,
+            cacheReconciled: cached?.isReconciled || false,
+            cacheExpires: cached?.expiresAt
+          });
+        }
+      }
+      
+      res.json({
+        statistics: {
+          totalDeliveries: totalCount,
+          reconciledDeliveries: reconciledCount,
+          percentageReconciled: Math.round((reconciledCount / totalCount) * 100)
+        },
+        sampleCaches,
+        message: "Diagnostic du cache terminé"
+      });
+    } catch (error) {
+      console.error("Erreur diagnostic cache:", error);
+      res.status(500).json({ 
+        message: "Erreur lors du diagnostic",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Route pour mettre à jour les caches existants des livraisons validées
   app.post('/api/cache/update-reconciled', isAuthenticated, async (req: any, res) => {
     try {

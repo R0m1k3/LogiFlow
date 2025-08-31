@@ -242,14 +242,46 @@ export default function BLReconciliation() {
       console.log('🔄 Déclenchement vérifications automatiques...');
     }
     
+    // Pré-populer les résultats pour les livraisons déjà réconciliées
+    const newVerificationResults = { ...verificationResults };
+    let hasNewReconciledResults = false;
+    
     deliveriesWithBL.forEach((delivery: any) => {
+      // Si la livraison est déjà réconciliée, marquer comme vérifiée avec succès
+      if (delivery.reconciled && !verificationResults[delivery.id]) {
+        newVerificationResults[delivery.id] = {
+          exists: true,
+          matchType: delivery.invoiceReference ? 'invoice_reference' : 'bl_number',
+          fromCache: true,
+          permanent: true,
+          reconciled: true
+        };
+        hasNewReconciledResults = true;
+        
+        if (import.meta.env.DEV) {
+          console.log(`✅ Livraison ${delivery.id} déjà réconciliée, marquée comme vérifiée`);
+        }
+      }
+    });
+    
+    // Mettre à jour les résultats si on a de nouvelles livraisons réconciliées
+    if (hasNewReconciledResults) {
+      setVerificationResults(newVerificationResults);
+    }
+    
+    deliveriesWithBL.forEach((delivery: any) => {
+      // EXCLUURE les livraisons déjà réconciliées de la vérification automatique
+      if (delivery.reconciled) {
+        return; // Livraison déjà validée, pas besoin de vérifier
+      }
+      
       // Vérifier seulement si on a une référence de facture ou un BL et pas déjà de résultat
       const hasVerifiableData = delivery.invoiceReference || delivery.blNumber;
       const notAlreadyProcessed = !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id);
       
       if (hasVerifiableData && notAlreadyProcessed) {
         if (import.meta.env.DEV) {
-          console.log(`🔍 Vérification auto pour livraison ${delivery.id}:`, {
+          console.log(`🔍 Vérification auto pour livraison NON réconciliée ${delivery.id}:`, {
             invoiceRef: delivery.invoiceReference,
             blNumber: delivery.blNumber
           });
