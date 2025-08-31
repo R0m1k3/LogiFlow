@@ -147,6 +147,88 @@ export class InvoiceVerificationService {
   }
 
   /**
+   * Met à jour le cache pour marquer une facture comme réconciliée (cache permanent)
+   */
+  async updateCacheAsReconciled(invoiceReference: string, groupId: number): Promise<void> {
+    try {
+      const cacheKey = this.generateCacheKey(invoiceReference, groupId);
+      console.log('🔄 [CACHE] Mise à jour cache comme réconcilié:', { invoiceReference, groupId, cacheKey });
+      
+      // Récupérer le cache existant
+      const cached = await storage.getInvoiceVerificationCache(cacheKey);
+      if (!cached) {
+        console.log('❌ [CACHE] Aucun cache trouvé à mettre à jour');
+        return;
+      }
+
+      // Si déjà réconcilié, ne rien faire
+      if (cached.isReconciled) {
+        console.log('✅ [CACHE] Cache déjà marqué comme réconcilié');
+        return;
+      }
+
+      // Mettre à jour avec cache permanent (50 ans)
+      const expiresAt = new Date();
+      expiresAt.setFullYear(expiresAt.getFullYear() + 50);
+
+      const updatedCacheData = {
+        ...cached,
+        isReconciled: true,
+        expiresAt
+      };
+
+      await storage.saveInvoiceVerificationCache(updatedCacheData);
+      
+      console.log('✅ [CACHE] Cache mis à jour comme PERMANENT:', { 
+        invoiceReference, 
+        groupId, 
+        cacheKey,
+        newExpiresAt: expiresAt.toISOString()
+      });
+    } catch (error) {
+      console.error('❌ [CACHE] Erreur mise à jour cache réconcilié:', error);
+    }
+  }
+
+  /**
+   * Met à jour tous les caches des livraisons déjà validées pour les marquer comme permanents
+   */
+  async updateExistingReconciledCaches(): Promise<void> {
+    try {
+      console.log('🔄 [CACHE] Mise à jour en lot des caches pour livraisons validées...');
+      
+      // Récupérer toutes les livraisons validées (reconciled = true)
+      const deliveries = await storage.getDeliveries();
+      const reconciledDeliveries = deliveries.filter(d => d.reconciled);
+      
+      console.log(`📊 [CACHE] ${reconciledDeliveries.length} livraisons validées trouvées`);
+      
+      let updatedCount = 0;
+      for (const delivery of reconciledDeliveries) {
+        try {
+          // Mettre à jour le cache pour la référence de facture
+          if (delivery.invoiceReference && delivery.invoiceReference.trim()) {
+            await this.updateCacheAsReconciled(delivery.invoiceReference, delivery.groupId);
+            updatedCount++;
+          }
+          
+          // Mettre à jour le cache pour le numéro BL
+          if (delivery.blNumber && delivery.blNumber.trim()) {
+            await this.updateCacheAsReconciled(delivery.blNumber, delivery.groupId);
+            updatedCount++;
+          }
+        } catch (error) {
+          console.error(`❌ [CACHE] Erreur mise à jour cache pour livraison ${delivery.id}:`, error);
+        }
+      }
+      
+      console.log(`✅ [CACHE] Mise à jour terminée: ${updatedCount} caches mis à jour comme permanents`);
+    } catch (error) {
+      console.error('❌ [CACHE] Erreur lors de la mise à jour en lot:', error);
+    }
+  }
+
+  /**
    * Vérifie une référence de facture pour un groupe donné
    */
   async verifyInvoice(invoiceReference: string, groupId: number, forceRefresh: boolean = false, isReconciled: boolean = false): Promise<{
@@ -217,7 +299,7 @@ export class InvoiceVerificationService {
         if (invoiceReference.toLowerCase().includes('test')) {
           const result = {
             exists: true,
-            matchType: 'invoice_reference',
+            matchType: 'invoice_reference' as const,
             invoiceReference: invoiceReference,
             invoiceAmount: 123.45,
             supplierName: 'Fournisseur Test'
@@ -231,7 +313,7 @@ export class InvoiceVerificationService {
         if (invoiceReference.toLowerCase().includes('bl')) {
           const result = {
             exists: true,
-            matchType: 'bl_number',
+            matchType: 'bl_number' as const,
             invoiceReference: `FACT_${invoiceReference}`,
             invoiceAmount: 67.89,
             supplierName: 'Fournisseur BL'
@@ -244,7 +326,7 @@ export class InvoiceVerificationService {
 
         const result = {
           exists: false,
-          matchType: 'none',
+          matchType: 'none' as const,
           errorMessage: 'Facture non trouvée (mode développement)'
         };
         
