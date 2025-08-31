@@ -1053,7 +1053,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         result = await invoiceVerificationService.verifyInvoice(
           invoiceReference,
           delivery.groupId,
-          forceRefresh || false
+          forceRefresh || false,
+          delivery.reconciled || false
         );
       } else if (blNumber && blNumber.trim()) {
         // Vérifier par numéro BL
@@ -1061,7 +1062,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           blNumber,
           delivery.supplier.name,
           delivery.groupId,
-          forceRefresh || false
+          forceRefresh || false,
+          delivery.reconciled || false
         );
       } else {
         result = {

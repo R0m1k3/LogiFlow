@@ -24,25 +24,42 @@ export class InvoiceVerificationService {
       const cached = await storage.getInvoiceVerificationCache(cacheKey);
       console.log('🔍 [CACHE] Résultat cache:', { 
         found: !!cached, 
+        isReconciled: cached?.isReconciled,
         expired: cached ? new Date() >= new Date(cached.expiresAt) : 'N/A',
         expiresAt: cached?.expiresAt,
         currentTime: new Date().toISOString()
       });
       
-      if (cached && new Date() < new Date(cached.expiresAt)) {
-        console.log('✅ [CACHE] Cache hit pour:', { invoiceReference, groupId, exists: cached.exists });
+      // Cache permanent si facture validée (isReconciled = true)
+      if (cached && cached.isReconciled) {
+        console.log('✅ [CACHE] Cache PERMANENT pour facture validée:', { invoiceReference, groupId, exists: cached.exists });
         return {
           exists: cached.exists,
           matchType: cached.matchType,
           errorMessage: cached.errorMessage,
           invoiceReference: cached.invoiceReference,
           supplierName: cached.supplierName,
-          fromCache: true
+          fromCache: true,
+          permanent: true
+        };
+      }
+      
+      // Cache temporaire non expiré
+      if (cached && new Date() < new Date(cached.expiresAt)) {
+        console.log('✅ [CACHE] Cache temporaire hit pour:', { invoiceReference, groupId, exists: cached.exists });
+        return {
+          exists: cached.exists,
+          matchType: cached.matchType,
+          errorMessage: cached.errorMessage,
+          invoiceReference: cached.invoiceReference,
+          supplierName: cached.supplierName,
+          fromCache: true,
+          permanent: false
         };
       }
       
       if (cached && new Date() >= new Date(cached.expiresAt)) {
-        console.log('⏰ [CACHE] Cache expiré pour:', { invoiceReference, groupId });
+        console.log('⏰ [CACHE] Cache temporaire expiré pour:', { invoiceReference, groupId });
       } else {
         console.log('❌ [CACHE] Cache miss pour:', { invoiceReference, groupId });
       }
@@ -55,19 +72,37 @@ export class InvoiceVerificationService {
   }
 
   /**
-   * Sauvegarder dans le cache
+   * Sauvegarder dans le cache avec durée adaptative
    */
-  async saveToCache(invoiceReference: string, groupId: number, result: any, supplierName?: string): Promise<void> {
+  async saveToCache(invoiceReference: string, groupId: number, result: any, supplierName?: string, isReconciled: boolean = false): Promise<void> {
     try {
       const cacheKey = this.generateCacheKey(invoiceReference, groupId);
+      
+      // Durée de cache adaptative selon les cas
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24); // Cache pendant 24h
+      let cacheDescription = '';
+      
+      if (isReconciled) {
+        // Cache PERMANENT pour factures validées - expire dans 50 ans
+        expiresAt.setFullYear(expiresAt.getFullYear() + 50);
+        cacheDescription = 'PERMANENT (validé)';
+      } else if (result.exists) {
+        // Facture trouvée mais non validée - cache 6h pour permettre corrections
+        expiresAt.setHours(expiresAt.getHours() + 6);
+        cacheDescription = 'temporaire 6h (trouvé)';
+      } else {
+        // Facture non trouvée - cache 12h pour éviter spam
+        expiresAt.setHours(expiresAt.getHours() + 12);
+        cacheDescription = 'temporaire 12h (pas trouvé)';
+      }
       
       console.log('💾 [CACHE] Tentative sauvegarde:', { 
         invoiceReference, 
         groupId, 
         cacheKey, 
         exists: result.exists,
+        isReconciled,
+        cacheType: cacheDescription,
         expiresAt: expiresAt.toISOString() 
       });
       
@@ -81,6 +116,7 @@ export class InvoiceVerificationService {
         errorMessage: result.errorMessage || null,
         cacheHit: false,
         apiCallTime: null,
+        isReconciled, // Nouveau champ pour cache permanent
         expiresAt
       };
       
@@ -91,6 +127,8 @@ export class InvoiceVerificationService {
         invoiceReference, 
         groupId, 
         exists: result.exists,
+        isReconciled,
+        cacheType: cacheDescription,
         cacheKey
       });
     } catch (error) {
@@ -111,7 +149,7 @@ export class InvoiceVerificationService {
   /**
    * Vérifie une référence de facture pour un groupe donné
    */
-  async verifyInvoice(invoiceReference: string, groupId: number, forceRefresh: boolean = false): Promise<{
+  async verifyInvoice(invoiceReference: string, groupId: number, forceRefresh: boolean = false, isReconciled: boolean = false): Promise<{
     exists: boolean;
     matchType: 'invoice_reference' | 'bl_number' | 'none';
     errorMessage?: string;
@@ -186,7 +224,7 @@ export class InvoiceVerificationService {
           };
           
           // Sauvegarder en cache
-          await this.saveToCache(invoiceReference, groupId, result, result.supplierName);
+          await this.saveToCache(invoiceReference, groupId, result, result.supplierName, isReconciled);
           return result;
         }
         
@@ -200,7 +238,7 @@ export class InvoiceVerificationService {
           };
           
           // Sauvegarder en cache
-          await this.saveToCache(invoiceReference, groupId, result, result.supplierName);
+          await this.saveToCache(invoiceReference, groupId, result, result.supplierName, isReconciled);
           return result;
         }
 
@@ -211,7 +249,7 @@ export class InvoiceVerificationService {
         };
         
         // Sauvegarder même les résultats "non trouvé" pour éviter les rappels répétés
-        await this.saveToCache(invoiceReference, groupId, result);
+        await this.saveToCache(invoiceReference, groupId, result, undefined, isReconciled);
         return result;
       }
 
@@ -262,7 +300,7 @@ export class InvoiceVerificationService {
           };
           
           // Sauvegarder en cache même les erreurs pour éviter les rappels répétés
-          await this.saveToCache(invoiceReference, groupId, result);
+          await this.saveToCache(invoiceReference, groupId, result, undefined, isReconciled);
           return result;
         }
 
@@ -276,7 +314,7 @@ export class InvoiceVerificationService {
           };
           
           // Sauvegarder en cache si succès
-          await this.saveToCache(invoiceReference, groupId, result, result.supplierName);
+          await this.saveToCache(invoiceReference, groupId, result, result.supplierName, isReconciled);
           return result;
         }
 
@@ -298,7 +336,7 @@ export class InvoiceVerificationService {
             };
             
             // Sauvegarder en cache même les erreurs
-            await this.saveToCache(invoiceReference, groupId, result);
+            await this.saveToCache(invoiceReference, groupId, result, undefined, isReconciled);
             return result;
           }
 
@@ -312,7 +350,7 @@ export class InvoiceVerificationService {
             };
             
             // Sauvegarder en cache si succès
-            await this.saveToCache(invoiceReference, groupId, result, result.supplierName);
+            await this.saveToCache(invoiceReference, groupId, result, result.supplierName, isReconciled);
             return result;
           }
         }
@@ -325,7 +363,7 @@ export class InvoiceVerificationService {
         };
         
         // Sauvegarder même les résultats "non trouvé" pour éviter les rappels répétés
-        await this.saveToCache(invoiceReference, groupId, notFoundResult);
+        await this.saveToCache(invoiceReference, groupId, notFoundResult, undefined, isReconciled);
         return notFoundResult;
 
       } catch (error) {
@@ -345,7 +383,7 @@ export class InvoiceVerificationService {
         };
         
         // Sauvegarder les erreurs en cache pour éviter les rappels répétés
-        await this.saveToCache(invoiceReference, groupId, errorResult);
+        await this.saveToCache(invoiceReference, groupId, errorResult, undefined, isReconciled);
         return errorResult;
       }
 
@@ -468,7 +506,7 @@ export class InvoiceVerificationService {
   /**
    * Vérifie une facture par numéro de BL et nom de fournisseur
    */
-  async verifyInvoiceByBL(blNumber: string, supplierName: string, groupId: number, forceRefresh: boolean = false): Promise<{
+  async verifyInvoiceByBL(blNumber: string, supplierName: string, groupId: number, forceRefresh: boolean = false, isReconciled: boolean = false): Promise<{
     exists: boolean;
     matchType: 'invoice_reference' | 'bl_number' | 'none';
     errorMessage?: string;
@@ -638,6 +676,7 @@ export class InvoiceVerificationService {
               errorMessage: result.errorMessage,
               cacheHit: false,
               apiCallTime: null,
+              isReconciled,
               expiresAt
             });
           } catch (error) {
@@ -688,6 +727,7 @@ export class InvoiceVerificationService {
               errorMessage: null,
               cacheHit: false,
               apiCallTime: null,
+              isReconciled,
               expiresAt
             });
           } catch (error) {
@@ -719,6 +759,7 @@ export class InvoiceVerificationService {
             errorMessage: notFoundResult.errorMessage,
             cacheHit: false,
             apiCallTime: null,
+            isReconciled,
             expiresAt
           });
         } catch (error) {
@@ -753,6 +794,7 @@ export class InvoiceVerificationService {
             errorMessage: errorResult.errorMessage,
             cacheHit: false,
             apiCallTime: null,
+            isReconciled,
             expiresAt
           });
         } catch (error) {
