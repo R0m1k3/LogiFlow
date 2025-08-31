@@ -171,6 +171,7 @@ export const invoiceVerificationCache = pgTable("invoice_verification_cache", {
   errorMessage: text("error_message"),
   cacheHit: boolean("cache_hit").default(false),
   apiCallTime: integer("api_call_time"),
+  isReconciled: boolean("is_reconciled").default(false), // Si true, cache permanent
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
