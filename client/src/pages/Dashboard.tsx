@@ -395,6 +395,19 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
+        <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Commandes en attente</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{pendingOrdersCount}</p>
+              </div>
+              <div className="h-10 w-10 sm:h-12 sm:w-12 bg-orange-100 flex items-center justify-center rounded-lg">
+                <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardContent className="p-4 sm:p-6">
@@ -441,37 +454,25 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 p-6 max-h-96 overflow-y-auto">
-            {pendingOrders.length > 0 ? pendingOrders.map((order: any) => {
-              // Calculer le nombre de jours en attente
-              const orderDate = safeDate(order.createdAt);
-              const daysPending = orderDate ? Math.floor((new Date().getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-              const isOverdue = daysPending > 10;
-              
-              return (
-                <div key={order.id} className={`flex items-center justify-between p-4 transition-colors border-l-3 ${
-                  isOverdue ? 'bg-red-50 hover:bg-red-100 border-red-500' : 'bg-orange-50 hover:bg-orange-100 border-orange-500'
-                }`}>
-                  <div className="flex items-center space-x-3">
-                    <div className={`h-2 w-2 ${isOverdue ? 'bg-red-500' : 'bg-orange-500'}`}></div>
-                    <div>
-                      <p className="font-medium text-gray-900">{order.supplier?.name}</p>
-                      <p className="text-sm text-gray-600">{order.group?.name}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <Badge 
-                      variant={isOverdue ? 'destructive' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {daysPending} jour{daysPending > 1 ? 's' : ''}
-                    </Badge>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {safeFormat(order.plannedDate, "d MMM")}
-                    </p>
+            {pendingOrders.length > 0 ? pendingOrders.map((order: any) => (
+              <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-orange-500">
+                <div className="flex items-center space-x-3">
+                  <div className="h-2 w-2 bg-orange-500"></div>
+                  <div>
+                    <p className="font-medium text-gray-900">{order.supplier?.name}</p>
+                    <p className="text-sm text-gray-600">{order.group?.name}</p>
                   </div>
                 </div>
-              );
-            }) : (
+                <div className="text-right">
+                  <Badge variant="secondary" className="text-xs">
+                    En attente
+                  </Badge>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {safeFormat(order.plannedDate, "d MMM")}
+                  </p>
+                </div>
+              </div>
+            )) : (
               <p className="text-gray-600 text-center py-8">Aucune commande en attente</p>
             )}
           </CardContent>
