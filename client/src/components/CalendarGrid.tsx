@@ -1,7 +1,7 @@
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
 import { safeDate } from "@/lib/dateUtils";
-import { Plus, Check, MoreHorizontal, Package } from "lucide-react";
+import { Plus, Check, MoreHorizontal, Package, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useState } from "react";
@@ -87,7 +87,13 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
         <span className="truncate font-semibold" style={{fontSize: '11px', lineHeight: '1.2'}}>
           {item.supplier?.name || 'Livraison'} - {formatQuantity(item.quantity, item.unit)}
         </span>
-        <div style={{display: 'flex', alignItems: 'center', marginLeft: '4px'}}>
+        <div style={{display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px'}}>
+          {/* Badge pour livraison liée à une commande */}
+          {item.orderId && (
+            <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center" title="Liée à une commande">
+              <Link className="w-2 h-2 text-white" />
+            </div>
+          )}
           {item.status === 'pending' && (
             <div className="w-2 h-2 bg-green-600 rounded-full" title="En attente" />
           )}
