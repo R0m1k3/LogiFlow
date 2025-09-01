@@ -57,6 +57,11 @@ export default function BLReconciliation() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
+  // État pour le modal d'attente du webhook
+  const [showWaitingModal, setShowWaitingModal] = useState(false);
+  const [processingSeconds, setProcessingSeconds] = useState(0);
+  const [processingTimeout, setProcessingTimeout] = useState<NodeJS.Timeout | null>(null);
+  
   // État pour le système de vérification de facture
   const [verificationResults, setVerificationResults] = useState<Record<number, any>>({});
   const [verifyingDeliveries, setVerifyingDeliveries] = useState<Set<number>>(new Set());
@@ -349,6 +354,29 @@ export default function BLReconciliation() {
     setIsUploading(false);
   };
 
+  const handleCloseWaitingModal = () => {
+    setShowWaitingModal(false);
+    setProcessingSeconds(0);
+    if (processingTimeout) {
+      clearTimeout(processingTimeout);
+      setProcessingTimeout(null);
+    }
+  };
+
+  const startProcessingTimer = () => {
+    setProcessingSeconds(0);
+    const interval = setInterval(() => {
+      setProcessingSeconds(prev => {
+        if (prev >= 60) {
+          clearInterval(interval);
+          return 60;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    setProcessingTimeout(interval);
+  };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.type === 'application/pdf') {
@@ -381,7 +409,11 @@ export default function BLReconciliation() {
       return;
     }
 
+    // Fermer le modal de sélection et ouvrir le modal d'attente
+    setShowInvoiceModal(false);
+    setShowWaitingModal(true);
     setIsUploading(true);
+    startProcessingTimer();
 
     try {
       const formData = new FormData();
@@ -390,27 +422,51 @@ export default function BLReconciliation() {
       formData.append('blNumber', selectedDeliveryForInvoice.blNumber || '');
       formData.append('type', 'Facture');
 
+      // Créer un AbortController pour gérer le timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
+
       const response = await fetch(selectedDeliveryForInvoice.group.webhookUrl, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}: ${response.statusText}`);
       }
 
+      handleCloseWaitingModal();
+      
       toast({
         title: "Succès",
-        description: "Facture envoyée avec succès via le webhook",
+        description: "Facture traitée avec succès via le webhook",
       });
 
-      handleCloseInvoiceModal();
+      // Reset des données
+      setSelectedDeliveryForInvoice(null);
+      setSelectedFile(null);
+      
     } catch (error: any) {
+      handleCloseWaitingModal();
+      
+      let errorMessage = "Impossible d'envoyer la facture";
+      if (error.name === 'AbortError') {
+        errorMessage = "Le traitement a pris trop de temps (timeout de 60 secondes)";
+      } else if (error.message) {
+        errorMessage = `Impossible d'envoyer la facture: ${error.message}`;
+      }
+      
       toast({
         title: "Erreur",
-        description: `Impossible d'envoyer la facture: ${error.message}`,
+        description: errorMessage,
         variant: "destructive",
       });
+      
+      // Réouvrir le modal de sélection en cas d'erreur
+      setShowInvoiceModal(true);
     } finally {
       setIsUploading(false);
     }
@@ -1169,6 +1225,66 @@ export default function BLReconciliation() {
               {isUploading ? "Envoi..." : "Envoyer"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal d'attente pour le traitement du webhook */}
+      <Dialog open={showWaitingModal} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Clock className="w-5 h-5 text-blue-600 animate-spin" />
+              <span>Traitement en cours</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 py-6">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 relative">
+                <div className="w-16 h-16 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-bold text-blue-600">{processingSeconds}s</span>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-medium text-gray-900">
+                  Traitement de votre facture en cours...
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Le workflow peut prendre jusqu'à 1 minute.
+                  <br />
+                  Veuillez patienter.
+                </p>
+              </div>
+              
+              <div className="mt-4 bg-gray-100 rounded-full h-2 w-full">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${Math.min((processingSeconds / 60) * 100, 100)}%` }}
+                ></div>
+              </div>
+              
+              <div className="mt-2 text-xs text-gray-500">
+                {processingSeconds < 60 ? `${60 - processingSeconds}s restantes (max)` : 'Finalisation...'}
+              </div>
+            </div>
+            
+            {selectedDeliveryForInvoice && (
+              <div className="bg-blue-50 p-3 rounded-md">
+                <div className="text-sm">
+                  <div className="font-medium text-blue-900">
+                    {selectedDeliveryForInvoice.supplier?.name}
+                  </div>
+                  <div className="text-blue-700">
+                    BL: {selectedDeliveryForInvoice.blNumber || 'Non renseigné'}
+                  </div>
+                  <div className="text-blue-700">
+                    Fichier: {selectedFile?.name}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
