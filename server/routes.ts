@@ -1113,13 +1113,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { blNumber, blAmount } = req.body;
       
-      // BL data is optional - delivery can be validated without it
-      let blData: any = undefined;
-      if (blNumber) {
-        blData = { blNumber };
-        if (blAmount !== undefined && blAmount !== null && blAmount !== '') {
-          blData.blAmount = blAmount;
-        }
+      // Le numéro de BL est maintenant obligatoire pour valider une livraison
+      if (!blNumber || !blNumber.trim()) {
+        return res.status(400).json({ message: "Le numéro de bon de livraison est obligatoire pour valider une livraison" });
+      }
+      
+      let blData: any = { blNumber: blNumber.trim() };
+      if (blAmount !== undefined && blAmount !== null && blAmount !== '') {
+        blData.blAmount = blAmount;
       }
       
       await storage.validateDelivery(id, blData);
