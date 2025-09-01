@@ -237,7 +237,16 @@ export default function Dashboard() {
   console.log('🚚 Dashboard - Upcoming deliveries result:', upcomingDeliveries.length, upcomingDeliveries);
 
   // Calculs pour les statistiques
-  const pendingOrdersCount = Array.isArray(allOrders) ? allOrders.filter((order: any) => order.status === 'pending').length : 0;
+  const pendingOrdersCount = Array.isArray(allOrders) ? allOrders.filter((order: any) => {
+    if (order.status !== 'pending') return false;
+    
+    // Vérifier si la commande est en pending depuis plus de 10 jours
+    const orderDate = safeDate(order.createdAt);
+    if (!orderDate) return false;
+    
+    const daysDiff = Math.floor((new Date().getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+    return daysDiff > 10;
+  }).length : 0;
   const averageDeliveryTime = Math.round(stats?.averageDeliveryTime || 0);
   const deliveredThisMonth = Array.isArray(allDeliveries) ? allDeliveries.filter((delivery: any) => {
     const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
