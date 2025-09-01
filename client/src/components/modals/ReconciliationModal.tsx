@@ -29,6 +29,7 @@ export default function ReconciliationModal({
 
   const [formData, setFormData] = useState({
     blNumber: "",
+    blAmount: "",
     invoiceReference: "",
     invoiceAmount: "",
     reconciled: false,
@@ -39,6 +40,7 @@ export default function ReconciliationModal({
     if (delivery) {
       setFormData({
         blNumber: delivery.blNumber || "",
+        blAmount: delivery.blAmount || "",
         invoiceReference: delivery.invoiceReference || "",
         invoiceAmount: delivery.invoiceAmount || "",
         reconciled: delivery.reconciled || false,
@@ -78,6 +80,7 @@ export default function ReconciliationModal({
 
     updateDeliveryMutation.mutate({
       blNumber: formData.blNumber.trim() || null,
+      blAmount: formData.blAmount ? formData.blAmount.toString() : null,
       invoiceReference: formData.invoiceReference.trim() || null,
       invoiceAmount: formData.invoiceAmount ? formData.invoiceAmount.toString() : null,
     });
@@ -152,6 +155,17 @@ export default function ReconciliationModal({
                   />
                 </div>
 
+                <div>
+                  <Label htmlFor="blAmount">Montant BL (€)</Label>
+                  <Input
+                    id="blAmount"
+                    type="number"
+                    step="0.01"
+                    value={formData.blAmount}
+                    onChange={(e) => setFormData(prev => ({ ...prev, blAmount: e.target.value }))}
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
 
               {/* Données Facture */}
