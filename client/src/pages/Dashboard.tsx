@@ -224,6 +224,15 @@ export default function Dashboard() {
       return (dateB ? dateB.getTime() : 0) - (dateA ? dateA.getTime() : 0);
     })
     .slice(0, 4) : []; // Afficher les 4 dernières commandes
+
+  // Toutes les commandes en attente (peu importe la date)
+  const pendingOrders = Array.isArray(allOrders) ? allOrders
+    .filter((order: any) => order.status === 'pending')
+    .sort((a: any, b: any) => {
+      const dateA = safeDate(a.createdAt);
+      const dateB = safeDate(b.createdAt);
+      return (dateB ? dateB.getTime() : 0) - (dateA ? dateA.getTime() : 0);
+    }) : [];
   
   const upcomingDeliveries = Array.isArray(allDeliveries) ? allDeliveries
     .filter((d: any) => {
@@ -440,38 +449,52 @@ export default function Dashboard() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Dernières Commandes */}
+        {/* Commandes en Attente */}
         <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="pb-4 border-b border-gray-100">
             <CardTitle className="text-lg font-semibold text-gray-800 flex items-center">
-              <FileText className="h-5 w-5 mr-3 text-blue-600" />
-              Dernières Commandes
+              <Clock className="h-5 w-5 mr-3 text-orange-600" />
+              Commandes en Attente
+              {pendingOrders.length > 0 && (
+                <Badge variant="destructive" className="ml-2 text-xs">
+                  {pendingOrders.length}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 p-6">
-            {recentOrders.length > 0 ? recentOrders.map((order: any) => (
-              <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-blue-500">
-                <div className="flex items-center space-x-3">
-                  <div className="h-2 w-2 bg-blue-500"></div>
-                  <div>
-                    <p className="font-medium text-gray-900">{order.supplier?.name}</p>
-                    <p className="text-sm text-gray-600">{order.group?.name}</p>
+          <CardContent className="space-y-3 p-6 max-h-96 overflow-y-auto">
+            {pendingOrders.length > 0 ? pendingOrders.map((order: any) => {
+              // Calculer le nombre de jours en attente
+              const orderDate = safeDate(order.createdAt);
+              const daysPending = orderDate ? Math.floor((new Date().getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+              const isOverdue = daysPending > 10;
+              
+              return (
+                <div key={order.id} className={`flex items-center justify-between p-4 transition-colors border-l-3 ${
+                  isOverdue ? 'bg-red-50 hover:bg-red-100 border-red-500' : 'bg-orange-50 hover:bg-orange-100 border-orange-500'
+                }`}>
+                  <div className="flex items-center space-x-3">
+                    <div className={`h-2 w-2 ${isOverdue ? 'bg-red-500' : 'bg-orange-500'}`}></div>
+                    <div>
+                      <p className="font-medium text-gray-900">{order.supplier?.name}</p>
+                      <p className="text-sm text-gray-600">{order.group?.name}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Badge 
+                      variant={isOverdue ? 'destructive' : 'secondary'}
+                      className="text-xs"
+                    >
+                      {daysPending} jour{daysPending > 1 ? 's' : ''}
+                    </Badge>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {safeFormat(order.plannedDate, "d MMM")}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <Badge 
-                    variant={order.status === 'delivered' ? 'default' : order.status === 'planned' ? 'secondary' : 'destructive'}
-                    className="text-xs"
-                  >
-                    {order.status === 'delivered' ? 'Livrée' : order.status === 'planned' ? 'Planifiée' : 'En attente'}
-                  </Badge>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {safeFormat(order.plannedDate, "d MMM")}
-                  </p>
-                </div>
-              </div>
-            )) : (
-              <p className="text-gray-600 text-center py-8">Aucune commande récente</p>
+              );
+            }) : (
+              <p className="text-gray-600 text-center py-8">Aucune commande en attente</p>
             )}
           </CardContent>
         </Card>
