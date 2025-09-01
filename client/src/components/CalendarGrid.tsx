@@ -49,7 +49,13 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
           <span className="truncate font-semibold" style={{fontSize: '11px', lineHeight: '1.2'}}>
             {item.supplier?.name || 'Commande'}
           </span>
-          <div style={{display: 'flex', alignItems: 'center', marginLeft: '4px'}}>
+          <div style={{display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px'}}>
+            {/* Badge pour commande liée à des livraisons */}
+            {item.deliveries && item.deliveries.length > 0 && (
+              <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center" title="Liée à des livraisons">
+                <Link className="w-2 h-2 text-white" />
+              </div>
+            )}
             {item.status === 'planned' && (
               <div className="w-2 h-2 bg-yellow-600 rounded-full" title="Planifié" />
             )}
