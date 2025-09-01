@@ -449,7 +449,7 @@ export default function BLReconciliation() {
       setSelectedDeliveryForInvoice(null);
       setSelectedFile(null);
 
-      // Relancer la vérification des factures après le traitement du webhook
+      // Relancer la vérification de la facture qui vient d'être traitée
       try {
         // Invalidation des caches pour forcer le rechargement des données
         queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
@@ -458,14 +458,14 @@ export default function BLReconciliation() {
         // Recharger les données
         await refetch();
         
-        // Attendre un peu que les données soient à jour, puis relancer les vérifications
+        // Attendre un peu que les données soient à jour, puis vérifier cette livraison spécifique
         setTimeout(() => {
-          handleVerifyAllInvoices();
+          handleVerifyInvoice(selectedDeliveryForInvoice, true);
         }, 1000);
         
-        console.log('🔄 Vérifications automatiques relancées après webhook');
+        console.log('🔄 Vérification automatique relancée pour la livraison traitée par webhook');
       } catch (error) {
-        console.error('Erreur lors de la relance des vérifications:', error);
+        console.error('Erreur lors de la relance de la vérification:', error);
       }
       
     } catch (error: any) {
