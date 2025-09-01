@@ -225,14 +225,15 @@ export default function Dashboard() {
     })
     .slice(0, 4) : []; // Afficher les 4 dernières commandes
 
-  // Toutes les commandes en attente (peu importe la date)
+  // Les 4 dernières commandes en attente
   const pendingOrders = Array.isArray(allOrders) ? allOrders
     .filter((order: any) => order.status === 'pending')
     .sort((a: any, b: any) => {
       const dateA = safeDate(a.createdAt);
       const dateB = safeDate(b.createdAt);
       return (dateB ? dateB.getTime() : 0) - (dateA ? dateA.getTime() : 0);
-    }) : [];
+    })
+    .slice(0, 4) : []; // Afficher les 4 dernières commandes en attente
   
   const upcomingDeliveries = Array.isArray(allDeliveries) ? allDeliveries
     .filter((d: any) => {
@@ -453,7 +454,7 @@ export default function Dashboard() {
               )}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 p-6">
+          <CardContent className="space-y-3 p-6 max-h-96 overflow-y-auto">
             {pendingOrders.length > 0 ? pendingOrders.map((order: any) => {
               // Calculer le nombre de jours en attente
               const orderDate = safeDate(order.createdAt);
