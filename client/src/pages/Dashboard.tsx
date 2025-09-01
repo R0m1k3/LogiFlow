@@ -395,19 +395,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Commandes en attente</p>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{pendingOrdersCount}</p>
-              </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 bg-orange-100 flex items-center justify-center rounded-lg">
-                <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         <Card className="bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-shadow">
           <CardContent className="p-4 sm:p-6">
