@@ -351,14 +351,6 @@ export default function Dashboard() {
 
       {/* Alerts */}
       <div className="space-y-3">
-        {pendingOrdersCount > 0 && (
-          <div className="bg-orange-50 border-l-4 border-orange-400 p-4 flex items-center space-x-3 shadow-sm">
-            <AlertTriangle className="h-5 w-5 text-orange-600" />
-            <span className="text-sm font-medium text-orange-800">
-              <strong>{pendingOrdersCount} commande(s) en attente</strong> nécessitent une planification
-            </span>
-          </div>
-        )}
         
         {dlcStats.expiringSoon > 0 && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 flex items-center space-x-3 shadow-sm">
@@ -454,25 +446,37 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 p-6 max-h-96 overflow-y-auto">
-            {pendingOrders.length > 0 ? pendingOrders.map((order: any) => (
-              <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-orange-500">
-                <div className="flex items-center space-x-3">
-                  <div className="h-2 w-2 bg-orange-500"></div>
-                  <div>
-                    <p className="font-medium text-gray-900">{order.supplier?.name}</p>
-                    <p className="text-sm text-gray-600">{order.group?.name}</p>
+            {pendingOrders.length > 0 ? pendingOrders.map((order: any) => {
+              // Calculer le nombre de jours en attente
+              const orderDate = safeDate(order.createdAt);
+              const daysPending = orderDate ? Math.floor((new Date().getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+              const isOverdue = daysPending > 10;
+              
+              return (
+                <div key={order.id} className={`flex items-center justify-between p-4 transition-colors border-l-3 ${
+                  isOverdue ? 'bg-red-50 hover:bg-red-100 border-red-500' : 'bg-orange-50 hover:bg-orange-100 border-orange-500'
+                }`}>
+                  <div className="flex items-center space-x-3">
+                    <div className={`h-2 w-2 ${isOverdue ? 'bg-red-500' : 'bg-orange-500'}`}></div>
+                    <div>
+                      <p className="font-medium text-gray-900">{order.supplier?.name}</p>
+                      <p className="text-sm text-gray-600">{order.group?.name}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Badge 
+                      variant={isOverdue ? 'destructive' : 'secondary'}
+                      className="text-xs"
+                    >
+                      {daysPending} jour{daysPending > 1 ? 's' : ''}
+                    </Badge>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {safeFormat(order.plannedDate, "d MMM")}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <Badge variant="secondary" className="text-xs">
-                    En attente
-                  </Badge>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {safeFormat(order.plannedDate, "d MMM")}
-                  </p>
-                </div>
-              </div>
-            )) : (
+              );
+            }) : (
               <p className="text-gray-600 text-center py-8">Aucune commande en attente</p>
             )}
           </CardContent>
