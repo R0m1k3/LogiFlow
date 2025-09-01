@@ -211,6 +211,14 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                             <span className="text-xs font-medium text-gray-600 uppercase">
                               {isOrder ? 'COMMANDE' : 'LIVRAISON'}
                             </span>
+                            {/* Badge pour liaison - commandes avec livraisons ou livraisons avec commandes */}
+                            {((isOrder && item.deliveries && item.deliveries.length > 0) || 
+                              (!isOrder && item.orderId)) && (
+                              <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center" 
+                                   title={isOrder ? "Liée à des livraisons" : "Liée à une commande"}>
+                                <Link className="w-2 h-2 text-white" />
+                              </div>
+                            )}
                             <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                               item.status === 'delivered' ? 'bg-gray-200 text-gray-700' :
                               item.status === 'planned' ? 'bg-yellow-200 text-yellow-800' :
