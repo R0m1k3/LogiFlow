@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import { nanoid } from 'nanoid';
 import { eq, desc } from "drizzle-orm";
-import cron from 'node-cron';
 import { db } from "./db";
 import { databaseBackups } from "@shared/schema";
 import type { DatabaseBackup, InsertDatabaseBackup } from "@shared/schema";
@@ -14,6 +13,7 @@ const execAsync = promisify(exec);
 export class BackupService {
   private backupDir: string;
   private maxBackups = 10;
+  private lastAutomaticBackupDate: string | null = null;
 
   constructor() {
     // Use /app/backups in production (with proper permissions), or use env variable
@@ -212,21 +212,46 @@ export class BackupService {
   }
 
   private scheduleAutomaticBackup(): void {
-    // Use node-cron for reliable scheduling in production
-    // Schedule daily backup at 2:00 AM (0 2 * * * means: minute=0, hour=2, any day, any month, any weekday)
-    cron.schedule('0 2 * * *', async () => {
+    // Check for automatic backup every hour
+    const checkBackupNeeded = async () => {
       try {
-        console.log('🔄 Starting automatic backup...');
-        await this.createBackup('automatic', 'system');
-        console.log('✅ Automatic backup completed');
+        const now = new Date();
+        const today = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        // Only run automatic backup if:
+        // 1. It's after 2:00 AM
+        // 2. We haven't done an automatic backup today yet
+        if (now.getHours() >= 2 && this.lastAutomaticBackupDate !== today) {
+          // Check if there's already an automatic backup today in the database
+          const existingBackupToday = await db.select()
+            .from(databaseBackups)
+            .where(eq(databaseBackups.backupType, 'automatic'))
+            .orderBy(desc(databaseBackups.createdAt))
+            .limit(1);
+
+          const lastBackup = existingBackupToday[0];
+          const lastBackupDate = lastBackup ? lastBackup.createdAt.toISOString().split('T')[0] : null;
+          
+          // Only proceed if no automatic backup exists for today
+          if (lastBackupDate !== today) {
+            console.log('🔄 Starting automatic backup...');
+            await this.createBackup('automatic', 'system');
+            this.lastAutomaticBackupDate = today;
+            console.log('✅ Automatic backup completed');
+          }
+        }
       } catch (error) {
-        console.error('❌ Automatic backup failed:', error);
+        console.error('❌ Automatic backup check failed:', error);
       }
-    }, {
-      timezone: "Europe/Paris" // Adjust timezone as needed
-    });
+    };
+
+    // Initial check
+    checkBackupNeeded();
     
-    console.log('⏰ Automatic backup scheduled for 2:00 AM daily (node-cron)');
+    // Check every hour (3600000 ms)
+    setInterval(checkBackupNeeded, 3600000);
+    
+    console.log('⏰ Automatic backup scheduled for daily 2:00 AM+ (native timer)');
   }
 }
 
