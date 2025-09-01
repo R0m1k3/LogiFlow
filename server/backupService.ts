@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { nanoid } from 'nanoid';
 import { eq, desc } from "drizzle-orm";
+import cron from 'node-cron';
 import { db } from "./db";
 import { databaseBackups } from "@shared/schema";
 import type { DatabaseBackup, InsertDatabaseBackup } from "@shared/schema";
@@ -211,35 +212,21 @@ export class BackupService {
   }
 
   private scheduleAutomaticBackup(): void {
-    // Use native setTimeout instead of node-cron for ESM compatibility
-    const scheduleNextBackup = () => {
-      const now = new Date();
-      const next2AM = new Date(now);
-      next2AM.setHours(2, 0, 0, 0);
-      
-      // If it's already past 2 AM today, schedule for tomorrow
-      if (now.getHours() >= 2) {
-        next2AM.setDate(next2AM.getDate() + 1);
+    // Use node-cron for reliable scheduling in production
+    // Schedule daily backup at 2:00 AM (0 2 * * * means: minute=0, hour=2, any day, any month, any weekday)
+    cron.schedule('0 2 * * *', async () => {
+      try {
+        console.log('🔄 Starting automatic backup...');
+        await this.createBackup('automatic', 'system');
+        console.log('✅ Automatic backup completed');
+      } catch (error) {
+        console.error('❌ Automatic backup failed:', error);
       }
-      
-      const msUntilBackup = next2AM.getTime() - now.getTime();
-      
-      setTimeout(async () => {
-        try {
-          console.log('🔄 Starting automatic backup...');
-          await this.createBackup('automatic', 'system');
-          console.log('✅ Automatic backup completed');
-        } catch (error) {
-          console.error('❌ Automatic backup failed:', error);
-        }
-        
-        // Schedule the next backup (24 hours later)
-        scheduleNextBackup();
-      }, msUntilBackup);
-    };
+    }, {
+      timezone: "Europe/Paris" // Adjust timezone as needed
+    });
     
-    scheduleNextBackup();
-    console.log('⏰ Automatic backup scheduled for 2:00 AM daily (native timer)');
+    console.log('⏰ Automatic backup scheduled for 2:00 AM daily (node-cron)');
   }
 }
 
