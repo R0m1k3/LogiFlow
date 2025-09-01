@@ -225,15 +225,14 @@ export default function Dashboard() {
     })
     .slice(0, 4) : []; // Afficher les 4 dernières commandes
 
-  // Les 4 dernières commandes en attente
+  // Toutes les commandes en attente
   const pendingOrders = Array.isArray(allOrders) ? allOrders
     .filter((order: any) => order.status === 'pending')
     .sort((a: any, b: any) => {
       const dateA = safeDate(a.createdAt);
       const dateB = safeDate(b.createdAt);
       return (dateB ? dateB.getTime() : 0) - (dateA ? dateA.getTime() : 0);
-    })
-    .slice(0, 4) : []; // Afficher les 4 dernières commandes en attente
+    }) : []; // Afficher toutes les commandes en attente
   
   const upcomingDeliveries = Array.isArray(allDeliveries) ? allDeliveries
     .filter((d: any) => {
