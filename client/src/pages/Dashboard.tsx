@@ -225,15 +225,14 @@ export default function Dashboard() {
     })
     .slice(0, 4) : []; // Afficher les 4 dernières commandes
 
-  // Les 4 dernières commandes en attente
+  // Toutes les commandes en attente
   const pendingOrders = Array.isArray(allOrders) ? allOrders
     .filter((order: any) => order.status === 'pending')
     .sort((a: any, b: any) => {
       const dateA = safeDate(a.createdAt);
       const dateB = safeDate(b.createdAt);
       return (dateB ? dateB.getTime() : 0) - (dateA ? dateA.getTime() : 0);
-    })
-    .slice(0, 4) : []; // Afficher les 4 dernières commandes en attente
+    }) : []; // Afficher toutes les commandes en attente
   
   const upcomingDeliveries = Array.isArray(allDeliveries) ? allDeliveries
     .filter((d: any) => {
@@ -352,14 +351,6 @@ export default function Dashboard() {
 
       {/* Alerts */}
       <div className="space-y-3">
-        {pendingOrdersCount > 0 && (
-          <div className="bg-orange-50 border-l-4 border-orange-400 p-4 flex items-center space-x-3 shadow-sm">
-            <AlertTriangle className="h-5 w-5 text-orange-600" />
-            <span className="text-sm font-medium text-orange-800">
-              <strong>{pendingOrdersCount} commande(s) en attente</strong> nécessitent une planification
-            </span>
-          </div>
-        )}
         
         {dlcStats.expiringSoon > 0 && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 flex items-center space-x-3 shadow-sm">
