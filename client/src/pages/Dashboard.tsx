@@ -568,18 +568,23 @@ export default function Dashboard() {
                         <span className="text-red-400">Aucun magasin</span>
                       ) : (
                         <div className="flex flex-wrap gap-1">
-                          {participatingStores.map((participation: any) => (
-                            <Badge 
-                              key={participation.groupId} 
-                              className={`text-xs ${
-                                selectedStoreId && participation.groupId === parseInt(selectedStoreId.toString())
-                                  ? 'bg-green-100 text-green-800 border border-green-300'
-                                  : 'bg-gray-100 text-gray-700'
-                              }`}
-                            >
-                              {participation.group.name}
-                            </Badge>
-                          ))}
+                          {participatingStores.map((participation: any) => {
+                            const isCurrentStore = selectedStoreId && participation.groupId === parseInt(selectedStoreId.toString());
+                            const groupColor = participation.group?.color || '#1976D2';
+                            
+                            return (
+                              <Badge 
+                                key={participation.groupId} 
+                                className={`text-xs text-white border ${isCurrentStore ? 'ring-2 ring-white ring-offset-1' : ''}`}
+                                style={{ 
+                                  backgroundColor: groupColor,
+                                  borderColor: groupColor
+                                }}
+                              >
+                                {participation.group.name}
+                              </Badge>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
