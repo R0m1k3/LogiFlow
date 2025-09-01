@@ -29,6 +29,7 @@ import { safeFormat } from "@/lib/dateUtils";
 import CreateDeliveryModal from "@/components/modals/CreateDeliveryModal";
 import EditDeliveryModal from "@/components/modals/EditDeliveryModal";
 import OrderDetailModal from "@/components/modals/OrderDetailModal";
+import ValidateDeliveryModal from "@/components/modals/ValidateDeliveryModal";
 import ConfirmDeleteModal from "@/components/modals/ConfirmDeleteModal";
 import type { DeliveryWithRelations } from "@shared/schema";
 
@@ -67,8 +68,10 @@ export default function Deliveries() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showValidateModal, setShowValidateModal] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryWithRelations | null>(null);
   const [deliveryToDelete, setDeliveryToDelete] = useState<DeliveryWithRelations | null>(null);
+  const [deliveryToValidate, setDeliveryToValidate] = useState<DeliveryWithRelations | null>(null);
 
   // Construire l'URL pour l'historique complet sans filtrage par date
   // CRITICAL FIX: Appliquer le filtrage par storeId pour TOUS les rôles, pas seulement admin
@@ -107,46 +110,6 @@ export default function Deliveries() {
   
   const groups = Array.isArray(groupsData) ? groupsData : [];
 
-  const validateMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest(`/api/deliveries/${id}/validate`, "POST");
-    },
-    onSuccess: () => {
-      toast({
-        title: "Succès",
-        description: "Livraison validée avec succès",
-      });
-      // Invalider tous les caches liés aux livraisons
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      queryClient.invalidateQueries({ queryKey: [deliveriesUrl] });
-      // Invalider tous les caches BL/Rapprochement
-      queryClient.invalidateQueries({ 
-        predicate: (query) => 
-          query.queryKey[0] === '/api/deliveries/bl' || 
-          query.queryKey[0] === '/api/deliveries'
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/stats/monthly'] });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Non autorisé",
-          description: "Vous êtes déconnecté. Reconnexion...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Erreur",
-        description: "Impossible de valider la livraison",
-        variant: "destructive",
-      });
-    },
-  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -231,10 +194,14 @@ export default function Deliveries() {
     setShowEditModal(true);
   };
 
-  const handleValidateDelivery = (id: number) => {
-    if (window.confirm("Êtes-vous sûr de vouloir valider cette livraison ?")) {
-      validateMutation.mutate(id);
-    }
+  const handleValidateDelivery = (delivery: DeliveryWithRelations) => {
+    setDeliveryToValidate(delivery);
+    setShowValidateModal(true);
+  };
+
+  const handleValidateModalClose = () => {
+    setShowValidateModal(false);
+    setDeliveryToValidate(null);
   };
 
   const handleDeleteDelivery = (delivery: DeliveryWithRelations) => {
@@ -448,9 +415,9 @@ export default function Deliveries() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleValidateDelivery(delivery.id)}
+                                onClick={() => handleValidateDelivery(delivery)}
                                 className="text-green-600 hover:text-green-700"
-                                disabled={validateMutation.isPending}
+                                disabled={false}
                               >
                                 <Check className="w-4 h-4 border border-gray-300 rounded p-0.5" />
                               </Button>
@@ -510,6 +477,14 @@ export default function Deliveries() {
           isOpen={showDetailModal}
           onClose={() => setShowDetailModal(false)}
           item={selectedDelivery}
+        />
+      )}
+
+      {showValidateModal && deliveryToValidate && (
+        <ValidateDeliveryModal
+          isOpen={showValidateModal}
+          onClose={handleValidateModalClose}
+          delivery={deliveryToValidate}
         />
       )}
 
