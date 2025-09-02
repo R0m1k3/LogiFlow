@@ -1671,10 +1671,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dueDateValue: data.dueDate
       });
 
+      // Assign a default groupId if not provided
+      if (!data.groupId) {
+        if (user.role === 'admin') {
+          data.groupId = 1; // Default for admin
+        } else {
+          const userGroupIds = user.userGroups?.map(ug => ug.groupId) || [];
+          data.groupId = userGroupIds.length > 0 ? userGroupIds[0] : 1;
+        }
+        console.log('📝 POST /api/tasks - Assigned default groupId:', data.groupId);
+      }
+
       // Check if user has access to the group
       if (user.role !== 'admin') {
-        const userGroupIds = user.userGroups.map(ug => ug.groupId);
-        if (!userGroupIds.includes(data.groupId)) {
+        const userGroupIds = user.userGroups?.map(ug => ug.groupId) || [];
+        console.log('📝 POST /api/tasks - User group access check:', {
+          userGroupIds,
+          requestedGroupId: data.groupId,
+          hasUserGroups: !!user.userGroups
+        });
+        if (userGroupIds.length > 0 && !userGroupIds.includes(data.groupId)) {
           return res.status(403).json({ message: "Access denied to this group" });
         }
       }
