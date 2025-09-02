@@ -418,7 +418,8 @@ function TaskForm({ onSubmit, initialData, isEditing = false }: {
       description: description.trim() || undefined,
       assignedTo: assignedTo?.trim() || "Non assigné",
       priority,
-      dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+      startDate: null, // Toujours inclure startDate même si null
+      dueDate: dueDate ? new Date(dueDate).toISOString() : null,
     };
 
     onSubmit(taskData);
