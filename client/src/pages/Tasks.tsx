@@ -87,7 +87,13 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
         (taskData as any).createdBy = user?.username || 'admin';
       }
 
-      console.log('📤 Sending request:', { url, method, taskData });
+      console.log('📤 Tasks.tsx - Sending request:', { 
+        url, 
+        method, 
+        taskData,
+        selectedStoreId,
+        finalGroupId: taskData.groupId 
+      });
       
       const response = await fetch(url, {
         method,

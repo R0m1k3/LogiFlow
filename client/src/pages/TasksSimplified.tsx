@@ -80,10 +80,19 @@ export default function TasksSimplified() {
   // Création d'une tâche
   const handleCreateTask = async (taskData: any) => {
     try {
-      await apiRequest('/api/tasks', 'POST', {
+      const finalData = {
         ...taskData,
         groupId: selectedStoreId ? parseInt(selectedStoreId) : stores[0]?.id
+      };
+      
+      console.log('🔍 TasksSimplified - Creating task with data:', {
+        selectedStoreId,
+        storesLength: stores.length,
+        finalGroupId: finalData.groupId,
+        taskData: finalData
       });
+      
+      await apiRequest('/api/tasks', 'POST', finalData);
       
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       setShowCreateModal(false);
@@ -92,6 +101,7 @@ export default function TasksSimplified() {
         description: "Tâche créée avec succès",
       });
     } catch (error) {
+      console.error('❌ TasksSimplified - Error creating task:', error);
       toast({
         title: "Erreur",
         description: "Impossible de créer la tâche",
