@@ -399,14 +399,14 @@ function TaskForm({ onSubmit, initialData, isEditing = false }: {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title.trim() || !assignedTo.trim()) {
+    if (!title.trim()) {
       return;
     }
 
     const taskData = {
       title: title.trim(),
       description: description.trim() || undefined,
-      assignedTo: assignedTo.trim(),
+      assignedTo: assignedTo?.trim() || "Non assigné",
       priority,
       dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
     };
@@ -445,14 +445,13 @@ function TaskForm({ onSubmit, initialData, isEditing = false }: {
 
       <div>
         <label htmlFor="assignedTo" className="block text-sm font-medium mb-1">
-          Assigné à *
+          Assigné à <span className="text-xs text-gray-500">(optionnel)</span>
         </label>
         <Input
           id="assignedTo"
           value={assignedTo}
           onChange={(e) => setAssignedTo(e.target.value)}
           placeholder="Nom de la personne responsable"
-          required
         />
       </div>
 

@@ -62,14 +62,6 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
       return;
     }
 
-    if (!assignedTo?.trim()) {
-      toast({
-        title: "Erreur", 
-        description: "L'assignation est requise",
-        variant: "destructive",
-      });
-      return;
-    }
 
     const submitBtn = e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement;
     submitBtn.disabled = true;
@@ -81,7 +73,7 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
         description: description?.trim() || "",
         priority: priority || "medium",
         status: status || "pending",
-        assignedTo: assignedTo.trim(),
+        assignedTo: assignedTo?.trim() || "Non assigné",
         startDate: startDate || null,
         dueDate: dueDate || null,
       };
@@ -263,14 +255,13 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
 
         <div>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-            Assigné à *
+            Assigné à <span style={{ fontSize: '12px', color: '#6b7280' }}>(optionnel)</span>
           </label>
           <input
             name="assignedTo"
             type="text"
             defaultValue={task?.assignedTo || ""}
             placeholder="Nom de la personne assignée"
-            required
             style={{
               width: '100%',
               padding: '8px 12px',
