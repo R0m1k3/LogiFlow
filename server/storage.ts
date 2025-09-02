@@ -1508,9 +1508,45 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (filters) {
-      if (filters.status) {
-        conditions.push(eq(dlcProducts.status, filters.status));
+      // Handle dynamic status filtering based on expiry date calculation
+      if (filters.status && filters.status !== 'all') {
+        const today = new Date();
+        
+        if (filters.status === 'expires_soon') {
+          // Products expiring within 15 days but not expired yet
+          const in15Days = new Date();
+          in15Days.setDate(today.getDate() + 15);
+          conditions.push(
+            and(
+              sql`${dlcProducts.expiryDate} > ${today}`,
+              sql`${dlcProducts.expiryDate} <= ${in15Days}`,
+              ne(dlcProducts.status, 'valides')
+            )
+          );
+        } else if (filters.status === 'expires') {
+          // Products already expired
+          conditions.push(
+            and(
+              sql`${dlcProducts.expiryDate} <= ${today}`,
+              ne(dlcProducts.status, 'valides')
+            )
+          );
+        } else if (filters.status === 'en_cours') {
+          // Products active (more than 15 days until expiry)
+          const in15Days = new Date();
+          in15Days.setDate(today.getDate() + 15);
+          conditions.push(
+            and(
+              sql`${dlcProducts.expiryDate} > ${in15Days}`,
+              ne(dlcProducts.status, 'valides')
+            )
+          );
+        } else if (filters.status === 'valides') {
+          // Products that are validated regardless of date
+          conditions.push(eq(dlcProducts.status, 'valides'));
+        }
       }
+      
       if (filters.supplierId) {
         conditions.push(eq(dlcProducts.supplierId, filters.supplierId));
       }
