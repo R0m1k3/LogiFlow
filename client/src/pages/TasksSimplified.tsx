@@ -52,7 +52,7 @@ export default function TasksSimplified() {
     queryFn: () => {
       const params = new URLSearchParams();
       if (selectedStoreId) {
-        params.append('storeId', selectedStoreId);
+        params.append('storeId', selectedStoreId.toString());
       }
       return fetch(`/api/tasks?${params.toString()}`).then(res => res.json());
     },
@@ -60,7 +60,7 @@ export default function TasksSimplified() {
   });
 
   // Récupération des magasins
-  const { data: stores = [] } = useQuery({
+  const { data: stores = [] } = useQuery<any[]>({
     queryKey: ["/api/groups"],
     enabled: !!user,
   });

@@ -1,0 +1,209 @@
+Search
+Filter...
+Lines
+100
+Actions
+ 
+ 
+ 
+      
+Fetching all deliveries
+
+📢 [SERVER] Fetching announcements for user: admin_local environment: production
+
+Customer Orders API called with: { groupIds: [ 2 ], userRole: 'admin' }
+
+🔗 PRODUCTION: getOrders() récupéré 29 commandes avec relations
+
+Orders returned: 29 items
+
+GET /api/orders 200 in 95ms
+
+❌ PRODUCTION: Delivery #127 (store 2) linked to order #81 (store 1) - STORE MISMATCH DETECTED!
+
+Customer Orders returned: 42 items
+
+🔗 PRODUCTION: getDeliveries() récupéré 59 livraisons avec relations
+
+Deliveries returned: 59 items
+
+📢 [SERVER] User found: { username: 'admin', role: 'admin' }
+
+🎯 [PRODUCTION] Using PostgreSQL DASHBOARD_MESSAGES table
+
+GET /api/customer-orders 304 in 109ms
+
+GET /api/deliveries 304 in 111ms
+
+🔍 [PRODUCTION] Raw messages from DB: 2 items: [
+
+  {
+
+    id: 16,
+
+    title: 'Mise à jour Prix',
+
+    content: 'Merci de mettre vos prix a jour tous les matins, certain magasin ne le font pas.',
+
+    type: 'success',
+
+    storeId: null,
+
+    createdBy: 'admin',
+
+    createdAt: 2025-08-18T10:45:08.585Z
+
+  },
+
+  {
+
+    id: 8,
+
+    title: 'Bon de Livraison',
+
+    content: 'Lorsque vous rentrez un numéro de bon de livraison, faite le a l identique, même les majuscules. Pour My candy Shop, prendre le numéro de commande.',
+
+    type: 'info',
+
+    storeId: null,
+
+    createdBy: 'admin_local',
+
+    createdAt: 2025-08-07T11:04:38.123Z
+
+  }
+
+]
+
+🔍 [PRODUCTION] Looking for user with username: admin
+
+🔍 [PRODUCTION] Looking for user with username: admin_local
+
+GET /api/groups 304 in 58ms
+
+🔍 [PRODUCTION] User search result: Found
+
+❌ [PRODUCTION] User not found with username: admin_local
+
+🔍 [PRODUCTION] User search result: Not found
+
+🎯 [PRODUCTION] Found announcements: 2
+
+GET /api/announcements 304 in 117ms
+
+GET /api/user 304 in 4ms
+
+GET /api/users 304 in 15ms
+
+HEAD /api/health 200 in 0ms
+
+📝 POST /api/tasks - Received data: {
+
+  originalBody: {
+
+    title: 'test',
+
+    description: 'test',
+
+    priority: 'medium',
+
+    status: 'pending',
+
+    assignedTo: 'Non assigné',
+
+    startDate: '2025-09-02',
+
+    dueDate: '2025-09-07',
+
+    groupId: 2,
+
+    createdBy: 'admin'
+
+  },
+
+  processedData: {
+
+    title: 'test',
+
+    description: 'test',
+
+    priority: 'medium',
+
+    status: 'pending',
+
+    assignedTo: 'Non assigné',
+
+    startDate: '2025-09-02',
+
+    dueDate: '2025-09-07',
+
+    groupId: 2,
+
+    createdBy: 'admin_local'
+
+  },
+
+  dueDate: '2025-09-07',
+
+  dueDateType: 'string',
+
+  dueDateValue: '2025-09-07'
+
+}
+
+💾 DatabaseStorage.createTask - Input: {
+
+  taskData: {
+
+    title: 'test',
+
+    description: 'test',
+
+    priority: 'medium',
+
+    status: 'pending',
+
+    assignedTo: 'Non assigné',
+
+    startDate: '2025-09-02',
+
+    dueDate: '2025-09-07',
+
+    groupId: 2,
+
+    createdBy: 'admin_local'
+
+  },
+
+  dueDate: '2025-09-07',
+
+  dueDateType: 'string',
+
+  dueDateISO: '2025-09-07'
+
+}
+
+Error creating task: TypeError: value.toISOString is not a function
+
+    at PgTimestamp.mapToDriverValue (file:///app/node_modules/drizzle-orm/pg-core/columns/timestamp.js:34:18)
+
+    at file:///app/node_modules/drizzle-orm/sql/sql.js:131:73
+
+    at Array.map (<anonymous>)
+
+    at SQL.buildQueryFromSourceParams (file:///app/node_modules/drizzle-orm/sql/sql.js:73:32)
+
+    at file:///app/node_modules/drizzle-orm/sql/sql.js:92:21
+
+    at Array.map (<anonymous>)
+
+    at SQL.buildQueryFromSourceParams (file:///app/node_modules/drizzle-orm/sql/sql.js:73:32)
+
+    at file:///app/node_modules/drizzle-orm/sql/sql.js:95:21
+
+    at Array.map (<anonymous>)
+
+    at SQL.buildQueryFromSourceParams (file:///app/node_modules/drizzle-orm/sql/sql.js:73:32)
+
+POST /api/tasks 500 in 7ms
+

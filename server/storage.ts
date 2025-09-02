@@ -1791,7 +1791,14 @@ export class DatabaseStorage implements IStorage {
       dueDateISO: taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate
     });
     
-    const [task] = await db.insert(tasks).values(taskData).returning();
+    // Convert string dates to Date objects for Drizzle PostgreSQL
+    const processedTaskData = {
+      ...taskData,
+      startDate: taskData.startDate ? new Date(taskData.startDate) : null,
+      dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
+    };
+    
+    const [task] = await db.insert(tasks).values(processedTaskData).returning();
     
     console.log('💾 DatabaseStorage.createTask - Result:', {
       taskId: task.id,
@@ -1840,8 +1847,8 @@ export class DatabaseStorage implements IStorage {
       if (taskData.dueDate === '' || taskData.dueDate === null) {
         cleanData.dueDate = null;
       } else {
-        // due_date est un date en PostgreSQL - on passe la chaîne directement
-        cleanData.dueDate = taskData.dueDate;
+        // due_date est un timestamp en PostgreSQL - convertir en Date object
+        cleanData.dueDate = new Date(taskData.dueDate);
       }
     }
     
