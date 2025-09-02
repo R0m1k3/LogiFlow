@@ -1645,6 +1645,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Check permissions for creating tasks
+      if (!hasPermission(user.role, 'tasks', 'create')) {
+        return res.status(403).json({ message: "Permission denied: cannot create tasks" });
+      }
+
       const data = {
         ...req.body,
         createdBy: user.id,
