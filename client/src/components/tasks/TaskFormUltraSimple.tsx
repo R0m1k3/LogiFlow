@@ -18,10 +18,6 @@ export default function TaskFormUltraSimple({ task, onClose }: any) {
       return;
     }
 
-    if (!assignedTo?.trim()) {
-      alert("L'assignation est requise");
-      return;
-    }
 
     const submitBtn = e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement;
     submitBtn.disabled = true;
@@ -33,7 +29,7 @@ export default function TaskFormUltraSimple({ task, onClose }: any) {
         description: description?.trim() || "",
         priority: priority || "medium",
         status: status || "pending",
-        assignedTo: assignedTo.trim(),
+        assignedTo: assignedTo?.trim() || "Non assigné",
         startDate: startDate || null,
         dueDate: dueDate || null,
       };
@@ -212,14 +208,13 @@ export default function TaskFormUltraSimple({ task, onClose }: any) {
 
         <div>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
-            Assigné à *
+            Assigné à <span style={{ fontSize: '12px', color: '#6b7280' }}>(optionnel)</span>
           </label>
           <input
             name="assignedTo"
             type="text"
             defaultValue={task?.assignedTo || "admin"}
             placeholder="Nom de la personne assignée"
-            required
             style={{
               width: '100%',
               padding: '8px 12px',
