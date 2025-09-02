@@ -211,6 +211,46 @@ export class BackupService {
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   }
 
+  // Nouvelle méthode : Vérifier et effectuer une sauvegarde quotidienne si nécessaire
+  async checkAndPerformDailyBackup(userId: string = 'system'): Promise<{ backupPerformed: boolean; message: string }> {
+    try {
+      const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+      
+      // Vérifier s'il y a déjà une sauvegarde automatique aujourd'hui
+      const existingBackupToday = await db.select()
+        .from(databaseBackups)
+        .where(eq(databaseBackups.backupType, 'automatic'))
+        .orderBy(desc(databaseBackups.createdAt))
+        .limit(1);
+
+      const lastBackup = existingBackupToday[0];
+      const lastBackupDate = lastBackup ? lastBackup.createdAt.toISOString().split('T')[0] : null;
+      
+      // Si aucune sauvegarde automatique aujourd'hui, en créer une
+      if (lastBackupDate !== today) {
+        console.log('🔄 Première connexion du jour - Création de la sauvegarde automatique...');
+        await this.createBackup('automatic', userId);
+        console.log('✅ Sauvegarde quotidienne effectuée avec succès');
+        return {
+          backupPerformed: true,
+          message: 'Sauvegarde quotidienne effectuée avec succès'
+        };
+      } else {
+        console.log('ℹ️ Sauvegarde quotidienne déjà effectuée aujourd\'hui');
+        return {
+          backupPerformed: false,
+          message: 'Sauvegarde quotidienne déjà effectuée aujourd\'hui'
+        };
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la vérification de sauvegarde quotidienne:', error);
+      return {
+        backupPerformed: false,
+        message: `Erreur: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
+      };
+    }
+  }
+
   private scheduleAutomaticBackup(): void {
     // Check for automatic backup every hour
     const checkBackupNeeded = async () => {

@@ -6,6 +6,7 @@ import { storage } from "./storage.js";
 import connectPg from "connect-pg-simple";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import { backupService } from "./backupService.js";
 
 const scryptAsync = promisify(scrypt);
 
@@ -206,8 +207,20 @@ export function setupLocalAuth(app: Express) {
         return res.status(400).json({ message: info?.message || "Invalid credentials" });
       }
       
-      req.login(user, (err) => {
+      req.login(user, async (err) => {
         if (err) return next(err);
+        
+        // Vérifier et effectuer une sauvegarde quotidienne si nécessaire
+        try {
+          const backupResult = await backupService.checkAndPerformDailyBackup(user.id);
+          if (backupResult.backupPerformed) {
+            console.log('💾 Sauvegarde quotidienne effectuée lors de la connexion de', user.username);
+          }
+        } catch (error) {
+          console.error('⚠️ Erreur lors de la vérification de sauvegarde:', error);
+          // Ne pas faire échouer la connexion si la sauvegarde échoue
+        }
+        
         res.json({ 
           id: user.id, 
           username: user.username, 
