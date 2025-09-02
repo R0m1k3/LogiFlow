@@ -18,7 +18,7 @@ import {
   Filter, 
   Wrench,
   Calendar,
-  Eye,
+  ClipboardList,
   Edit,
   Trash2,
   Building,
@@ -938,8 +938,13 @@ export default function SavTickets() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end space-x-2">
-                            <Button variant="ghost" size="sm" onClick={() => handleViewTicket(ticket)}>
-                              <Eye className="h-4 w-4" />
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleViewTicket(ticket)}
+                              title="Suivi du ticket"
+                            >
+                              <ClipboardList className="h-4 w-4" />
                             </Button>
                             {canModify && (
                               <Button variant="ghost" size="sm" onClick={() => handleEditTicket(ticket)}>
