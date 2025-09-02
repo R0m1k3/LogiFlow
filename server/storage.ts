@@ -68,7 +68,7 @@ import {
   type InsertWeatherSettings,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, inArray, desc, sql, gte, lte, lt, or, isNull, isNotNull, asc } from "drizzle-orm";
+import { eq, and, inArray, desc, sql, gte, lte, lt, gt, or, isNull, isNotNull, asc, ne } from "drizzle-orm";
 import { getAnnouncementStorage } from "./announcementStorage";
 
 
@@ -1511,15 +1511,17 @@ export class DatabaseStorage implements IStorage {
       // Handle dynamic status filtering based on expiry date calculation
       if (filters.status && filters.status !== 'all') {
         const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
         
         if (filters.status === 'expires_soon') {
           // Products expiring within 15 days but not expired yet
           const in15Days = new Date();
           in15Days.setDate(today.getDate() + 15);
+          in15Days.setHours(23, 59, 59, 999); // End of day
           conditions.push(
             and(
-              sql`${dlcProducts.expiryDate} > ${today}`,
-              sql`${dlcProducts.expiryDate} <= ${in15Days}`,
+              gt(dlcProducts.expiryDate, today),
+              lte(dlcProducts.expiryDate, in15Days),
               ne(dlcProducts.status, 'valides')
             )
           );
@@ -1527,7 +1529,7 @@ export class DatabaseStorage implements IStorage {
           // Products already expired
           conditions.push(
             and(
-              sql`${dlcProducts.expiryDate} <= ${today}`,
+              lte(dlcProducts.expiryDate, today),
               ne(dlcProducts.status, 'valides')
             )
           );
@@ -1535,9 +1537,10 @@ export class DatabaseStorage implements IStorage {
           // Products active (more than 15 days until expiry)
           const in15Days = new Date();
           in15Days.setDate(today.getDate() + 15);
+          in15Days.setHours(23, 59, 59, 999);
           conditions.push(
             and(
-              sql`${dlcProducts.expiryDate} > ${in15Days}`,
+              gt(dlcProducts.expiryDate, in15Days),
               ne(dlcProducts.status, 'valides')
             )
           );

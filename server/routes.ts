@@ -216,7 +216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Filter suppliers for DLC enabled only if requested
       if (dlcFilter) {
-        const dlcSuppliers = suppliers.filter(supplier => supplier.dlcEnabled === true);
+        const dlcSuppliers = suppliers.filter(supplier => supplier.hasDlc === true);
         res.json(dlcSuppliers);
       } else {
         res.json(suppliers);
