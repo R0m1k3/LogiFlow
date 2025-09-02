@@ -447,8 +447,8 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-3 p-6 max-h-96 overflow-y-auto">
             {pendingOrders.length > 0 ? pendingOrders.map((order: any) => {
-              // Calculer le nombre de jours en attente
-              const orderDate = safeDate(order.createdAt);
+              // Calculer le nombre de jours en attente depuis la date prévue
+              const orderDate = safeDate(order.plannedDate);
               const daysPending = orderDate ? Math.floor((new Date().getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
               const isOverdue = daysPending > 10;
               
