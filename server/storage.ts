@@ -1149,14 +1149,23 @@ export class DatabaseStorage implements IStorage {
         deliveredWhereCondition = and(deliveredWhereCondition, inArray(deliveries.groupId, groupIds));
       }
 
+      // NOUVEAU: Calculer le délai moyen entre la date de commande et la date de livraison
+      // Uniquement pour les livraisons qui ont une commande liée
       const deliveriesStatsResult = await db
         .select({
           totalPalettes: sql<number>`COALESCE(SUM(CAST(${deliveries.quantity} as INTEGER)), 0)`,
           totalPackages: sql<number>`COALESCE(COUNT(*), 0)`,
-          avgDelay: sql<number>`COALESCE(AVG(EXTRACT(DAY FROM (${deliveries.deliveredDate} - ${deliveries.scheduledDate}))), 0)`
+          avgDelay: sql<number>`COALESCE(AVG(EXTRACT(DAY FROM (${deliveries.deliveredDate} - ${orders.plannedDate}))), 0)`
         })
         .from(deliveries)
-        .where(deliveredWhereCondition);
+        .innerJoin(orders, eq(deliveries.orderId, orders.id))
+        .where(
+          and(
+            deliveredWhereCondition,
+            isNotNull(deliveries.orderId), // S'assurer qu'il y a une commande liée
+            isNotNull(orders.plannedDate)  // S'assurer que la commande a une date
+          )
+        );
 
       const ordersCount = Number(ordersResult[0]?.count || 0);
       const deliveriesCount = Number(deliveriesResult[0]?.count || 0);
@@ -1169,7 +1178,7 @@ export class DatabaseStorage implements IStorage {
         ordersCount,
         deliveriesCount,
         pendingOrdersCount,
-        averageDeliveryTime,
+        averageDeliveryTime: `${averageDeliveryTime} jours (commande → livraison, livraisons avec commande liée uniquement)`,
         totalPalettes,
         totalPackages,
       });
