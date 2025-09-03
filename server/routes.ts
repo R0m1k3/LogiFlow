@@ -149,14 +149,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
 
-      console.log('🌐 BAP: Envoi vers webhook n8n...');
+      console.log('🌐 BAP: Envoi vers webhook n8n (GET)...');
       
       const response = await fetch(webhookUrl, {
-        method: 'POST',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-PDF-Base64': pdfBase64,
+          'X-Recipient': recipient,
+          'X-FileName': fileName,
+          'X-FileSize': fileBuffer.length.toString()
         },
-        body: JSON.stringify(webhookPayload),
         signal: controller.signal
       });
 
