@@ -102,9 +102,24 @@ export default function Sidebar() {
     startProcessingTimer();
 
     try {
-      const formData = new FormData();
-      formData.append('pdf', selectedFile);
-      formData.append('recipient', selectedRecipient);
+      // Convertir le fichier en base64
+      const pdfBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Enlever le préfixe "data:application/pdf;base64,"
+          const base64 = result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = () => reject(new Error('Erreur lors de la lecture du fichier'));
+        reader.readAsDataURL(selectedFile);
+      });
+
+      const requestBody = {
+        pdfBase64,
+        fileName: selectedFile.name,
+        recipient: selectedRecipient
+      };
 
       // Créer un AbortController pour gérer le timeout
       const controller = new AbortController();
@@ -112,7 +127,10 @@ export default function Sidebar() {
 
       const response = await fetch('/api/bap/send-webhook', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
         signal: controller.signal,
         credentials: 'include'
       });
