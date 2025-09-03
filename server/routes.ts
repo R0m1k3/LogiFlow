@@ -102,6 +102,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           filteredGroupsCount: userGroups.length,
           groups: userGroups.map((g: any) => ({ id: g.id, name: g.name }))
         });
+        
+        // CRITICAL: Si un directeur n'a aucun groupe assigné, retourner un tableau vide
+        // au lieu de tous les groupes
+        if (user.role === 'directeur' && userGroups.length === 0) {
+          console.log('🚨 [CRITICAL] Directeur has no assigned groups - returning empty array');
+          return res.json([]);
+        }
+        
         res.json(userGroups);
       }
     } catch (error) {
