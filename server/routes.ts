@@ -49,10 +49,8 @@ import { eq, desc, or, isNull } from "drizzle-orm";
 import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
 import { weatherService } from "./weatherService.js";
-import multer from "multer";
+import Busboy from 'busboy';
 import fetch from "node-fetch";
-
-const upload = multer({ storage: multer.memoryStorage() });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Detect environment
@@ -72,16 +70,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Route BAP pour envoi webhook n8n
-  app.post('/api/bap/send-webhook', isAuthenticated, upload.single('pdf'), async (req: any, res) => {
+  app.post('/api/bap/send-webhook', isAuthenticated, async (req: any, res) => {
     try {
-      const { recipient } = req.body;
-      const file = req.file;
+      // Vérifier que l'utilisateur est admin
+      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: 'Accès refusé - Admin uniquement' });
+      }
 
-      if (!file) {
+      // Parser le multipart/form-data avec busboy
+      const busboy = Busboy({ headers: req.headers });
+      let fileBuffer: Buffer | null = null;
+      let fileName = '';
+      let recipient = '';
+      let mimeType = '';
+
+      const parsePromise = new Promise<void>((resolve, reject) => {
+        busboy.on('file', (fieldname, file, info) => {
+          const { filename, mimeType: fileMimeType } = info;
+          
+          if (fieldname === 'pdf') {
+            fileName = filename;
+            mimeType = fileMimeType;
+            
+            const chunks: Buffer[] = [];
+            file.on('data', (chunk) => {
+              chunks.push(chunk);
+            });
+            
+            file.on('end', () => {
+              fileBuffer = Buffer.concat(chunks);
+            });
+          } else {
+            file.resume(); // Ignorer les autres fichiers
+          }
+        });
+
+        busboy.on('field', (fieldname, val) => {
+          if (fieldname === 'recipient') {
+            recipient = val;
+          }
+        });
+
+        busboy.on('finish', () => {
+          resolve();
+        });
+
+        busboy.on('error', (err) => {
+          reject(err);
+        });
+      });
+
+      req.pipe(busboy);
+      await parsePromise;
+
+      // Valider les données
+      if (!fileBuffer) {
         return res.status(400).json({ error: 'Aucun fichier PDF fourni' });
       }
 
-      if (file.mimetype !== 'application/pdf') {
+      if (mimeType !== 'application/pdf') {
         return res.status(400).json({ error: 'Le fichier doit être un PDF' });
       }
 
@@ -89,24 +137,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Destinataire invalide' });
       }
 
-      // Vérifier que l'utilisateur est admin
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user || user.role !== 'admin') {
-        return res.status(403).json({ error: 'Accès refusé - Admin uniquement' });
-      }
-
       console.log('📤 BAP: Envoi webhook n8n', { 
         recipient, 
-        fileName: file.originalname, 
-        fileSize: file.size,
+        fileName, 
+        fileSize: fileBuffer?.length || 0,
         userId: user.id
       });
 
       // Créer FormData pour l'envoi vers n8n
       const FormData = (await import('form-data')).default;
       const formData = new FormData();
-      formData.append('pdf', file.buffer, {
-        filename: file.originalname,
+      formData.append('pdf', fileBuffer, {
+        filename: fileName,
         contentType: 'application/pdf'
       });
       formData.append('recipient', recipient);
