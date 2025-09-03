@@ -128,24 +128,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: user.id
       });
 
-      // Créer FormData pour l'envoi vers n8n
-      let FormData;
-      try {
-        FormData = (await import('form-data')).default;
-        console.log('✅ BAP: form-data imported successfully');
-      } catch (error) {
-        console.error('❌ BAP: Erreur import form-data:', error);
-        return res.status(500).json({ error: 'Erreur configuration serveur (form-data)' });
-      }
-
-      const formData = new FormData();
-      formData.append('pdf', fileBuffer, {
-        filename: fileName,
+      // Préparer les données JSON pour le webhook n8n (sans form-data)
+      const webhookPayload = {
+        recipient: recipient,
+        fileName: fileName,
+        fileSize: fileBuffer.length,
+        pdfBase64: pdfBase64, // On renvoie le base64 directement
         contentType: 'application/pdf'
+      };
+
+      console.log('✅ BAP: Payload JSON préparé', { 
+        recipient, 
+        fileName, 
+        fileSize: fileBuffer.length 
       });
-      formData.append('recipient', recipient);
-      
-      console.log('✅ BAP: FormData créé avec succès');
 
       // Envoyer vers le webhook n8n
       const webhookUrl = 'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d';
@@ -157,9 +153,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const response = await fetch(webhookUrl, {
         method: 'POST',
-        body: formData,
-        signal: controller.signal,
-        headers: formData.getHeaders()
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(webhookPayload),
+        signal: controller.signal
       });
 
       clearTimeout(timeoutId);
