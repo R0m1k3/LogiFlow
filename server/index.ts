@@ -3,14 +3,15 @@ import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic } from "./vite.js";
 
 // Run database migrations first
-if (process.env.NODE_ENV === 'production') {
-  console.log('🔄 [STARTUP] Running database migrations...');
-  try {
-    const { runMigrations } = await import('./migrations.js');
-    await runMigrations();
-    console.log('✅ [STARTUP] Database migrations completed');
-  } catch (error) {
-    console.error('❌ [STARTUP] Database migrations failed:', error);
+console.log('🔄 [STARTUP] Running database migrations...');
+try {
+  const { runMigrations } = await import('./migrations.js');
+  await runMigrations();
+  console.log('✅ [STARTUP] Database migrations completed');
+} catch (error) {
+  console.error('❌ [STARTUP] Database migrations failed:', error);
+  // Ne pas arrêter l'app en développement
+  if (process.env.NODE_ENV === 'production') {
     process.exit(1);
   }
 }
