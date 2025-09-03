@@ -612,23 +612,85 @@ export default function Sidebar() {
 
       {/* Modal BAP */}
       <Dialog open={showBapModal} onOpenChange={setShowBapModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileUp className="h-5 w-5" />
+              <FileUp className="h-5 w-5 text-blue-600" />
               Envoi BAP
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="pdf-upload">Fichier PDF</Label>
-              <Input
-                id="pdf-upload"
-                type="file"
-                accept=".pdf"
-                onChange={handleFileChange}
-                className="mt-1"
-              />
+          <div className="space-y-6">
+            {/* Zone de sélection de fichier améliorée */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Fichier PDF à envoyer</Label>
+              
+              {/* Zone de drop et bouton de sélection */}
+              <div className="relative">
+                <input
+                  id="pdf-upload"
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+                
+                <div className={`
+                  border-2 border-dashed rounded-lg p-6 text-center transition-colors
+                  ${selectedFile 
+                    ? 'border-green-300 bg-green-50' 
+                    : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
+                  }
+                `}>
+                  {selectedFile ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center">
+                        <FileUp className="h-8 w-8 text-green-600" />
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium text-green-700">{selectedFile.name}</p>
+                        <p className="text-gray-600">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          const input = document.getElementById('pdf-upload') as HTMLInputElement;
+                          if (input) input.value = '';
+                        }}
+                        className="mt-2"
+                      >
+                        Changer de fichier
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center">
+                        <FileUp className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium text-gray-700">Cliquez pour sélectionner un fichier PDF</p>
+                        <p className="text-gray-500">ou glissez-déposez votre fichier ici</p>
+                      </div>
+                      <div className="mt-3">
+                        <Button variant="outline" className="pointer-events-none">
+                          <FileUp className="h-4 w-4 mr-2" />
+                          Choisir un fichier PDF
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {selectedFile && (
+                <div className="text-xs text-gray-500 flex items-center gap-1">
+                  <svg className="h-3 w-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Fichier PDF sélectionné avec succès
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="recipient">Envoyer à</Label>
