@@ -41,6 +41,31 @@ export default function Dashboard() {
     },
   });
 
+  // Statistiques annuelles pour la carte de délai moyen
+  const { data: yearlyStats } = useQuery({
+    queryKey: ['/api/stats/yearly', selectedStoreId],
+    queryFn: async () => {
+      const currentDate = new Date();
+      const params = new URLSearchParams({
+        year: currentDate.getFullYear().toString(),
+      });
+      
+      if (selectedStoreId && user?.role === 'admin') {
+        params.append('storeId', selectedStoreId.toString());
+      }
+      
+      const response = await fetch(`/api/stats/yearly?${params.toString()}`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch yearly stats');
+      }
+      
+      return response.json();
+    },
+  });
+
   // Construire les URLs pour récupérer toutes les données (pas de filtrage par date)
   const ordersUrl = `/api/orders${selectedStoreId && user?.role === 'admin' ? `?storeId=${selectedStoreId}` : ''}`;
   const deliveriesUrl = `/api/deliveries${selectedStoreId && user?.role === 'admin' ? `?storeId=${selectedStoreId}` : ''}`;
@@ -247,7 +272,7 @@ export default function Dashboard() {
 
   // Calculs pour les statistiques
   const pendingOrdersCount = Array.isArray(allOrders) ? allOrders.filter((order: any) => order.status === 'pending').length : 0;
-  const averageDeliveryTime = Math.round(stats?.averageDeliveryTime || 0);
+  const averageDeliveryTime = Math.round(yearlyStats?.averageDeliveryTime || 0);
   const deliveredThisMonth = Array.isArray(allDeliveries) ? allDeliveries.filter((delivery: any) => {
     const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
     if (!deliveryDate) return false;
@@ -405,8 +430,8 @@ export default function Dashboard() {
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs sm:text-sm font-medium text-gray-600">Délai moyen (jours)</p>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{averageDeliveryTime}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Délai commande → livraison</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{averageDeliveryTime} jours</p>
               </div>
               <div className="h-10 w-10 sm:h-12 sm:w-12 bg-blue-100 flex items-center justify-center rounded-lg">
                 <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
