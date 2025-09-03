@@ -66,6 +66,9 @@ import {
   type InsertWeatherData,
   type WeatherSettings,
   type InsertWeatherSettings,
+  webhookBapConfig,
+  type WebhookBapConfig,
+  type InsertWebhookBapConfig,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql, gte, lte, lt, gt, or, isNull, isNotNull, asc, ne } from "drizzle-orm";
@@ -219,6 +222,11 @@ export interface IStorage {
   updateWeatherData(id: number, data: Partial<InsertWeatherData>): Promise<WeatherData>;
   deleteOldWeatherData(daysToKeep: number): Promise<void>;
   clearWeatherCache(): Promise<void>;
+
+  // Webhook BAP Configuration
+  getWebhookBapConfig(): Promise<WebhookBapConfig | undefined>;
+  createWebhookBapConfig(config: InsertWebhookBapConfig): Promise<WebhookBapConfig>;
+  updateWebhookBapConfig(id: number, config: Partial<InsertWebhookBapConfig>): Promise<WebhookBapConfig>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2211,6 +2219,29 @@ export class DatabaseStorage implements IStorage {
     await db.delete(weatherData);
     console.log('🧹 Weather cache cleared due to location change');
   }
+
+  // Webhook BAP Configuration
+  async getWebhookBapConfig(): Promise<WebhookBapConfig | undefined> {
+    const [config] = await db.select().from(webhookBapConfig).limit(1);
+    return config;
+  }
+
+  async createWebhookBapConfig(configData: InsertWebhookBapConfig): Promise<WebhookBapConfig> {
+    const [config] = await db
+      .insert(webhookBapConfig)
+      .values(configData)
+      .returning();
+    return config;
+  }
+
+  async updateWebhookBapConfig(id: number, configData: Partial<InsertWebhookBapConfig>): Promise<WebhookBapConfig> {
+    const [config] = await db
+      .update(webhookBapConfig)
+      .set({ ...configData, updatedAt: new Date() })
+      .where(eq(webhookBapConfig.id, id))
+      .returning();
+    return config;
+  }
 }
 
 // MemStorage class for development
@@ -3857,6 +3888,38 @@ export class MemStorage implements IStorage {
   async clearWeatherCache(): Promise<void> {
     // In development, this is a no-op
     console.log('🧹 DEV: Weather cache cleared due to location change');
+  }
+
+  // Webhook BAP Configuration
+  async getWebhookBapConfig(): Promise<WebhookBapConfig | undefined> {
+    // En développement, retourner une config par défaut
+    return {
+      id: 1,
+      name: "Configuration BAP",
+      webhookUrl: "https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d",
+      description: "Configuration par défaut pour développement",
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  async createWebhookBapConfig(config: InsertWebhookBapConfig): Promise<WebhookBapConfig> {
+    return {
+      id: 1,
+      ...config,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  async updateWebhookBapConfig(id: number, config: Partial<InsertWebhookBapConfig>): Promise<WebhookBapConfig> {
+    const existing = await this.getWebhookBapConfig();
+    return {
+      ...existing!,
+      ...config,
+      updatedAt: new Date()
+    };
   }
 
   // Announcement operations

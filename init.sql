@@ -380,6 +380,26 @@ CREATE INDEX "idx_sav_ticket_history_ticket_id" ON "sav_ticket_history" USING bt
 CREATE INDEX "idx_weather_data_date_year" ON "weather_data" USING btree ("date" text_ops, "is_current_year" bool_ops);
 CREATE INDEX "idx_invoice_verification_expires" ON "invoice_verification_cache" USING btree ("expires_at" timestamp_ops);
 
+-- Table pour configuration webhook BAP
+CREATE TABLE IF NOT EXISTS "webhook_bap_config" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "name" varchar(100) DEFAULT 'Configuration BAP' NOT NULL,
+        "webhook_url" text NOT NULL,
+        "description" text,
+        "is_active" boolean DEFAULT true NOT NULL,
+        "created_at" timestamp DEFAULT now(),
+        "updated_at" timestamp DEFAULT now()
+);
+
+-- Configuration par défaut webhook BAP
+INSERT INTO "webhook_bap_config" ("name", "webhook_url", "description", "is_active")
+VALUES (
+  'Configuration BAP',
+  'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d',
+  'Configuration par défaut pour l''envoi des fichiers BAP vers n8n',
+  true
+) ON CONFLICT DO NOTHING;
+
 -- Commentaires sur les tables
 COMMENT ON TABLE "announcements" IS 'Admin-managed announcements/information system';
 COMMENT ON COLUMN "announcements"."priority" IS 'Priority level: normal, important, urgent';
@@ -387,3 +407,4 @@ COMMENT ON COLUMN "announcements"."group_id" IS 'NULL for global announcements, 
 COMMENT ON TABLE "sav_tickets" IS 'Service après-vente tickets management';
 COMMENT ON TABLE "weather_data" IS 'Cache for weather API data';
 COMMENT ON TABLE "invoice_verification_cache" IS 'Cache for NocoDB invoice verification results';
+COMMENT ON TABLE "webhook_bap_config" IS 'Configuration pour webhook BAP n8n';
