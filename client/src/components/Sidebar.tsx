@@ -612,47 +612,130 @@ export default function Sidebar() {
 
       {/* Modal BAP */}
       <Dialog open={showBapModal} onOpenChange={setShowBapModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileUp className="h-5 w-5" />
+              <FileUp className="h-5 w-5 text-blue-600" />
               Envoi BAP
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="pdf-upload">Fichier PDF</Label>
-              <Input
-                id="pdf-upload"
+          <div className="space-y-6">
+            {/* NOUVELLE zone de sélection de fichier */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-gray-800">Fichier PDF</Label>
+              
+              {!selectedFile ? (
+                <div 
+                  className="border-2 border-dashed border-blue-300 rounded-xl p-8 bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all cursor-pointer group"
+                  onClick={() => document.getElementById('hidden-file-input')?.click()}
+                >
+                  <div className="text-center space-y-4">
+                    <div className="mx-auto h-16 w-16 bg-blue-500 rounded-full flex items-center justify-center group-hover:bg-blue-600 transition-colors">
+                      <FileUp className="h-8 w-8 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                        Cliquez ici pour choisir un fichier PDF
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Ou glissez-déposez votre fichier dans cette zone
+                      </p>
+                      <div className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                        <FileUp className="h-5 w-5 mr-2" />
+                        Parcourir les fichiers
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-green-300 rounded-xl p-6 bg-gradient-to-br from-green-50 to-emerald-50">
+                  <div className="flex items-center space-x-4">
+                    <div className="h-12 w-12 bg-green-500 rounded-full flex items-center justify-center">
+                      <FileUp className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-green-800">{selectedFile.name}</h4>
+                      <p className="text-sm text-green-600">
+                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB • PDF
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        const input = document.getElementById('hidden-file-input') as HTMLInputElement;
+                        if (input) input.value = '';
+                      }}
+                      className="border-green-300 text-green-700 hover:bg-green-100"
+                    >
+                      Changer
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Input caché */}
+              <input
+                id="hidden-file-input"
                 type="file"
                 accept=".pdf"
                 onChange={handleFileChange}
-                className="mt-1"
+                className="hidden"
               />
             </div>
-            <div>
-              <Label htmlFor="recipient">Envoyer à</Label>
+            {/* Sélection destinataire améliorée */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-gray-800">Envoyer à</Label>
               <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
-                <SelectTrigger id="recipient" className="mt-1">
-                  <SelectValue placeholder="Sélectionner un destinataire" />
+                <SelectTrigger className="h-12 border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+                  <SelectValue placeholder="🎯 Choisir le destinataire" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Prissela">Prissela</SelectItem>
-                  <SelectItem value="Célia">Célia</SelectItem>
+                  <SelectItem value="Prissela" className="py-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-purple-600">P</span>
+                      </div>
+                      <span className="font-medium">Prissela</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Célia" className="py-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-8 w-8 bg-pink-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-pink-600">C</span>
+                      </div>
+                      <span className="font-medium">Célia</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowBapModal(false)}>
+            {/* Boutons améliorés */}
+            <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowBapModal(false)}
+                className="flex-1 h-12 border-2 border-gray-200 hover:border-gray-300"
+              >
                 Annuler
               </Button>
               <Button 
                 onClick={handleSendBap}
                 disabled={!selectedFile || !selectedRecipient || isUploading}
-                className="flex items-center gap-2"
+                className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium"
               >
-                <Send className="h-4 w-4" />
-                {isUploading ? 'Envoi...' : 'Envoyer'}
+                {isUploading ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    Envoi en cours...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Envoyer le BAP
+                  </>
+                )}
               </Button>
             </div>
           </div>
