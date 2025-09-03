@@ -88,6 +88,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error: any) {
       console.error('❌ Erreur récupération config webhook BAP:', error);
+      
+      // Si la table n'existe pas, retourner une configuration par défaut
+      if (error.code === '42P01') { // Relation does not exist
+        console.log('⚠️ Table webhook_bap_config n\'existe pas, retour config par défaut');
+        return res.json({
+          id: 1,
+          name: "Configuration BAP",
+          webhookUrl: "https://workflow.ffnancy.fr/webhook-test/a3d03176-b72f-412d-8fb9-f920b9fbab4d",
+          description: "Configuration par défaut (table non créée)",
+          isActive: true,
+          needsTableCreation: true
+        });
+      }
+      
       res.status(500).json({ error: 'Erreur serveur', details: error.message });
     }
   });
