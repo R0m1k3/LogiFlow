@@ -1,0 +1,235 @@
+Administration
+
+User-related
+
+
+Environment-related
+
+Registries
+
+Logs
+
+Notifications
+
+Settings
+
+New version available 2.33.1
+DismissSee what's new
+Community Edition
+2.27.6 LTS
+Containers>logiflow-logiflow-1>Logs
+Container logs
+
+
+admin
+Log viewer settings
+Auto-refresh logs
+Wrap lines
+Display timestamps
+Fetch
+All logs
+Search
+Filter...
+Lines
+100
+Actions
+ 
+ 
+ 
+      
+  code: '42703',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '183',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_target.c',
+
+  line: '1075',
+
+  routine: 'checkInsertTargets'
+
+}
+
+❌ Erreur sauvegarde cache not found BL: error: column "is_reconciled" of relation "invoice_verification_cache" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.createInvoiceVerificationCache (file:///app/dist/index.js:2193:27)
+
+    at async InvoiceVerificationService.verifyInvoiceByBL (file:///app/dist/index.js:4947:15)
+
+    at async file:///app/dist/index.js:6758:18 {
+
+  length: 153,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '183',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_target.c',
+
+  line: '1075',
+
+  routine: 'checkInsertTargets'
+
+}
+
+🔗 PRODUCTION: getOrder #58 found 1 associated deliveries
+
+✅ PRODUCTION: getDelivery #88 found associated order #58 with status: delivered
+
+POST /api/deliveries/88/verify-invoice 403 in 1919ms
+
+❌ Erreur création cache: error: column "is_reconciled" of relation "invoice_verification_cache" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.createInvoiceVerificationCache (file:///app/dist/index.js:2193:27)
+
+    at async InvoiceVerificationService.verifyInvoiceByBL (file:///app/dist/index.js:4947:15)
+
+    at async file:///app/dist/index.js:6758:18 {
+
+  length: 153,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '183',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_target.c',
+
+  line: '1075',
+
+  routine: 'checkInsertTargets'
+
+}
+
+❌ Erreur sauvegarde cache not found BL: error: column "is_reconciled" of relation "invoice_verification_cache" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.createInvoiceVerificationCache (file:///app/dist/index.js:2193:27)
+
+    at async InvoiceVerificationService.verifyInvoiceByBL (file:///app/dist/index.js:4947:15)
+
+    at async file:///app/dist/index.js:6758:18 {
+
+  length: 153,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '183',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_target.c',
+
+  line: '1075',
+
+  routine: 'checkInsertTargets'
+
+}
+
+✅ Résultat vérification: {
+
+  exists: false,
+
+  matchType: 'none',
+
+  errorMessage: 'Aucun BL correspondant trouvé dans NocoDB'
+

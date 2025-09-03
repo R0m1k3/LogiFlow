@@ -80,28 +80,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      console.log('🔍 [DEBUG] Groups request:', {
-        userId,
-        userRole: user.role,
-        userGroupsCount: (user as any).userGroups?.length || 0,
-        userGroups: (user as any).userGroups?.map((ug: any) => ({ 
-          groupId: ug.groupId, 
-          groupName: ug.group?.name 
-        })) || []
-      });
-
       // Only admin sees all groups, all other roles (manager, employee, directeur) see only their assigned groups
       if (user.role === 'admin') {
         const groups = await storage.getGroups();
-        console.log('🔍 [DEBUG] Admin - returning all groups:', groups.length);
         res.json(groups);
       } else {
         const userGroups = (user as any).userGroups?.map((ug: any) => ug.group).filter(Boolean) || [];
-        console.log('🔍 [DEBUG] Non-admin - returning filtered groups:', {
-          role: user.role,
-          filteredGroupsCount: userGroups.length,
-          groups: userGroups.map((g: any) => ({ id: g.id, name: g.name }))
-        });
         res.json(userGroups);
       }
     } catch (error) {
@@ -694,15 +678,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Deliveries API called with:', { startDate, endDate, storeId, withBL, userRole: user.role });
 
-      if (user.role === 'admin' || user.role === 'directeur') {
+      if (user.role === 'admin') {
         let groupIds: number[] | undefined;
         
-        // If admin/directeur selected a specific store, filter by it
+        // If admin selected a specific store, filter by it
         if (storeId) {
           groupIds = [parseInt(storeId as string)];
-          console.log('🔍 Admin/Directeur deliveries filtering by store:', { storeId, groupIds, role: user.role });
+          console.log('🔍 Admin deliveries filtering by store:', { storeId, groupIds, role: user.role });
         } else {
-          console.log('🔍 Admin/Directeur deliveries - showing all stores', { role: user.role });
+          console.log('🔍 Admin deliveries - showing all stores', { role: user.role });
         }
         
         // Only filter by date if both startDate and endDate are provided
@@ -1038,9 +1022,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      if (user.role !== 'admin') {
+      // Admin and directeur have access to all deliveries, others must be in the same group
+      if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(delivery.groupId)) {
+          console.log('🚫 Access denied - User groups check:', {
+            userId: user.id,
+            userRole: user.role,
+            userGroupIds,
+            deliveryGroupId: delivery.groupId,
+            deliverySupplier: delivery.supplier?.name
+          });
           return res.status(403).json({ message: "Access denied to this group" });
         }
       }
