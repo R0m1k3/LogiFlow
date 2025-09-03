@@ -7,7 +7,8 @@ import {
   Server,
   Bug,
   Cloud,
-  Send
+  Send,
+  Code
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +20,7 @@ import NocoDBConfig from "./NocoDBConfig";
 import DatabaseDebug from "./DatabaseDebug";
 import WeatherSettings from "./WeatherSettings";
 import WebhookBAPConfig from "./WebhookBAPConfig";
+import SQLExecutor from "./SQLExecutor";
 
 export default function Utilities() {
   const { user } = useAuthUnified();
@@ -38,9 +40,10 @@ export default function Utilities() {
   const canDebugDatabase = user?.role === 'admin';
   const canManageWeather = user?.role === 'admin';
   const canManageWebhookBAP = user?.role === 'admin';
+  const canExecuteSQL = user?.role === 'admin';
 
   // Si l'utilisateur n'a aucune permission, afficher le message d'accès refusé
-  if (!canManageBackups && !canManageNocoDB && !canDebugDatabase && !canManageWeather && !canManageWebhookBAP) {
+  if (!canManageBackups && !canManageNocoDB && !canDebugDatabase && !canManageWeather && !canManageWebhookBAP && !canExecuteSQL) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Card className="w-96">
@@ -76,7 +79,7 @@ export default function Utilities() {
       {/* Content avec onglets */}
       <div className="flex-1 p-6 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             {canManageBackups && (
               <TabsTrigger value="backups" className="flex items-center gap-2">
                 <Database className="w-4 h-4" />
@@ -105,6 +108,12 @@ export default function Utilities() {
               <TabsTrigger value="webhookbap" className="flex items-center gap-2">
                 <Send className="w-4 h-4" />
                 Configuration BAP
+              </TabsTrigger>
+            )}
+            {canExecuteSQL && (
+              <TabsTrigger value="sql" className="flex items-center gap-2">
+                <Code className="w-4 h-4" />
+                Exécution SQL
               </TabsTrigger>
             )}
           </TabsList>
@@ -146,6 +155,14 @@ export default function Utilities() {
             <TabsContent value="webhookbap" className="flex-1 overflow-hidden">
               <div className="h-full bg-gray-50 -m-6 p-6">
                 <WebhookBAPConfig />
+              </div>
+            </TabsContent>
+          )}
+
+          {canExecuteSQL && (
+            <TabsContent value="sql" className="flex-1 overflow-hidden">
+              <div className="h-full bg-gray-50 -m-6 p-6">
+                <SQLExecutor />
               </div>
             </TabsContent>
           )}
