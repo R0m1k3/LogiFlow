@@ -1038,11 +1038,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
+      // Admin has access to all deliveries, others must be in the same group
       if (user.role !== 'admin') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(delivery.groupId)) {
+          console.log('🚫 Access denied - User groups check:', {
+            userId: user.id,
+            userRole: user.role,
+            userGroupIds,
+            deliveryGroupId: delivery.groupId,
+            deliverySupplier: delivery.supplier?.name
+          });
           return res.status(403).json({ message: "Access denied to this group" });
         }
+      } else {
+        console.log('✅ Admin access granted for delivery:', {
+          userId: user.id,
+          deliveryId: delivery.id,
+          deliveryGroupId: delivery.groupId,
+          deliverySupplier: delivery.supplier?.name
+        });
       }
 
       const { invoiceReference, blNumber, forceRefresh } = req.body;
