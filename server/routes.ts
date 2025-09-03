@@ -49,6 +49,10 @@ import { eq, desc, or, isNull } from "drizzle-orm";
 import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
 import { weatherService } from "./weatherService.js";
+import multer from "multer";
+import fetch from "node-fetch";
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Detect environment
@@ -67,7 +71,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Route BAP pour envoi webhook n8n
+  app.post('/api/bap/send-webhook', isAuthenticated, upload.single('pdf'), async (req: any, res) => {
+    try {
+      const { recipient } = req.body;
+      const file = req.file;
 
+      if (!file) {
+        return res.status(400).json({ error: 'Aucun fichier PDF fourni' });
+      }
+
+      if (file.mimetype !== 'application/pdf') {
+        return res.status(400).json({ error: 'Le fichier doit être un PDF' });
+      }
+
+      if (!recipient || !['Prissela', 'Célia'].includes(recipient)) {
+        return res.status(400).json({ error: 'Destinataire invalide' });
+      }
+
+      // Vérifier que l'utilisateur est admin
+      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: 'Accès refusé - Admin uniquement' });
+      }
+
+      console.log('📤 BAP: Envoi webhook n8n', { 
+        recipient, 
+        fileName: file.originalname, 
+        fileSize: file.size,
+        userId: user.id
+      });
+
+      // Créer FormData pour l'envoi vers n8n
+      const FormData = (await import('form-data')).default;
+      const formData = new FormData();
+      formData.append('pdf', file.buffer, {
+        filename: file.originalname,
+        contentType: 'application/pdf'
+      });
+      formData.append('recipient', recipient);
+
+      // Envoyer vers le webhook n8n
+      const webhookUrl = 'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d';
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+        headers: formData.getHeaders()
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Erreur webhook: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.text();
+      
+      console.log('✅ BAP: Webhook n8n réussi', { recipient, result: result.substring(0, 100) });
+      
+      res.json({
+        success: true,
+        message: 'Fichier envoyé avec succès',
+        webhookResponse: result
+      });
+
+    } catch (error: any) {
+      console.error('❌ BAP: Erreur envoi webhook n8n:', error);
+      
+      let errorMessage = 'Erreur lors de l\'envoi du fichier';
+      if (error.name === 'AbortError') {
+        errorMessage = 'Timeout - Le traitement a pris trop de temps';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      res.status(500).json({ 
+        error: errorMessage,
+        details: error.message 
+      });
+    }
+  });
 
   // Auth routes handled by authSwitch (local or Replit)
 
