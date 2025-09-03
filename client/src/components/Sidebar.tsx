@@ -95,6 +95,26 @@ export default function Sidebar() {
       return;
     }
 
+    // Récupérer l'URL webhook configurée
+    let webhookUrl = '';
+    try {
+      const configResponse = await fetch('/api/webhook-bap-config', {
+        credentials: 'include'
+      });
+      
+      if (configResponse.ok) {
+        const config = await configResponse.json();
+        webhookUrl = config?.webhookUrl;
+      }
+    } catch (error) {
+      console.warn('Impossible de récupérer la config webhook, utilisation URL par défaut');
+    }
+
+    // Utiliser une URL par défaut si pas de configuration
+    if (!webhookUrl) {
+      webhookUrl = "https://workflow.ffnancy.fr/webhook-test/a3d03176-b72f-412d-8fb9-f920b9fbab4d";
+    }
+
     // Fermer le modal de sélection et ouvrir le modal d'attente
     setShowBapModal(false);
     setShowWaitingModal(true);
@@ -102,47 +122,29 @@ export default function Sidebar() {
     startProcessingTimer();
 
     try {
-      // Convertir le fichier en base64
-      const pdfBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // Enlever le préfixe "data:application/pdf;base64,"
-          const base64 = result.split(',')[1];
-          resolve(base64);
-        };
-        reader.onerror = () => reject(new Error('Erreur lors de la lecture du fichier'));
-        reader.readAsDataURL(selectedFile);
-      });
-
-      const requestBody = {
-        pdfBase64,
-        fileName: selectedFile.name,
-        recipient: selectedRecipient
-      };
+      // Utiliser FormData comme le système de rapprochement qui fonctionne
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('recipient', selectedRecipient);
+      formData.append('type', 'BAP');
+      formData.append('fileName', selectedFile.name);
 
       // Créer un AbortController pour gérer le timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
 
-      const response = await fetch('/api/bap/send-webhook', {
+      // Envoyer directement au webhook (comme le rapprochement)
+      const response = await fetch(webhookUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
+        body: formData,
         signal: controller.signal,
-        credentials: 'include'
       });
 
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
       }
-
-      const result = await response.json();
       
       handleCloseWaitingModal();
       
