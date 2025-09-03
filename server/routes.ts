@@ -678,15 +678,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Deliveries API called with:', { startDate, endDate, storeId, withBL, userRole: user.role });
 
-      if (user.role === 'admin' || user.role === 'directeur') {
+      if (user.role === 'admin') {
         let groupIds: number[] | undefined;
         
-        // If admin/directeur selected a specific store, filter by it
+        // If admin selected a specific store, filter by it
         if (storeId) {
           groupIds = [parseInt(storeId as string)];
-          console.log('🔍 Admin/Directeur deliveries filtering by store:', { storeId, groupIds, role: user.role });
+          console.log('🔍 Admin deliveries filtering by store:', { storeId, groupIds, role: user.role });
         } else {
-          console.log('🔍 Admin/Directeur deliveries - showing all stores', { role: user.role });
+          console.log('🔍 Admin deliveries - showing all stores', { role: user.role });
         }
         
         // Only filter by date if both startDate and endDate are provided
