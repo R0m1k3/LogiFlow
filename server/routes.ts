@@ -49,7 +49,6 @@ import { eq, desc, or, isNull } from "drizzle-orm";
 import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
 import { weatherService } from "./weatherService.js";
-import Busboy from 'busboy';
 import fetch from "node-fetch";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -78,69 +77,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Accès refusé - Admin uniquement' });
       }
 
-      // Parser le multipart/form-data avec busboy
-      const busboy = Busboy({ headers: req.headers });
-      let fileBuffer: Buffer | null = null;
-      let fileName = '';
-      let recipient = '';
-      let mimeType = '';
-
-      const parsePromise = new Promise<void>((resolve, reject) => {
-        busboy.on('file', (fieldname, file, info) => {
-          const { filename, mimeType: fileMimeType } = info;
-          
-          if (fieldname === 'pdf') {
-            fileName = filename;
-            mimeType = fileMimeType;
-            
-            const chunks: Buffer[] = [];
-            file.on('data', (chunk) => {
-              chunks.push(chunk);
-            });
-            
-            file.on('end', () => {
-              fileBuffer = Buffer.concat(chunks);
-            });
-          } else {
-            file.resume(); // Ignorer les autres fichiers
-          }
-        });
-
-        busboy.on('field', (fieldname, val) => {
-          if (fieldname === 'recipient') {
-            recipient = val;
-          }
-        });
-
-        busboy.on('finish', () => {
-          resolve();
-        });
-
-        busboy.on('error', (err) => {
-          reject(err);
-        });
-      });
-
-      req.pipe(busboy);
-      await parsePromise;
+      // Récupérer les données JSON du body
+      const { pdfBase64, fileName, recipient } = req.body;
 
       // Valider les données
-      if (!fileBuffer) {
-        return res.status(400).json({ error: 'Aucun fichier PDF fourni' });
+      if (!pdfBase64 || !fileName || !recipient) {
+        return res.status(400).json({ error: 'Données manquantes: pdfBase64, fileName ou recipient' });
       }
 
-      if (mimeType !== 'application/pdf') {
+      if (!['Prissela', 'Célia'].includes(recipient)) {
+        return res.status(400).json({ error: 'Destinataire invalide' });
+      }
+
+      // Vérifier l'extension PDF
+      if (!fileName.toLowerCase().endsWith('.pdf')) {
         return res.status(400).json({ error: 'Le fichier doit être un PDF' });
       }
 
-      if (!recipient || !['Prissela', 'Célia'].includes(recipient)) {
-        return res.status(400).json({ error: 'Destinataire invalide' });
+      // Décoder le base64 en buffer
+      let fileBuffer: Buffer;
+      try {
+        fileBuffer = Buffer.from(pdfBase64, 'base64');
+      } catch (error) {
+        return res.status(400).json({ error: 'Format base64 invalide' });
       }
 
       console.log('📤 BAP: Envoi webhook n8n', { 
         recipient, 
         fileName, 
-        fileSize: fileBuffer?.length || 0,
+        fileSize: fileBuffer.length,
         userId: user.id
       });
 
