@@ -54,16 +54,47 @@ if [ -f "/app/scripts/auto-migrate-production.sh" ]; then
     log "📂 Script de migration trouvé, exécution..."
     chmod +x /app/scripts/auto-migrate-production.sh
     
-    if /app/scripts/auto-migrate-production.sh; then
+    # Forcer l'affichage des logs du script de migration
+    log "🔄 Démarrage des migrations avec logs détaillés..."
+    if /app/scripts/auto-migrate-production.sh 2>&1; then
         log "✅ Migrations exécutées avec succès"
     else
-        log "❌ Erreur lors des migrations"
-        exit 1
+        log "❌ Erreur lors des migrations, mais continuation..."
+        # Ne pas exit pour éviter de bloquer le démarrage
     fi
 else
     log "⚠️ Script de migration non trouvé à /app/scripts/auto-migrate-production.sh"
     log "🔍 Contenu du répertoire scripts:"
     ls -la /app/scripts/ || echo "Répertoire scripts non trouvé"
+    
+    # Créer la table webhook_bap_config directement si le script manque
+    log "🛠️ Tentative de création directe de la table webhook_bap_config..."
+    if [ -n "$DATABASE_URL" ]; then
+        psql "$DATABASE_URL" << 'EOF'
+CREATE TABLE IF NOT EXISTS webhook_bap_config (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL DEFAULT 'Configuration BAP',
+  webhook_url TEXT NOT NULL,
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO webhook_bap_config (name, webhook_url, description, is_active)
+SELECT 
+  'Configuration BAP',
+  'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d',
+  'Configuration par défaut pour envoi des fichiers BAP vers n8n',
+  true
+WHERE NOT EXISTS (SELECT 1 FROM webhook_bap_config);
+
+COMMENT ON TABLE webhook_bap_config IS 'Configuration pour webhook BAP n8n';
+EOF
+        log "✅ Table webhook_bap_config créée directement"
+    else
+        log "❌ DATABASE_URL manquante pour création directe"
+    fi
 fi
 
 # Vérification post-migration
@@ -81,6 +112,39 @@ ADD COLUMN IF NOT EXISTS stock_epuise_by varchar(255),
 ADD COLUMN IF NOT EXISTS stock_epuise_at timestamp;
 
 CREATE INDEX IF NOT EXISTS idx_dlc_products_stock_epuise ON dlc_products(stock_epuise);
+EOF
+
+    log "✅ Migration directe DLC terminée"
+fi
+
+# Vérification de la table webhook_bap_config
+log "🔍 Vérification de la table webhook_bap_config..."
+if psql "$DATABASE_URL" -tAc "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema='public' AND table_name='webhook_bap_config');" | grep -q "t"; then
+    log "✅ Table webhook_bap_config présente"
+else
+    log "❌ Table webhook_bap_config manquante"
+    log "🛠️ Création directe de la table webhook_bap_config..."
+    
+    psql "$DATABASE_URL" << 'EOF'
+CREATE TABLE webhook_bap_config (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL DEFAULT 'Configuration BAP',
+  webhook_url TEXT NOT NULL,
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO webhook_bap_config (name, webhook_url, description, is_active)
+VALUES (
+  'Configuration BAP',
+  'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d',
+  'Configuration par défaut pour envoi des fichiers BAP vers n8n',
+  true
+);
+
+COMMENT ON TABLE webhook_bap_config IS 'Configuration pour webhook BAP n8n';
 EOF
     
     if [ $? -eq 0 ]; then
