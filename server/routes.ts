@@ -40,8 +40,9 @@ import {
   insertSavTicketHistorySchema,
   insertWeatherDataSchema,
   insertWeatherSettingsSchema,
+  insertWebhookBapConfigSchema,
   users, groups, userGroups, suppliers, orders, deliveries, publicities, publicityParticipations,
-  customerOrders, nocodbConfig, dlcProducts, tasks, invoiceVerificationCache, dashboardMessages
+  customerOrders, nocodbConfig, dlcProducts, tasks, invoiceVerificationCache, dashboardMessages, webhookBapConfig
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";

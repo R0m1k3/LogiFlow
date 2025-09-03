@@ -3896,7 +3896,7 @@ export class MemStorage implements IStorage {
     return {
       id: 1,
       name: "Configuration BAP",
-      webhookUrl: "https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d",
+      webhookUrl: "https://workflow.ffnancy.fr/webhook-test/a3d03176-b72f-412d-8fb9-f920b9fbab4d",
       description: "Configuration par défaut pour développement",
       isActive: true,
       createdAt: new Date(),
