@@ -131,6 +131,14 @@ export interface IStorage {
     totalPalettes: number;
     totalPackages: number;
   }>;
+  getYearlyStats(year: number, groupIds?: number[]): Promise<{
+    ordersCount: number;
+    deliveriesCount: number;
+    pendingOrdersCount: number;
+    averageDeliveryTime: number;
+    totalPalettes: number;
+    totalPackages: number;
+  }>;
 
   // Publicity operations
   getPublicities(year?: number, groupIds?: number[]): Promise<PublicityWithRelations[]>;
@@ -1194,6 +1202,144 @@ export class DatabaseStorage implements IStorage {
 
     } catch (error) {
       console.error('❌ Erreur calcul statistiques:', error);
+      // Retourner des zéros en cas d'erreur pour éviter un crash
+      return {
+        ordersCount: 0,
+        deliveriesCount: 0,
+        pendingOrdersCount: 0,
+        averageDeliveryTime: 0,
+        totalPalettes: 0,
+        totalPackages: 0,
+      };
+    }
+  }
+
+  // Statistics annuelles
+  async getYearlyStats(year: number, groupIds?: number[]): Promise<{
+    ordersCount: number;
+    deliveriesCount: number;
+    pendingOrdersCount: number;
+    averageDeliveryTime: number;
+    totalPalettes: number;
+    totalPackages: number;
+  }> {
+    // En mode développement avec MemStorage, retourner des statistiques simulées
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📊 Mode développement - statistiques annuelles simulées');
+      return {
+        ordersCount: 144, // 12 mois * 12
+        deliveriesCount: 96, // 12 mois * 8  
+        pendingOrdersCount: 18, // 12 mois * 1.5
+        averageDeliveryTime: 2.8, // Délai moyen annuel
+        totalPalettes: 540, // 12 mois * 45
+        totalPackages: 1872, // 12 mois * 156
+      };
+    }
+
+    // En production, calculer les vraies statistiques sur l'année
+    const startDate = `${year}-01-01`;
+    const endDate = `${year + 1}-01-01`;
+
+    try {
+      console.log('📊 Calcul statistiques annuelles:', { year, startDate, endDate, groupIds });
+
+      // Construire les conditions pour le filtrage par groupe
+      let ordersWhereCondition = and(
+        gte(orders.plannedDate, startDate),
+        lt(orders.plannedDate, endDate)
+      );
+      let deliveriesWhereCondition = and(
+        gte(deliveries.deliveredDate, sql`${startDate}::timestamp`),
+        lt(deliveries.deliveredDate, sql`${endDate}::timestamp`)
+      );
+
+      // Ajouter le filtre par groupe si spécifié
+      if (groupIds && groupIds.length > 0) {
+        ordersWhereCondition = and(ordersWhereCondition, inArray(orders.groupId, groupIds));
+        deliveriesWhereCondition = and(deliveriesWhereCondition, inArray(deliveries.groupId, groupIds));
+      }
+
+      // Compter les commandes de l'année
+      const ordersResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(orders)
+        .where(ordersWhereCondition);
+
+      // Compter les livraisons de l'année
+      const deliveriesResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(deliveries)
+        .where(deliveriesWhereCondition);
+
+      // Commandes en attente (sans date de livraison ou pas encore livrées)
+      let pendingWhereCondition = eq(orders.status, 'pending');
+      if (groupIds && groupIds.length > 0) {
+        pendingWhereCondition = and(pendingWhereCondition, inArray(orders.groupId, groupIds)) as any;
+      }
+
+      const pendingResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(orders)
+        .where(pendingWhereCondition);
+
+      // Calculer les totaux de palettes et colis de l'année (SEULEMENT livraisons delivered)
+      let deliveredWhereCondition = and(
+        gte(deliveries.deliveredDate, sql`${startDate}::timestamp`),
+        lt(deliveries.deliveredDate, sql`${endDate}::timestamp`),
+        eq(deliveries.status, 'delivered'),
+        isNotNull(deliveries.deliveredDate)
+      );
+
+      // Ajouter le filtre par groupe pour les livraisons delivered
+      if (groupIds && groupIds.length > 0) {
+        deliveredWhereCondition = and(deliveredWhereCondition, inArray(deliveries.groupId, groupIds));
+      }
+
+      // NOUVEAU: Calculer le délai moyen entre la date de commande et la date de livraison
+      // Uniquement pour les livraisons qui ont une commande liée
+      const deliveriesStatsResult = await db
+        .select({
+          totalPalettes: sql<number>`COALESCE(SUM(CAST(${deliveries.quantity} as INTEGER)), 0)`,
+          totalPackages: sql<number>`COALESCE(COUNT(*), 0)`,
+          avgDelay: sql<number>`COALESCE(AVG(EXTRACT(DAY FROM (${deliveries.deliveredDate} - ${orders.plannedDate}))), 0)`
+        })
+        .from(deliveries)
+        .innerJoin(orders, eq(deliveries.orderId, orders.id))
+        .where(
+          and(
+            deliveredWhereCondition,
+            isNotNull(deliveries.orderId), // S'assurer qu'il y a une commande liée
+            isNotNull(orders.plannedDate)  // S'assurer que la commande a une date
+          )
+        );
+
+      const ordersCount = Number(ordersResult[0]?.count || 0);
+      const deliveriesCount = Number(deliveriesResult[0]?.count || 0);
+      const pendingOrdersCount = Number(pendingResult[0]?.count || 0);
+      const totalPalettes = Number(deliveriesStatsResult[0]?.totalPalettes || 0);
+      const totalPackages = Number(deliveriesStatsResult[0]?.totalPackages || 0);
+      const averageDeliveryTime = Number(deliveriesStatsResult[0]?.avgDelay || 0);
+
+      console.log('📊 Statistiques annuelles calculées:', {
+        ordersCount,
+        deliveriesCount,
+        pendingOrdersCount,
+        averageDeliveryTime: `${averageDeliveryTime} jours (commande → livraison, livraisons avec commande liée uniquement)`,
+        totalPalettes,
+        totalPackages,
+      });
+
+      return {
+        ordersCount,
+        deliveriesCount,
+        pendingOrdersCount,
+        averageDeliveryTime,
+        totalPalettes,
+        totalPackages,
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur calcul statistiques annuelles:', error);
       // Retourner des zéros en cas d'erreur pour éviter un crash
       return {
         ordersCount: 0,
@@ -2907,7 +3053,27 @@ export class MemStorage implements IStorage {
   async assignUserToGroup(): Promise<UserGroup> { return {} as UserGroup; }
   async removeUserFromGroup(): Promise<void> {}
 
-  async getMonthlyStats(): Promise<any> { return {}; }
+  async getMonthlyStats(): Promise<any> { 
+    return {
+      ordersCount: 12,
+      deliveriesCount: 8,
+      pendingOrdersCount: 3,
+      averageDeliveryTime: 2.5,
+      totalPalettes: 45,
+      totalPackages: 156,
+    };
+  }
+
+  async getYearlyStats(): Promise<any> { 
+    return {
+      ordersCount: 144, // 12 mois * 12
+      deliveriesCount: 96, // 12 mois * 8  
+      pendingOrdersCount: 18, // 12 mois * 1.5
+      averageDeliveryTime: 2.8, // Délai moyen annuel
+      totalPalettes: 540, // 12 mois * 45
+      totalPackages: 1872, // 12 mois * 156
+    };
+  }
 
   async getPublicities(year?: number, groupIds?: number[]): Promise<PublicityWithRelations[]> {
     let publicities = Array.from(this.publicities.values());
