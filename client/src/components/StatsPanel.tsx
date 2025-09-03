@@ -14,8 +14,8 @@ export default function StatsPanel({ currentDate = new Date() }: StatsPanelProps
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
 
-  // Construire l'URL avec les paramètres
-  const statsUrl = `/api/stats/monthly?year=${year}&month=${month}${selectedStoreId ? `&storeId=${selectedStoreId}` : ''}`;
+  // Construire l'URL pour les statistiques annuelles
+  const statsUrl = `/api/stats/yearly?year=${year}${selectedStoreId ? `&storeId=${selectedStoreId}` : ''}`;
 
   const { data: stats, isLoading } = useQuery({
     queryKey: [statsUrl, selectedStoreId], // Include selectedStoreId in key to force refetch
@@ -25,7 +25,7 @@ export default function StatsPanel({ currentDate = new Date() }: StatsPanelProps
       });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch stats');
+        throw new Error('Failed to fetch yearly stats');
       }
       
       return response.json();
@@ -55,7 +55,7 @@ export default function StatsPanel({ currentDate = new Date() }: StatsPanelProps
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center">
           <TrendingUp className="w-5 h-5 text-accent mr-2" />
-          Statistiques du mois
+          Statistiques de l'année
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -91,7 +91,7 @@ export default function StatsPanel({ currentDate = new Date() }: StatsPanelProps
         <div className="mt-3 pt-3 border-t border-gray-200 text-center">
           <div className="text-sm text-gray-600 flex items-center justify-center">
             <Clock className="w-4 h-4 mr-1" />
-            Délai moyen: 
+            Délai commande → livraison: 
             <span className="font-medium text-gray-900 ml-1">
               {stats?.averageDeliveryTime?.toFixed(1) || '0'} jours
             </span>
