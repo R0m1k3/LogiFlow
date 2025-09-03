@@ -80,36 +80,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      console.log('🔍 [DEBUG] Groups request:', {
-        userId,
-        userRole: user.role,
-        userGroupsCount: (user as any).userGroups?.length || 0,
-        userGroups: (user as any).userGroups?.map((ug: any) => ({ 
-          groupId: ug.groupId, 
-          groupName: ug.group?.name 
-        })) || []
-      });
-
       // Only admin sees all groups, all other roles (manager, employee, directeur) see only their assigned groups
       if (user.role === 'admin') {
         const groups = await storage.getGroups();
-        console.log('🔍 [DEBUG] Admin - returning all groups:', groups.length);
         res.json(groups);
       } else {
         const userGroups = (user as any).userGroups?.map((ug: any) => ug.group).filter(Boolean) || [];
-        console.log('🔍 [DEBUG] Non-admin - returning filtered groups:', {
-          role: user.role,
-          filteredGroupsCount: userGroups.length,
-          groups: userGroups.map((g: any) => ({ id: g.id, name: g.name }))
-        });
-        
-        // CRITICAL: Si un directeur n'a aucun groupe assigné, retourner un tableau vide
-        // au lieu de tous les groupes
-        if (user.role === 'directeur' && userGroups.length === 0) {
-          console.log('🚨 [CRITICAL] Directeur has no assigned groups - returning empty array');
-          return res.json([]);
-        }
-        
         res.json(userGroups);
       }
     } catch (error) {
@@ -1046,8 +1022,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      // Admin has access to all deliveries, others must be in the same group
-      if (user.role !== 'admin') {
+      // Admin and directeur have access to all deliveries, others must be in the same group
+      if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(delivery.groupId)) {
           console.log('🚫 Access denied - User groups check:', {
@@ -1059,13 +1035,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           return res.status(403).json({ message: "Access denied to this group" });
         }
-      } else {
-        console.log('✅ Admin access granted for delivery:', {
-          userId: user.id,
-          deliveryId: delivery.id,
-          deliveryGroupId: delivery.groupId,
-          deliverySupplier: delivery.supplier?.name
-        });
       }
 
       const { invoiceReference, blNumber, forceRefresh } = req.body;
