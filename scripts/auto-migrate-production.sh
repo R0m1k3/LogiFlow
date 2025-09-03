@@ -79,4 +79,36 @@ else
     echo "ℹ️ [AUTO-MIGRATE] Colonnes stock épuisé existent déjà"
 fi
 
-echo "✅ [AUTO-MIGRATE] Migration terminée!"
+# Vérifier si la table webhook_bap_config existe
+echo "🔄 [AUTO-MIGRATE] Vérification de la table webhook_bap_config..."
+if psql "$DATABASE_URL" -tAc "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema='public' AND table_name='webhook_bap_config');" | grep -q "f"; then
+    echo "🔧 [AUTO-MIGRATE] Création de la table webhook_bap_config..."
+    psql "$DATABASE_URL" << 'EOF'
+CREATE TABLE webhook_bap_config (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL DEFAULT 'Configuration BAP',
+  webhook_url TEXT NOT NULL,
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Configuration par défaut webhook BAP
+INSERT INTO webhook_bap_config (name, webhook_url, description, is_active)
+VALUES (
+  'Configuration BAP',
+  'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d',
+  'Configuration par défaut pour envoi des fichiers BAP vers n8n',
+  true
+);
+
+-- Commentaire sur la table
+COMMENT ON TABLE webhook_bap_config IS 'Configuration pour webhook BAP n8n';
+EOF
+    echo "✅ [AUTO-MIGRATE] Table webhook_bap_config créée avec succès"
+else
+    echo "ℹ️ [AUTO-MIGRATE] Table webhook_bap_config existe déjà - aucune action nécessaire"
+fi
+
+echo "✅ [AUTO-MIGRATE] Migration terminée avec succès - webhook_bap_config incluse!"
