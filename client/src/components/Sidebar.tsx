@@ -620,101 +620,122 @@ export default function Sidebar() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-6">
-            {/* Zone de sélection de fichier améliorée */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Fichier PDF à envoyer</Label>
+            {/* NOUVELLE zone de sélection de fichier */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-gray-800">Fichier PDF</Label>
               
-              {/* Zone de drop et bouton de sélection */}
-              <div className="relative">
-                <input
-                  id="pdf-upload"
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                />
-                
-                <div className={`
-                  border-2 border-dashed rounded-lg p-6 text-center transition-colors
-                  ${selectedFile 
-                    ? 'border-green-300 bg-green-50' 
-                    : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'
-                  }
-                `}>
-                  {selectedFile ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center">
-                        <FileUp className="h-8 w-8 text-green-600" />
-                      </div>
-                      <div className="text-sm">
-                        <p className="font-medium text-green-700">{selectedFile.name}</p>
-                        <p className="text-gray-600">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setSelectedFile(null);
-                          const input = document.getElementById('pdf-upload') as HTMLInputElement;
-                          if (input) input.value = '';
-                        }}
-                        className="mt-2"
-                      >
-                        Changer de fichier
-                      </Button>
+              {!selectedFile ? (
+                <div 
+                  className="border-2 border-dashed border-blue-300 rounded-xl p-8 bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all cursor-pointer group"
+                  onClick={() => document.getElementById('hidden-file-input')?.click()}
+                >
+                  <div className="text-center space-y-4">
+                    <div className="mx-auto h-16 w-16 bg-blue-500 rounded-full flex items-center justify-center group-hover:bg-blue-600 transition-colors">
+                      <FileUp className="h-8 w-8 text-white" />
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center">
-                        <FileUp className="h-8 w-8 text-gray-400" />
-                      </div>
-                      <div className="text-sm">
-                        <p className="font-medium text-gray-700">Cliquez pour sélectionner un fichier PDF</p>
-                        <p className="text-gray-500">ou glissez-déposez votre fichier ici</p>
-                      </div>
-                      <div className="mt-3">
-                        <Button variant="outline" className="pointer-events-none">
-                          <FileUp className="h-4 w-4 mr-2" />
-                          Choisir un fichier PDF
-                        </Button>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                        Cliquez ici pour choisir un fichier PDF
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Ou glissez-déposez votre fichier dans cette zone
+                      </p>
+                      <div className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                        <FileUp className="h-5 w-5 mr-2" />
+                        Parcourir les fichiers
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-              
-              {selectedFile && (
-                <div className="text-xs text-gray-500 flex items-center gap-1">
-                  <svg className="h-3 w-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Fichier PDF sélectionné avec succès
+              ) : (
+                <div className="border-2 border-green-300 rounded-xl p-6 bg-gradient-to-br from-green-50 to-emerald-50">
+                  <div className="flex items-center space-x-4">
+                    <div className="h-12 w-12 bg-green-500 rounded-full flex items-center justify-center">
+                      <FileUp className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-green-800">{selectedFile.name}</h4>
+                      <p className="text-sm text-green-600">
+                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB • PDF
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        const input = document.getElementById('hidden-file-input') as HTMLInputElement;
+                        if (input) input.value = '';
+                      }}
+                      className="border-green-300 text-green-700 hover:bg-green-100"
+                    >
+                      Changer
+                    </Button>
+                  </div>
                 </div>
               )}
+              
+              {/* Input caché */}
+              <input
+                id="hidden-file-input"
+                type="file"
+                accept=".pdf"
+                onChange={handleFileChange}
+                className="hidden"
+              />
             </div>
-            <div>
-              <Label htmlFor="recipient">Envoyer à</Label>
+            {/* Sélection destinataire améliorée */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-gray-800">Envoyer à</Label>
               <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
-                <SelectTrigger id="recipient" className="mt-1">
-                  <SelectValue placeholder="Sélectionner un destinataire" />
+                <SelectTrigger className="h-12 border-2 border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+                  <SelectValue placeholder="🎯 Choisir le destinataire" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Prissela">Prissela</SelectItem>
-                  <SelectItem value="Célia">Célia</SelectItem>
+                  <SelectItem value="Prissela" className="py-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-purple-600">P</span>
+                      </div>
+                      <span className="font-medium">Prissela</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Célia" className="py-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-8 w-8 bg-pink-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-pink-600">C</span>
+                      </div>
+                      <span className="font-medium">Célia</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowBapModal(false)}>
+            {/* Boutons améliorés */}
+            <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowBapModal(false)}
+                className="flex-1 h-12 border-2 border-gray-200 hover:border-gray-300"
+              >
                 Annuler
               </Button>
               <Button 
                 onClick={handleSendBap}
                 disabled={!selectedFile || !selectedRecipient || isUploading}
-                className="flex items-center gap-2"
+                className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium"
               >
-                <Send className="h-4 w-4" />
-                {isUploading ? 'Envoi...' : 'Envoyer'}
+                {isUploading ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                    Envoi en cours...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Envoyer le BAP
+                  </>
+                )}
               </Button>
             </div>
           </div>
