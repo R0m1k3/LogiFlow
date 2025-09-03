@@ -2,18 +2,20 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic } from "./vite.js";
 
-// Run database migrations first
+// Run database migrations first - FORCER EN PRODUCTION
 console.log('🔄 [STARTUP] Running database migrations...');
+console.log('🔍 [STARTUP] Environment:', process.env.NODE_ENV);
+console.log('🔍 [STARTUP] Has DATABASE_URL:', !!process.env.DATABASE_URL);
+
 try {
   const { runMigrations } = await import('./migrations.js');
   await runMigrations();
   console.log('✅ [STARTUP] Database migrations completed');
 } catch (error) {
   console.error('❌ [STARTUP] Database migrations failed:', error);
-  // Ne pas arrêter l'app en développement
-  if (process.env.NODE_ENV === 'production') {
-    process.exit(1);
-  }
+  console.error('❌ [STARTUP] Error details:', JSON.stringify(error, null, 2));
+  // NE PAS arrêter l'app pour éviter les boucles de redémarrage
+  console.warn('⚠️ [STARTUP] Continuing without migrations to avoid restart loop');
 }
 
 // Initialize weather system
