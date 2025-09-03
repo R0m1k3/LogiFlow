@@ -2,8 +2,11 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic } from "./vite.js";
 
-// Les migrations sont gérées par docker-entrypoint.sh -> auto-migrate-production.sh
-console.log('ℹ️ [STARTUP] Migrations gérées par le script Docker au démarrage du conteneur');
+// Forcer la création de la table webhook_bap_config au démarrage de l'application
+if (process.env.NODE_ENV === 'production') {
+  const { ensureWebhookBapConfigTable } = await import('./createWebhookTable.js');
+  await ensureWebhookBapConfigTable();
+}
 
 // Initialize weather system
 console.log('🌤️ [STARTUP] Initializing weather system...');
