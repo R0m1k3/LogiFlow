@@ -71,9 +71,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route BAP pour envoi webhook n8n
   app.post('/api/bap/send-webhook', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('🔍 BAP: Requête reçue', { 
+        hasUser: !!req.user, 
+        userType: typeof req.user,
+        hasClaims: !!(req.user?.claims),
+        hasId: !!(req.user?.id),
+        bodyKeys: Object.keys(req.body || {})
+      });
+
       // Vérifier que l'utilisateur est admin
-      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+      const userId = req.user?.claims?.sub || req.user?.id;
+      console.log('🔍 BAP: User ID extracted:', userId);
+      
+      if (!userId) {
+        console.error('❌ BAP: No user ID found');
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const user = await storage.getUser(userId);
+      console.log('🔍 BAP: User found:', { id: user?.id, role: user?.role });
+      
       if (!user || user.role !== 'admin') {
+        console.error('❌ BAP: Access denied', { user: user?.role });
         return res.status(403).json({ error: 'Accès refusé - Admin uniquement' });
       }
 
@@ -110,13 +129,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Créer FormData pour l'envoi vers n8n
-      const FormData = (await import('form-data')).default;
+      let FormData;
+      try {
+        FormData = (await import('form-data')).default;
+        console.log('✅ BAP: form-data imported successfully');
+      } catch (error) {
+        console.error('❌ BAP: Erreur import form-data:', error);
+        return res.status(500).json({ error: 'Erreur configuration serveur (form-data)' });
+      }
+
       const formData = new FormData();
       formData.append('pdf', fileBuffer, {
         filename: fileName,
         contentType: 'application/pdf'
       });
       formData.append('recipient', recipient);
+      
+      console.log('✅ BAP: FormData créé avec succès');
 
       // Envoyer vers le webhook n8n
       const webhookUrl = 'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d';
@@ -124,6 +153,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
 
+      console.log('🌐 BAP: Envoi vers webhook n8n...');
+      
       const response = await fetch(webhookUrl, {
         method: 'POST',
         body: formData,
@@ -132,8 +163,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       clearTimeout(timeoutId);
+      
+      console.log('🌐 BAP: Réponse webhook reçue', { status: response.status, ok: response.ok });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ BAP: Erreur webhook', { status: response.status, errorText });
         throw new Error(`Erreur webhook: ${response.status} ${response.statusText}`);
       }
 
@@ -148,7 +183,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error: any) {
-      console.error('❌ BAP: Erreur envoi webhook n8n:', error);
+      console.error('❌ BAP: Erreur complète:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack?.substring(0, 500)
+      });
       
       let errorMessage = 'Erreur lors de l\'envoi du fichier';
       if (error.name === 'AbortError') {
