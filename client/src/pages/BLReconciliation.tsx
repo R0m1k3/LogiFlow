@@ -213,7 +213,7 @@ export default function BLReconciliation() {
     queryKey: ['/api/deliveries/bl', selectedStoreId],
     queryFn: async () => {
       const params = new URLSearchParams({});
-      if (selectedStoreId && user?.role === 'admin') {
+      if (selectedStoreId && (user?.role === 'admin' || user?.role === 'directeur')) {
         params.append('storeId', selectedStoreId.toString());
       }
       
