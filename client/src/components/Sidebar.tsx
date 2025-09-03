@@ -3,6 +3,13 @@ import { useAuthSimple } from "@/hooks/useAuthSimple";
 import { Button } from "@/components/ui/button";
 import { useStore } from "./Layout";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   Store, 
   Calendar, 
@@ -23,7 +30,9 @@ import {
   ChevronRight,
   X,
   Settings,
-  Wrench
+  Wrench,
+  FileUp,
+  Send
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -31,6 +40,125 @@ export default function Sidebar() {
   const [location] = useLocation();
   const { sidebarCollapsed, setSidebarCollapsed, mobileMenuOpen, setMobileMenuOpen } = useStore();
   const isMobile = useIsMobile();
+  const [showBapModal, setShowBapModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedRecipient, setSelectedRecipient] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [showWaitingModal, setShowWaitingModal] = useState(false);
+  const [processingSeconds, setProcessingSeconds] = useState(0);
+  const [processingTimeout, setProcessingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const { toast } = useToast();
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+    } else {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un fichier PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startProcessingTimer = () => {
+    setProcessingSeconds(0);
+    const interval = setInterval(() => {
+      setProcessingSeconds(prev => {
+        if (prev >= 60) {
+          clearInterval(interval);
+          return 60;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    setProcessingTimeout(interval);
+  };
+
+  const handleCloseWaitingModal = () => {
+    setShowWaitingModal(false);
+    setProcessingSeconds(0);
+    if (processingTimeout) {
+      clearTimeout(processingTimeout);
+      setProcessingTimeout(null);
+    }
+  };
+
+  const handleSendBap = async () => {
+    if (!selectedFile || !selectedRecipient) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un fichier PDF et un destinataire",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Fermer le modal de sélection et ouvrir le modal d'attente
+    setShowBapModal(false);
+    setShowWaitingModal(true);
+    setIsUploading(true);
+    startProcessingTimer();
+
+    try {
+      const formData = new FormData();
+      formData.append('pdf', selectedFile);
+      formData.append('recipient', selectedRecipient);
+
+      // Créer un AbortController pour gérer le timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
+
+      const response = await fetch('/api/bap/send-webhook', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+        credentials: 'include'
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      handleCloseWaitingModal();
+      
+      toast({
+        title: "Succès",
+        description: "Fichier BAP envoyé avec succès",
+      });
+
+      // Reset des données
+      setSelectedFile(null);
+      setSelectedRecipient('');
+      
+    } catch (error: any) {
+      handleCloseWaitingModal();
+      
+      let errorMessage = "Impossible d'envoyer le fichier BAP";
+      if (error.name === 'AbortError') {
+        errorMessage = "Le traitement a pris trop de temps (timeout de 60 secondes)";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: "Erreur",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+      // Réouvrir le modal de sélection en cas d'erreur
+      setShowBapModal(true);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Debug logging pour production
   console.log('Sidebar - User:', user);
@@ -162,6 +290,13 @@ export default function Sidebar() {
       label: "Utilitaires", 
       icon: Settings, 
       roles: ["admin"] 
+    },
+    { 
+      path: "#bap", 
+      label: "BAP", 
+      icon: FileUp, 
+      roles: ["admin"],
+      isButton: true
     },
   ];
 
@@ -416,6 +551,24 @@ export default function Sidebar() {
               const Icon = item.icon;
               const active = isActive(item.path);
               
+              if (item.isButton && item.path === '#bap') {
+                return (
+                  <div key={item.path}>
+                    <div
+                      className={`flex items-center cursor-pointer ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 text-gray-700`}
+                      title={sidebarCollapsed ? item.label : undefined}
+                      onClick={() => {
+                        setShowBapModal(true);
+                        if (isMobile) setMobileMenuOpen(false);
+                      }}
+                    >
+                      <Icon className={`h-4 w-4 ${sidebarCollapsed ? '' : 'mr-3'}`} />
+                      {!sidebarCollapsed && item.label}
+                    </div>
+                  </div>
+                );
+              }
+              
               return (
                 <Link key={item.path} href={item.path}>
                   <div
@@ -436,6 +589,81 @@ export default function Sidebar() {
           </div>
         </div>
       )}
+
+      {/* Modal BAP */}
+      <Dialog open={showBapModal} onOpenChange={setShowBapModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileUp className="h-5 w-5" />
+              Envoi BAP
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="pdf-upload">Fichier PDF</Label>
+              <Input
+                id="pdf-upload"
+                type="file"
+                accept=".pdf"
+                onChange={handleFileChange}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="recipient">Envoyer à</Label>
+              <Select value={selectedRecipient} onValueChange={setSelectedRecipient}>
+                <SelectTrigger id="recipient" className="mt-1">
+                  <SelectValue placeholder="Sélectionner un destinataire" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Prissela">Prissela</SelectItem>
+                  <SelectItem value="Célia">Célia</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowBapModal(false)}>
+                Annuler
+              </Button>
+              <Button 
+                onClick={handleSendBap}
+                disabled={!selectedFile || !selectedRecipient || isUploading}
+                className="flex items-center gap-2"
+              >
+                <Send className="h-4 w-4" />
+                {isUploading ? 'Envoi...' : 'Envoyer'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal d'attente */}
+      <Dialog open={showWaitingModal} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Traitement en cours...
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-center">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <div className="text-sm text-gray-600">
+                Envoi du fichier vers le workflow...
+              </div>
+              <div className="text-xs text-gray-500">
+                {processingSeconds < 60 
+                  ? `${processingSeconds}s écoulées`
+                  : '60s+ écoulées'
+                }
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* User Profile & Logout */}
       <div className="border-t border-gray-200 p-4">
