@@ -1022,7 +1022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      if (user.role !== 'admin' && user.role !== 'directeur') {
+      if (user.role !== 'admin') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         if (!userGroupIds.includes(delivery.groupId)) {
           return res.status(403).json({ message: "Access denied to this group" });
