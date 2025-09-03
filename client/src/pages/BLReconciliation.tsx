@@ -539,10 +539,10 @@ export default function BLReconciliation() {
   };
 
   const handleDevalidateReconciliation = async (deliveryId: number) => {
-    if (user?.role !== 'admin') {
+    if (!permissions.canEdit('reconciliation') && !permissions.canValidate('reconciliation')) {
       toast({
         title: "Accès refusé",
-        description: "Seuls les administrateurs peuvent dévalider les rapprochements",
+        description: "Vous n'avez pas les permissions nécessaires pour dévalider les rapprochements",
         variant: "destructive",
       });
       return;
@@ -1019,10 +1019,10 @@ export default function BLReconciliation() {
                 <h4 className="text-sm font-medium text-blue-900">Mode rapprochement automatique</h4>
                 <p className="text-sm text-blue-700 mt-1">
                   Les livraisons de fournisseurs en mode automatique sont validées automatiquement lorsqu'elles ont le statut "delivered" et un numéro de BL.
-                  {user?.role === 'admin' ? (
+                  {(permissions.canEdit('reconciliation') || permissions.canValidate('reconciliation')) ? (
                     " Vous pouvez dévalider ces rapprochements si nécessaire."
                   ) : (
-                    " Seuls les administrateurs peuvent dévalider ces rapprochements."
+                    " Seuls les utilisateurs autorisés peuvent dévalider ces rapprochements."
                   )}
                 </p>
               </div>
@@ -1129,7 +1129,7 @@ export default function BLReconciliation() {
                                     <Upload className="w-4 h-4" />
                                   </button>
                                 )}
-                                {user?.role === 'admin' && (
+                                {(permissions.canEdit('reconciliation') || permissions.canValidate('reconciliation')) && (
                                   <button
                                     onClick={() => handleDevalidateReconciliation(delivery.id)}
                                     className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
