@@ -802,3 +802,25 @@ export type WeatherData = typeof weatherData.$inferSelect;
 export type InsertWeatherData = z.infer<typeof insertWeatherDataSchema>;
 export type WeatherSettings = typeof weatherSettings.$inferSelect;
 export type InsertWeatherSettings = z.infer<typeof insertWeatherSettingsSchema>;
+
+// Configuration Webhook BAP
+export const webhookBapConfig = pgTable("webhook_bap_config", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().default("Configuration BAP"),
+  webhookUrl: text("webhook_url").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Webhook BAP Schemas
+export const insertWebhookBapConfigSchema = createInsertSchema(webhookBapConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Webhook BAP Types
+export type WebhookBapConfig = typeof webhookBapConfig.$inferSelect;
+export type InsertWebhookBapConfig = z.infer<typeof insertWebhookBapConfigSchema>;

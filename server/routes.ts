@@ -68,6 +68,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Routes pour configuration webhook BAP
+  app.get('/api/webhook-bap-config', isAuthenticated, async (req: any, res) => {
+    try {
+      // Vérifier que l'utilisateur est admin
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: 'Accès refusé - Admin uniquement' });
+      }
+
+      const config = await storage.getWebhookBapConfig();
+      res.json(config || null);
+      
+    } catch (error: any) {
+      console.error('❌ Erreur récupération config webhook BAP:', error);
+      res.status(500).json({ error: 'Erreur serveur', details: error.message });
+    }
+  });
+
+  app.post('/api/webhook-bap-config', isAuthenticated, async (req: any, res) => {
+    try {
+      // Vérifier que l'utilisateur est admin
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: 'Accès refusé - Admin uniquement' });
+      }
+
+      // Valider les données avec Zod
+      const validatedData = insertWebhookBapConfigSchema.parse(req.body);
+
+      // Vérifier si une configuration existe déjà
+      const existingConfig = await storage.getWebhookBapConfig();
+      
+      let config: any;
+      if (existingConfig) {
+        // Mettre à jour la configuration existante
+        config = await storage.updateWebhookBapConfig(existingConfig.id, validatedData);
+      } else {
+        // Créer une nouvelle configuration
+        config = await storage.createWebhookBapConfig(validatedData);
+      }
+
+      console.log('✅ Configuration webhook BAP sauvegardée:', { 
+        id: config.id, 
+        name: config.name,
+        isActive: config.isActive 
+      });
+      
+      res.json(config);
+      
+    } catch (error: any) {
+      console.error('❌ Erreur sauvegarde config webhook BAP:', error);
+      res.status(500).json({ error: 'Erreur serveur', details: error.message });
+    }
+  });
+
+  app.post('/api/webhook-bap-config/test', isAuthenticated, async (req: any, res) => {
+    try {
+      // Vérifier que l'utilisateur est admin
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: 'Accès refusé - Admin uniquement' });
+      }
+
+      const { webhookUrl } = req.body;
+      if (!webhookUrl) {
+        return res.status(400).json({ error: 'URL webhook requise' });
+      }
+
+      console.log('🔍 Test webhook BAP:', { url: webhookUrl });
+
+      // Tester la connectivité avec le webhook
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes
+
+      const testResponse = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          test: true,
+          timestamp: new Date().toISOString(),
+          message: 'Test de connectivité depuis LogiFlow'
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      console.log('🌐 Réponse test webhook:', { status: testResponse.status, ok: testResponse.ok });
+
+      if (!testResponse.ok) {
+        throw new Error(`HTTP ${testResponse.status}: ${testResponse.statusText}`);
+      }
+
+      const result = await testResponse.text();
+      
+      res.json({
+        success: true,
+        status: testResponse.status,
+        message: 'Webhook accessible',
+        response: result.substring(0, 200) // Limiter la réponse
+      });
+      
+    } catch (error: any) {
+      console.error('❌ Erreur test webhook BAP:', error);
+      
+      let errorMessage = 'Échec du test de connectivité';
+      if (error.name === 'AbortError') {
+        errorMessage = 'Timeout - Le webhook ne répond pas';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      res.status(500).json({ error: errorMessage, details: error.message });
+    }
+  });
+
   // Route BAP pour envoi webhook n8n
   app.post('/api/bap/send-webhook', isAuthenticated, async (req: any, res) => {
     try {
@@ -143,8 +276,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileSize: fileBuffer.length 
       });
 
-      // Envoyer vers le webhook n8n
-      const webhookUrl = 'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d';
+      // Récupérer l'URL du webhook depuis la configuration
+      const webhookConfig = await storage.getWebhookBapConfig();
+      if (!webhookConfig || !webhookConfig.isActive) {
+        console.error('❌ BAP: Configuration webhook non trouvée ou inactive');
+        return res.status(500).json({ error: 'Configuration webhook BAP non disponible' });
+      }
+
+      const webhookUrl = webhookConfig.webhookUrl;
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
