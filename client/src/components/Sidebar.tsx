@@ -112,7 +112,7 @@ export default function Sidebar() {
 
     // Utiliser une URL par défaut si pas de configuration
     if (!webhookUrl) {
-      webhookUrl = "https://workflow.ffnancy.fr/webhook-test/a3d03176-b72f-412d-8fb9-f920b9fbab4d";
+      webhookUrl = "https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d";
     }
 
     // Fermer le modal de sélection et ouvrir le modal d'attente
