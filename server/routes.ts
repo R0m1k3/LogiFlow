@@ -80,12 +80,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log('🔍 [DEBUG] Groups request:', {
+        userId,
+        userRole: user.role,
+        userGroupsCount: (user as any).userGroups?.length || 0,
+        userGroups: (user as any).userGroups?.map((ug: any) => ({ 
+          groupId: ug.groupId, 
+          groupName: ug.group?.name 
+        })) || []
+      });
+
       // Only admin sees all groups, all other roles (manager, employee, directeur) see only their assigned groups
       if (user.role === 'admin') {
         const groups = await storage.getGroups();
+        console.log('🔍 [DEBUG] Admin - returning all groups:', groups.length);
         res.json(groups);
       } else {
-        const userGroups = (user as any).userGroups?.map((ug: any) => ug.group) || [];
+        const userGroups = (user as any).userGroups?.map((ug: any) => ug.group).filter(Boolean) || [];
+        console.log('🔍 [DEBUG] Non-admin - returning filtered groups:', {
+          role: user.role,
+          filteredGroupsCount: userGroups.length,
+          groups: userGroups.map((g: any) => ({ id: g.id, name: g.name }))
+        });
         res.json(userGroups);
       }
     } catch (error) {
