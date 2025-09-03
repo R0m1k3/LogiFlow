@@ -4157,6 +4157,73 @@ RÉSUMÉ DU SCAN
     }
   });
 
+  // API d'exécution SQL pour admin uniquement
+  app.post('/api/admin/execute-sql', isAuthenticated, async (req: any, res) => {
+    try {
+      // Vérifier que l'utilisateur est admin
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: 'Accès refusé - Admin uniquement' });
+      }
+
+      const { sql: sqlQuery } = req.body;
+      
+      if (!sqlQuery || typeof sqlQuery !== 'string') {
+        return res.status(400).json({ error: 'SQL query requis' });
+      }
+
+      console.log('🔧 [SQL-EXECUTOR] Début exécution SQL pour admin:', userId);
+      console.log('🔧 [SQL-EXECUTOR] Query:', sqlQuery.substring(0, 200) + '...');
+
+      const logs = [`🔄 Exécution SQL démarrée...`];
+      
+      try {
+        // Utilisation de drizzle-orm pour l'exécution
+        const { sql } = await import('drizzle-orm');
+        const result = await db.execute(sql.raw(sqlQuery));
+        
+        logs.push(`✅ SQL exécuté avec succès`);
+        logs.push(`📊 Nombre de lignes affectées: ${result.rowCount || 0}`);
+        
+        if (result.rows && result.rows.length > 0) {
+          logs.push(`📋 Nombre de lignes retournées: ${result.rows.length}`);
+          if (result.rows.length <= 10) {
+            logs.push(`📋 Résultats: ${JSON.stringify(result.rows, null, 2)}`);
+          } else {
+            logs.push(`📋 Échantillon (10 premières lignes): ${JSON.stringify(result.rows.slice(0, 10), null, 2)}`);
+          }
+        }
+        
+        console.log('✅ [SQL-EXECUTOR] Exécution réussie');
+        
+        res.json({ 
+          success: true, 
+          logs,
+          results: result.rows,
+          rowCount: result.rowCount
+        });
+
+      } catch (sqlError: any) {
+        console.error('❌ [SQL-EXECUTOR] Erreur SQL:', sqlError);
+        logs.push(`❌ Erreur SQL: ${sqlError.message}`);
+        
+        return res.status(500).json({ 
+          error: `Erreur SQL: ${sqlError.message}`,
+          logs 
+        });
+      }
+
+    } catch (error: any) {
+      console.error('❌ [SQL-EXECUTOR] Erreur générale:', error);
+      res.status(500).json({ error: 'Erreur serveur', details: error.message });
+    }
+  });
+
   // Create server instance
   const httpServer = createServer(app);
 
