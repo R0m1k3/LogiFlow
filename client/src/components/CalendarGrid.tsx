@@ -539,16 +539,32 @@ export default function CalendarGrid({
               {/* Publicities et Quick Create Button ensemble */}
               {isCurrentMonth && (
                 <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-                  {/* Publicities avec design épuré */}
+                  {/* Publicities avec Quick Create Button à gauche */}
                   {dayPublicities.length > 0 && (
                     <>
                       {dayPublicities.slice(0, 2).map((pub, idx) => (
-                        <div
-                          key={`${pub.id}-${idx}`}
-                          className="bg-purple-300 text-purple-800 text-xs px-2 py-1 font-bold shadow-md cursor-help transform hover:scale-105 transition-transform duration-150 border border-purple-400"
-                          title={`Pub ${pub.pubNumber}: ${pub.designation}${pub.participations ? ` - Magasins: ${pub.participations.map((pg: any) => pg.group?.name).join(', ')}` : ''}`}
-                        >
-                          {pub.pubNumber}
+                        <div key={`${pub.id}-${idx}`} className="flex items-center gap-1">
+                          {/* Quick Create Button à gauche de la première publicité */}
+                          {idx === 0 && (
+                            <div className="opacity-0 group-hover:opacity-100 transition-all duration-200">
+                              <Button
+                                size="sm"
+                                className="w-6 h-6 bg-orange-300 text-orange-800 p-0 hover:bg-orange-400 shadow-md transform hover:scale-110 transition-all duration-150 border border-orange-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDateClick(date);
+                                }}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          )}
+                          <div
+                            className="bg-purple-300 text-purple-800 text-xs px-2 py-1 font-bold shadow-md cursor-help transform hover:scale-105 transition-transform duration-150 border border-purple-400"
+                            title={`Pub ${pub.pubNumber}: ${pub.designation}${pub.participations ? ` - Magasins: ${pub.participations.map((pg: any) => pg.group?.name).join(', ')}` : ''}`}
+                          >
+                            {pub.pubNumber}
+                          </div>
                         </div>
                       ))}
                       {dayPublicities.length > 2 && (
@@ -559,19 +575,21 @@ export default function CalendarGrid({
                     </>
                   )}
                   
-                  {/* Quick Create Button à côté des publicités */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-all duration-200">
-                    <Button
-                      size="sm"
-                      className="w-6 h-6 bg-orange-300 text-orange-800 p-0 hover:bg-orange-400 shadow-md transform hover:scale-110 transition-all duration-150 border border-orange-500"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDateClick(date);
-                      }}
-                    >
-                      <Plus className="w-3 h-3" />
-                    </Button>
-                  </div>
+                  {/* Quick Create Button quand pas de publicité */}
+                  {dayPublicities.length === 0 && (
+                    <div className="opacity-0 group-hover:opacity-100 transition-all duration-200">
+                      <Button
+                        size="sm"
+                        className="w-6 h-6 bg-orange-300 text-orange-800 p-0 hover:bg-orange-400 shadow-md transform hover:scale-110 transition-all duration-150 border border-orange-500"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDateClick(date);
+                        }}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
