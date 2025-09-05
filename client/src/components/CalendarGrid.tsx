@@ -1,10 +1,33 @@
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
 import { safeDate } from "@/lib/dateUtils";
-import { Plus, Check, MoreHorizontal, Package, Link } from "lucide-react";
+import { Plus, Check, MoreHorizontal, Package, Link, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useState } from "react";
+
+// Composant modal pour afficher les commentaires
+function CommentModal({ isOpen, onClose, comment }: { isOpen: boolean, onClose: () => void, comment: string }) {
+  if (!isOpen) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md w-full">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-blue-600" />
+            Commentaire
+          </DialogTitle>
+        </DialogHeader>
+        <div className="p-4">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <p className="text-gray-700 whitespace-pre-wrap">{comment}</p>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 import type { OrderWithRelations, DeliveryWithRelations } from "@shared/schema";
 
 interface CalendarGridProps {
@@ -20,6 +43,8 @@ interface CalendarGridProps {
 
 // Composant pour afficher un élément (commande ou livraison)
 function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 'delivery', onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  
   const formatQuantity = (quantity: number, unit: string) => {
     return `${quantity}${unit === 'palettes' ? 'P' : 'C'}`;
   };
@@ -94,6 +119,19 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
           {item.supplier?.name || 'Livraison'} - {formatQuantity(item.quantity, item.unit)}
         </span>
         <div style={{display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px'}}>
+          {/* Icône commentaire pour les livraisons avec notes */}
+          {item.notes && item.notes.trim() && (
+            <div 
+              className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-orange-600 transition-colors" 
+              title="Voir le commentaire"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowCommentModal(true);
+              }}
+            >
+              <MessageSquare className="w-2 h-2 text-white" />
+            </div>
+          )}
           {/* Badge pour livraison liée à une commande */}
           {item.orderId && (
             <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center" title="Liée à une commande">
@@ -108,6 +146,13 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
           )}
         </div>
       </div>
+      
+      {/* Modal pour afficher le commentaire */}
+      <CommentModal 
+        isOpen={showCommentModal}
+        onClose={() => setShowCommentModal(false)}
+        comment={item.notes || ''}
+      />
     </div>
   );
 }
@@ -115,6 +160,8 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
 // Composant pour gérer l'overflow avec modal - DEV = PRODUCTION
 function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrders: any[], dayDeliveries: any[], onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [selectedComment, setSelectedComment] = useState('');
   const MAX_VISIBLE_ITEMS = 2; // FORCÉ : 2 éléments en dev ET production
   const totalItems = dayOrders.length + dayDeliveries.length;
   
@@ -211,6 +258,20 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                             <span className="text-xs font-medium text-gray-600 uppercase">
                               {isOrder ? 'COMMANDE' : 'LIVRAISON'}
                             </span>
+                            {/* Icône commentaire pour les livraisons avec notes */}
+                            {!isOrder && item.notes && item.notes.trim() && (
+                              <div 
+                                className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-orange-600 transition-colors" 
+                                title="Voir le commentaire"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedComment(item.notes);
+                                  setShowCommentModal(true);
+                                }}
+                              >
+                                <MessageSquare className="w-2 h-2 text-white" />
+                              </div>
+                            )}
                             {/* Badge pour liaison - commandes avec livraisons ou livraisons avec commandes */}
                             {((isOrder && item.deliveries && item.deliveries.length > 0) || 
                               (!isOrder && item.orderId)) && (
@@ -252,6 +313,13 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
             </div>
           </DialogContent>
           </Dialog>
+          
+          {/* Modal pour afficher le commentaire depuis la modal des éléments du jour */}
+          <CommentModal 
+            isOpen={showCommentModal}
+            onClose={() => setShowCommentModal(false)}
+            comment={selectedComment}
+          />
         </div>
       )}
     </div>
