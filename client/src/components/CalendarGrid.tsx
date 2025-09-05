@@ -44,6 +44,7 @@ interface CalendarGridProps {
 // Composant pour afficher un élément (commande ou livraison)
 function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 'delivery', onItemClick: (item: any, type: 'order' | 'delivery') => void }) {
   const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentClicked, setCommentClicked] = useState(false);
   
   const formatQuantity = (quantity: number, unit: string) => {
     return `${quantity}${unit === 'palettes' ? 'P' : 'C'}`;
@@ -109,6 +110,10 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
     <div
       className={`text-xs px-2 py-2 cursor-pointer hover:opacity-90 transition-opacity ${getDeliveryStyle()} rounded-sm`}
       onClick={(e) => {
+        if (commentClicked) {
+          setCommentClicked(false);
+          return;
+        }
         e.stopPropagation();
         onItemClick(item, 'delivery');
       }}
@@ -125,7 +130,9 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
               className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-orange-600 transition-colors" 
               title="Voir le commentaire"
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
+                setCommentClicked(true);
                 setShowCommentModal(true);
               }}
             >
@@ -150,7 +157,11 @@ function CalendarItem({ item, type, onItemClick }: { item: any, type: 'order' | 
       {/* Modal pour afficher le commentaire */}
       <CommentModal 
         isOpen={showCommentModal}
-        onClose={() => setShowCommentModal(false)}
+        onClose={() => {
+          setShowCommentModal(false);
+          // Reset après un délai pour éviter les conflits
+          setTimeout(() => setCommentClicked(false), 100);
+        }}
         comment={item.notes || ''}
       />
     </div>
@@ -162,6 +173,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
   const [isOpen, setIsOpen] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [selectedComment, setSelectedComment] = useState('');
+  const [commentClickedItems, setCommentClickedItems] = useState<Set<string>>(new Set());
   const MAX_VISIBLE_ITEMS = 2; // FORCÉ : 2 éléments en dev ET production
   const totalItems = dayOrders.length + dayDeliveries.length;
   
@@ -221,6 +233,7 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
               <div className="space-y-2">
                 {allItems.map((item, index) => {
                   const isOrder = item.itemType === 'order';
+                  const itemKey = `${item.itemType}-${item.id}`;
                   const statusColor = item.status === 'delivered' 
                     ? 'bg-gray-100 border-gray-300' 
                     : item.status === 'planned'
@@ -245,6 +258,14 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                       key={`modal-${item.itemType}-${item.id}-${index}`}
                       className={`${statusColor} border rounded p-2 cursor-pointer hover:shadow-sm transition-all duration-150`}
                       onClick={(e) => {
+                        if (commentClickedItems.has(itemKey)) {
+                          setCommentClickedItems(prev => {
+                            const newSet = new Set(prev);
+                            newSet.delete(itemKey);
+                            return newSet;
+                          });
+                          return;
+                        }
                         e.preventDefault();
                         e.stopPropagation();
                         onItemClick(item, item.itemType);
@@ -264,7 +285,9 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
                                 className="w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-orange-600 transition-colors" 
                                 title="Voir le commentaire"
                                 onClick={(e) => {
+                                  e.preventDefault();
                                   e.stopPropagation();
+                                  setCommentClickedItems(prev => new Set(prev).add(itemKey));
                                   setSelectedComment(item.notes);
                                   setShowCommentModal(true);
                                 }}
@@ -317,7 +340,11 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
           {/* Modal pour afficher le commentaire depuis la modal des éléments du jour */}
           <CommentModal 
             isOpen={showCommentModal}
-            onClose={() => setShowCommentModal(false)}
+            onClose={() => {
+              setShowCommentModal(false);
+              // Reset après un délai pour éviter les conflits
+              setTimeout(() => setCommentClickedItems(new Set()), 100);
+            }}
             comment={selectedComment}
           />
         </div>
