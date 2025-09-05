@@ -12,7 +12,7 @@ function CommentModal({ isOpen, onClose, comment }: { isOpen: boolean, onClose: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md w-full">
+      <DialogContent className="max-w-md w-full fixed z-[99999]" style={{zIndex: 99999}}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-blue-600" />
