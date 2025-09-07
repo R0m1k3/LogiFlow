@@ -2276,37 +2276,65 @@ export class DatabaseStorage implements IStorage {
     resolvedTickets: number;
     criticalTickets: number;
   }> {
-    let query = db.select({ count: sql<number>`count(*)`, status: savTickets.status, priority: savTickets.priority })
-      .from(savTickets);
+    let baseQuery = db.select().from(savTickets);
 
     if (groupIds?.length) {
-      query = query.where(inArray(savTickets.groupId, groupIds));
+      baseQuery = baseQuery.where(inArray(savTickets.groupId, groupIds));
     }
 
-    const results = await query.groupBy(savTickets.status, savTickets.priority);
+    // Get status counts
+    const statusResults = await db
+      .select({ 
+        count: sql<number>`count(*)`, 
+        status: savTickets.status 
+      })
+      .from(savTickets)
+      .where(groupIds?.length ? inArray(savTickets.groupId, groupIds) : undefined)
+      .groupBy(savTickets.status);
+
+    // Get priority counts  
+    const priorityResults = await db
+      .select({ 
+        count: sql<number>`count(*)`, 
+        priority: savTickets.priority 
+      })
+      .from(savTickets)
+      .where(groupIds?.length ? inArray(savTickets.groupId, groupIds) : undefined)
+      .groupBy(savTickets.priority);
+
+    // Get total count
+    const totalResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(savTickets)
+      .where(groupIds?.length ? inArray(savTickets.groupId, groupIds) : undefined);
 
     const stats = {
-      totalTickets: 0,
+      totalTickets: Number(totalResult[0]?.count || 0),
       newTickets: 0,
       inProgressTickets: 0,
       resolvedTickets: 0,
       criticalTickets: 0,
     };
 
-    results.forEach(result => {
-      const count = result.count || 0;
-      stats.totalTickets += count;
+    // Process status results
+    statusResults.forEach(result => {
+      const count = Number(result.count || 0);
       
       if (result.status === 'nouveau') {
-        stats.newTickets += count;
+        stats.newTickets = count;
       } else if (['en_cours', 'attente_pieces', 'attente_echange'].includes(result.status)) {
         stats.inProgressTickets += count;
       } else if (['resolu', 'ferme'].includes(result.status)) {
         stats.resolvedTickets += count;
       }
+    });
 
+    // Process priority results for critical tickets
+    priorityResults.forEach(result => {
+      const count = Number(result.count || 0);
+      
       if (result.priority === 'critique') {
-        stats.criticalTickets += count;
+        stats.criticalTickets = count;
       }
     });
 
