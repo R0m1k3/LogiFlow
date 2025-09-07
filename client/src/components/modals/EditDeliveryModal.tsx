@@ -51,9 +51,13 @@ export default function EditDeliveryModal({
     queryKey: ['/api/orders'],
   });
 
-  // Filtrer les commandes par fournisseur sélectionné - montrer toutes les commandes non livrées
+  // Filtrer les commandes par fournisseur sélectionné et groupe - montrer toutes les commandes non livrées du même groupe
   const availableOrders = allOrders.filter(order => 
-    formData.supplierId ? (order.supplierId === parseInt(formData.supplierId) && order.status !== 'delivered') : false
+    formData.supplierId && formData.groupId ? (
+      order.supplierId === parseInt(formData.supplierId) && 
+      order.groupId === parseInt(formData.groupId) && 
+      order.status !== 'delivered'
+    ) : false
   );
 
   // Initialiser le formulaire avec les données de la livraison
