@@ -863,7 +863,7 @@ export default function SavTickets() {
                   {filteredTickets.map((ticket) => {
                     const StatusIcon = statusConfig[ticket.status as keyof typeof statusConfig]?.icon || Clock;
                     return (
-                      <tr key={ticket.id} className="hover:bg-gray-50">
+                      <tr key={ticket.id} className={`hover:bg-gray-50 ${ticket.status === 'ferme' ? 'bg-gray-100 opacity-60' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <Wrench className="h-4 w-4 text-gray-400 mr-2" />
