@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload } from "lucide-react";
 import { useStore } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,6 +100,17 @@ export default function Avoirs() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedAvoir, setSelectedAvoir] = useState<Avoir | null>(null);
+  
+  // État pour le modal d'envoi d'avoir
+  const [showAvoirModal, setShowAvoirModal] = useState(false);
+  const [selectedAvoirForUpload, setSelectedAvoirForUpload] = useState<Avoir | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  // État pour le modal d'attente du webhook
+  const [showWaitingModal, setShowWaitingModal] = useState(false);
+  const [processingSeconds, setProcessingSeconds] = useState(0);
+  const [processingTimeout, setProcessingTimeout] = useState<NodeJS.Timeout | null>(null);
   // Utiliser le contexte global du magasin
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
@@ -315,6 +326,143 @@ export default function Avoirs() {
   const handleDelete = (avoir: Avoir) => {
     setSelectedAvoir(avoir);
     setIsDeleteDialogOpen(true);
+  };
+
+  // 🔥 FONCTIONS WEBHOOK MODAL (comme rapprochement)
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+    } else {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un fichier PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenAvoirModal = (avoir: Avoir) => {
+    setSelectedAvoirForUpload(avoir);
+    setSelectedFile(null);
+    setShowAvoirModal(true);
+  };
+
+  const handleCloseAvoirModal = () => {
+    setShowAvoirModal(false);
+    setSelectedAvoirForUpload(null);
+    setSelectedFile(null);
+    setIsUploading(false);
+  };
+
+  const startProcessingTimer = () => {
+    setProcessingSeconds(0);
+    const interval = setInterval(() => {
+      setProcessingSeconds(prev => prev + 1);
+    }, 1000);
+    setProcessingTimeout(interval);
+  };
+
+  const handleCloseWaitingModal = () => {
+    setShowWaitingModal(false);
+    setIsUploading(false);
+    setProcessingSeconds(0);
+    if (processingTimeout) {
+      clearInterval(processingTimeout);
+      setProcessingTimeout(null);
+    }
+  };
+
+  const handleSendAvoir = async () => {
+    if (!selectedFile || !selectedAvoirForUpload) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un fichier PDF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Utiliser groupe par défaut (1) pour admin si pas de groupe sélectionné
+    const groupId = selectedAvoirForUpload.groupId || ((user as any)?.role === 'admin' ? 1 : selectedAvoirForUpload.groupId);
+    const groups = await queryClient.fetchQuery({ queryKey: ['/api/groups'] });
+    const group = (groups as any[]).find(g => g.id === groupId);
+    
+    if (!group?.webhookUrl) {
+      toast({
+        title: "Erreur",
+        description: "Aucun webhook configuré pour ce magasin",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Fermer le modal de sélection et ouvrir le modal d'attente
+    setShowAvoirModal(false);
+    setShowWaitingModal(true);
+    setIsUploading(true);
+    startProcessingTimer();
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('supplier', selectedAvoirForUpload.supplier?.name || '');
+      formData.append('invoiceReference', selectedAvoirForUpload.invoiceReference || '');
+      formData.append('type', 'Avoir');
+
+      // Créer un AbortController pour gérer le timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
+
+      const response = await fetch(group.webhookUrl, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
+
+      handleCloseWaitingModal();
+      
+      toast({
+        title: "Succès",
+        description: "Avoir traité avec succès via le webhook",
+      });
+
+      // Reset des données
+      setSelectedAvoirForUpload(null);
+      setSelectedFile(null);
+
+      // Invalider les caches pour recharger
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return query.queryKey[0]?.toString().includes('/api/avoirs') || false;
+        }
+      });
+      
+    } catch (error: any) {
+      handleCloseWaitingModal();
+      
+      let errorMessage = "Impossible d'envoyer l'avoir";
+      if (error.name === 'AbortError') {
+        errorMessage = "Le traitement a pris trop de temps (timeout de 60 secondes)";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: "Erreur d'envoi",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      
+      // Rouvrir le modal de sélection en cas d'erreur
+      setShowAvoirModal(true);
+    }
   };
 
   // Confirm delete
@@ -679,30 +827,45 @@ export default function Avoirs() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        {canEditDelete ? (
-                          <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2">
+                          {/* 📋 Icône Upload pour avoirs "Reçu" */}
+                          {avoir.status === 'Reçu' && (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8 w-8 p-0"
-                              title="Modifier"
-                              onClick={() => handleEdit(avoir)}
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                              title="Envoyer fichier avoir"
+                              onClick={() => handleOpenAvoirModal(avoir)}
                             >
-                              <Edit className="h-4 w-4" />
+                              <Upload className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title="Supprimer"
-                              onClick={() => handleDelete(avoir)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-xs">Lecture seule</span>
-                        )}
+                          )}
+                          {canEditDelete && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Modifier"
+                                onClick={() => handleEdit(avoir)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Supprimer"
+                                onClick={() => handleDelete(avoir)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                          {!canEditDelete && avoir.status !== 'Reçu' && (
+                            <span className="text-gray-400 text-xs">Lecture seule</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -893,6 +1056,127 @@ export default function Avoirs() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 🌐 Modal d'envoi d'avoir (comme rapprochement) */}
+      <Dialog open={showAvoirModal} onOpenChange={setShowAvoirModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Envoyer Fichier Avoir</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {selectedAvoirForUpload && (
+              <div className="bg-gray-50 p-3 rounded-md">
+                <div className="text-sm">
+                  <div className="font-medium">{selectedAvoirForUpload.supplier.name}</div>
+                  <div className="text-gray-600">
+                    Référence: {selectedAvoirForUpload.invoiceReference || 'Non renseigné'}
+                  </div>
+                  <div className="text-gray-600">
+                    Magasin: {selectedAvoirForUpload.group.name}
+                  </div>
+                  <div className="text-gray-600">
+                    Montant: {selectedAvoirForUpload.amount ? `${selectedAvoirForUpload.amount.toFixed(2)} €` : 'Non spécifié'}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-2">
+              <Label htmlFor="avoir-pdf-file">Fichier PDF</Label>
+              <input
+                id="avoir-pdf-file"
+                type="file"
+                accept=".pdf"
+                onChange={handleFileChange}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+              {selectedFile && (
+                <div className="text-sm text-green-600">
+                  Fichier sélectionné: {selectedFile.name}
+                </div>
+              )}
+            </div>
+
+            {selectedAvoirForUpload && (
+              <div className="text-xs text-gray-500">
+                Envoi via webhook configuré pour {selectedAvoirForUpload.group.name}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseAvoirModal}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleSendAvoir}
+              disabled={!selectedFile || isUploading}
+            >
+              {isUploading ? "Envoi..." : "Envoyer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ⏱️ Modal d'attente pour le traitement du webhook */}
+      <Dialog open={showWaitingModal} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Clock className="w-5 h-5 text-blue-600 animate-spin" />
+              <span>Traitement en cours</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 py-6">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 relative">
+                <div className="w-16 h-16 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-bold text-blue-600">{processingSeconds}s</span>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-medium text-gray-900">
+                  Traitement de votre avoir en cours...
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Le workflow peut prendre jusqu'à 1 minute.
+                  <br />
+                  Veuillez patienter.
+                </p>
+              </div>
+              
+              <div className="mt-4 bg-gray-100 rounded-full h-2 w-full">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${Math.min((processingSeconds / 60) * 100, 100)}%` }}
+                ></div>
+              </div>
+              
+              <div className="mt-2 text-xs text-gray-500">
+                {processingSeconds < 60 ? `${60 - processingSeconds}s restantes (max)` : 'Finalisation...'}
+              </div>
+            </div>
+            
+            {selectedAvoirForUpload && (
+              <div className="bg-blue-50 p-3 rounded-md">
+                <div className="text-sm">
+                  <div className="font-medium text-blue-900">
+                    {selectedAvoirForUpload.supplier.name}
+                  </div>
+                  <div className="text-blue-700">
+                    Référence: {selectedAvoirForUpload.invoiceReference || 'Non renseigné'}
+                  </div>
+                  <div className="text-blue-700">
+                    Fichier: {selectedFile?.name}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
