@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload, XCircle, MessageSquare } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload, XCircle, MessageSquare, Settings } from "lucide-react";
 import { useStore } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
@@ -108,6 +109,7 @@ type AvoirUpdateData = AvoirFormData & {
 };
 
 export default function Avoirs() {
+  const [activeTab, setActiveTab] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -872,45 +874,364 @@ export default function Avoirs() {
     }
   };
 
+  // Séparer les avoirs par statut
+  const pendingAvoirs = avoirs.filter(avoir => avoir.status !== 'Reçu');
+  const completedAvoirs = avoirs.filter(avoir => avoir.status === 'Reçu');
+
+  // Filtrage par recherche
+  const filterAvoirs = (avoirsList: Avoir[]) => {
+    return avoirsList.filter((avoir) => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        avoir.supplier?.name?.toLowerCase().includes(searchLower) ||
+        avoir.invoiceReference?.toLowerCase().includes(searchLower) ||
+        avoir.comment?.toLowerCase().includes(searchLower)
+      );
+    });
+  };
+
+  const filteredPendingAvoirs = filterAvoirs(pendingAvoirs);
+  const filteredCompletedAvoirs = filterAvoirs(completedAvoirs);
+
+  const canEditDelete = ['admin', 'directeur'].includes((user as any)?.role);
+
+  // Fonction pour rendre le tableau d'avoirs
+  const renderAvoirTable = (avoirsList: Avoir[]) => {
+    if (isLoading) {
+      return (
+        <div className="p-4">
+          <div className="animate-pulse space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (avoirsList.length === 0) {
+      return (
+        <div className="p-12 text-center">
+          <FileText className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-4 text-sm font-medium text-gray-900">Aucun avoir</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchTerm ? "Aucun avoir ne correspond à votre recherche." : "Aucun avoir dans cette catégorie."}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Fournisseur
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Statut
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Référence
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Magasin
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Montant
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Créé le
+              </th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Vérification
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {avoirsList?.filter(avoir => avoir && avoir.id).map((avoir) => (
+              <tr key={avoir?.id || Math.random()} className={`hover:bg-gray-50 ${avoir?.nocodbVerified ? 'bg-gray-100 opacity-75' : ''}`}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {avoir.supplier?.name || 'Fournisseur non défini'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Select 
+                    value={avoir?.status || ''}
+                    onValueChange={(newStatus) => handleStatusChange(avoir.id, newStatus)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="En attente de demande">En attente de demande</SelectItem>
+                      <SelectItem value="Demandé">Demandé</SelectItem>
+                      <SelectItem value="Reçu">Reçu</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  #{avoir.invoiceReference || 'Sans référence'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <div className="flex items-center">
+                    <div 
+                      className="w-3 h-3 rounded-full mr-2" 
+                      style={{ backgroundColor: avoir.group?.color || '#gray' }}
+                    />
+                    {avoir.group?.name || 'Magasin non défini'}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <div className="flex items-center">
+                    {avoir.amount !== null && avoir.amount !== undefined ? `${Number(avoir.amount).toFixed(2)} €` : 'Non spécifié'}
+                    {avoir.commercialProcessed && (
+                      <UserCheck className="ml-2 h-4 w-4 text-purple-600" title="Traité par commercial" />
+                    )}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {format(new Date(avoir.createdAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
+                  {(avoirVerificationResults[avoir.id]?.exists === true || avoir.nocodbVerified) ? (
+                    <div className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800 border border-green-200">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Validé
+                    </div>
+                  ) : avoir.invoiceReference && avoir.invoiceReference.trim() !== '' ? (
+                    <div className="flex items-center justify-center">
+                      {verifyingAvoirs.has(avoir.id) ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      ) : (
+                        <button
+                          onClick={() => handleVerifyAvoirInvoice(avoir)}
+                          className="h-4 w-4 text-gray-400 hover:text-blue-500 transition-colors"
+                          title="Cliquer pour vérifier la facture"
+                        >
+                          <Search className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-xs">Sans réf.</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div className="flex items-center space-x-2">
+                    {/* Upload pour avoirs "Reçu" */}
+                    {avoir?.status === 'Reçu' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        title="Envoyer fichier avoir"
+                        onClick={() => handleOpenAvoirModal(avoir)}
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                    )}
+
+                    {/* Bouton Valider */}
+                    {avoirVerificationResults[avoir.id]?.exists === true && !avoir.nocodbVerified && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                        title="Valider l'avoir"
+                        onClick={() => handleValidateAvoir(avoir.id)}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    )}
+
+                    {/* Bouton Dévalider */}
+                    {avoir.nocodbVerified && canEditDelete && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                        title="Dévalider l'avoir"
+                        onClick={() => handleDevalidateAvoir(avoir.id)}
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    )}
+
+                    {/* Bouton Commentaire */}
+                    {avoir.comment && avoir.comment.trim() !== '' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                        title="Voir le commentaire"
+                        onClick={() => handleViewComment(avoir.comment || '')}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </Button>
+                    )}
+
+                    {canEditDelete && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          title="Modifier"
+                          onClick={() => handleEdit(avoir)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Supprimer"
+                          onClick={() => handleDelete(avoir)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {!canEditDelete && avoir?.status !== 'Reçu' && (
+                      <span className="text-gray-400 text-xs">Lecture seule</span>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   if (!user) {
     return <div>Chargement...</div>;
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Avoirs</h1>
-          <p className="text-muted-foreground">
-            Gestion des demandes d'avoirs et de remboursements
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          {/* Bouton Vérifier tous si des avoirs avec référence existent */}
-          {avoirs.some(avoir => avoir.invoiceReference?.trim()) && (
-            <Button 
-              variant="outline" 
-              onClick={handleVerifyAllAvoirInvoices}
-              disabled={verifyingAvoirs.size > 0}
-            >
-              <Search className="h-4 w-4 mr-2" />
-              {verifyingAvoirs.size > 0 ? "Vérification..." : "Vérifier tous"}
-            </Button>
-          )}
-          
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouvel avoir
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 p-4 sm:p-6 shadow-sm -m-4 sm:-m-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center">
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600" />
+              Gestion des Avoirs
+            </h2>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
+              Gestion des demandes d'avoir et remboursements
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <Badge variant="outline" className="text-xs sm:text-sm border border-gray-300">
+              {pendingAvoirs.length} en cours
+            </Badge>
+            <Badge variant="outline" className="text-xs sm:text-sm border border-gray-300 bg-green-50">
+              {completedAvoirs.length} finalisés
+            </Badge>
+            {/* Bouton Vérifier tous */}
+            {avoirs.some(avoir => avoir.invoiceReference?.trim()) && (
+              <Button
+                onClick={handleVerifyAllAvoirInvoices}
+                variant="outline"
+                size="sm"
+                className="text-xs sm:text-sm bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                disabled={verifyingAvoirs.size > 0}
+              >
+                <Search className="w-4 h-4 mr-1" />
+                {verifyingAvoirs.size > 0 ? "Vérification..." : "Vérifier toutes"}
               </Button>
-            </DialogTrigger>
-          </Dialog>
+            )}
+            <Button onClick={() => setIsCreateDialogOpen(true)} size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Nouvel avoir
+            </Button>
+          </div>
         </div>
-        
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
+
+        {/* Onglets */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="pending" className="flex items-center space-x-2">
+              <Clock className="w-4 h-4" />
+              <span>En cours</span>
+              <Badge variant="secondary" className="ml-2">
+                {pendingAvoirs.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4" />
+              <span>Finalisés</span>
+              <Badge variant="secondary" className="ml-2">
+                {completedAvoirs.length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Rechercher par fournisseur, référence ou commentaire..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 border border-gray-300 shadow-sm w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Contenu des onglets */}
+      <Tabs value={activeTab} className="w-full">
+        <TabsContent value="pending" className="mt-0">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Avoirs en cours</span>
+                <Badge variant="outline">{filteredPendingAvoirs.length} éléments</Badge>
+              </CardTitle>
+              <CardDescription>
+                Avoirs en attente de demande ou en cours de traitement
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {renderAvoirTable(filteredPendingAvoirs)}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="completed" className="mt-0">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Avoirs finalisés</span>
+                <Badge variant="outline">{filteredCompletedAvoirs.length} éléments</Badge>
+              </CardTitle>
+              <CardDescription>
+                Avoirs reçus et traités
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              {renderAvoirTable(filteredCompletedAvoirs)}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Modal de création */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Créer un nouvel avoir</DialogTitle>
               <DialogDescription>
@@ -1080,10 +1401,297 @@ export default function Avoirs() {
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
 
-      {/* Filters and Search */}
-      <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+      {/* Modal d'édition */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Modifier l'avoir</DialogTitle>
+            <DialogDescription>
+              Modifiez les informations de cet avoir
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="supplierId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fournisseur</FormLabel>
+                    <Select 
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      value={field.value?.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un fournisseur" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {suppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                            {supplier.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="groupId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Magasin</FormLabel>
+                    <Select 
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      value={field.value?.toString()}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un magasin" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {groups
+                          .filter((group) => {
+                            if ((user as any)?.role === 'admin') return true;
+                            const userGroupIds = (user as any)?.userGroups?.map((ug: any) => ug.groupId) || [];
+                            return userGroupIds.includes(group.id);
+                          })
+                          .map((group) => (
+                          <SelectItem key={group.id} value={group.id.toString()}>
+                            <div className="flex items-center">
+                              <div 
+                                className="w-3 h-3 rounded-full mr-2" 
+                                style={{ backgroundColor: group.color }}
+                              />
+                              {group.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="invoiceReference"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Référence facture</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Numéro de facture" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div>
+                <Label htmlFor="edit-amount">Montant (€)</Label>
+                <Input
+                  id="edit-amount"
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={editAmountValue}
+                  onChange={(e) => setEditAmountValue(e.target.value)}
+                />
+              </div>
+
+              <FormField
+                control={editForm.control}
+                name="comment"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Commentaire</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Raison de l'avoir, détails..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="commercialProcessed"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Avoir fait par commercial
+                      </FormLabel>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsEditDialogOpen(false)}
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={editAvoirMutation.isPending}
+                >
+                  {editAvoirMutation.isPending ? "Modification..." : "Modifier"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de suppression */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer cet avoir ? Cette action ne peut pas être annulée.
+              {selectedAvoir && (
+                <div className="mt-2 p-3 bg-gray-50 rounded">
+                  <strong>Avoir:</strong> {selectedAvoir.supplier?.name} - {selectedAvoir.invoiceReference || 'Sans référence'}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteAvoirMutation.isPending ? "Suppression..." : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal d'envoi d'avoir (webhook) */}
+      <Dialog open={showAvoirModal} onOpenChange={handleCloseAvoirModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Envoyer avoir</DialogTitle>
+            <DialogDescription>
+              Sélectionnez un fichier PDF à envoyer pour cet avoir
+              {selectedAvoirForUpload && (
+                <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+                  <strong>{selectedAvoirForUpload.supplier?.name}</strong> - {selectedAvoirForUpload.invoiceReference || 'Sans référence'}
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <input
+                type="file"
+                accept=".pdf"
+                onChange={handleFileChange}
+                className="hidden"
+                id="file-upload"
+              />
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-600">
+                  Cliquez pour sélectionner un fichier PDF
+                </p>
+              </label>
+            </div>
+
+            {selectedFile && (
+              <div className="flex items-center p-3 bg-green-50 rounded">
+                <FileText className="h-5 w-5 text-green-600 mr-2" />
+                <span className="text-sm text-green-700">{selectedFile.name}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={handleCloseAvoirModal}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleSendAvoir} 
+              disabled={!selectedFile || isUploading}
+            >
+              {isUploading ? "Envoi..." : "Envoyer"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal d'attente */}
+      <Dialog open={showWaitingModal} onOpenChange={handleCloseWaitingModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Envoi en cours</DialogTitle>
+            <DialogDescription>
+              Veuillez patienter pendant l'envoi de votre fichier
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center p-6">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-sm text-gray-600 text-center">
+              Envoi du fichier vers le webhook... {processingSeconds}s
+            </p>
+            {processingSeconds > 30 && (
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Le traitement peut prendre quelques minutes
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de commentaire */}
+      <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Commentaire</DialogTitle>
+            <DialogDescription>
+              Détails du commentaire de cet avoir
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                {selectedComment}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowCommentModal(false)}>
+              Fermer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -1292,7 +1900,7 @@ export default function Avoirs() {
                               size="sm"
                               className="h-8 w-8 p-0 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                               title="Voir le commentaire"
-                              onClick={() => handleViewComment(avoir.comment)}
+                              onClick={() => handleViewComment(avoir.comment || '')}
                             >
                               <MessageSquare className="h-4 w-4" />
                             </Button>
