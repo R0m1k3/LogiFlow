@@ -1,0 +1,201 @@
+
+      
+✅ Résultat vérification avoir: {
+
+  exists: true,
+
+  matchType: 'invoice_reference',
+
+  errorMessage: null,
+
+  invoiceReference: 'FC-25-00005972',
+
+  supplierName: 'Artyfete',
+
+  fromCache: true,
+
+  permanent: false
+
+}
+
+POST /api/avoirs/7/verify-invoice 200 in 15ms
+
+🔍 Vérification facture avoir: {
+
+  avoirId: 7,
+
+  invoiceReference: 'FC-25-00005972',
+
+  supplier: 'Artyfete',
+
+  group: 'Frouard',
+
+  groupId: 1
+
+}
+
+🔍 [INVOICE] Début vérification facture: { invoiceReference: 'FC-25-00005972', groupId: 1, forceRefresh: true }
+
+🔄 [INVOICE] Refresh forcé, ignorant le cache
+
+🔧 Configuration groupe: {
+
+  groupName: 'Frouard',
+
+  hasNocodbConfig: true,
+
+  hasTableName: true,
+
+  hasWebhook: true
+
+}
+
+🔍 Vérification NocoDB en production...
+
+🔧 Configuration NocoDB active récupérée: {
+
+  id: 1,
+
+  name: 'Nocodb',
+
+  baseUrl: 'https://nocodb.ffnancy.fr',
+
+  projectId: 'pcg4uw79ukvycxc',
+
+  apiToken: 'z4BAwLo6dgoN_E7PKJSHN7PA7kdBePtKOYcsDlwQ',
+
+  description: '',
+
+  isActive: true,
+
+  createdBy: 'admin_local',
+
+  createdAt: 2025-07-22T11:12:54.971Z,
+
+  updatedAt: 2025-07-25T23:07:17.197Z
+
+}
+
+🔧 Configuration NocoDB trouvée: {
+
+  configName: 'Nocodb',
+
+  baseUrl: 'https://nocodb.ffnancy.fr',
+
+  projectId: 'pcg4uw79ukvycxc',
+
+  hasToken: true
+
+}
+
+🔧 Utilisation table ID: {
+
+  groupTable: 'CommandeF',
+
+  configuredId: 'mrr733dfb8wtt9b',
+
+  resolvedId: 'mrr733dfb8wtt9b'
+
+}
+
+🔍 Recherche NocoDB: { tableId: 'mrr733dfb8wtt9b', column: 'RefFacture' }
+
+💾 [CACHE] Tentative sauvegarde: {
+
+  invoiceReference: 'FC-25-00005972',
+
+  groupId: 1,
+
+  cacheKey: '1_fc-25-00005972',
+
+  exists: true,
+
+  isReconciled: false,
+
+  cacheType: 'temporaire 6h (trouvé)',
+
+  expiresAt: '2025-09-09T00:51:46.386Z'
+
+}
+
+✅ [CACHE] Résultat sauvé en cache: {
+
+  id: 23216,
+
+  invoiceReference: 'FC-25-00005972',
+
+  groupId: 1,
+
+  exists: true,
+
+  isReconciled: false,
+
+  cacheType: 'temporaire 6h (trouvé)',
+
+  cacheKey: '1_fc-25-00005972'
+
+}
+
+✅ Résultat vérification avoir: {
+
+  exists: true,
+
+  matchType: 'invoice_reference',
+
+  invoiceReference: 'FC-25-00005972',
+
+  invoiceAmount: -47.976,
+
+  supplierName: 'Artyfete'
+
+}
+
+POST /api/avoirs/7/verify-invoice 200 in 89ms
+
+💰 PUT Avoir - Raw body received: {
+
+  "supplierId": 3,
+
+  "groupId": 1,
+
+  "invoiceReference": "FC-25-00005972",
+
+  "amount": -47.976,
+
+  "comment": "",
+
+  "commercialProcessed": false,
+
+  "status": "Reçu"
+
+}
+
+💰 PUT Avoir - Validated data: {
+
+  "supplierId": 3,
+
+  "groupId": 1,
+
+  "invoiceReference": "FC-25-00005972",
+
+  "amount": -47.976,
+
+  "comment": "",
+
+  "commercialProcessed": false,
+
+  "status": "Reçu"
+
+}
+
+✅ Avoir updated: 7 by user: admin_local
+
+PUT /api/avoirs/7 200 in 16ms
+
+🔍 Avoirs API called with: { groupIds: [ 1 ], userRole: 'admin' }
+
+📋 Avoirs returned: 1 items
+
+GET /api/avoirs 200 in 7ms
+
+HEAD /api/health 200 in 0ms
