@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send } from "lucide-react";
 import { useStore } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,7 +159,7 @@ export default function Avoirs() {
       // ✅ FIX: Invalider toutes les variations de queryKey avoirs
       queryClient.invalidateQueries({ 
         predicate: (query) => {
-          return query.queryKey[0]?.toString().includes('/api/avoirs');
+          return query.queryKey[0]?.toString().includes('/api/avoirs') || false;
         }
       });
       setIsCreateDialogOpen(false);
@@ -197,7 +197,7 @@ export default function Avoirs() {
       // ✅ FIX: Invalider toutes les variations de queryKey avoirs
       queryClient.invalidateQueries({ 
         predicate: (query) => {
-          return query.queryKey[0]?.toString().includes('/api/avoirs');
+          return query.queryKey[0]?.toString().includes('/api/avoirs') || false;
         }
       });
       setIsEditDialogOpen(false);
@@ -232,7 +232,7 @@ export default function Avoirs() {
       // ✅ FIX: Invalider toutes les variations de queryKey avoirs
       queryClient.invalidateQueries({ 
         predicate: (query) => {
-          return query.queryKey[0]?.toString().includes('/api/avoirs');
+          return query.queryKey[0]?.toString().includes('/api/avoirs') || false;
         }
       });
       setIsDeleteDialogOpen(false);
@@ -658,6 +658,11 @@ export default function Avoirs() {
                           {avoir.commercialProcessed && (
                             <div title="Avoir fait par commercial">
                               <UserCheck className="h-4 w-4 text-blue-600 ml-2" />
+                            </div>
+                          )}
+                          {avoir.webhookSent && (
+                            <div title="Webhook envoyé">
+                              <Send className="h-4 w-4 text-green-600 ml-2" />
                             </div>
                           )}
                         </div>

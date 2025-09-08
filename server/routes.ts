@@ -2508,6 +2508,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedAvoir = await storage.updateAvoir(id, validatedData);
       console.log('✅ Avoir updated:', id, 'by user:', user.id);
+      
+      // 🎯 WEBHOOK QUAND STATUT PASSE À "Reçu"
+      if (validatedData.status === 'Reçu' && existingAvoir.status !== 'Reçu') {
+        try {
+          // Utiliser groupe par défaut (1) pour admin si pas de groupe sélectionné
+          const groupId = updatedAvoir.groupId || (user.role === 'admin' ? 1 : updatedAvoir.groupId);
+          const group = await storage.getGroup(groupId);
+          
+          if (group && group.webhookUrl) {
+            const webhookData = {
+              type: "Avoir",
+              avoirId: updatedAvoir.id,
+              invoiceReference: updatedAvoir.invoiceReference,
+              amount: updatedAvoir.amount,
+              supplierName: "Fournisseur", // Sera enrichi avec relations
+              groupName: group.name,
+              comment: updatedAvoir.comment || "",
+              commercialProcessed: updatedAvoir.commercialProcessed,
+              status: "Reçu",
+              createdBy: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username,
+              processedAt: new Date().toISOString()
+            };
+            
+            console.log('🌐 Envoi webhook avoir reçu:', { groupId, webhookUrl: group.webhookUrl });
+            
+            const webhookResponse = await fetch(group.webhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(webhookData)
+            });
+            
+            if (webhookResponse.ok) {
+              await storage.updateAvoirWebhookStatus(updatedAvoir.id, true);
+              console.log('✅ Webhook avoir reçu envoyé:', updatedAvoir.id);
+            } else {
+              console.error('❌ Échec envoi webhook avoir:', webhookResponse.status);
+            }
+          }
+        } catch (webhookError) {
+          console.error('❌ Erreur webhook avoir reçu:', webhookError);
+        }
+      }
+      
       res.json(updatedAvoir);
     } catch (error) {
       if (error instanceof z.ZodError) {
