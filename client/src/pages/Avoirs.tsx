@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload, XCircle } from "lucide-react";
 import { useStore } from "@/components/Layout";
@@ -362,42 +362,61 @@ export default function Avoirs() {
   };
 
   // Handle validation/devalidation
-  const handleValidateAvoir = (avoirId: number) => {
-    const avoir = avoirs.find(a => a.id === avoirId);
-    if (avoir) {
-      editAvoirMutation.mutate({ 
-        id: avoirId, 
-        data: {
-          supplierId: avoir.supplierId,
-          groupId: avoir.groupId,
-          invoiceReference: avoir.invoiceReference || "",
-          amount: avoir.amount,
-          comment: avoir.comment || "",
-          commercialProcessed: avoir.commercialProcessed,
-          status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
-          nocodbVerified: true,
-          nocodbVerifiedAt: new Date(),
+  const handleValidateAvoir = async (avoirId: number) => {
+    try {
+      // Utiliser la route spécifique pour la vérification NocoDB
+      await apiRequest(`/api/avoirs/${avoirId}/nocodb-verification`, 'PUT', {
+        verified: true
+      });
+
+      // Marquer le cache comme réconcilié (permanent)
+      const avoir = avoirs.find(a => a.id === avoirId);
+      if (avoir?.invoiceReference) {
+        try {
+          await apiRequest('/api/cache/mark-reconciled', 'POST', {
+            invoiceReference: avoir.invoiceReference,
+            groupId: avoir.groupId
+          });
+        } catch (cacheError) {
+          console.warn('Cache marking failed but verification succeeded:', cacheError);
         }
+      }
+
+      // Recharger les avoirs pour voir les changements
+      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
+      
+      toast({
+        title: "Avoir validé",
+        description: "L'avoir a été marqué comme validé avec succès",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur de validation",
+        description: error instanceof Error ? error.message : "Erreur lors de la validation",
+        variant: "destructive",
       });
     }
   };
 
-  const handleDevalidateAvoir = (avoirId: number) => {
-    const avoir = avoirs.find(a => a.id === avoirId);
-    if (avoir) {
-      editAvoirMutation.mutate({ 
-        id: avoirId, 
-        data: {
-          supplierId: avoir.supplierId,
-          groupId: avoir.groupId,
-          invoiceReference: avoir.invoiceReference || "",
-          amount: avoir.amount,
-          comment: avoir.comment || "",
-          commercialProcessed: avoir.commercialProcessed,
-          status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
-          nocodbVerified: false,
-          nocodbVerifiedAt: null,
-        }
+  const handleDevalidateAvoir = async (avoirId: number) => {
+    try {
+      // Utiliser la route spécifique pour la vérification NocoDB
+      await apiRequest(`/api/avoirs/${avoirId}/nocodb-verification`, 'PUT', {
+        verified: false
+      });
+
+      // Recharger les avoirs pour voir les changements
+      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
+      
+      toast({
+        title: "Avoir dévalidé",
+        description: "L'avoir a été marqué comme non-validé avec succès",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur de dévalidation", 
+        description: error instanceof Error ? error.message : "Erreur lors de la dévalidation",
+        variant: "destructive",
       });
     }
   };

@@ -2718,11 +2718,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.updateAvoirNocodbVerification(id, verified);
+
+      // Si validé, marquer le cache comme réconcilié (permanent)
+      if (verified) {
+        try {
+          const avoir = await storage.getAvoir(id);
+          if (avoir?.invoiceReference?.trim()) {
+            await invoiceVerificationService.updateCacheAsReconciled(
+              avoir.invoiceReference, 
+              avoir.groupId
+            );
+            console.log('✅ Cache marqué comme réconcilié pour avoir:', id);
+          }
+        } catch (cacheError) {
+          console.error('❌ Erreur marquage cache réconcilié:', cacheError);
+          // Ne pas faire échouer la validation si le cache échoue
+        }
+      }
+
       console.log('✅ Avoir NocoDB verification updated:', id, 'verified:', verified, 'by user:', user.id);
       res.json({ message: "NocoDB verification status updated successfully" });
     } catch (error) {
       console.error("Error updating avoir NocoDB verification:", error);
       res.status(500).json({ message: "Failed to update verification status" });
+    }
+  });
+
+  // Route pour marquer explicitement le cache comme réconcilié
+  app.post('/api/cache/mark-reconciled', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { invoiceReference, groupId } = req.body;
+      
+      if (!invoiceReference || !groupId) {
+        return res.status(400).json({ message: "Invoice reference and group ID required" });
+      }
+
+      // Seuls admin et directeur peuvent marquer comme réconcilié
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      await invoiceVerificationService.updateCacheAsReconciled(invoiceReference, groupId);
+      console.log('✅ Cache marqué comme réconcilié:', { invoiceReference, groupId, user: user.id });
+      
+      res.json({ message: "Cache marked as reconciled successfully" });
+    } catch (error) {
+      console.error("Error marking cache as reconciled:", error);
+      res.status(500).json({ message: "Failed to mark cache as reconciled" });
     }
   });
 
