@@ -71,7 +71,7 @@ const avoirSchema = z.object({
   supplierId: z.coerce.number().min(1, "Veuillez sélectionner un fournisseur"),
   groupId: z.coerce.number().min(1, "Veuillez sélectionner un magasin"),
   invoiceReference: z.string().optional(),
-  amount: z.coerce.number().positive().optional(),
+  amount: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().positive().optional()),
   comment: z.string().optional(),
   commercialProcessed: z.boolean().optional(),
   status: z.enum(["En attente de demande", "Demandé", "Reçu"]).optional(),
