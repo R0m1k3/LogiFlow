@@ -450,7 +450,7 @@ export default function Avoirs() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg flex items-center">
                     {getStatusIcon(avoir.status)}
-                    <span className="ml-2">#{avoir.invoiceReference}</span>
+                    <span className="ml-2">#{avoir.invoiceReference || 'Sans référence'}</span>
                   </CardTitle>
                   <Badge variant={getStatusVariant(avoir.status)}>
                     {avoir.status}
@@ -475,7 +475,7 @@ export default function Avoirs() {
                   
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Montant:</span>
-                    <span className="font-bold text-lg">{avoir.amount.toFixed(2)} €</span>
+                    <span className="font-bold text-lg">{avoir.amount ? avoir.amount.toFixed(2) + ' €' : 'Non spécifié'}</span>
                   </div>
                   
                   {avoir.comment && (
