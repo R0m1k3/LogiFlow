@@ -1362,7 +1362,8 @@ export default function Avoirs() {
                         step="0.01" 
                         placeholder="Montant en euros (optionnel)" 
                         {...field}
-                        value={field.value || ""}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                       />
                     </FormControl>
                     <FormMessage />
