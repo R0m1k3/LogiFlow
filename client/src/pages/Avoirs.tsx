@@ -566,58 +566,8 @@ export default function Avoirs() {
     });
   };
 
-  // Charger les résultats de vérification depuis le cache au démarrage
-  useEffect(() => {
-    const loadVerificationResults = async () => {
-      if (!avoirs || avoirs.length === 0) return;
-
-      const avoirsWithReferences = avoirs.filter(avoir => 
-        avoir.invoiceReference?.trim() && 
-        (avoir.group?.nocodbTableName || avoir.group?.nocodbConfigId)
-      );
-
-      if (avoirsWithReferences.length === 0) return;
-
-      console.log(`🔍 Chargement des résultats de vérification pour ${avoirsWithReferences.length} avoirs`);
-
-      // Charger les résultats depuis le cache en parallèle
-      const results = await Promise.allSettled(
-        avoirsWithReferences.map(async (avoir) => {
-          try {
-            const result = await apiRequest(`/api/avoirs/${avoir.id}/verify-invoice`, 'POST', { 
-              invoiceReference: avoir.invoiceReference,
-              forceRefresh: false // Utiliser le cache si disponible
-            });
-            return { avoirId: avoir.id, result };
-          } catch (error) {
-            console.error(`Erreur chargement cache avoir ${avoir.id}:`, error);
-            return { 
-              avoirId: avoir.id, 
-              result: { 
-                exists: false, 
-                matchType: 'none', 
-                errorMessage: 'Erreur de chargement' 
-              } 
-            };
-          }
-        })
-      );
-
-      // Appliquer les résultats chargés
-      const newResults: Record<number, any> = {};
-      results.forEach((result) => {
-        if (result.status === 'fulfilled') {
-          const { avoirId, result: verificationResult } = result.value;
-          newResults[avoirId] = verificationResult;
-        }
-      });
-
-      setAvoirVerificationResults(newResults);
-      console.log(`✅ Résultats de vérification chargés pour ${Object.keys(newResults).length} avoirs`);
-    };
-
-    loadVerificationResults();
-  }, [avoirs]); // Se déclenche quand les avoirs sont chargés
+  // ✅ SUPPRIMÉ : Le chargement automatique causait des crashes JavaScript
+  // Les vérifications se font maintenant uniquement à la demande utilisateur
 
   // 🔥 FONCTIONS WEBHOOK MODAL (comme rapprochement)
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
