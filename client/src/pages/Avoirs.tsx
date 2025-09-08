@@ -130,6 +130,7 @@ export default function Avoirs() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+
   // Fetch user profile
   const { data: user } = useQuery({
     queryKey: ['/api/user'],
@@ -163,6 +164,28 @@ export default function Avoirs() {
     },
     enabled: !!user,
   });
+
+  // 🔄 Charger les vérifications du cache au démarrage
+  useEffect(() => {
+    const loadCachedVerifications = async () => {
+      if (!avoirs || avoirs.length === 0) return;
+      
+      const cachedResults: Record<number, any> = {};
+      for (const avoir of avoirs) {
+        if (avoir.invoiceReference?.trim() && avoir.nocodbVerified) {
+          // Si l'avoir est validé, marquer comme vérifié
+          cachedResults[avoir.id] = { exists: true, fromCache: true, permanent: true };
+        }
+      }
+      
+      if (Object.keys(cachedResults).length > 0) {
+        setAvoirVerificationResults(prev => ({ ...prev, ...cachedResults }));
+        console.log('✅ Vérifications cachées chargées:', cachedResults);
+      }
+    };
+    
+    loadCachedVerifications();
+  }, [avoirs]);
 
   // Create avoir mutation
   const createAvoirMutation = useMutation({
@@ -1111,7 +1134,7 @@ export default function Avoirs() {
                           <div className="flex items-center justify-center">
                             {verifyingAvoirs.has(avoir.id) ? (
                               <Clock className="h-4 w-4 text-blue-500 animate-spin" />
-                            ) : avoirVerificationResults[avoir.id]?.exists === true ? (
+                            ) : (avoirVerificationResults[avoir.id]?.exists === true || avoir.nocodbVerified) ? (
                               <CheckCircle className="h-4 w-4 text-green-500 cursor-help" />
                             ) : avoirVerificationResults[avoir.id]?.exists === false ? (
                               <XCircle className="h-4 w-4 text-red-500 cursor-help" />
