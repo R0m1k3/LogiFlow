@@ -446,6 +446,16 @@ export default function Avoirs() {
 
   // Handle status change
   const handleStatusChange = (avoirId: number, newStatus: string) => {
+    // Empêcher les managers de mettre le statut en "Reçu"
+    if ((user as any)?.role === 'manager' && newStatus === 'Reçu') {
+      toast({
+        title: "Accès refusé",
+        description: "Vous n'avez pas les permissions pour marquer un avoir comme reçu",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const avoir = avoirs?.find(a => a?.id === avoirId);
     if (avoir && avoir.supplierId && avoir.groupId) {
       editAvoirMutation.mutate({ 
@@ -969,7 +979,9 @@ export default function Avoirs() {
                     <SelectContent>
                       <SelectItem value="En attente de demande">En attente de demande</SelectItem>
                       <SelectItem value="Demandé">Demandé</SelectItem>
-                      <SelectItem value="Reçu">Reçu</SelectItem>
+                      {(user as any)?.role !== 'manager' && (
+                        <SelectItem value="Reçu">Reçu</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </td>
