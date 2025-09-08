@@ -130,27 +130,6 @@ export default function Avoirs() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // 🔄 Charger les vérifications du cache au démarrage
-  useEffect(() => {
-    const loadCachedVerifications = async () => {
-      if (!avoirs) return;
-      
-      const cachedResults: Record<number, any> = {};
-      for (const avoir of avoirs) {
-        if (avoir.invoiceReference?.trim() && avoir.nocodbVerified) {
-          // Si l'avoir est validé, marquer comme vérifié
-          cachedResults[avoir.id] = { exists: true, fromCache: true, permanent: true };
-        }
-      }
-      
-      if (Object.keys(cachedResults).length > 0) {
-        setAvoirVerificationResults(prev => ({ ...prev, ...cachedResults }));
-        console.log('✅ Vérifications cachées chargées:', cachedResults);
-      }
-    };
-    
-    loadCachedVerifications();
-  }, [avoirs]);
 
   // Fetch user profile
   const { data: user } = useQuery({
@@ -185,6 +164,28 @@ export default function Avoirs() {
     },
     enabled: !!user,
   });
+
+  // 🔄 Charger les vérifications du cache au démarrage
+  useEffect(() => {
+    const loadCachedVerifications = async () => {
+      if (!avoirs || avoirs.length === 0) return;
+      
+      const cachedResults: Record<number, any> = {};
+      for (const avoir of avoirs) {
+        if (avoir.invoiceReference?.trim() && avoir.nocodbVerified) {
+          // Si l'avoir est validé, marquer comme vérifié
+          cachedResults[avoir.id] = { exists: true, fromCache: true, permanent: true };
+        }
+      }
+      
+      if (Object.keys(cachedResults).length > 0) {
+        setAvoirVerificationResults(prev => ({ ...prev, ...cachedResults }));
+        console.log('✅ Vérifications cachées chargées:', cachedResults);
+      }
+    };
+    
+    loadCachedVerifications();
+  }, [avoirs]);
 
   // Create avoir mutation
   const createAvoirMutation = useMutation({
