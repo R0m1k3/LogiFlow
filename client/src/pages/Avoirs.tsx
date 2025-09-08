@@ -441,13 +441,29 @@ export default function Avoirs() {
         [variables.avoirId]: result
       }));
 
-      // DÉSACTIVÉ TEMPORAIREMENT : Auto-remplissage pour debug
-      // TODO: Réactiver une fois le problème identifié
-      console.log('✅ Vérification terminée sans auto-remplissage:', { 
-        exists: result?.exists, 
-        invoiceAmount: result?.invoiceAmount,
-        avoirId: variables.avoirId 
-      });
+      // Auto-remplissage sécurisé si facture trouvée et montant disponible
+      if (result?.exists === true && result?.invoiceAmount !== undefined && result?.invoiceAmount !== null) {
+        const avoir = avoirs?.find(a => a?.id === variables.avoirId);
+        if (avoir && avoir.supplierId && avoir.groupId) {
+          try {
+            console.log('🔄 Auto-remplissage montant:', { avoirId: variables.avoirId, amount: result.invoiceAmount });
+            editAvoirMutation.mutate({
+              id: variables.avoirId,
+              data: {
+                supplierId: avoir.supplierId,
+                groupId: avoir.groupId,
+                invoiceReference: avoir.invoiceReference || "",
+                amount: result.invoiceAmount,
+                comment: avoir.comment || "",
+                commercialProcessed: avoir.commercialProcessed || false,
+                status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
+              }
+            });
+          } catch (autoFillError) {
+            console.error('❌ Erreur auto-remplissage:', autoFillError);
+          }
+        }
+      }
       
       setVerifyingAvoirs(prev => {
         const newSet = new Set(prev);
@@ -1136,12 +1152,10 @@ export default function Avoirs() {
                           <div className="flex items-center justify-center">
                             {verifyingAvoirs.has(avoir.id) ? (
                               <Clock className="h-4 w-4 text-blue-500 animate-spin" />
-                            ) : avoirVerificationResults[avoir.id] ? (
-                              avoirVerificationResults[avoir.id].exists ? (
-                                <CheckCircle className="h-4 w-4 text-green-500 cursor-help" />
-                              ) : (
-                                <XCircle className="h-4 w-4 text-red-500 cursor-help" />
-                              )
+                            ) : avoirVerificationResults[avoir.id]?.exists === true ? (
+                              <CheckCircle className="h-4 w-4 text-green-500 cursor-help" />
+                            ) : avoirVerificationResults[avoir.id]?.exists === false ? (
+                              <XCircle className="h-4 w-4 text-red-500 cursor-help" />
                             ) : (
                               <button
                                 onClick={() => handleVerifyAvoirInvoice(avoir)}
@@ -1172,7 +1186,7 @@ export default function Avoirs() {
                           )}
 
                           {/* Bouton Valider - apparaît si vérification réussie et pas encore validé */}
-                          {avoirVerificationResults[avoir.id]?.exists && !avoir.nocodbVerified && (
+                          {avoirVerificationResults[avoir.id]?.exists === true && !avoir.nocodbVerified && (
                             <Button
                               variant="outline"
                               size="sm"
