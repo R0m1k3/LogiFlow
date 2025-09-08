@@ -47,6 +47,8 @@ interface Avoir {
     id: number;
     name: string;
     color: string;
+    nocodbTableName?: string;
+    nocodbConfigId?: number;
   };
   creator: {
     id: string;
@@ -65,6 +67,8 @@ interface Group {
   id: number;
   name: string;
   color: string;
+  nocodbTableName?: string;
+  nocodbConfigId?: number;
 }
 
 // Schema for form validation
@@ -646,13 +650,30 @@ export default function Avoirs() {
           </p>
         </div>
         
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouvel avoir
+        <div className="flex items-center space-x-2">
+          {/* Bouton Vérifier tous si des avoirs avec référence existent */}
+          {avoirs.some(avoir => avoir.invoiceReference?.trim()) && (
+            <Button 
+              variant="outline" 
+              onClick={handleVerifyAllAvoirInvoices}
+              disabled={verifyingAvoirs.size > 0}
+            >
+              <Search className="h-4 w-4 mr-2" />
+              {verifyingAvoirs.size > 0 ? "Vérification..." : "Vérifier tous"}
             </Button>
-          </DialogTrigger>
+          )}
+          
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Nouvel avoir
+              </Button>
+            </DialogTrigger>
+          </Dialog>
+        </div>
+        
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Créer un nouvel avoir</DialogTitle>
@@ -887,6 +908,9 @@ export default function Avoirs() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Créé le
                   </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Vérification
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -946,6 +970,31 @@ export default function Avoirs() {
                             }
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
+                        {avoir.invoiceReference?.trim() ? (
+                          <div className="flex items-center justify-center">
+                            {verifyingAvoirs.has(avoir.id) ? (
+                              <Clock className="h-4 w-4 text-blue-500 animate-spin" />
+                            ) : avoirVerificationResults[avoir.id] ? (
+                              avoirVerificationResults[avoir.id].exists ? (
+                                <CheckCircle className="h-4 w-4 text-green-500 cursor-help" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-red-500 cursor-help" />
+                              )
+                            ) : (
+                              <button
+                                onClick={() => handleVerifyAvoirInvoice(avoir)}
+                                className="h-4 w-4 text-gray-400 hover:text-blue-500 transition-colors"
+                                title="Cliquer pour vérifier la facture"
+                              >
+                                <Search className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">Sans réf.</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center space-x-2">
