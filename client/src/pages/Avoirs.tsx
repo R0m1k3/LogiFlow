@@ -425,20 +425,6 @@ export default function Avoirs() {
     }
   };
 
-  // Debug: Log des avoirs reçus
-  useEffect(() => {
-    console.log('💰 Debug avoirs reçus:', { 
-      count: avoirs?.length || 0,
-      first: avoirs?.[0] ? {
-        id: avoirs[0].id,
-        keys: Object.keys(avoirs[0]),
-        hasSupplier: !!avoirs[0].supplier,
-        hasGroup: !!avoirs[0].group,
-        hasCreator: !!avoirs[0].creator
-      } : null
-    });
-  }, [avoirs]);
-
   // 🔍 FONCTION DE VÉRIFICATION DE FACTURE (comme rapprochement)
   const verifyAvoirInvoiceMutation = useMutation({
     mutationFn: async ({ avoirId, invoiceReference, forceRefresh }: { avoirId: number; invoiceReference?: string; forceRefresh?: boolean }) => {
@@ -1055,18 +1041,7 @@ export default function Avoirs() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAvoirs?.filter(avoir => avoir && avoir.id).map((avoir) => {
-                  try {
-                    // Debug: Log de l'avoir pour identifier le problème
-                    console.log('🔍 Render avoir:', { 
-                      id: avoir?.id, 
-                      hasSupplier: !!avoir?.supplier,
-                      hasGroup: !!avoir?.group,
-                      hasCreator: !!avoir?.creator,
-                      createdAt: avoir?.createdAt,
-                      status: avoir?.status 
-                    });
-                    
-                    const canEditDelete = ['admin', 'directeur'].includes((user as any)?.role);
+                  const canEditDelete = ['admin', 'directeur'].includes((user as any)?.role);
                     
                     return (
                     <tr key={avoir?.id || Math.random()} className={`hover:bg-gray-50 ${avoir?.nocodbVerified ? 'bg-gray-100 opacity-75' : ''}`}>
@@ -1224,16 +1199,6 @@ export default function Avoirs() {
                       </td>
                     </tr>
                   );
-                  } catch (renderError) {
-                    console.error('❌ Erreur rendu avoir:', renderError, avoir);
-                    return (
-                      <tr key={avoir?.id || Math.random()} className="bg-red-50">
-                        <td colSpan={8} className="px-6 py-4 text-center text-red-600">
-                          Erreur d'affichage de l'avoir #{avoir?.id || 'inconnu'}
-                        </td>
-                      </tr>
-                    );
-                  }
                 })}
               </tbody>
             </table>
