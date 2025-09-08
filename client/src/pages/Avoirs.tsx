@@ -441,30 +441,13 @@ export default function Avoirs() {
         [variables.avoirId]: result
       }));
 
-      // Auto-remplissage si facture trouvée et montant disponible
-      if (result?.exists && result?.invoiceAmount !== undefined && result?.invoiceAmount !== null) {
-        // Auto-remplir le montant dans l'avoir via API
-        const avoir = avoirs?.find(a => a?.id === variables.avoirId);
-        if (avoir && avoir.supplierId && avoir.groupId) {
-          try {
-            editAvoirMutation.mutate({
-              id: variables.avoirId,
-              data: {
-                supplierId: avoir.supplierId,
-                groupId: avoir.groupId,
-                invoiceReference: avoir.invoiceReference || "",
-                amount: result.invoiceAmount, // Auto-remplissage du montant
-                comment: avoir.comment || "",
-                commercialProcessed: avoir.commercialProcessed || false,
-                status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
-              }
-            });
-          } catch (autoFillError) {
-            console.error('Erreur auto-remplissage montant:', autoFillError);
-            // Ne pas faire échouer la vérification si l'auto-remplissage échoue
-          }
-        }
-      }
+      // DÉSACTIVÉ TEMPORAIREMENT : Auto-remplissage pour debug
+      // TODO: Réactiver une fois le problème identifié
+      console.log('✅ Vérification terminée sans auto-remplissage:', { 
+        exists: result?.exists, 
+        invoiceAmount: result?.invoiceAmount,
+        avoirId: variables.avoirId 
+      });
       
       setVerifyingAvoirs(prev => {
         const newSet = new Set(prev);
