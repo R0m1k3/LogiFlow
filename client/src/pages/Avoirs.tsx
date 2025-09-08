@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -80,6 +81,9 @@ type AvoirFormData = z.infer<typeof avoirSchema>;
 export default function Avoirs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedAvoir, setSelectedAvoir] = useState<Avoir | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState<string>("all");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -141,8 +145,85 @@ export default function Avoirs() {
     }
   });
 
-  // Initialize form
+  // Edit avoir mutation
+  const editAvoirMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number, data: AvoirFormData }) => {
+      const response = await fetch(`/api/avoirs/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to edit avoir');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
+      setIsEditDialogOpen(false);
+      setSelectedAvoir(null);
+      toast({
+        title: "Avoir modifié",
+        description: "L'avoir a été modifié avec succès.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la modification",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Delete avoir mutation
+  const deleteAvoirMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/avoirs/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete avoir');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
+      setIsDeleteDialogOpen(false);
+      setSelectedAvoir(null);
+      toast({
+        title: "Avoir supprimé",
+        description: "L'avoir a été supprimé avec succès.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la suppression",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Initialize create form
   const form = useForm<AvoirFormData>({
+    resolver: zodResolver(avoirSchema),
+    defaultValues: {
+      supplierId: 0,
+      groupId: 0,
+      invoiceReference: "",
+      amount: undefined,
+      comment: "",
+      commercialProcessed: false,
+    },
+  });
+
+  // Initialize edit form
+  const editForm = useForm<AvoirFormData>({
     resolver: zodResolver(avoirSchema),
     defaultValues: {
       supplierId: 0,
@@ -157,6 +238,41 @@ export default function Avoirs() {
   // Handle form submission
   const onSubmit = (data: AvoirFormData) => {
     createAvoirMutation.mutate(data);
+  };
+
+  // Handle edit form submission
+  const onEditSubmit = (data: AvoirFormData) => {
+    if (selectedAvoir) {
+      editAvoirMutation.mutate({ id: selectedAvoir.id, data });
+    }
+  };
+
+  // Handle edit action
+  const handleEdit = (avoir: Avoir) => {
+    setSelectedAvoir(avoir);
+    editForm.reset({
+      supplierId: avoir.supplierId,
+      groupId: avoir.groupId,
+      invoiceReference: avoir.invoiceReference || "",
+      amount: avoir.amount,
+      comment: avoir.comment || "",
+      commercialProcessed: avoir.commercialProcessed,
+      status: avoir.status,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  // Handle delete action
+  const handleDelete = (avoir: Avoir) => {
+    setSelectedAvoir(avoir);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // Confirm delete
+  const confirmDelete = () => {
+    if (selectedAvoir) {
+      deleteAvoirMutation.mutate(selectedAvoir.id);
+    }
   };
 
   // Filter avoirs based on search term
@@ -448,13 +564,13 @@ export default function Avoirs() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fournisseur
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Statut
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Référence
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Fournisseur
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Magasin
@@ -476,6 +592,9 @@ export default function Avoirs() {
                   
                   return (
                     <tr key={avoir.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {avoir.supplier.name}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           {getStatusIcon(avoir.status)}
@@ -484,11 +603,8 @@ export default function Avoirs() {
                           </Badge>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{avoir.invoiceReference || 'Sans référence'}
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {avoir.supplier.name}
+                        #{avoir.invoiceReference || 'Sans référence'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center">
@@ -521,6 +637,7 @@ export default function Avoirs() {
                               size="sm"
                               className="h-8 w-8 p-0"
                               title="Modifier"
+                              onClick={() => handleEdit(avoir)}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -529,6 +646,7 @@ export default function Avoirs() {
                               size="sm"
                               className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                               title="Supprimer"
+                              onClick={() => handleDelete(avoir)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -545,6 +663,187 @@ export default function Avoirs() {
           )}
         </div>
       </div>
+
+      {/* Edit Modal */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Modifier l'avoir</DialogTitle>
+            <DialogDescription>
+              Modifiez les informations de l'avoir.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="supplierId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fournisseur *</FormLabel>
+                    <Select 
+                      value={field.value.toString()} 
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionnez un fournisseur" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {suppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                            {supplier.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="invoiceReference"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Référence facture</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Référence de la facture (optionnel)" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Montant</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        placeholder="Montant en euros (optionnel)" 
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Statut</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="En attente de demande">En attente de demande</SelectItem>
+                        <SelectItem value="Demandé">Demandé</SelectItem>
+                        <SelectItem value="Reçu">Reçu</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="comment"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Commentaire</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Commentaire ou description (optionnel)" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="commercialProcessed"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Avoir fait par commercial
+                      </FormLabel>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={editAvoirMutation.isPending}
+                >
+                  {editAvoirMutation.isPending ? "Modification..." : "Modifier"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Modal */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer cet avoir ? Cette action ne peut pas être annulée.
+              {selectedAvoir && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="text-sm">
+                    <div><strong>Fournisseur:</strong> {selectedAvoir.supplier.name}</div>
+                    <div><strong>Référence:</strong> {selectedAvoir.invoiceReference || 'Sans référence'}</div>
+                    <div><strong>Montant:</strong> {selectedAvoir.amount ? `${selectedAvoir.amount.toFixed(2)} €` : 'Non spécifié'}</div>
+                  </div>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              disabled={deleteAvoirMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteAvoirMutation.isPending ? "Suppression..." : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
