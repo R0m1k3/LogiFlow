@@ -128,6 +128,9 @@ export default function Avoirs() {
   // États pour le système de vérification de facture
   const [avoirVerificationResults, setAvoirVerificationResults] = useState<Record<number, any>>({});
   const [verifyingAvoirs, setVerifyingAvoirs] = useState<Set<number>>(new Set());
+
+  // ✅ État local pour le champ montant d'édition pour éviter les conflits avec React Hook Form
+  const [editAmountValue, setEditAmountValue] = useState<string>("");
   // Utiliser le contexte global du magasin
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
@@ -383,12 +386,21 @@ export default function Avoirs() {
   // Handle edit form submission
   const onEditSubmit = (data: AvoirFormData) => {
     if (selectedAvoir) {
+      // ✅ Utiliser la valeur de l'état local pour le montant
+      const finalAmount = editAmountValue === "" ? undefined : parseFloat(editAmountValue);
+      const finalData = {
+        ...data,
+        amount: finalAmount
+      };
+      
       console.log('💰 Editing avoir - Form data sent:', {
         originalCommercial: selectedAvoir.commercialProcessed,
-        formCommercial: data.commercialProcessed,
-        fullData: data
+        formCommercial: finalData.commercialProcessed,
+        editAmountValue,
+        finalAmount,
+        fullData: finalData
       });
-      editAvoirMutation.mutate({ id: selectedAvoir.id, data });
+      editAvoirMutation.mutate({ id: selectedAvoir.id, data: finalData });
     }
   };
 
@@ -397,11 +409,14 @@ export default function Avoirs() {
     if (!avoir || !avoir.id) return;
     
     setSelectedAvoir(avoir);
+    // ✅ Initialiser l'état local du montant
+    setEditAmountValue(avoir.amount !== null && avoir.amount !== undefined ? avoir.amount.toString() : "");
+    
     editForm.reset({
       supplierId: avoir.supplierId || 0,
       groupId: avoir.groupId || 0,
       invoiceReference: avoir.invoiceReference || "",
-      amount: avoir.amount ?? undefined, // ✅ Convertir null en undefined pour permettre la suppression
+      amount: avoir.amount ?? undefined,
       comment: avoir.comment || "",
       commercialProcessed: avoir.commercialProcessed || false,
       status: avoir.status || "En attente de demande",
@@ -1361,21 +1376,11 @@ export default function Avoirs() {
                         type="number" 
                         step="0.01" 
                         placeholder="Montant en euros (optionnel)" 
-                        value={field.value ?? ""}
+                        value={editAmountValue}
                         onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === "") {
-                            field.onChange(undefined);
-                          } else {
-                            const num = parseFloat(value);
-                            if (!isNaN(num)) {
-                              field.onChange(num);
-                            }
-                          }
+                          // ✅ Utiliser seulement l'état local, complètement séparé de React Hook Form
+                          setEditAmountValue(e.target.value);
                         }}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        ref={field.ref}
                       />
                     </FormControl>
                     <FormMessage />
