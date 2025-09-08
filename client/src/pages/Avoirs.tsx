@@ -926,12 +926,19 @@ export default function Avoirs() {
                         {avoir.supplier?.name || 'Fournisseur non défini'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {getStatusIcon(avoir.status)}
-                          <Badge variant={getStatusVariant(avoir.status)} className="ml-2">
-                            {avoir.status}
-                          </Badge>
-                        </div>
+                        <Select 
+                          value={avoir.status}
+                          onValueChange={(newStatus) => handleStatusChange(avoir.id, newStatus)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="En attente de demande">En attente de demande</SelectItem>
+                            <SelectItem value="Demandé">Demandé</SelectItem>
+                            <SelectItem value="Reçu">Reçu</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         #{avoir.invoiceReference || 'Sans référence'}
