@@ -2471,9 +2471,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(avoir);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.error('❌ [POST AVOIR] ERREURS VALIDATION ZOD:', JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
-      console.error("Error creating avoir:", error);
+      console.error("❌ [POST AVOIR] Erreur générale:", error);
       res.status(500).json({ message: "Failed to create avoir" });
     }
   });
