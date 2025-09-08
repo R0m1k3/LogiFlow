@@ -7,8 +7,8 @@ INSERT INTO suppliers (name, contact) VALUES
 ON CONFLICT DO NOTHING;
 
 -- 2. Créer des données de test minimales pour groups  
-INSERT INTO groups (name, description) VALUES 
-('Magasin Test', 'Magasin de test pour avoirs')
+INSERT INTO groups (name, color) VALUES 
+('Magasin Test', '#1976D2')
 ON CONFLICT DO NOTHING;
 
 -- 3. Vérifier/créer un utilisateur admin

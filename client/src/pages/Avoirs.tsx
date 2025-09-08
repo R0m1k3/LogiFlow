@@ -159,14 +159,14 @@ export default function Avoirs() {
     createAvoirMutation.mutate(data);
   };
 
-  // Filter avoirs based on search term
+  // Filter avoirs based on search term - ACCÈS SÉCURISÉ
   const filteredAvoirs = avoirs.filter(avoir =>
-    avoir.invoiceReference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    avoir.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    avoir.comment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (avoir.creator.firstName && avoir.creator.lastName 
+    (avoir.invoiceReference?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (avoir.supplier?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (avoir.comment?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (avoir.creator?.firstName && avoir.creator?.lastName 
       ? `${avoir.creator.firstName} ${avoir.creator.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
-      : avoir.creator.username.toLowerCase().includes(searchTerm.toLowerCase())
+      : (avoir.creator?.username?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     )
   );
 
@@ -460,9 +460,9 @@ export default function Avoirs() {
                   <div className="flex items-center">
                     <div 
                       className="w-3 h-3 rounded-full mr-2" 
-                      style={{ backgroundColor: avoir.group.color }}
+                      style={{ backgroundColor: avoir.group?.color || '#ccc' }}
                     />
-                    {avoir.group.name}
+                    {avoir.group?.name || 'Non défini'}
                   </div>
                 </CardDescription>
               </CardHeader>
@@ -470,7 +470,7 @@ export default function Avoirs() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Fournisseur:</span>
-                    <span className="font-medium">{avoir.supplier.name}</span>
+                    <span className="font-medium">{avoir.supplier?.name || 'Non défini'}</span>
                   </div>
                   
                   <div className="flex justify-between items-center">
@@ -489,9 +489,9 @@ export default function Avoirs() {
                   <div className="pt-2 border-t">
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>
-                        Par {avoir.creator.firstName && avoir.creator.lastName 
+                        Par {avoir.creator?.firstName && avoir.creator?.lastName 
                           ? `${avoir.creator.firstName} ${avoir.creator.lastName}`
-                          : avoir.creator.username
+                          : avoir.creator?.username || 'Utilisateur inconnu'
                         }
                       </span>
                       <span>
