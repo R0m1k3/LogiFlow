@@ -80,6 +80,10 @@ const avoirSchema = z.object({
     z.null().transform(() => undefined),
     z.undefined().transform(() => undefined), 
     z.literal("").transform(() => undefined),
+    z.number().transform((num) => {
+      // Permettre tous les nombres existants (positifs, négatifs, zéro)
+      return num;
+    }),
     z.string().transform((val) => {
       if (val.trim() === '') return undefined; // Permettre les champs vides
       const num = parseFloat(val);
@@ -397,7 +401,7 @@ export default function Avoirs() {
       supplierId: avoir.supplierId || 0,
       groupId: avoir.groupId || 0,
       invoiceReference: avoir.invoiceReference || "",
-      amount: avoir.amount,
+      amount: avoir.amount ?? undefined, // ✅ Convertir null en undefined pour permettre la suppression
       comment: avoir.comment || "",
       commercialProcessed: avoir.commercialProcessed || false,
       status: avoir.status || "En attente de demande",
