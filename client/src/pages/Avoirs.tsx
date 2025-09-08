@@ -74,6 +74,7 @@ const avoirSchema = z.object({
   amount: z.number().optional(),
   comment: z.string().optional(),
   commercialProcessed: z.boolean().optional(),
+  status: z.enum(["En attente de demande", "Demandé", "Reçu"]).optional(),
 });
 
 type AvoirFormData = z.infer<typeof avoirSchema>;
@@ -219,6 +220,7 @@ export default function Avoirs() {
       amount: undefined,
       comment: "",
       commercialProcessed: false,
+      status: "En attente de demande",
     },
   });
 
@@ -232,6 +234,7 @@ export default function Avoirs() {
       amount: undefined,
       comment: "",
       commercialProcessed: false,
+      status: "En attente de demande",
     },
   });
 
@@ -257,7 +260,7 @@ export default function Avoirs() {
       amount: avoir.amount,
       comment: avoir.comment || "",
       commercialProcessed: avoir.commercialProcessed,
-      status: avoir.status,
+      status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
     });
     setIsEditDialogOpen(true);
   };
@@ -552,7 +555,7 @@ export default function Avoirs() {
               <p className="mt-1 text-sm text-gray-500">
                 {searchTerm ? "Aucun avoir ne correspond à votre recherche." : "Commencez par créer votre premier avoir."}
               </p>
-              {canCreate && !searchTerm && (
+              {!searchTerm && (
                 <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Créer un avoir
