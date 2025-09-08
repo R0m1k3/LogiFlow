@@ -1,0 +1,199 @@
+      
+  stack: 'error: column "is_reconciled" of relation "invoice_verification_cache" does not exist\n' +
+
+    '    at /app/node_modules/pg-pool/index.js:45:11\n' +
+
+    '    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n' +
+
+    '    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22\n' +
+
+    '    at async DatabaseStorage.createInvoiceVerificationCache (file:///app/dist/index.js:2409:27)\n' +
+
+    '    at async InvoiceVerificationService.saveToCache (file:///app/dist/index.js:4863:30)\n' +
+
+    '    at async InvoiceVerificationService.verifyInvoice (file:///app/dist/index.js:5073:15)\n' +
+
+    '    at async file:///app/dist/index.js:13791:18'
+
+}
+
+✅ Résultat vérification: {
+
+  exists: true,
+
+  matchType: 'invoice_reference',
+
+  invoiceReference: 'F5192259',
+
+  invoiceAmount: 2268.24,
+
+  supplierName: 'JJA Noel / Plein Air'
+
+}
+
+POST /api/deliveries/88/verify-invoice 200 in 4512ms
+
+POST /api/deliveries/88/verify-invoice 200 in 3587ms
+
+POST /api/deliveries/163/verify-invoice 200 in 3805ms
+
+✅ Résultat vérification: {
+
+  exists: true,
+
+  matchType: 'invoice_reference',
+
+  invoiceReference: 'FCLT036018',
+
+  invoiceAmount: 1141.28,
+
+  supplierName: 'Idvpc'
+
+}
+
+POST /api/deliveries/139/verify-invoice 200 in 3670ms
+
+❌ Erreur création cache: error: column "is_reconciled" of relation "invoice_verification_cache" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.createInvoiceVerificationCache (file:///app/dist/index.js:2409:27)
+
+    at async InvoiceVerificationService.saveToCache (file:///app/dist/index.js:4863:30)
+
+    at async InvoiceVerificationService.verifyInvoice (file:///app/dist/index.js:5073:15)
+
+    at async file:///app/dist/index.js:13791:18 {
+
+  length: 153,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '183',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_target.c',
+
+  line: '1075',
+
+  routine: 'checkInsertTargets'
+
+}
+
+❌ [CACHE] Erreur sauvegarde cache: error: column "is_reconciled" of relation "invoice_verification_cache" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.createInvoiceVerificationCache (file:///app/dist/index.js:2409:27)
+
+    at async InvoiceVerificationService.saveToCache (file:///app/dist/index.js:4863:30)
+
+    at async InvoiceVerificationService.verifyInvoice (file:///app/dist/index.js:5073:15)
+
+    at async file:///app/dist/index.js:13791:18 {
+
+  length: 153,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: undefined,
+
+  position: '183',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_target.c',
+
+  line: '1075',
+
+  routine: 'checkInsertTargets'
+
+}
+
+❌ [CACHE] Détails erreur: {
+
+  name: 'error',
+
+  message: 'column "is_reconciled" of relation "invoice_verification_cache" does not exist',
+
+  stack: 'error: column "is_reconciled" of relation "invoice_verification_cache" does not exist\n' +
+
+    '    at /app/node_modules/pg-pool/index.js:45:11\n' +
+
+    '    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n' +
+
+    '    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22\n' +
+
+    '    at async DatabaseStorage.createInvoiceVerificationCache (file:///app/dist/index.js:2409:27)\n' +
+
+    '    at async InvoiceVerificationService.saveToCache (file:///app/dist/index.js:4863:30)\n' +
+
+    '    at async InvoiceVerificationService.verifyInvoice (file:///app/dist/index.js:5073:15)\n' +
+
+    '    at async file:///app/dist/index.js:13791:18'
+
+}
+
+DELETE /api/groups/3 200 in 47ms
+
+GET /api/groups 200 in 4ms
+
+GET /api/user 304 in 4ms
+
+🔍 Avoirs API called with: { groupIds: undefined, userRole: 'admin' }
+
+📋 Avoirs returned: 0 items
+
+GET /api/avoirs 200 in 10ms
+
+HEAD /api/health 200 in 1ms
+
+POST /api/avoirs 400 in 51ms
+
