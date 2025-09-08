@@ -156,7 +156,12 @@ export default function Avoirs() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
+      // ✅ FIX: Invalider toutes les variations de queryKey avoirs
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return query.queryKey[0]?.toString().includes('/api/avoirs');
+        }
+      });
       setIsCreateDialogOpen(false);
       toast({
         title: "Avoir créé",
@@ -189,7 +194,12 @@ export default function Avoirs() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
+      // ✅ FIX: Invalider toutes les variations de queryKey avoirs
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return query.queryKey[0]?.toString().includes('/api/avoirs');
+        }
+      });
       setIsEditDialogOpen(false);
       setSelectedAvoir(null);
       toast({
@@ -219,7 +229,12 @@ export default function Avoirs() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
+      // ✅ FIX: Invalider toutes les variations de queryKey avoirs
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return query.queryKey[0]?.toString().includes('/api/avoirs');
+        }
+      });
       setIsDeleteDialogOpen(false);
       setSelectedAvoir(null);
       toast({
