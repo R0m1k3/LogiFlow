@@ -69,8 +69,8 @@ interface Group {
 const avoirSchema = z.object({
   supplierId: z.number().min(1, "Veuillez sélectionner un fournisseur"),
   groupId: z.number().min(1, "Veuillez sélectionner un magasin"),
-  invoiceReference: z.string().min(1, "La référence facture est requise"),
-  amount: z.number().min(0.01, "Le montant doit être supérieur à 0"),
+  invoiceReference: z.string().optional(),
+  amount: z.number().optional(),
   comment: z.string().optional(),
   commercialProcessed: z.boolean().optional(),
 });
@@ -148,7 +148,7 @@ export default function Avoirs() {
       supplierId: 0,
       groupId: 0,
       invoiceReference: "",
-      amount: 0,
+      amount: undefined,
       comment: "",
       commercialProcessed: false,
     },
@@ -296,7 +296,7 @@ export default function Avoirs() {
                   name="invoiceReference"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Référence facture</FormLabel>
+                      <FormLabel>Référence facture (optionnel)</FormLabel>
                       <FormControl>
                         <Input placeholder="Numéro de facture" {...field} />
                       </FormControl>
@@ -310,14 +310,14 @@ export default function Avoirs() {
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Montant (€)</FormLabel>
+                      <FormLabel>Montant (€) (optionnel)</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
                           step="0.01" 
                           placeholder="0.00"
                           {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                         />
                       </FormControl>
                       <FormMessage />
