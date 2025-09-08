@@ -2435,7 +2435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             avoirId: avoir.id,
             invoiceReference: avoir.invoiceReference,
             amount: avoir.amount,
-            supplierName: validatedData.supplierId ? (await storage.getSupplier(validatedData.supplierId))?.name : "Unknown",
+            supplierName: "Unknown", // Will be fetched from relations
             groupName: group.name,
             comment: avoir.comment || "",
             commercialProcessed: avoir.commercialProcessed,

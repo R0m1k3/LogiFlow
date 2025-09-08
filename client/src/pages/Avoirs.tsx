@@ -395,7 +395,7 @@ export default function Avoirs() {
           />
         </div>
         
-        {user?.role === 'admin' && (
+        {(user as any)?.role === 'admin' && (
           <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Tous les magasins" />
