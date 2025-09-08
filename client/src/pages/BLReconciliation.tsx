@@ -923,7 +923,7 @@ export default function BLReconciliation() {
                                     className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
                                     title="Envoyer Facture/Avoir"
                                   >
-                                    <Upload className="w-4 h-4" />
+                                    <Upload className="h-4 w-4" />
                                   </Button>
                                 )}
                                 {!delivery.reconciled ? (
@@ -1126,7 +1126,7 @@ export default function BLReconciliation() {
                                     className="text-green-600 hover:text-green-700 transition-colors duration-200 p-1 hover:bg-green-50 rounded"
                                     title="Envoyer Facture/Avoir"
                                   >
-                                    <Upload className="w-4 h-4" />
+                                    <Upload className="h-4 w-4" />
                                   </button>
                                 )}
                                 {(permissions.canEdit('reconciliation') || permissions.canValidate('reconciliation')) && (
