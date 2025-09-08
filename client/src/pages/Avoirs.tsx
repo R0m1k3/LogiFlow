@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -418,112 +418,132 @@ export default function Avoirs() {
         )}
       </div>
 
-      {/* Avoirs List */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading ? (
-          Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="h-3 bg-gray-200 rounded"></div>
-                  <div className="h-3 bg-gray-200 rounded w-4/5"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : filteredAvoirs.length === 0 ? (
-          <div className="col-span-full text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun avoir</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Commencez par créer votre premier avoir.
-            </p>
-          </div>
-        ) : (
-          filteredAvoirs.map((avoir) => (
-            <Card key={avoir.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center">
-                    {getStatusIcon(avoir.status)}
-                    <span className="ml-2">#{avoir.invoiceReference || 'Sans référence'}</span>
-                  </CardTitle>
-                  <Badge variant={getStatusVariant(avoir.status)}>
-                    {avoir.status}
-                  </Badge>
-                </div>
-                <CardDescription>
-                  <div className="flex items-center">
-                    <div 
-                      className="w-3 h-3 rounded-full mr-2" 
-                      style={{ backgroundColor: avoir.group.color }}
-                    />
-                    {avoir.group.name}
-                  </div>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Fournisseur:</span>
-                    <span className="font-medium">{avoir.supplier.name}</span>
-                  </div>
+      {/* Avoirs List - Format Table */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          {isLoading ? (
+            <div className="p-4">
+              <div className="animate-pulse space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+          ) : filteredAvoirs.length === 0 ? (
+            <div className="p-12 text-center">
+              <FileText className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-4 text-sm font-medium text-gray-900">Aucun avoir</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchTerm ? "Aucun avoir ne correspond à votre recherche." : "Commencez par créer votre premier avoir."}
+              </p>
+              {canCreate && !searchTerm && (
+                <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer un avoir
+                </Button>
+              )}
+            </div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Statut
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Référence
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fournisseur
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Magasin
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Montant
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Créé le
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredAvoirs.map((avoir) => {
+                  const canEditDelete = ['admin', 'directeur'].includes((user as any)?.role);
                   
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Montant:</span>
-                    <span className="font-bold text-lg">{avoir.amount ? avoir.amount.toFixed(2) + ' €' : 'Non spécifié'}</span>
-                  </div>
-                  
-                  {avoir.comment && (
-                    <div className="pt-2 border-t">
-                      <p className="text-sm text-muted-foreground italic">
-                        "{avoir.comment}"
-                      </p>
-                    </div>
-                  )}
-                  
-                  <div className="pt-2 border-t">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>
-                        Par {avoir.creator.firstName && avoir.creator.lastName 
-                          ? `${avoir.creator.firstName} ${avoir.creator.lastName}`
-                          : avoir.creator.username
-                        }
-                      </span>
-                      <span>
-                        {format(new Date(avoir.createdAt), "dd/MM/yyyy", { locale: fr })}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {avoir.commercialProcessed && (
-                    <div className="flex items-center text-xs text-green-600">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Traité par commercial
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center space-x-2">
-                    {avoir.webhookSent && (
-                      <Badge variant="secondary" className="text-xs">
-                        Webhook envoyé
-                      </Badge>
-                    )}
-                    {avoir.nocodbVerified && (
-                      <Badge variant="default" className="text-xs">
-                        Vérifié NocoDB
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+                  return (
+                    <tr key={avoir.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {getStatusIcon(avoir.status)}
+                          <Badge variant={getStatusVariant(avoir.status)} className="ml-2">
+                            {avoir.status}
+                          </Badge>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        #{avoir.invoiceReference || 'Sans référence'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {avoir.supplier.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="flex items-center">
+                          <div 
+                            className="w-3 h-3 rounded-full mr-2" 
+                            style={{ backgroundColor: avoir.group.color }}
+                          />
+                          {avoir.group.name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {avoir.amount ? `${avoir.amount.toFixed(2)} €` : 'Non spécifié'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div>
+                          <div>{format(new Date(avoir.createdAt), "dd/MM/yyyy", { locale: fr })}</div>
+                          <div className="text-xs text-gray-400">
+                            Par {avoir.creator.firstName && avoir.creator.lastName 
+                              ? `${avoir.creator.firstName} ${avoir.creator.lastName}`
+                              : avoir.creator.username
+                            }
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        {canEditDelete ? (
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              title="Modifier"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">Lecture seule</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   );
