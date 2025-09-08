@@ -2,8 +2,8 @@
 -- Utilisez ce script SI les tables suppliers/groups/users sont vides
 
 -- 1. Créer des données de test minimales pour suppliers
-INSERT INTO suppliers (name, contact_email) VALUES 
-('Fournisseur Test', 'test@supplier.com')
+INSERT INTO suppliers (name, contact) VALUES 
+('Fournisseur Test', 'Contact Test')
 ON CONFLICT DO NOTHING;
 
 -- 2. Créer des données de test minimales pour groups  
