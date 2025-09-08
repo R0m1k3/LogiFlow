@@ -585,7 +585,7 @@ export const insertAvoirSchema = createInsertSchema(avoirs).omit({
   processedAt: true,
 }).extend({
   status: z.enum(["En attente de demande", "Demandé", "Reçu"]).default("En attente de demande"),
-  amount: z.coerce.number().refine(val => val !== 0, "Le montant ne peut pas être zéro").optional(), // Montant optionnel, positif ou négatif (mais pas zéro)
+  amount: z.coerce.number().optional().nullable(), // Montant optionnel, peut être vide, zéro, positif ou négatif
   invoiceReference: z.string().optional(), // Référence facture optionnelle
   comment: z.string().optional(),
   commercialProcessed: z.boolean().default(false),

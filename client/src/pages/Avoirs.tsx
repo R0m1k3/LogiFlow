@@ -81,13 +81,12 @@ const avoirSchema = z.object({
     z.undefined().transform(() => undefined), 
     z.literal("").transform(() => undefined),
     z.string().transform((val) => {
+      if (val.trim() === '') return undefined; // Permettre les champs vides
       const num = parseFloat(val);
       if (isNaN(num)) {
         throw new Error("Montant invalide");
       }
-      if (num <= 0) {
-        throw new Error("Le montant doit être supérieur à 0");
-      }
+      // Supprimer la restriction > 0 pour permettre zéro et les montants négatifs (avoirs)
       return num;
     })
   ]).optional(),
