@@ -355,6 +355,47 @@ export default function Avoirs() {
     }
   };
 
+  // Handle validation/devalidation
+  const handleValidateAvoir = (avoirId: number) => {
+    const avoir = avoirs.find(a => a.id === avoirId);
+    if (avoir) {
+      editAvoirMutation.mutate({ 
+        id: avoirId, 
+        data: {
+          supplierId: avoir.supplierId,
+          groupId: avoir.groupId,
+          invoiceReference: avoir.invoiceReference || "",
+          amount: avoir.amount,
+          comment: avoir.comment || "",
+          commercialProcessed: avoir.commercialProcessed,
+          status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
+          nocodbVerified: true,
+          nocodbVerifiedAt: new Date(),
+        }
+      });
+    }
+  };
+
+  const handleDevalidateAvoir = (avoirId: number) => {
+    const avoir = avoirs.find(a => a.id === avoirId);
+    if (avoir) {
+      editAvoirMutation.mutate({ 
+        id: avoirId, 
+        data: {
+          supplierId: avoir.supplierId,
+          groupId: avoir.groupId,
+          invoiceReference: avoir.invoiceReference || "",
+          amount: avoir.amount,
+          comment: avoir.comment || "",
+          commercialProcessed: avoir.commercialProcessed,
+          status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
+          nocodbVerified: false,
+          nocodbVerifiedAt: null,
+        }
+      });
+    }
+  };
+
   // 🔍 FONCTION DE VÉRIFICATION DE FACTURE (comme rapprochement)
   const verifyAvoirInvoiceMutation = useMutation({
     mutationFn: async ({ avoirId, invoiceReference, forceRefresh }: { avoirId: number; invoiceReference?: string; forceRefresh?: boolean }) => {
@@ -947,7 +988,7 @@ export default function Avoirs() {
                   const canEditDelete = ['admin', 'directeur'].includes((user as any)?.role);
                   
                   return (
-                    <tr key={avoir.id} className="hover:bg-gray-50">
+                    <tr key={avoir.id} className={`hover:bg-gray-50 ${avoir.nocodbVerified ? 'bg-gray-100 opacity-75' : ''}`}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {avoir.supplier?.name || 'Fournisseur non défini'}
                       </td>
@@ -1043,6 +1084,33 @@ export default function Avoirs() {
                               <Upload className="h-4 w-4" />
                             </Button>
                           )}
+
+                          {/* Bouton Valider - apparaît si vérification réussie et pas encore validé */}
+                          {avoirVerificationResults[avoir.id]?.exists && !avoir.nocodbVerified && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              title="Valider l'avoir"
+                              onClick={() => handleValidateAvoir(avoir.id)}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+
+                          {/* Bouton Dévalider - pour admins sur avoirs validés */}
+                          {avoir.nocodbVerified && canEditDelete && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                              title="Dévalider l'avoir"
+                              onClick={() => handleDevalidateAvoir(avoir.id)}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+
                           {canEditDelete && (
                             <>
                               <Button
