@@ -2339,7 +2339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Avoir routes
-  app.get('/api/avoirs', requireModulePermission('avoir', 'view'), async (req: any, res) => {
+  app.get('/api/avoirs', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -2373,7 +2373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/avoirs/:id', requireModulePermission('avoir', 'view'), async (req: any, res) => {
+  app.get('/api/avoirs/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -2402,7 +2402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/avoirs', requireModulePermission('avoir', 'create'), async (req: any, res) => {
+  app.post('/api/avoirs', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -2472,7 +2472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/avoirs/:id', requireModulePermission('avoir', 'edit'), async (req: any, res) => {
+  app.put('/api/avoirs/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -2503,7 +2503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/avoirs/:id', requireModulePermission('avoir', 'delete'), async (req: any, res) => {
+  app.delete('/api/avoirs/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -2540,7 +2540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Avoir status update routes
-  app.put('/api/avoirs/:id/webhook-status', requireModulePermission('avoir', 'edit'), async (req: any, res) => {
+  app.put('/api/avoirs/:id/webhook-status', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -2563,7 +2563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/avoirs/:id/nocodb-verification', requireModulePermission('avoir', 'edit'), async (req: any, res) => {
+  app.put('/api/avoirs/:id/nocodb-verification', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
