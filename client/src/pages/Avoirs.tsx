@@ -1102,7 +1102,7 @@ export default function Avoirs() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         <div className="flex items-center">
-                          {avoir.amount !== null && avoir.amount !== undefined ? `${avoir.amount.toFixed(2)} €` : 'Non spécifié'}
+                          {avoir.amount !== null && avoir.amount !== undefined ? `${Number(avoir.amount).toFixed(2)} €` : 'Non spécifié'}
                           {avoir.commercialProcessed && (
                             <div title="Avoir fait par commercial">
                               <UserCheck className="h-4 w-4 text-blue-600 ml-2" />
@@ -1403,7 +1403,7 @@ export default function Avoirs() {
                   <div className="text-sm">
                     <div><strong>Fournisseur:</strong> {selectedAvoir?.supplier?.name || 'Fournisseur non défini'}</div>
                     <div><strong>Référence:</strong> {selectedAvoir?.invoiceReference || 'Sans référence'}</div>
-                    <div><strong>Montant:</strong> {selectedAvoir?.amount !== null && selectedAvoir?.amount !== undefined ? `${selectedAvoir.amount.toFixed(2)} €` : 'Non spécifié'}</div>
+                    <div><strong>Montant:</strong> {selectedAvoir?.amount !== null && selectedAvoir?.amount !== undefined ? `${Number(selectedAvoir.amount).toFixed(2)} €` : 'Non spécifié'}</div>
                   </div>
                 </div>
               )}
@@ -1440,7 +1440,7 @@ export default function Avoirs() {
                     Magasin: {selectedAvoirForUpload?.group?.name || 'Magasin non défini'}
                   </div>
                   <div className="text-gray-600">
-                    Montant: {selectedAvoirForUpload?.amount !== null && selectedAvoirForUpload?.amount !== undefined ? `${selectedAvoirForUpload.amount.toFixed(2)} €` : 'Non spécifié'}
+                    Montant: {selectedAvoirForUpload?.amount !== null && selectedAvoirForUpload?.amount !== undefined ? `${Number(selectedAvoirForUpload.amount).toFixed(2)} €` : 'Non spécifié'}
                   </div>
                 </div>
               </div>
