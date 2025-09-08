@@ -98,6 +98,12 @@ const avoirSchema = z.object({
 
 type AvoirFormData = z.infer<typeof avoirSchema>;
 
+// Type étendu pour les mises à jour incluant les champs de validation
+type AvoirUpdateData = AvoirFormData & {
+  nocodbVerified?: boolean;
+  nocodbVerifiedAt?: Date | null;
+};
+
 export default function Avoirs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -198,7 +204,7 @@ export default function Avoirs() {
 
   // Edit avoir mutation
   const editAvoirMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number, data: AvoirFormData }) => {
+    mutationFn: async ({ id, data }: { id: number, data: AvoirUpdateData }) => {
       const response = await fetch(`/api/avoirs/${id}`, {
         method: 'PUT',
         headers: {
@@ -334,6 +340,66 @@ export default function Avoirs() {
   const handleDelete = (avoir: Avoir) => {
     setSelectedAvoir(avoir);
     setIsDeleteDialogOpen(true);
+  };
+
+  // Handle status change
+  const handleStatusChange = (avoirId: number, newStatus: string) => {
+    const avoir = avoirs.find(a => a.id === avoirId);
+    if (avoir) {
+      editAvoirMutation.mutate({ 
+        id: avoirId, 
+        data: {
+          supplierId: avoir.supplierId,
+          groupId: avoir.groupId,
+          invoiceReference: avoir.invoiceReference || "",
+          amount: avoir.amount,
+          comment: avoir.comment || "",
+          commercialProcessed: avoir.commercialProcessed,
+          status: newStatus as "En attente de demande" | "Demandé" | "Reçu",
+        }
+      });
+    }
+  };
+
+  // Handle validation/devalidation
+  const handleValidateAvoir = (avoirId: number) => {
+    const avoir = avoirs.find(a => a.id === avoirId);
+    if (avoir) {
+      editAvoirMutation.mutate({ 
+        id: avoirId, 
+        data: {
+          supplierId: avoir.supplierId,
+          groupId: avoir.groupId,
+          invoiceReference: avoir.invoiceReference || "",
+          amount: avoir.amount,
+          comment: avoir.comment || "",
+          commercialProcessed: avoir.commercialProcessed,
+          status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
+          nocodbVerified: true,
+          nocodbVerifiedAt: new Date(),
+        }
+      });
+    }
+  };
+
+  const handleDevalidateAvoir = (avoirId: number) => {
+    const avoir = avoirs.find(a => a.id === avoirId);
+    if (avoir) {
+      editAvoirMutation.mutate({ 
+        id: avoirId, 
+        data: {
+          supplierId: avoir.supplierId,
+          groupId: avoir.groupId,
+          invoiceReference: avoir.invoiceReference || "",
+          amount: avoir.amount,
+          comment: avoir.comment || "",
+          commercialProcessed: avoir.commercialProcessed,
+          status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
+          nocodbVerified: false,
+          nocodbVerifiedAt: null,
+        }
+      });
+    }
   };
 
   // 🔍 FONCTION DE VÉRIFICATION DE FACTURE (comme rapprochement)
@@ -557,6 +623,13 @@ export default function Avoirs() {
         title: "Succès",
         description: "Avoir traité avec succès via le webhook",
       });
+
+      // Vérification automatique de la facture après envoi réussi
+      if (selectedAvoirForUpload.invoiceReference?.trim()) {
+        setTimeout(() => {
+          handleVerifyAvoirInvoice(selectedAvoirForUpload, true);
+        }, 1000); // Délai de 1 seconde pour laisser le temps aux données de se synchroniser
+      }
 
       // Reset des données
       setSelectedAvoirForUpload(null);
@@ -921,17 +994,24 @@ export default function Avoirs() {
                   const canEditDelete = ['admin', 'directeur'].includes((user as any)?.role);
                   
                   return (
-                    <tr key={avoir.id} className="hover:bg-gray-50">
+                    <tr key={avoir.id} className={`hover:bg-gray-50 ${avoir.nocodbVerified ? 'bg-gray-100 opacity-75' : ''}`}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {avoir.supplier?.name || 'Fournisseur non défini'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {getStatusIcon(avoir.status)}
-                          <Badge variant={getStatusVariant(avoir.status)} className="ml-2">
-                            {avoir.status}
-                          </Badge>
-                        </div>
+                        <Select 
+                          value={avoir.status}
+                          onValueChange={(newStatus) => handleStatusChange(avoir.id, newStatus)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="En attente de demande">En attente de demande</SelectItem>
+                            <SelectItem value="Demandé">Demandé</SelectItem>
+                            <SelectItem value="Reçu">Reçu</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         #{avoir.invoiceReference || 'Sans référence'}
@@ -1010,6 +1090,33 @@ export default function Avoirs() {
                               <Upload className="h-4 w-4" />
                             </Button>
                           )}
+
+                          {/* Bouton Valider - apparaît si vérification réussie et pas encore validé */}
+                          {avoirVerificationResults[avoir.id]?.exists && !avoir.nocodbVerified && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                              title="Valider l'avoir"
+                              onClick={() => handleValidateAvoir(avoir.id)}
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+
+                          {/* Bouton Dévalider - pour admins sur avoirs validés */}
+                          {avoir.nocodbVerified && canEditDelete && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                              title="Dévalider l'avoir"
+                              onClick={() => handleDevalidateAvoir(avoir.id)}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+
                           {canEditDelete && (
                             <>
                               <Button
