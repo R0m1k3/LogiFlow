@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -475,7 +475,7 @@ export default function Avoirs() {
   // Filter avoirs based on search term
   const filteredAvoirs = avoirs.filter(avoir =>
     avoir.invoiceReference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    avoir.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    avoir.supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     avoir.comment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (avoir.creator.firstName && avoir.creator.lastName 
       ? `${avoir.creator.firstName} ${avoir.creator.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -778,7 +778,7 @@ export default function Avoirs() {
                   return (
                     <tr key={avoir.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {avoir.supplier.name}
+                        {avoir.supplier?.name || 'Fournisseur non défini'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -795,9 +795,9 @@ export default function Avoirs() {
                         <div className="flex items-center">
                           <div 
                             className="w-3 h-3 rounded-full mr-2" 
-                            style={{ backgroundColor: avoir.group.color }}
+                            style={{ backgroundColor: avoir.group?.color || '#gray' }}
                           />
-                          {avoir.group.name}
+                          {avoir.group?.name || 'Magasin non défini'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -1036,7 +1036,7 @@ export default function Avoirs() {
               {selectedAvoir && (
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                   <div className="text-sm">
-                    <div><strong>Fournisseur:</strong> {selectedAvoir.supplier.name}</div>
+                    <div><strong>Fournisseur:</strong> {selectedAvoir.supplier?.name || 'Fournisseur non défini'}</div>
                     <div><strong>Référence:</strong> {selectedAvoir.invoiceReference || 'Sans référence'}</div>
                     <div><strong>Montant:</strong> {selectedAvoir.amount ? `${selectedAvoir.amount.toFixed(2)} €` : 'Non spécifié'}</div>
                   </div>
@@ -1067,12 +1067,12 @@ export default function Avoirs() {
             {selectedAvoirForUpload && (
               <div className="bg-gray-50 p-3 rounded-md">
                 <div className="text-sm">
-                  <div className="font-medium">{selectedAvoirForUpload.supplier.name}</div>
+                  <div className="font-medium">{selectedAvoirForUpload.supplier?.name || 'Fournisseur non défini'}</div>
                   <div className="text-gray-600">
                     Référence: {selectedAvoirForUpload.invoiceReference || 'Non renseigné'}
                   </div>
                   <div className="text-gray-600">
-                    Magasin: {selectedAvoirForUpload.group.name}
+                    Magasin: {selectedAvoirForUpload.group?.name || 'Magasin non défini'}
                   </div>
                   <div className="text-gray-600">
                     Montant: {selectedAvoirForUpload.amount ? `${selectedAvoirForUpload.amount.toFixed(2)} €` : 'Non spécifié'}
@@ -1099,7 +1099,7 @@ export default function Avoirs() {
 
             {selectedAvoirForUpload && (
               <div className="text-xs text-gray-500">
-                Envoi via webhook configuré pour {selectedAvoirForUpload.group.name}
+                Envoi via webhook configuré pour {selectedAvoirForUpload.group?.name || 'magasin'}
               </div>
             )}
           </div>
@@ -1163,7 +1163,7 @@ export default function Avoirs() {
               <div className="bg-blue-50 p-3 rounded-md">
                 <div className="text-sm">
                   <div className="font-medium text-blue-900">
-                    {selectedAvoirForUpload.supplier.name}
+                    {selectedAvoirForUpload.supplier?.name || 'Fournisseur non défini'}
                   </div>
                   <div className="text-blue-700">
                     Référence: {selectedAvoirForUpload.invoiceReference || 'Non renseigné'}
