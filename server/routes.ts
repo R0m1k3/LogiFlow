@@ -2501,10 +2501,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const updatedAvoir = await storage.updateAvoir(id, req.body);
+      // ✅ CRITICAL FIX: Validate data with Zod schema (partial)
+      console.log('💰 PUT Avoir - Raw body received:', JSON.stringify(req.body, null, 2));
+      const validatedData = insertAvoirSchema.partial().parse(req.body);
+      console.log('💰 PUT Avoir - Validated data:', JSON.stringify(validatedData, null, 2));
+
+      const updatedAvoir = await storage.updateAvoir(id, validatedData);
       console.log('✅ Avoir updated:', id, 'by user:', user.id);
       res.json(updatedAvoir);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error('❌ [PUT AVOIR] ERREURS VALIDATION ZOD:', JSON.stringify(error.errors, null, 2));
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
       console.error("Error updating avoir:", error);
       res.status(500).json({ message: "Failed to update avoir" });
     }

@@ -88,7 +88,7 @@ const avoirSchema = z.object({
     })
   ]).optional(),
   comment: z.string().optional(),
-  commercialProcessed: z.boolean().optional(),
+  commercialProcessed: z.boolean().default(false),
   status: z.enum(["En attente de demande", "Demandé", "Reçu"]).optional(),
 });
 
@@ -272,6 +272,11 @@ export default function Avoirs() {
   // Handle edit form submission
   const onEditSubmit = (data: AvoirFormData) => {
     if (selectedAvoir) {
+      console.log('💰 Editing avoir - Form data sent:', {
+        originalCommercial: selectedAvoir.commercialProcessed,
+        formCommercial: data.commercialProcessed,
+        fullData: data
+      });
       editAvoirMutation.mutate({ id: selectedAvoir.id, data });
     }
   };
