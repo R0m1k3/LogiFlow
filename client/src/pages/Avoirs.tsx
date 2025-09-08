@@ -577,6 +577,13 @@ export default function Avoirs() {
         description: "Avoir traité avec succès via le webhook",
       });
 
+      // Vérification automatique de la facture après envoi réussi
+      if (selectedAvoirForUpload.invoiceReference?.trim()) {
+        setTimeout(() => {
+          handleVerifyAvoirInvoice(selectedAvoirForUpload, true);
+        }, 1000); // Délai de 1 seconde pour laisser le temps aux données de se synchroniser
+      }
+
       // Reset des données
       setSelectedAvoirForUpload(null);
       setSelectedFile(null);
