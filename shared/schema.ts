@@ -267,8 +267,8 @@ export const avoirs = pgTable("avoirs", {
   id: serial("id").primaryKey(),
   supplierId: integer("supplier_id").notNull(), // Fournisseur
   groupId: integer("group_id").notNull(), // Magasin/groupe associé - OBLIGATOIRE pour filtrage
-  invoiceReference: varchar("invoice_reference", { length: 255 }).notNull(), // Référence facture
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Montant
+  invoiceReference: varchar("invoice_reference", { length: 255 }), // Référence facture (OPTIONNEL)
+  amount: decimal("amount", { precision: 10, scale: 2 }), // Montant (OPTIONNEL)
   comment: text("comment"), // Commentaire (optionnel)
   commercialProcessed: boolean("commercial_processed").default(false), // Avoir fait par commercial
   status: varchar("status", { length: 50 }).notNull().default("En attente de demande"), // En attente de demande, Demandé, Reçu
