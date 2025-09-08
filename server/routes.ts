@@ -2506,7 +2506,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertAvoirSchema.partial().parse(req.body);
       console.log('💰 PUT Avoir - Validated data:', JSON.stringify(validatedData, null, 2));
 
-      const updatedAvoir = await storage.updateAvoir(id, validatedData);
+      // ✅ FIX: Convertir undefined en null pour les champs optionnels (important pour PostgreSQL)
+      const dataForDb: any = {
+        ...validatedData,
+        amount: validatedData.amount === undefined ? null : validatedData.amount,
+        invoiceReference: validatedData.invoiceReference === undefined ? null : validatedData.invoiceReference,
+        comment: validatedData.comment === undefined ? null : validatedData.comment,
+      };
+      console.log('💰 PUT Avoir - Data for DB (undefined → null):', JSON.stringify(dataForDb, null, 2));
+
+      const updatedAvoir = await storage.updateAvoir(id, dataForDb);
       console.log('✅ Avoir updated:', id, 'by user:', user.id);
       
       // 🎯 WEBHOOK QUAND STATUT PASSE À "Reçu"
