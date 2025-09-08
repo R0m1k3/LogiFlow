@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck } from "lucide-react";
+import { useStore } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,7 +100,8 @@ export default function Avoirs() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedAvoir, setSelectedAvoir] = useState<Avoir | null>(null);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>("all");
+  // Utiliser le contexte global du magasin
+  const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -120,10 +122,20 @@ export default function Avoirs() {
     enabled: !!user,
   });
 
-  // Fetch avoirs
+  // Fetch avoirs avec filtrage par groupe (comme Orders/Deliveries)
+  const avoirsUrl = `/api/avoirs${selectedStoreId ? `?storeId=${selectedStoreId}` : ''}`;
   const { data: avoirs = [], isLoading } = useQuery<Avoir[]>({
-    queryKey: ['/api/avoirs', selectedStoreId],
-    queryFn: () => apiRequest(`/api/avoirs${selectedStoreId !== 'all' ? `?storeId=${selectedStoreId}` : ''}`),
+    queryKey: [avoirsUrl, selectedStoreId, (user as any)?.role],
+    queryFn: async () => {
+      console.log('💰 Fetching avoirs from:', avoirsUrl);
+      const response = await fetch(avoirsUrl, { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('Failed to fetch avoirs');
+      }
+      const data = await response.json();
+      console.log('💰 Avoirs received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      return Array.isArray(data) ? data : [];
+    },
     enabled: !!user,
   });
 
@@ -406,7 +418,15 @@ export default function Avoirs() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {groups.map((group) => (
+                          {groups
+                            .filter((group) => {
+                              // Admin voit tous les groupes
+                              if ((user as any)?.role === 'admin') return true;
+                              // Autres rôles voient seulement leurs groupes assignés
+                              const userGroupIds = (user as any)?.userGroups?.map((ug: any) => ug.groupId) || [];
+                              return userGroupIds.includes(group.id);
+                            })
+                            .map((group) => (
                             <SelectItem key={group.id} value={group.id.toString()}>
                               <div className="flex items-center">
                                 <div 
@@ -528,27 +548,7 @@ export default function Avoirs() {
           />
         </div>
         
-        {(user as any)?.role === 'admin' && (
-          <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Tous les magasins" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les magasins</SelectItem>
-              {groups.map((group) => (
-                <SelectItem key={group.id} value={group.id.toString()}>
-                  <div className="flex items-center">
-                    <div 
-                      className="w-3 h-3 rounded-full mr-2" 
-                      style={{ backgroundColor: group.color }}
-                    />
-                    {group.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        {/* Filtrage maintenant géré par le contexte global Layout */}
       </div>
 
       {/* Avoirs List - Format Table */}
@@ -633,7 +633,14 @@ export default function Avoirs() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {avoir.amount ? `${avoir.amount.toFixed(2)} €` : 'Non spécifié'}
+                        <div className="flex items-center">
+                          {avoir.amount ? `${avoir.amount.toFixed(2)} €` : 'Non spécifié'}
+                          {avoir.commercialProcessed && (
+                            <div title="Avoir fait par commercial">
+                              <UserCheck className="h-4 w-4 text-blue-600 ml-2" />
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div>
