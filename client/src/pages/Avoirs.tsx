@@ -176,7 +176,7 @@ export default function Avoirs() {
     enabled: !!user,
   });
 
-  // 🔄 Charger les vérifications du cache au démarrage
+  // 🔄 Charger les vérifications depuis le cache serveur au démarrage
   useEffect(() => {
     const loadCachedVerifications = async () => {
       console.log('🔍 LoadCache - Début vérification:', { 
@@ -187,19 +187,34 @@ export default function Avoirs() {
       if (!avoirs || avoirs.length === 0) return;
       
       const cachedResults: Record<number, any> = {};
+      
+      // Charger les vérifications depuis le cache serveur pour TOUS les avoirs avec référence
       for (const avoir of avoirs) {
         console.log('🔍 LoadCache - Avoir analysé:', {
           id: avoir.id,
           hasInvoiceRef: !!avoir.invoiceReference?.trim(),
           invoiceReference: avoir.invoiceReference,
-          nocodbVerified: avoir.nocodbVerified,
-          shouldCache: !!(avoir.invoiceReference?.trim() && avoir.nocodbVerified)
+          nocodbVerified: avoir.nocodbVerified
         });
         
-        if (avoir.invoiceReference?.trim() && avoir.nocodbVerified) {
-          // Si l'avoir est validé, marquer comme vérifié
-          cachedResults[avoir.id] = { exists: true, fromCache: true, permanent: true };
-          console.log('✅ LoadCache - Avoir ajouté au cache:', avoir.id);
+        // Si l'avoir a une référence de facture, vérifier le cache serveur
+        if (avoir.invoiceReference?.trim()) {
+          try {
+            const result = await apiRequest(`/api/avoirs/${avoir.id}/verify-invoice`, 'POST', { 
+              invoiceReference: avoir.invoiceReference,
+              forceRefresh: false // Utiliser le cache si disponible
+            });
+            
+            console.log('🔍 LoadCache - Résultat cache serveur pour avoir', avoir.id, ':', result);
+            
+            if (result.exists !== undefined) {
+              cachedResults[avoir.id] = result;
+              console.log('✅ LoadCache - Avoir ajouté au cache depuis serveur:', avoir.id);
+            }
+          } catch (error) {
+            console.log('⚠️ LoadCache - Erreur cache serveur pour avoir', avoir.id, ':', error);
+            // Continuer sans erreur si le cache échoue
+          }
         }
       }
       
@@ -210,7 +225,7 @@ export default function Avoirs() {
       
       if (Object.keys(cachedResults).length > 0) {
         setAvoirVerificationResults(prev => ({ ...prev, ...cachedResults }));
-        console.log('✅ Vérifications cachées chargées et appliquées:', cachedResults);
+        console.log('✅ Vérifications chargées depuis le serveur:', cachedResults);
       }
     };
     
@@ -1165,7 +1180,9 @@ export default function Avoirs() {
                             {verifyingAvoirs.has(avoir.id) ? (
                               <Clock className="h-4 w-4 text-blue-500 animate-spin" />
                             ) : (avoirVerificationResults[avoir.id]?.exists === true || avoir.nocodbVerified) ? (
-                              <CheckCircle className="h-4 w-4 text-green-500 cursor-help" title={`Vérifié: ${avoirVerificationResults[avoir.id]?.exists ? 'cache' : avoir.nocodbVerified ? 'validé' : 'inconnu'}`} />
+                              <div title={`Vérifié: ${avoirVerificationResults[avoir.id]?.exists ? 'cache' : avoir.nocodbVerified ? 'validé' : 'inconnu'}`}>
+                                <CheckCircle className="h-4 w-4 text-green-500 cursor-help" />
+                              </div>
                             ) : avoirVerificationResults[avoir.id]?.exists === false ? (
                               <XCircle className="h-4 w-4 text-red-500 cursor-help" />
                             ) : (
