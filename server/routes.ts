@@ -2600,6 +2600,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route de vérification de facture NocoDB pour les avoirs
+  app.post('/api/avoirs/:id/verify-invoice', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const avoirId = parseInt(req.params.id);
+      const avoir = await storage.getAvoir(avoirId);
+      
+      if (!avoir) {
+        return res.status(404).json({ message: "Avoir not found" });
+      }
+
+      // Check permissions
+      if (!hasPermission(user.role, 'avoirs', 'view')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      // Only admin have access to all avoirs, others must be in the same group
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
+        if (!userGroupIds.includes(avoir.groupId)) {
+          console.log('🚫 Access denied - User groups check:', {
+            userId: user.id,
+            userRole: user.role,
+            userGroupIds,
+            avoirGroupId: avoir.groupId,
+            avoirSupplier: avoir.supplier?.name
+          });
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      const { invoiceReference, forceRefresh } = req.body;
+      
+      if (!avoir.supplier || !avoir.group) {
+        console.log('❌ Avoir manque informations:', {
+          avoirId,
+          hasSupplier: !!avoir.supplier,
+          hasGroup: !!avoir.group
+        });
+        return res.status(400).json({ message: "Avoir missing supplier or group information" });
+      }
+
+      // Vérifier que la référence facture est présente
+      if (!invoiceReference || !invoiceReference.trim()) {
+        return res.status(400).json({ message: "Référence de facture requise" });
+      }
+
+      console.log('🔍 Vérification facture avoir:', {
+        avoirId,
+        invoiceReference,
+        supplier: avoir.supplier?.name,
+        group: avoir.group?.name,
+        groupId: avoir.groupId
+      });
+
+      // Vérifier par référence de facture uniquement
+      const result = await invoiceVerificationService.verifyInvoice(
+        invoiceReference,
+        avoir.groupId,
+        forceRefresh || false,
+        false // Les avoirs ne sont pas "réconciliés" comme les livraisons
+      );
+
+      console.log('✅ Résultat vérification avoir:', result);
+      res.json(result);
+    } catch (error) {
+      console.error("Error verifying avoir invoice:", error);
+      res.status(500).json({ 
+        message: "Failed to verify avoir invoice",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Avoir status update routes
   app.put('/api/avoirs/:id/webhook-status', isAuthenticated, async (req: any, res) => {
     try {
