@@ -323,29 +323,33 @@ export default function Avoirs() {
 
   // Handle edit action
   const handleEdit = (avoir: Avoir) => {
+    if (!avoir || !avoir.id) return;
+    
     setSelectedAvoir(avoir);
     editForm.reset({
-      supplierId: avoir.supplierId,
-      groupId: avoir.groupId,
+      supplierId: avoir.supplierId || 0,
+      groupId: avoir.groupId || 0,
       invoiceReference: avoir.invoiceReference || "",
       amount: avoir.amount,
       comment: avoir.comment || "",
-      commercialProcessed: avoir.commercialProcessed,
-      status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
+      commercialProcessed: avoir.commercialProcessed || false,
+      status: avoir.status || "En attente de demande",
     });
     setIsEditDialogOpen(true);
   };
 
   // Handle delete action
   const handleDelete = (avoir: Avoir) => {
+    if (!avoir || !avoir.id) return;
+    
     setSelectedAvoir(avoir);
     setIsDeleteDialogOpen(true);
   };
 
   // Handle status change
   const handleStatusChange = (avoirId: number, newStatus: string) => {
-    const avoir = avoirs.find(a => a.id === avoirId);
-    if (avoir) {
+    const avoir = avoirs?.find(a => a?.id === avoirId);
+    if (avoir && avoir.supplierId && avoir.groupId) {
       editAvoirMutation.mutate({ 
         id: avoirId, 
         data: {
@@ -1096,7 +1100,7 @@ export default function Avoirs() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Select 
-                          value={avoir.status}
+                          value={avoir?.status || ''}
                           onValueChange={(newStatus) => handleStatusChange(avoir.id, newStatus)}
                         >
                           <SelectTrigger className="w-full">
@@ -1173,7 +1177,7 @@ export default function Avoirs() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center space-x-2">
                           {/* 📋 Icône Upload pour avoirs "Reçu" */}
-                          {avoir.status === 'Reçu' && (
+                          {avoir?.status === 'Reçu' && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -1233,7 +1237,7 @@ export default function Avoirs() {
                               </Button>
                             </>
                           )}
-                          {!canEditDelete && avoir.status !== 'Reçu' && (
+                          {!canEditDelete && avoir?.status !== 'Reçu' && (
                             <span className="text-gray-400 text-xs">Lecture seule</span>
                           )}
                         </div>
@@ -1407,9 +1411,9 @@ export default function Avoirs() {
               {selectedAvoir && (
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                   <div className="text-sm">
-                    <div><strong>Fournisseur:</strong> {selectedAvoir.supplier?.name || 'Fournisseur non défini'}</div>
-                    <div><strong>Référence:</strong> {selectedAvoir.invoiceReference || 'Sans référence'}</div>
-                    <div><strong>Montant:</strong> {selectedAvoir.amount !== null && selectedAvoir.amount !== undefined ? `${selectedAvoir.amount.toFixed(2)} €` : 'Non spécifié'}</div>
+                    <div><strong>Fournisseur:</strong> {selectedAvoir?.supplier?.name || 'Fournisseur non défini'}</div>
+                    <div><strong>Référence:</strong> {selectedAvoir?.invoiceReference || 'Sans référence'}</div>
+                    <div><strong>Montant:</strong> {selectedAvoir?.amount !== null && selectedAvoir?.amount !== undefined ? `${selectedAvoir.amount.toFixed(2)} €` : 'Non spécifié'}</div>
                   </div>
                 </div>
               )}
@@ -1443,10 +1447,10 @@ export default function Avoirs() {
                     Référence: {selectedAvoirForUpload.invoiceReference || 'Non renseigné'}
                   </div>
                   <div className="text-gray-600">
-                    Magasin: {selectedAvoirForUpload.group?.name || 'Magasin non défini'}
+                    Magasin: {selectedAvoirForUpload?.group?.name || 'Magasin non défini'}
                   </div>
                   <div className="text-gray-600">
-                    Montant: {selectedAvoirForUpload.amount !== null && selectedAvoirForUpload.amount !== undefined ? `${selectedAvoirForUpload.amount.toFixed(2)} €` : 'Non spécifié'}
+                    Montant: {selectedAvoirForUpload?.amount !== null && selectedAvoirForUpload?.amount !== undefined ? `${selectedAvoirForUpload.amount.toFixed(2)} €` : 'Non spécifié'}
                   </div>
                 </div>
               </div>
