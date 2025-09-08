@@ -256,6 +256,12 @@ export default function Sidebar() {
       roles: ["admin", "directeur"] 
     },
     { 
+      path: "/avoirs", 
+      label: "Avoirs", 
+      icon: Receipt, 
+      roles: ["admin", "directeur", "manager"] 
+    },
+    { 
       path: "/publicities", 
       label: "Publicités", 
       icon: Megaphone, 
@@ -284,12 +290,6 @@ export default function Sidebar() {
       label: "SAV", 
       icon: Wrench, 
       roles: ["admin", "directeur", "manager", "employee"] 
-    },
-    { 
-      path: "/avoirs", 
-      label: "Avoirs", 
-      icon: Receipt, 
-      roles: ["admin", "directeur", "manager"] 
     },
   ];
 
