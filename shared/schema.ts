@@ -262,6 +262,25 @@ export const tasks = pgTable("tasks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Avoirs table
+export const avoirs = pgTable("avoirs", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").notNull(), // Fournisseur
+  groupId: integer("group_id").notNull(), // Magasin/groupe associé - OBLIGATOIRE pour filtrage
+  invoiceReference: varchar("invoice_reference", { length: 255 }).notNull(), // Référence facture
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(), // Montant
+  comment: text("comment"), // Commentaire (optionnel)
+  commercialProcessed: boolean("commercial_processed").default(false), // Avoir fait par commercial
+  status: varchar("status", { length: 50 }).notNull().default("En attente de demande"), // En attente de demande, Demandé, Reçu
+  webhookSent: boolean("webhook_sent").default(false), // Webhook envoyé
+  nocodbVerified: boolean("nocodb_verified").default(false), // Vérifié dans NocoDB (coche verte)
+  nocodbVerifiedAt: timestamp("nocodb_verified_at"), // Date de vérification
+  processedAt: timestamp("processed_at"), // Date de passage au statut "Reçu"
+  createdBy: varchar("created_by").notNull(), // Utilisateur créateur
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Dashboard Messages - Utilise la table existante DASHBOARD_MESSAGES
 export const dashboardMessages = pgTable("dashboard_messages", {
   id: serial("id").primaryKey(),
@@ -287,6 +306,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   createdTasks: many(tasks),
   assignedTasks: many(tasks),
   createdAnnouncements: many(dashboardMessages),
+  createdAvoirs: many(avoirs),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
@@ -298,6 +318,7 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   dlcProducts: many(dlcProducts),
   tasks: many(tasks),
   announcements: many(dashboardMessages),
+  avoirs: many(avoirs),
 }));
 
 export const userGroupsRelations = relations(userGroups, ({ one }) => ({
@@ -315,6 +336,7 @@ export const suppliersRelations = relations(suppliers, ({ many }) => ({
   orders: many(orders),
   deliveries: many(deliveries),
   dlcProducts: many(dlcProducts),
+  avoirs: many(avoirs),
 }));
 
 export const ordersRelations = relations(orders, ({ one, many }) => ({
@@ -415,6 +437,21 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   group: one(groups, {
     fields: [tasks.groupId],
     references: [groups.id],
+  }),
+}));
+
+export const avoirsRelations = relations(avoirs, ({ one }) => ({
+  supplier: one(suppliers, {
+    fields: [avoirs.supplierId],
+    references: [suppliers.id],
+  }),
+  group: one(groups, {
+    fields: [avoirs.groupId],
+    references: [groups.id],
+  }),
+  creator: one(users, {
+    fields: [avoirs.createdBy],
+    references: [users.id],
   }),
 }));
 
@@ -538,6 +575,22 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   dueDate: z.coerce.date().optional().nullable(), // Date d'échéance (optionnel)
 });
 
+export const insertAvoirSchema = createInsertSchema(avoirs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  webhookSent: true,
+  nocodbVerified: true,
+  nocodbVerifiedAt: true,
+  processedAt: true,
+}).extend({
+  status: z.enum(["En attente de demande", "Demandé", "Reçu"]).default("En attente de demande"),
+  amount: z.coerce.number().positive(), // Montant doit être positif
+  invoiceReference: z.string().min(1, "La référence facture est obligatoire"),
+  comment: z.string().optional(),
+  commercialProcessed: z.boolean().default(false),
+});
+
 export const insertDashboardMessageSchema = createInsertSchema(dashboardMessages).omit({
   id: true,
   createdAt: true,
@@ -601,6 +654,8 @@ export type DlcProductFrontend = Omit<DlcProduct, 'expiryDate'> & { dlcDate: Dat
 export type InsertDlcProductFrontend = z.infer<typeof insertDlcProductFrontendSchema>;
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Avoir = typeof avoirs.$inferSelect;
+export type InsertAvoir = z.infer<typeof insertAvoirSchema>;
 export type DashboardMessage = typeof dashboardMessages.$inferSelect;
 export type InsertDashboardMessage = z.infer<typeof insertDashboardMessageSchema>;
 
@@ -654,6 +709,12 @@ export type TaskWithRelations = Task & {
   creator?: User;
   group?: Group;
   isFutureTask?: boolean; // Pour distinguer les tâches futures (admin/directeur)
+};
+
+export type AvoirWithRelations = Avoir & {
+  supplier: Supplier;
+  group: Group;
+  creator: User;
 };
 
 // Dashboard Message with relations type

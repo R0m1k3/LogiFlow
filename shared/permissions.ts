@@ -12,7 +12,8 @@ export type Module =
   | 'publicity' 
   | 'customer-orders' 
   | 'dlc' 
-  | 'tasks';
+  | 'tasks'
+  | 'avoir';
 
 // Définition des permissions par module et par rôle
 const PERMISSIONS: Record<Module, Record<Role, Permission[]>> = {
@@ -86,6 +87,14 @@ const PERMISSIONS: Record<Module, Record<Role, Permission[]>> = {
     directeur: ['view', 'create', 'edit', 'delete', 'validate'],
     manager: ['view', 'create', 'edit', 'validate'],
     employee: ['view']
+  },
+
+  // Avoirs - Admin/Directeur tout, Manager create + view seulement, Employé pas d'accès
+  avoir: {
+    admin: ['view', 'create', 'edit', 'delete', 'validate'],
+    directeur: ['view', 'create', 'edit', 'delete', 'validate'],
+    manager: ['view', 'create'],
+    employee: []
   }
 };
 
