@@ -356,12 +356,24 @@ export default function Avoirs() {
     }
   });
 
+  // Calculate default group ID based on user role
+  const getDefaultGroupId = () => {
+    if ((user as any)?.role === 'admin') {
+      // Admin : groupe 1 par défaut
+      return 1;
+    } else {
+      // Utilisateurs : leur groupe assigné par défaut
+      const userGroupIds = (user as any)?.userGroups?.map((ug: any) => ug.groupId) || [];
+      return userGroupIds.length > 0 ? userGroupIds[0] : 0;
+    }
+  };
+
   // Initialize create form
   const form = useForm<AvoirFormData>({
     resolver: zodResolver(avoirSchema),
     defaultValues: {
       supplierId: 0,
-      groupId: 0,
+      groupId: getDefaultGroupId(),
       invoiceReference: "",
       amount: undefined,
       comment: "",
