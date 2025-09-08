@@ -160,6 +160,17 @@ export default function Avoirs() {
       }
       const data = await response.json();
       console.log('💰 Avoirs received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      
+      // 🔍 Debug: Vérifier les champs nocodbVerified
+      if (Array.isArray(data) && data.length > 0) {
+        console.log('🔍 Premiers avoirs avec nocodbVerified:', data.map(a => ({
+          id: a.id,
+          invoiceReference: a.invoiceReference,
+          nocodbVerified: a.nocodbVerified,
+          nocodbVerifiedAt: a.nocodbVerifiedAt
+        })));
+      }
+      
       return Array.isArray(data) ? data : [];
     },
     enabled: !!user,
@@ -168,19 +179,38 @@ export default function Avoirs() {
   // 🔄 Charger les vérifications du cache au démarrage
   useEffect(() => {
     const loadCachedVerifications = async () => {
+      console.log('🔍 LoadCache - Début vérification:', { 
+        hasAvoirs: !!avoirs, 
+        avoirCount: avoirs?.length || 0 
+      });
+      
       if (!avoirs || avoirs.length === 0) return;
       
       const cachedResults: Record<number, any> = {};
       for (const avoir of avoirs) {
+        console.log('🔍 LoadCache - Avoir analysé:', {
+          id: avoir.id,
+          hasInvoiceRef: !!avoir.invoiceReference?.trim(),
+          invoiceReference: avoir.invoiceReference,
+          nocodbVerified: avoir.nocodbVerified,
+          shouldCache: !!(avoir.invoiceReference?.trim() && avoir.nocodbVerified)
+        });
+        
         if (avoir.invoiceReference?.trim() && avoir.nocodbVerified) {
           // Si l'avoir est validé, marquer comme vérifié
           cachedResults[avoir.id] = { exists: true, fromCache: true, permanent: true };
+          console.log('✅ LoadCache - Avoir ajouté au cache:', avoir.id);
         }
       }
       
+      console.log('🔍 LoadCache - Résultats finaux:', {
+        cachedCount: Object.keys(cachedResults).length,
+        cachedResults
+      });
+      
       if (Object.keys(cachedResults).length > 0) {
         setAvoirVerificationResults(prev => ({ ...prev, ...cachedResults }));
-        console.log('✅ Vérifications cachées chargées:', cachedResults);
+        console.log('✅ Vérifications cachées chargées et appliquées:', cachedResults);
       }
     };
     
@@ -1135,7 +1165,7 @@ export default function Avoirs() {
                             {verifyingAvoirs.has(avoir.id) ? (
                               <Clock className="h-4 w-4 text-blue-500 animate-spin" />
                             ) : (avoirVerificationResults[avoir.id]?.exists === true || avoir.nocodbVerified) ? (
-                              <CheckCircle className="h-4 w-4 text-green-500 cursor-help" />
+                              <CheckCircle className="h-4 w-4 text-green-500 cursor-help" title={`Vérifié: ${avoirVerificationResults[avoir.id]?.exists ? 'cache' : avoir.nocodbVerified ? 'validé' : 'inconnu'}`} />
                             ) : avoirVerificationResults[avoir.id]?.exists === false ? (
                               <XCircle className="h-4 w-4 text-red-500 cursor-help" />
                             ) : (
