@@ -2409,11 +2409,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
+      // DEBUG: Log des données reçues
+      console.log('🔍 [POST AVOIR] Données reçues:', JSON.stringify(req.body, null, 2));
+      console.log('🔍 [POST AVOIR] User:', { id: user.id, role: user.role });
+
       // Validate data with Zod schema
       const validatedData = insertAvoirSchema.parse({
         ...req.body,
         createdBy: user.id,
       });
+
+      console.log('✅ [POST AVOIR] Données validées:', JSON.stringify(validatedData, null, 2));
 
       // Check if user has access to the specified group
       if (user.role !== 'admin' && user.role !== 'directeur') {
