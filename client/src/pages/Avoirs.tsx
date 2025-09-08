@@ -24,8 +24,8 @@ interface Avoir {
   id: number;
   supplierId: number;
   groupId: number;
-  invoiceReference: string;
-  amount: number;
+  invoiceReference?: string;
+  amount?: number;
   comment?: string;
   commercialProcessed: boolean;
   status: 'En attente de demande' | 'Demandé' | 'Reçu';
@@ -161,7 +161,7 @@ export default function Avoirs() {
 
   // Filter avoirs based on search term
   const filteredAvoirs = avoirs.filter(avoir =>
-    avoir.invoiceReference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    avoir.invoiceReference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     avoir.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     avoir.comment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (avoir.creator.firstName && avoir.creator.lastName 
