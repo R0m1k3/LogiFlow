@@ -68,10 +68,10 @@ interface Group {
 
 // Schema for form validation
 const avoirSchema = z.object({
-  supplierId: z.number().min(1, "Veuillez sélectionner un fournisseur"),
-  groupId: z.number().min(1, "Veuillez sélectionner un magasin"),
+  supplierId: z.coerce.number().min(1, "Veuillez sélectionner un fournisseur"),
+  groupId: z.coerce.number().min(1, "Veuillez sélectionner un magasin"),
   invoiceReference: z.string().optional(),
-  amount: z.number().optional(),
+  amount: z.coerce.number().positive().optional(),
   comment: z.string().optional(),
   commercialProcessed: z.boolean().optional(),
   status: z.enum(["En attente de demande", "Demandé", "Reçu"]).optional(),
