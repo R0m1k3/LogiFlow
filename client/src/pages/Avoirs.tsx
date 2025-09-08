@@ -71,10 +71,19 @@ const avoirSchema = z.object({
   supplierId: z.coerce.number().min(1, "Veuillez sélectionner un fournisseur"),
   groupId: z.coerce.number().min(1, "Veuillez sélectionner un magasin"),
   invoiceReference: z.string().optional(),
-  amount: z.union([
-    z.string().length(0).transform(() => undefined),
-    z.coerce.number().positive()
-  ]).optional(),
+  amount: z.string().transform((val) => {
+    if (val === "" || val === null || val === undefined) {
+      return undefined;
+    }
+    const num = parseFloat(val);
+    if (isNaN(num)) {
+      throw new Error("Montant invalide");
+    }
+    if (num <= 0) {
+      throw new Error("Le montant doit être supérieur à 0");
+    }
+    return num;
+  }).optional(),
   comment: z.string().optional(),
   commercialProcessed: z.boolean().optional(),
   status: z.enum(["En attente de demande", "Demandé", "Reçu"]).optional(),
