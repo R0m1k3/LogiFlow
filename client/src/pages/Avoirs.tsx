@@ -454,7 +454,15 @@ export default function Avoirs() {
         }
       }
 
-      // Recharger les avoirs pour voir les changements
+      // ✅ Mettre à jour l'état local immédiatement pour affichage instantané
+      setAvoirVerificationResults(prev => ({
+        ...prev,
+        [avoirId]: { exists: true, fromCache: true, permanent: true, validated: true }
+      }));
+      
+      console.log('✅ Avoir validé - État local mis à jour:', avoirId);
+
+      // Recharger les avoirs pour voir les changements en base
       queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
       
       toast({
@@ -477,7 +485,16 @@ export default function Avoirs() {
         verified: false
       });
 
-      // Recharger les avoirs pour voir les changements
+      // ✅ Retirer de l'état local immédiatement
+      setAvoirVerificationResults(prev => {
+        const updated = { ...prev };
+        delete updated[avoirId]; // Supprimer complètement l'entrée
+        return updated;
+      });
+      
+      console.log('✅ Avoir dévalidé - État local mis à jour:', avoirId);
+
+      // Recharger les avoirs pour voir les changements en base
       queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
       
       toast({
