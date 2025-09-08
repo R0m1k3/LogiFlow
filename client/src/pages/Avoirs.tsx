@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload, XCircle } from "lucide-react";
 import { useStore } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,8 @@ interface Avoir {
     id: number;
     name: string;
     color: string;
+    nocodbTableName?: string;
+    nocodbConfigId?: number;
   };
   creator: {
     id: string;
@@ -65,6 +67,8 @@ interface Group {
   id: number;
   name: string;
   color: string;
+  nocodbTableName?: string;
+  nocodbConfigId?: number;
 }
 
 // Schema for form validation
@@ -111,6 +115,10 @@ export default function Avoirs() {
   const [showWaitingModal, setShowWaitingModal] = useState(false);
   const [processingSeconds, setProcessingSeconds] = useState(0);
   const [processingTimeout, setProcessingTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // États pour le système de vérification de facture
+  const [avoirVerificationResults, setAvoirVerificationResults] = useState<Record<number, any>>({});
+  const [verifyingAvoirs, setVerifyingAvoirs] = useState<Set<number>>(new Set());
   // Utiliser le contexte global du magasin
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
@@ -328,6 +336,123 @@ export default function Avoirs() {
     setIsDeleteDialogOpen(true);
   };
 
+  // 🔍 FONCTION DE VÉRIFICATION DE FACTURE (comme rapprochement)
+  const verifyAvoirInvoiceMutation = useMutation({
+    mutationFn: async ({ avoirId, invoiceReference, forceRefresh }: { avoirId: number; invoiceReference?: string; forceRefresh?: boolean }) => {
+      try {
+        const result = await apiRequest(`/api/avoirs/${avoirId}/verify-invoice`, 'POST', { 
+          invoiceReference,
+          forceRefresh: forceRefresh || false
+        });
+        return result;
+      } catch (error: any) {
+        console.error('Erreur API vérification avoir:', error);
+        throw new Error(error.message || 'Erreur de vérification');
+      }
+    },
+    onSuccess: (result, variables) => {
+      setAvoirVerificationResults(prev => ({
+        ...prev,
+        [variables.avoirId]: result
+      }));
+      
+      setVerifyingAvoirs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variables.avoirId);
+        return newSet;
+      });
+    },
+    onError: (error, variables) => {
+      console.error('Erreur vérification facture avoir:', error);
+      setAvoirVerificationResults(prev => ({
+        ...prev,
+        [variables.avoirId]: {
+          exists: false,
+          matchType: 'none',
+          errorMessage: error instanceof Error ? error.message : 'Erreur inconnue'
+        }
+      }));
+      
+      setVerifyingAvoirs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variables.avoirId);
+        return newSet;
+      });
+      
+      toast({
+        title: "Erreur de vérification",
+        description: error instanceof Error ? error.message : 'Erreur inconnue',
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Fonction pour déclencher la vérification d'un avoir
+  const handleVerifyAvoirInvoice = (avoir: Avoir, forceRefresh: boolean = false) => {
+    const hasInvoiceRef = avoir.invoiceReference?.trim();
+    
+    if (!hasInvoiceRef) {
+      toast({
+        title: "Référence manquante",
+        description: "Veuillez saisir une référence de facture avant la vérification",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!avoir.group?.nocodbTableName && !avoir.group?.nocodbConfigId) {
+      toast({
+        title: "Vérification non disponible", 
+        description: "Ce magasin n'a pas de configuration NocoDB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('🔍 Déclenchement vérification avoir:', {
+      avoirId: avoir.id,
+      invoiceReference: avoir.invoiceReference,
+      supplier: avoir.supplier?.name,
+      group: avoir.group?.name
+    });
+    
+    setVerifyingAvoirs(prev => new Set(prev).add(avoir.id));
+    
+    verifyAvoirInvoiceMutation.mutate({
+      avoirId: avoir.id,
+      invoiceReference: avoir.invoiceReference,
+      forceRefresh
+    });
+  };
+
+  // Fonction pour vérifier tous les avoirs avec une référence facture
+  const handleVerifyAllAvoirInvoices = () => {
+    const avoirsToVerify = avoirs.filter(avoir => 
+      avoir.invoiceReference?.trim() && 
+      (avoir.group?.nocodbTableName || avoir.group?.nocodbConfigId)
+    );
+
+    if (avoirsToVerify.length === 0) {
+      toast({
+        title: "Aucun avoir à vérifier",
+        description: "Aucun avoir avec référence de facture trouvé",
+      });
+      return;
+    }
+
+    avoirsToVerify.forEach((avoir, index) => {
+      // Délai échelonné pour éviter la surcharge
+      setTimeout(() => {
+        handleVerifyAvoirInvoice(avoir, true); // Force refresh pour tous
+      }, index * 200); // 200ms entre chaque vérification
+    });
+
+    toast({
+      title: "Vérification lancée",
+      description: `Vérification de ${avoirsToVerify.length} avoir(s) en cours...`,
+    });
+  };
+
   // 🔥 FONCTIONS WEBHOOK MODAL (comme rapprochement)
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -525,13 +650,30 @@ export default function Avoirs() {
           </p>
         </div>
         
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouvel avoir
+        <div className="flex items-center space-x-2">
+          {/* Bouton Vérifier tous si des avoirs avec référence existent */}
+          {avoirs.some(avoir => avoir.invoiceReference?.trim()) && (
+            <Button 
+              variant="outline" 
+              onClick={handleVerifyAllAvoirInvoices}
+              disabled={verifyingAvoirs.size > 0}
+            >
+              <Search className="h-4 w-4 mr-2" />
+              {verifyingAvoirs.size > 0 ? "Vérification..." : "Vérifier tous"}
             </Button>
-          </DialogTrigger>
+          )}
+          
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Nouvel avoir
+              </Button>
+            </DialogTrigger>
+          </Dialog>
+        </div>
+        
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Créer un nouvel avoir</DialogTitle>
@@ -766,6 +908,9 @@ export default function Avoirs() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Créé le
                   </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Vérification
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -825,6 +970,31 @@ export default function Avoirs() {
                             }
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
+                        {avoir.invoiceReference?.trim() ? (
+                          <div className="flex items-center justify-center">
+                            {verifyingAvoirs.has(avoir.id) ? (
+                              <Clock className="h-4 w-4 text-blue-500 animate-spin" />
+                            ) : avoirVerificationResults[avoir.id] ? (
+                              avoirVerificationResults[avoir.id].exists ? (
+                                <CheckCircle className="h-4 w-4 text-green-500 cursor-help" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-red-500 cursor-help" />
+                              )
+                            ) : (
+                              <button
+                                onClick={() => handleVerifyAvoirInvoice(avoir)}
+                                className="h-4 w-4 text-gray-400 hover:text-blue-500 transition-colors"
+                                title="Cliquer pour vérifier la facture"
+                              >
+                                <Search className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">Sans réf.</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center space-x-2">
