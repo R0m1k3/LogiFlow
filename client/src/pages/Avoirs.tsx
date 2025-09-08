@@ -98,6 +98,12 @@ const avoirSchema = z.object({
 
 type AvoirFormData = z.infer<typeof avoirSchema>;
 
+// Type étendu pour les mises à jour incluant les champs de validation
+type AvoirUpdateData = AvoirFormData & {
+  nocodbVerified?: boolean;
+  nocodbVerifiedAt?: Date | null;
+};
+
 export default function Avoirs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -198,7 +204,7 @@ export default function Avoirs() {
 
   // Edit avoir mutation
   const editAvoirMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number, data: AvoirFormData }) => {
+    mutationFn: async ({ id, data }: { id: number, data: AvoirUpdateData }) => {
       const response = await fetch(`/api/avoirs/${id}`, {
         method: 'PUT',
         headers: {
