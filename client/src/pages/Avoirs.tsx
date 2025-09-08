@@ -336,6 +336,25 @@ export default function Avoirs() {
     setIsDeleteDialogOpen(true);
   };
 
+  // Handle status change
+  const handleStatusChange = (avoirId: number, newStatus: string) => {
+    const avoir = avoirs.find(a => a.id === avoirId);
+    if (avoir) {
+      editAvoirMutation.mutate({ 
+        id: avoirId, 
+        data: {
+          supplierId: avoir.supplierId,
+          groupId: avoir.groupId,
+          invoiceReference: avoir.invoiceReference || "",
+          amount: avoir.amount,
+          comment: avoir.comment || "",
+          commercialProcessed: avoir.commercialProcessed,
+          status: newStatus as "En attente de demande" | "Demandé" | "Reçu",
+        }
+      });
+    }
+  };
+
   // 🔍 FONCTION DE VÉRIFICATION DE FACTURE (comme rapprochement)
   const verifyAvoirInvoiceMutation = useMutation({
     mutationFn: async ({ avoirId, invoiceReference, forceRefresh }: { avoirId: number; invoiceReference?: string; forceRefresh?: boolean }) => {
