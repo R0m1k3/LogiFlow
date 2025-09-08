@@ -69,6 +69,10 @@ import {
   webhookBapConfig,
   type WebhookBapConfig,
   type InsertWebhookBapConfig,
+  avoirs,
+  type Avoir,
+  type InsertAvoir,
+  type AvoirWithRelations,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql, gte, lte, lt, gt, or, isNull, isNotNull, asc, ne } from "drizzle-orm";
@@ -197,6 +201,15 @@ export interface IStorage {
   getAnnouncement(id: number): Promise<AnnouncementWithRelations | undefined>;
   updateAnnouncement(id: number, announcement: Partial<InsertAnnouncement>): Promise<AnnouncementWithRelations>;
   deleteAnnouncement(id: number): Promise<boolean>;
+
+  // Avoir operations
+  getAvoirs(groupIds?: number[]): Promise<AvoirWithRelations[]>;
+  getAvoir(id: number): Promise<AvoirWithRelations | undefined>;
+  createAvoir(avoir: InsertAvoir): Promise<Avoir>;
+  updateAvoir(id: number, avoir: Partial<InsertAvoir>): Promise<Avoir>;
+  deleteAvoir(id: number): Promise<void>;
+  updateAvoirWebhookStatus(id: number, webhookSent: boolean): Promise<void>;
+  updateAvoirNocodbVerification(id: number, verified: boolean): Promise<void>;
   
   // SAV operations
   getSavTickets(filters?: { 
@@ -2108,6 +2121,134 @@ export class DatabaseStorage implements IStorage {
     return await announcementStorage.deleteAnnouncement(id);
   }
 
+  // Avoir operations
+  async getAvoirs(groupIds?: number[]): Promise<AvoirWithRelations[]> {
+    let query = db
+      .select({
+        id: avoirs.id,
+        supplierId: avoirs.supplierId,
+        groupId: avoirs.groupId,
+        invoiceReference: avoirs.invoiceReference,
+        amount: avoirs.amount,
+        comment: avoirs.comment,
+        commercialProcessed: avoirs.commercialProcessed,
+        status: avoirs.status,
+        webhookSent: avoirs.webhookSent,
+        nocodbVerified: avoirs.nocodbVerified,
+        nocodbVerifiedAt: avoirs.nocodbVerifiedAt,
+        processedAt: avoirs.processedAt,
+        createdBy: avoirs.createdBy,
+        createdAt: avoirs.createdAt,
+        updatedAt: avoirs.updatedAt,
+        supplier: suppliers,
+        group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
+      })
+      .from(avoirs)
+      .leftJoin(suppliers, eq(avoirs.supplierId, suppliers.id))
+      .leftJoin(groups, eq(avoirs.groupId, groups.id))
+      .leftJoin(users, eq(avoirs.createdBy, users.id));
+
+    if (groupIds && groupIds.length > 0) {
+      query = query.where(inArray(avoirs.groupId, groupIds));
+    }
+
+    const results = await query.orderBy(desc(avoirs.createdAt));
+
+    return results.map((result: any) => ({
+      ...result,
+      supplier: result.supplier!,
+      group: result.group!,
+      creator: result.creator!,
+    }));
+  }
+
+  async getAvoir(id: number): Promise<AvoirWithRelations | undefined> {
+    const [result] = await db
+      .select({
+        id: avoirs.id,
+        supplierId: avoirs.supplierId,
+        groupId: avoirs.groupId,
+        invoiceReference: avoirs.invoiceReference,
+        amount: avoirs.amount,
+        comment: avoirs.comment,
+        commercialProcessed: avoirs.commercialProcessed,
+        status: avoirs.status,
+        webhookSent: avoirs.webhookSent,
+        nocodbVerified: avoirs.nocodbVerified,
+        nocodbVerifiedAt: avoirs.nocodbVerifiedAt,
+        processedAt: avoirs.processedAt,
+        createdBy: avoirs.createdBy,
+        createdAt: avoirs.createdAt,
+        updatedAt: avoirs.updatedAt,
+        supplier: suppliers,
+        group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
+      })
+      .from(avoirs)
+      .leftJoin(suppliers, eq(avoirs.supplierId, suppliers.id))
+      .leftJoin(groups, eq(avoirs.groupId, groups.id))
+      .leftJoin(users, eq(avoirs.createdBy, users.id))
+      .where(eq(avoirs.id, id));
+
+    if (!result) return undefined;
+
+    return {
+      ...result,
+      supplier: result.supplier!,
+      group: result.group!,
+      creator: result.creator!,
+    };
+  }
+
+  async createAvoir(avoirData: InsertAvoir): Promise<Avoir> {
+    const [avoir] = await db.insert(avoirs).values(avoirData).returning();
+    return avoir;
+  }
+
+  async updateAvoir(id: number, avoirData: Partial<InsertAvoir>): Promise<Avoir> {
+    const [avoir] = await db
+      .update(avoirs)
+      .set({ ...avoirData, updatedAt: new Date() })
+      .where(eq(avoirs.id, id))
+      .returning();
+    return avoir;
+  }
+
+  async deleteAvoir(id: number): Promise<void> {
+    await db.delete(avoirs).where(eq(avoirs.id, id));
+  }
+
+  async updateAvoirWebhookStatus(id: number, webhookSent: boolean): Promise<void> {
+    await db
+      .update(avoirs)
+      .set({ webhookSent, updatedAt: new Date() })
+      .where(eq(avoirs.id, id));
+  }
+
+  async updateAvoirNocodbVerification(id: number, verified: boolean): Promise<void> {
+    await db
+      .update(avoirs)
+      .set({ 
+        nocodbVerified: verified, 
+        nocodbVerifiedAt: verified ? new Date() : null,
+        updatedAt: new Date() 
+      })
+      .where(eq(avoirs.id, id));
+  }
+
   // SAV operations
   async getSavTickets(filters?: { 
     groupIds?: number[]; 
@@ -2441,7 +2582,7 @@ export class MemStorage implements IStorage {
   private dlcProducts = new Map<number, DlcProduct>();
   private tasks = new Map<number, Task>();
   private announcements = new Map<number, Announcement>();
-  private publicities = new Map<number, Publicity>();
+  private avoirs = new Map<number, Avoir>();
   private savTickets = new Map<number, SavTicket>();
   private savTicketHistories = new Map<number, SavTicketHistory[]>();
   private invoiceVerificationCache = new Map<string, InvoiceVerificationCache>();
@@ -2456,6 +2597,7 @@ export class MemStorage implements IStorage {
     dlcProduct: 1,
     task: 1,
     announcement: 1,
+    avoir: 1,
     savTicket: 1,
     savTicketHistory: 1,
   };
@@ -4164,6 +4306,90 @@ export class MemStorage implements IStorage {
       async () => Array.from(this.groups.values())
     );
     return await announcementStorage.deleteAnnouncement(id);
+  }
+
+  // Avoir operations
+  async getAvoirs(groupIds?: number[]): Promise<AvoirWithRelations[]> {
+    let avoirs = Array.from(this.avoirs.values());
+    
+    // Filter by groups if provided
+    if (groupIds && groupIds.length > 0) {
+      avoirs = avoirs.filter(avoir => groupIds.includes(avoir.groupId));
+    }
+
+    return avoirs
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map(avoir => ({
+        ...avoir,
+        supplier: this.suppliers.get(avoir.supplierId)!,
+        group: this.groups.get(avoir.groupId)!,
+        creator: this.users.get(avoir.createdBy)!,
+      }));
+  }
+
+  async getAvoir(id: number): Promise<AvoirWithRelations | undefined> {
+    const avoir = this.avoirs.get(id);
+    if (!avoir) return undefined;
+    
+    return {
+      ...avoir,
+      supplier: this.suppliers.get(avoir.supplierId)!,
+      group: this.groups.get(avoir.groupId)!,
+      creator: this.users.get(avoir.createdBy)!,
+    };
+  }
+
+  async createAvoir(avoirData: InsertAvoir): Promise<Avoir> {
+    const id = this.idCounters.avoir++;
+    const avoir: Avoir = {
+      id,
+      ...avoirData,
+      status: 'En attente de demande',
+      webhookSent: false,
+      nocodbVerified: false,
+      nocodbVerifiedAt: null,
+      processedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.avoirs.set(id, avoir);
+    return avoir;
+  }
+
+  async updateAvoir(id: number, avoirData: Partial<InsertAvoir>): Promise<Avoir> {
+    const existingAvoir = this.avoirs.get(id);
+    if (!existingAvoir) throw new Error('Avoir not found');
+    
+    const updatedAvoir = {
+      ...existingAvoir,
+      ...avoirData,
+      updatedAt: new Date(),
+    };
+    this.avoirs.set(id, updatedAvoir);
+    return updatedAvoir;
+  }
+
+  async deleteAvoir(id: number): Promise<void> {
+    this.avoirs.delete(id);
+  }
+
+  async updateAvoirWebhookStatus(id: number, webhookSent: boolean): Promise<void> {
+    const avoir = this.avoirs.get(id);
+    if (avoir) {
+      avoir.webhookSent = webhookSent;
+      avoir.updatedAt = new Date();
+      this.avoirs.set(id, avoir);
+    }
+  }
+
+  async updateAvoirNocodbVerification(id: number, verified: boolean): Promise<void> {
+    const avoir = this.avoirs.get(id);
+    if (avoir) {
+      avoir.nocodbVerified = verified;
+      avoir.nocodbVerifiedAt = verified ? new Date() : null;
+      avoir.updatedAt = new Date();
+      this.avoirs.set(id, avoir);
+    }
   }
 }
 
