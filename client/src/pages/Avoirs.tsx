@@ -1180,7 +1180,9 @@ export default function Avoirs() {
                             {verifyingAvoirs.has(avoir.id) ? (
                               <Clock className="h-4 w-4 text-blue-500 animate-spin" />
                             ) : (avoirVerificationResults[avoir.id]?.exists === true || avoir.nocodbVerified) ? (
-                              <CheckCircle className="h-4 w-4 text-green-500 cursor-help" title={`Vérifié: ${avoirVerificationResults[avoir.id]?.exists ? 'cache' : avoir.nocodbVerified ? 'validé' : 'inconnu'}`} />
+                              <div title={`Vérifié: ${avoirVerificationResults[avoir.id]?.exists ? 'cache' : avoir.nocodbVerified ? 'validé' : 'inconnu'}`}>
+                                <CheckCircle className="h-4 w-4 text-green-500 cursor-help" />
+                              </div>
                             ) : avoirVerificationResults[avoir.id]?.exists === false ? (
                               <XCircle className="h-4 w-4 text-red-500 cursor-help" />
                             ) : (
