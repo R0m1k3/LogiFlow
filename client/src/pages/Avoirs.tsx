@@ -1024,8 +1024,8 @@ export default function Avoirs() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex items-center space-x-2">
-                    {/* Upload pour avoirs "Reçu" */}
-                    {avoir?.status === 'Reçu' && (
+                    {/* Upload pour avoirs "Reçu" - interdit aux managers */}
+                    {avoir?.status === 'Reçu' && (user as any)?.role !== 'manager' && (
                       <Button
                         variant="outline"
                         size="sm"
