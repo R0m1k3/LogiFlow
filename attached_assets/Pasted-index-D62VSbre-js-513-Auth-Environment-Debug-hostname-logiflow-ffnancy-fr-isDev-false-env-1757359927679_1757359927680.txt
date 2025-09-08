@@ -1,0 +1,611 @@
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:977 🔍 RouterProduction Debug: {environment: 'production', isAuthenticated: false, isLoading: true, hasUser: false, userId: undefined, …}
+index-D62VSbre.js:513 🔄 Production auth check starting, refreshTrigger: 0
+index-D62VSbre.js:513 🔄 Production auth response: 200
+index-D62VSbre.js:513 ✅ Production auth success: {username: 'admin', id: 'admin_local'}
+index-D62VSbre.js:513 🔄 Production auth check complete, loading set to false
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:977 🔍 RouterProduction Debug: {environment: 'production', isAuthenticated: true, isLoading: false, hasUser: true, userId: 'admin_local', …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🏪 Layout - Restoring selectedStoreId from localStorage: {saved: '1', restoredId: 1}
+index-D62VSbre.js:557 🔧 Layout - Restoring sidebar state: {saved: 'false', isMobile: false}
+index-D62VSbre.js:557 Sidebar - User: null
+index-D62VSbre.js:557 Sidebar - isLoading: true
+index-D62VSbre.js:557 Sidebar - error: null
+index-D62VSbre.js:557 🔧 Sidebar Debug: {isMobile: false, sidebarCollapsed: false, mobileMenuOpen: false, width: 'expanded (256px)', classes: 'sidebar-expanded bg-white border-r border-gray-200…shadow-lg transition-all duration-300 ease-in-out'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 0 []
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 0, allDeliveries: 0, customerOrders: 0, upcomingPublicities: 0, stats: undefined, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:513 🔄 Production auth check starting, refreshTrigger: 0
+index-D62VSbre.js:513 🔄 Production auth check starting, refreshTrigger: 0
+index-D62VSbre.js:513 🔄 Production auth check starting, refreshTrigger: 0
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 Sidebar - User: null
+index-D62VSbre.js:557 Sidebar - isLoading: true
+index-D62VSbre.js:557 Sidebar - error: null
+index-D62VSbre.js:557 🔧 Sidebar Debug: {isMobile: false, sidebarCollapsed: false, mobileMenuOpen: false, width: 'expanded (256px)', classes: 'sidebar-expanded bg-white border-r border-gray-200…shadow-lg transition-all duration-300 ease-in-out'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 0 []
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 0, allDeliveries: 0, customerOrders: 0, upcomingPublicities: 0, stats: undefined, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:553 ✅ Auth check successful: {username: 'admin', id: 'admin_local'}
+index-D62VSbre.js:557 Sidebar - User: {id: 'admin_local', username: 'admin', email: 'admin@logiflow.com', firstName: 'Administrateur', lastName: '', …}
+index-D62VSbre.js:557 Sidebar - isLoading: false
+index-D62VSbre.js:557 Sidebar - error: null
+index-D62VSbre.js:557 🔧 Sidebar Debug: {isMobile: false, sidebarCollapsed: false, mobileMenuOpen: false, width: 'expanded (256px)', classes: 'sidebar-expanded bg-white border-r border-gray-200…shadow-lg transition-all duration-300 ease-in-out'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 0 []
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 0, allDeliveries: 0, customerOrders: 0, upcomingPublicities: 10, stats: undefined, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:513 🔄 Production auth response: 200
+index-D62VSbre.js:513 ✅ Production auth success: {username: 'admin', id: 'admin_local'}
+index-D62VSbre.js:513 🔄 Production auth check complete, loading set to false
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🔍 [ANNOUNCEMENTS] Fetching from: /api/announcements?storeId=1
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 0 []
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 0, allDeliveries: 0, customerOrders: 0, upcomingPublicities: 10, stats: undefined, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 0 []
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 0, allDeliveries: 0, customerOrders: 70, upcomingPublicities: 10, stats: undefined, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 0 []
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 0, allDeliveries: 0, customerOrders: 70, upcomingPublicities: 10, stats: {…}, …}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ 🚚 Dashboard - Upcoming deliveries result: 0 []
+ 📊 Dashboard Debug - Raw Data: {allOrders: 0, allDeliveries: 0, customerOrders: 70, upcomingPublicities: 10, stats: {…}, …}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ 🚚 Dashboard - Upcoming deliveries result: 0 []
+ 📊 Dashboard Debug - Raw Data: {allOrders: 0, allDeliveries: 0, customerOrders: 70, upcomingPublicities: 10, stats: {…}, …}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ 🚚 Dashboard - Upcoming deliveries result: 0 []
+ 📊 Dashboard Debug - Raw Data: {allOrders: 100, allDeliveries: 0, customerOrders: 70, upcomingPublicities: 10, stats: {…}, …}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ 🚚 Dashboard - Delivery filter: {id: 192, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 191, status: 'planned', isPlanned: true, scheduledDate: '2025-09-09'}
+ 🚚 Dashboard - Delivery filter: {id: 190, status: 'planned', isPlanned: true, scheduledDate: '2025-09-09'}
+ 🚚 Dashboard - Delivery filter: {id: 189, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 188, status: 'planned', isPlanned: true, scheduledDate: '2025-09-09'}
+ 🚚 Dashboard - Delivery filter: {id: 187, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 186, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 185, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 184, status: 'planned', isPlanned: true, scheduledDate: '2025-09-11'}
+ 🚚 Dashboard - Delivery filter: {id: 183, status: 'planned', isPlanned: true, scheduledDate: '2025-09-10'}
+ 🚚 Dashboard - Delivery filter: {id: 182, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-04'}
+ 🚚 Dashboard - Delivery filter: {id: 181, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 180, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 179, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-28'}
+ 🚚 Dashboard - Delivery filter: {id: 178, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-03'}
+ 🚚 Dashboard - Delivery filter: {id: 177, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-03'}
+ 🚚 Dashboard - Delivery filter: {id: 176, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-04'}
+ 🚚 Dashboard - Delivery filter: {id: 175, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-03'}
+ 🚚 Dashboard - Delivery filter: {id: 174, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-02'}
+ 🚚 Dashboard - Delivery filter: {id: 171, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-02'}
+ 🚚 Dashboard - Delivery filter: {id: 170, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-02'}
+ 🚚 Dashboard - Delivery filter: {id: 169, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-02'}
+ 🚚 Dashboard - Delivery filter: {id: 168, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-02'}
+ 🚚 Dashboard - Delivery filter: {id: 166, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-04'}
+ 🚚 Dashboard - Delivery filter: {id: 165, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 164, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 163, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 162, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 161, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 160, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-01'}
+ 🚚 Dashboard - Delivery filter: {id: 159, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-01'}
+ 🚚 Dashboard - Delivery filter: {id: 158, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 157, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-28'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 156, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-28'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 154, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-27'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 152, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-28'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 151, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 150, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 149, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 148, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 147, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 145, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 144, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 143, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-27'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 142, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 141, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 140, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 139, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 138, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 137, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-21'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 135, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 134, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 133, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-21'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 132, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 131, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 130, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 129, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 128, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 127, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-19'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 125, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-19'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 124, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 123, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-19'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 122, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 121, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 118, status: 'planned', isPlanned: true, scheduledDate: '2025-10-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 117, status: 'planned', isPlanned: true, scheduledDate: '2025-09-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 116, status: 'planned', isPlanned: true, scheduledDate: '2025-09-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 115, status: 'planned', isPlanned: true, scheduledDate: '2025-09-15'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 111, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-14'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 104, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 101, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 100, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-11'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 98, status: 'planned', isPlanned: true, scheduledDate: '2025-08-12'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 97, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-12'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 96, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-11'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 94, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-14'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 93, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-14'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 91, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-11'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 90, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-11'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 89, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 88, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 87, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 86, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 84, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 83, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 82, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 81, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 80, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 79, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 78, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 77, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 76, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 75, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 74, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 72, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-21'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 71, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 69, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 68, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 67, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 66, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 65, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-04'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 63, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-04'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 62, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 61, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-01'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 60, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-01'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 58, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 56, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 55, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 54, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 53, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-01'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 52, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 51, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 50, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 49, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 48, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 46, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-28'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 45, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-28'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 43, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 42, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 41, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 40, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-28'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 39, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-24'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 38, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 37, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 36, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-21'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 35, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-15'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 34, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-16'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 33, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-18'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 32, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 31, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 30, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 29, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 28, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 27, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-24'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 26, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 25, status: 'planned', isPlanned: true, scheduledDate: '2025-10-13'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 24, status: 'planned', isPlanned: true, scheduledDate: '2025-10-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 23, status: 'planned', isPlanned: true, scheduledDate: '2025-09-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 22, status: 'planned', isPlanned: true, scheduledDate: '2025-09-15'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 21, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 18, status: 'planned', isPlanned: true, scheduledDate: '2025-08-11'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 17, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 16, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-24'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 15, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 13, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 11, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 10, status: 'planned', isPlanned: true, scheduledDate: '2025-08-14'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 4 (4) [{…}, {…}, {…}, {…}]
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 100, allDeliveries: 147, customerOrders: 70, upcomingPublicities: 10, stats: {…}, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:513 🔄 Production auth response: 200
+index-D62VSbre.js:513 ✅ Production auth success: {username: 'admin', id: 'admin_local'}
+index-D62VSbre.js:513 🔄 Production auth check complete, loading set to false
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 0 []
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 0, allDeliveries: 0, customerOrders: 0, upcomingPublicities: 10, stats: {…}, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 ✅ [ANNOUNCEMENTS] Data received: (2) [{…}, {…}]
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:513 🔄 Production auth response: 200
+index-D62VSbre.js:513 ✅ Production auth success: {username: 'admin', id: 'admin_local'}
+index-D62VSbre.js:513 🔄 Production auth check complete, loading set to false
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 Sidebar - User: {id: 'admin_local', username: 'admin', email: 'admin@logiflow.com', firstName: 'Administrateur', lastName: '', …}
+index-D62VSbre.js:557 Sidebar - isLoading: false
+index-D62VSbre.js:557 Sidebar - error: null
+index-D62VSbre.js:557 🔧 Sidebar Debug: {isMobile: false, sidebarCollapsed: false, mobileMenuOpen: false, width: 'expanded (256px)', classes: 'sidebar-expanded bg-white border-r border-gray-200…shadow-lg transition-all duration-300 ease-in-out'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 0 []
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 0, allDeliveries: 0, customerOrders: 0, upcomingPublicities: 10, stats: {…}, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 0 []
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 64, allDeliveries: 0, customerOrders: 0, upcomingPublicities: 10, stats: {…}, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 Sidebar - User: {id: 'admin_local', username: 'admin', email: 'admin@logiflow.com', firstName: 'Administrateur', lastName: '', …}
+index-D62VSbre.js:557 Sidebar - isLoading: false
+index-D62VSbre.js:557 Sidebar - error: null
+index-D62VSbre.js:557 🔧 Sidebar Debug: {isMobile: false, sidebarCollapsed: false, mobileMenuOpen: false, width: 'expanded (256px)', classes: 'sidebar-expanded bg-white border-r border-gray-200…shadow-lg transition-all duration-300 ease-in-out'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 192, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 191, status: 'planned', isPlanned: true, scheduledDate: '2025-09-09'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 187, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 186, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 185, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 184, status: 'planned', isPlanned: true, scheduledDate: '2025-09-11'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 183, status: 'planned', isPlanned: true, scheduledDate: '2025-09-10'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 182, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-04'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 181, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 180, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 177, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-03'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 176, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-04'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 171, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-02'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 163, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 162, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 161, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 159, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-01'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 158, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 157, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-28'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 154, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-27'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 148, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 147, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 145, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 144, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 142, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 141, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 139, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 138, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 137, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-21'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 135, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 134, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 129, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 128, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 123, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-19'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 118, status: 'planned', isPlanned: true, scheduledDate: '2025-10-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 117, status: 'planned', isPlanned: true, scheduledDate: '2025-09-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 116, status: 'planned', isPlanned: true, scheduledDate: '2025-09-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 115, status: 'planned', isPlanned: true, scheduledDate: '2025-09-15'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 104, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 101, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 97, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-12'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 90, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-11'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 89, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 88, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+ 🚚 Dashboard - Delivery filter: {id: 87, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+ 🚚 Dashboard - Delivery filter: {id: 84, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-08'}
+ 🚚 Dashboard - Delivery filter: {id: 83, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-08'}
+ 🚚 Dashboard - Delivery filter: {id: 82, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+ 🚚 Dashboard - Delivery filter: {id: 81, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+ 🚚 Dashboard - Delivery filter: {id: 77, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+ 🚚 Dashboard - Delivery filter: {id: 76, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+ 🚚 Dashboard - Delivery filter: {id: 75, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+ 🚚 Dashboard - Delivery filter: {id: 74, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+ 🚚 Dashboard - Delivery filter: {id: 72, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-21'}
+ 🚚 Dashboard - Delivery filter: {id: 69, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-05'}
+ 🚚 Dashboard - Delivery filter: {id: 66, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-05'}
+ 🚚 Dashboard - Delivery filter: {id: 62, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-29'}
+ 🚚 Dashboard - Delivery filter: {id: 61, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-01'}
+ 🚚 Dashboard - Delivery filter: {id: 60, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-01'}
+ 🚚 Dashboard - Delivery filter: {id: 58, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 56, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+ 🚚 Dashboard - Delivery filter: {id: 55, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+ 🚚 Dashboard - Delivery filter: {id: 52, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+ 🚚 Dashboard - Delivery filter: {id: 51, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+ 🚚 Dashboard - Delivery filter: {id: 43, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-29'}
+ 🚚 Dashboard - Delivery filter: {id: 41, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+ 🚚 Dashboard - Delivery filter: {id: 40, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-28'}
+ 🚚 Dashboard - Delivery filter: {id: 38, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+ 🚚 Dashboard - Delivery filter: {id: 37, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+ 🚚 Dashboard - Delivery filter: {id: 36, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-21'}
+ 🚚 Dashboard - Delivery filter: {id: 35, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-15'}
+ 🚚 Dashboard - Delivery filter: {id: 34, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-16'}
+ 🚚 Dashboard - Delivery filter: {id: 33, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-18'}
+ 🚚 Dashboard - Delivery filter: {id: 32, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+ 🚚 Dashboard - Delivery filter: {id: 31, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+ 🚚 Dashboard - Delivery filter: {id: 30, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+ 🚚 Dashboard - Delivery filter: {id: 29, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+ 🚚 Dashboard - Delivery filter: {id: 28, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+ 🚚 Dashboard - Delivery filter: {id: 27, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-24'}
+ 🚚 Dashboard - Delivery filter: {id: 13, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+ 🚚 Dashboard - Delivery filter: {id: 11, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+ 🚚 Dashboard - Delivery filter: {id: 10, status: 'planned', isPlanned: true, scheduledDate: '2025-08-14'}
+ 🚚 Dashboard - Upcoming deliveries result: 4 (4) [{…}, {…}, {…}, {…}]
+ 📊 Dashboard Debug - Raw Data: {allOrders: 64, allDeliveries: 82, customerOrders: 0, upcomingPublicities: 10, stats: {…}, …}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ 🏪 Selected store validated successfully: {selectedStoreId: 1, userRole: 'admin', storeName: 'Frouard'}
+ 🏪 Store initialization complete: {user: 'admin', selectedStoreId: 1, storesCount: 2, validatedStore: 'Frouard', autoSelected: false}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ Sidebar - User: {id: 'admin_local', username: 'admin', email: 'admin@logiflow.com', firstName: 'Administrateur', lastName: '', …}
+ Sidebar - isLoading: false
+ Sidebar - error: null
+ 🔧 Sidebar Debug: {isMobile: false, sidebarCollapsed: false, mobileMenuOpen: false, width: 'expanded (256px)', classes: 'sidebar-expanded bg-white border-r border-gray-200…shadow-lg transition-all duration-300 ease-in-out'}
+ 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+ 🚚 Dashboard - Delivery filter: {id: 192, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 191, status: 'planned', isPlanned: true, scheduledDate: '2025-09-09'}
+ 🚚 Dashboard - Delivery filter: {id: 187, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 186, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 185, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 184, status: 'planned', isPlanned: true, scheduledDate: '2025-09-11'}
+ 🚚 Dashboard - Delivery filter: {id: 183, status: 'planned', isPlanned: true, scheduledDate: '2025-09-10'}
+ 🚚 Dashboard - Delivery filter: {id: 182, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-04'}
+ 🚚 Dashboard - Delivery filter: {id: 181, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 180, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+ 🚚 Dashboard - Delivery filter: {id: 177, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-03'}
+ 🚚 Dashboard - Delivery filter: {id: 176, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-04'}
+ 🚚 Dashboard - Delivery filter: {id: 171, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-02'}
+ 🚚 Dashboard - Delivery filter: {id: 163, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 162, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 161, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+ 🚚 Dashboard - Delivery filter: {id: 159, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-01'}
+ 🚚 Dashboard - Delivery filter: {id: 158, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-29'}
+ 🚚 Dashboard - Delivery filter: {id: 157, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-28'}
+ 🚚 Dashboard - Delivery filter: {id: 154, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-27'}
+ 🚚 Dashboard - Delivery filter: {id: 148, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+ 🚚 Dashboard - Delivery filter: {id: 147, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+ 🚚 Dashboard - Delivery filter: {id: 145, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+ 🚚 Dashboard - Delivery filter: {id: 144, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+ 🚚 Dashboard - Delivery filter: {id: 142, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+ 🚚 Dashboard - Delivery filter: {id: 141, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+ 🚚 Dashboard - Delivery filter: {id: 139, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+ 🚚 Dashboard - Delivery filter: {id: 138, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+ 🚚 Dashboard - Delivery filter: {id: 137, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-21'}
+ 🚚 Dashboard - Delivery filter: {id: 135, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+ 🚚 Dashboard - Delivery filter: {id: 134, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+ 🚚 Dashboard - Delivery filter: {id: 129, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+ 🚚 Dashboard - Delivery filter: {id: 128, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+ 🚚 Dashboard - Delivery filter: {id: 123, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-19'}
+ 🚚 Dashboard - Delivery filter: {id: 118, status: 'planned', isPlanned: true, scheduledDate: '2025-10-06'}
+ 🚚 Dashboard - Delivery filter: {id: 117, status: 'planned', isPlanned: true, scheduledDate: '2025-09-29'}
+ 🚚 Dashboard - Delivery filter: {id: 116, status: 'planned', isPlanned: true, scheduledDate: '2025-09-22'}
+ 🚚 Dashboard - Delivery filter: {id: 115, status: 'planned', isPlanned: true, scheduledDate: '2025-09-15'}
+ 🚚 Dashboard - Delivery filter: {id: 104, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+ 🚚 Dashboard - Delivery filter: {id: 101, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+ 🚚 Dashboard - Delivery filter: {id: 97, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-12'}
+ 🚚 Dashboard - Delivery filter: {id: 90, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-11'}
+ 🚚 Dashboard - Delivery filter: {id: 89, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+ 🚚 Dashboard - Delivery filter: {id: 88, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+ 🚚 Dashboard - Delivery filter: {id: 87, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+ 🚚 Dashboard - Delivery filter: {id: 84, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-08'}
+ 🚚 Dashboard - Delivery filter: {id: 83, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-08'}
+ 🚚 Dashboard - Delivery filter: {id: 82, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+ 🚚 Dashboard - Delivery filter: {id: 81, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+ 🚚 Dashboard - Delivery filter: {id: 77, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+ 🚚 Dashboard - Delivery filter: {id: 76, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+ 🚚 Dashboard - Delivery filter: {id: 75, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+ 🚚 Dashboard - Delivery filter: {id: 74, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 72, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-21'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 69, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 66, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 62, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 61, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-01'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 60, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-01'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 58, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 56, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 55, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 52, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 51, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 43, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 41, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 40, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-28'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 38, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 37, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 36, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-21'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 35, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-15'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 34, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-16'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 33, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-18'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 32, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 31, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 30, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 29, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 28, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 27, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-24'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 13, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 11, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 10, status: 'planned', isPlanned: true, scheduledDate: '2025-08-14'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 4 (4) [{…}, {…}, {…}, {…}]
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 64, allDeliveries: 82, customerOrders: 11, upcomingPublicities: 10, stats: {…}, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 192, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 191, status: 'planned', isPlanned: true, scheduledDate: '2025-09-09'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 187, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 186, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 185, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 184, status: 'planned', isPlanned: true, scheduledDate: '2025-09-11'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 183, status: 'planned', isPlanned: true, scheduledDate: '2025-09-10'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 182, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-04'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 181, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 180, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 177, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-03'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 176, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-04'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 171, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-02'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 163, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 162, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 161, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 159, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-01'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 158, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 157, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-28'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 154, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-27'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 148, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 147, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 145, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 144, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-26'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 142, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 141, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 139, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 138, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 137, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-21'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 135, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 134, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 129, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 128, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 123, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-19'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 118, status: 'planned', isPlanned: true, scheduledDate: '2025-10-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 117, status: 'planned', isPlanned: true, scheduledDate: '2025-09-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 116, status: 'planned', isPlanned: true, scheduledDate: '2025-09-22'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 115, status: 'planned', isPlanned: true, scheduledDate: '2025-09-15'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 104, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-20'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 101, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 97, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-12'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 90, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-11'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 89, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 88, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-13'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 87, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 84, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 83, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 82, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 81, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 77, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 76, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 75, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-06'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 74, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-07'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 72, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-21'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 69, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 66, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-05'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 62, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 61, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-01'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 60, status: 'delivered', isPlanned: false, scheduledDate: '2025-08-01'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 58, status: 'delivered', isPlanned: false, scheduledDate: '2025-09-08'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 56, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 55, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 52, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 51, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-31'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 43, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-29'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 41, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 40, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-28'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 38, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 37, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-30'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 36, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-21'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 35, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-15'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 34, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-16'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 33, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-18'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 32, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 31, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 30, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 29, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 28, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-23'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 27, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-24'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 13, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 11, status: 'delivered', isPlanned: false, scheduledDate: '2025-07-25'}
+index-D62VSbre.js:557 🚚 Dashboard - Delivery filter: {id: 10, status: 'planned', isPlanned: true, scheduledDate: '2025-08-14'}
+index-D62VSbre.js:557 🚚 Dashboard - Upcoming deliveries result: 4 (4) [{…}, {…}, {…}, {…}]
+index-D62VSbre.js:557 📊 Dashboard Debug - Raw Data: {allOrders: 64, allDeliveries: 82, customerOrders: 11, upcomingPublicities: 10, stats: {…}, …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 Sidebar - User: {id: 'admin_local', username: 'admin', email: 'admin@logiflow.com', firstName: 'Administrateur', lastName: '', …}
+index-D62VSbre.js:557 Sidebar - isLoading: false
+index-D62VSbre.js:557 Sidebar - error: null
+index-D62VSbre.js:557 🔧 Sidebar Debug: {isMobile: false, sidebarCollapsed: false, mobileMenuOpen: false, width: 'expanded (256px)', classes: 'sidebar-expanded bg-white border-r border-gray-200…shadow-lg transition-all duration-300 ease-in-out'}
+index-D62VSbre.js:977 💰 Debug avoirs reçus: {count: 0, first: null}
+index-D62VSbre.js:977 💰 Debug avoirs reçus: {count: 0, first: null}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:977 🔍 RouterProduction Debug: {environment: 'production', isAuthenticated: true, isLoading: false, hasUser: true, userId: 'admin_local', …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 Sidebar - User: {id: 'admin_local', username: 'admin', email: 'admin@logiflow.com', firstName: 'Administrateur', lastName: '', …}
+index-D62VSbre.js:557 Sidebar - isLoading: false
+index-D62VSbre.js:557 Sidebar - error: null
+index-D62VSbre.js:557 🔧 Sidebar Debug: {isMobile: false, sidebarCollapsed: false, mobileMenuOpen: false, width: 'expanded (256px)', classes: 'sidebar-expanded bg-white border-r border-gray-200…shadow-lg transition-all duration-300 ease-in-out'}
+index-D62VSbre.js:977 💰 Debug avoirs reçus: {count: 0, first: null}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:977 🔍 RouterProduction Debug: {environment: 'production', isAuthenticated: true, isLoading: false, hasUser: true, userId: 'admin_local', …}
+index-D62VSbre.js:513 🔍 Auth Environment Debug: {hostname: 'logiflow.ffnancy.fr', isDev: false, environment: 'production'}
+index-D62VSbre.js:557 Sidebar - User: {id: 'admin_local', username: 'admin', email: 'admin@logiflow.com', firstName: 'Administrateur', lastName: '', …}
+index-D62VSbre.js:557 Sidebar - isLoading: false
+index-D62VSbre.js:557 Sidebar - error: null
+index-D62VSbre.js:557 🔧 Sidebar Debug: {isMobile: false, sidebarCollapsed: false, mobileMenuOpen: false, width: 'expanded (256px)', classes: 'sidebar-expanded bg-white border-r border-gray-200…shadow-lg transition-all duration-300 ease-in-out'}
+index-D62VSbre.js:977 💰 Fetching avoirs from: /api/avoirs?storeId=1
+index-D62VSbre.js:977 💰 Debug avoirs reçus: {count: 0, first: null}
+index-D62VSbre.js:977 💰 Debug avoirs reçus: {count: 0, first: null}
+index-D62VSbre.js:977 💰 Avoirs received: 1 items
+index-D62VSbre.js:977 🔍 Render avoir: {id: 7, hasSupplier: true, hasGroup: true, hasCreator: true, createdAt: '2025-09-08T18:09:02.103Z', …}
+index-D62VSbre.js:977 ❌ Erreur rendu avoir: TypeError: E.amount.toFixed is not a function
+    at index-D62VSbre.js:977:82600
+    at Array.map (<anonymous>)
+    at QY (index-D62VSbre.js:977:80948)
+    at ev (index-D62VSbre.js:38:17018)
+    at dx (index-D62VSbre.js:40:3139)
+    at z_ (index-D62VSbre.js:40:44833)
+    at L_ (index-D62VSbre.js:40:39790)
+    at HI (index-D62VSbre.js:40:39718)
+    at $f (index-D62VSbre.js:40:39570)
+    at C1 (index-D62VSbre.js:40:36683) {id: 7, supplierId: 3, groupId: 1, invoiceReference: 'FC-25-00005972', amount: '-47.98', …}
+(anonymous) @ index-D62VSbre.js:977
+QY @ index-D62VSbre.js:977
+ev @ index-D62VSbre.js:38
+dx @ index-D62VSbre.js:40
+z_ @ index-D62VSbre.js:40
+L_ @ index-D62VSbre.js:40
+HI @ index-D62VSbre.js:40
+$f @ index-D62VSbre.js:40
+C1 @ index-D62VSbre.js:40
+Ni @ index-D62VSbre.js:38
+(anonymous) @ index-D62VSbre.js:40
+setTimeout
+hR @ index-D62VSbre.js:40
+o @ index-D62VSbre.js:40
+batch @ index-D62VSbre.js:40
+ea @ index-D62VSbre.js:40
+setData @ index-D62VSbre.js:40
+onSuccess @ index-D62VSbre.js:40
+f @ index-D62VSbre.js:40
+Promise.then
+b @ index-D62VSbre.js:40
+start @ index-D62VSbre.js:40
+fetch @ index-D62VSbre.js:40
+Ec @ index-D62VSbre.js:40
+setOptions @ index-D62VSbre.js:40
+(anonymous) @ index-D62VSbre.js:40
+Em @ index-D62VSbre.js:40
+Jo @ index-D62VSbre.js:40
+QI @ index-D62VSbre.js:40
+Ti @ index-D62VSbre.js:40
+C1 @ index-D62VSbre.js:40
+Ni @ index-D62VSbre.js:38
+(anonymous) @ index-D62VSbre.js:40
+setTimeout
+hR @ index-D62VSbre.js:40
+o @ index-D62VSbre.js:40
+batch @ index-D62VSbre.js:40
+ea @ index-D62VSbre.js:40
+setData @ index-D62VSbre.js:40
+onSuccess @ index-D62VSbre.js:40
+f @ index-D62VSbre.js:40
+Promise.then
+b @ index-D62VSbre.js:40
+start @ index-D62VSbre.js:40
+fetch @ index-D62VSbre.js:40
+Ec @ index-D62VSbre.js:40
+onSubscribe @ index-D62VSbre.js:40
+subscribe @ index-D62VSbre.js:40
+(anonymous) @ index-D62VSbre.js:40
+n_ @ index-D62VSbre.js:38
+Em @ index-D62VSbre.js:40
+Jo @ index-D62VSbre.js:40
+QI @ index-D62VSbre.js:40
+Ti @ index-D62VSbre.js:40
+C1 @ index-D62VSbre.js:40
+Ni @ index-D62VSbre.js:38
+(anonymous) @ index-D62VSbre.js:40
+index-D62VSbre.js:977 💰 Debug avoirs reçus: {count: 1, first: {…}}
