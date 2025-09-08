@@ -1040,11 +1040,11 @@ export default function Avoirs() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAvoirs.map((avoir) => {
+                {filteredAvoirs?.filter(avoir => avoir && avoir.id).map((avoir) => {
                   const canEditDelete = ['admin', 'directeur'].includes((user as any)?.role);
                   
                   return (
-                    <tr key={avoir.id} className={`hover:bg-gray-50 ${avoir.nocodbVerified ? 'bg-gray-100 opacity-75' : ''}`}>
+                    <tr key={avoir?.id || Math.random()} className={`hover:bg-gray-50 ${avoir?.nocodbVerified ? 'bg-gray-100 opacity-75' : ''}`}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {avoir.supplier?.name || 'Fournisseur non défini'}
                       </td>
@@ -1092,11 +1092,16 @@ export default function Avoirs() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div>
-                          <div>{format(new Date(avoir.createdAt), "dd/MM/yyyy", { locale: fr })}</div>
+                          <div>
+                            {avoir?.createdAt 
+                              ? format(new Date(avoir.createdAt), "dd/MM/yyyy", { locale: fr })
+                              : 'Non défini'
+                            }
+                          </div>
                           <div className="text-xs text-gray-400">
-                            Par {avoir.creator.firstName && avoir.creator.lastName 
+                            Par {avoir?.creator?.firstName && avoir?.creator?.lastName 
                               ? `${avoir.creator.firstName} ${avoir.creator.lastName}`
-                              : avoir.creator.username
+                              : avoir?.creator?.username || 'Utilisateur inconnu'
                             }
                           </div>
                         </div>
