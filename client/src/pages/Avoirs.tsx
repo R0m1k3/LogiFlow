@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload, XCircle } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload, XCircle, MessageSquare } from "lucide-react";
 import { useStore } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,6 +131,10 @@ export default function Avoirs() {
 
   // ✅ État local pour le champ montant d'édition pour éviter les conflits avec React Hook Form
   const [editAmountValue, setEditAmountValue] = useState<string>("");
+
+  // État pour le modal de commentaire
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [selectedComment, setSelectedComment] = useState<string>("");
   // Utiliser le contexte global du magasin
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
@@ -430,6 +434,12 @@ export default function Avoirs() {
     
     setSelectedAvoir(avoir);
     setIsDeleteDialogOpen(true);
+  };
+
+  // Handle comment view
+  const handleViewComment = (comment: string) => {
+    setSelectedComment(comment);
+    setShowCommentModal(true);
   };
 
   // Handle status change
@@ -1275,6 +1285,19 @@ export default function Avoirs() {
                             </Button>
                           )}
 
+                          {/* Bouton Commentaire - apparaît seulement s'il y a un commentaire */}
+                          {avoir.comment && avoir.comment.trim() !== '' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                              title="Voir le commentaire"
+                              onClick={() => handleViewComment(avoir.comment)}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                            </Button>
+                          )}
+
                           {canEditDelete && (
                             <>
                               <Button
@@ -1612,6 +1635,30 @@ export default function Avoirs() {
                 </div>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de commentaire */}
+      <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Commentaire</DialogTitle>
+            <DialogDescription>
+              Détails du commentaire de cet avoir
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                {selectedComment}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowCommentModal(false)}>
+              Fermer
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
