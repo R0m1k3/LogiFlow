@@ -356,12 +356,24 @@ export default function Avoirs() {
     }
   });
 
+  // Calculate default group ID based on user role
+  const getDefaultGroupId = () => {
+    if ((user as any)?.role === 'admin') {
+      // Admin : groupe 1 par défaut
+      return 1;
+    } else {
+      // Utilisateurs : leur groupe assigné par défaut
+      const userGroupIds = (user as any)?.userGroups?.map((ug: any) => ug.groupId) || [];
+      return userGroupIds.length > 0 ? userGroupIds[0] : 0;
+    }
+  };
+
   // Initialize create form
   const form = useForm<AvoirFormData>({
     resolver: zodResolver(avoirSchema),
     defaultValues: {
       supplierId: 0,
-      groupId: 0,
+      groupId: getDefaultGroupId(),
       invoiceReference: "",
       amount: undefined,
       comment: "",
@@ -446,6 +458,16 @@ export default function Avoirs() {
 
   // Handle status change
   const handleStatusChange = (avoirId: number, newStatus: string) => {
+    // Empêcher les managers de mettre le statut en "Reçu"
+    if ((user as any)?.role === 'manager' && newStatus === 'Reçu') {
+      toast({
+        title: "Accès refusé",
+        description: "Vous n'avez pas les permissions pour marquer un avoir comme reçu",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const avoir = avoirs?.find(a => a?.id === avoirId);
     if (avoir && avoir.supplierId && avoir.groupId) {
       editAvoirMutation.mutate({ 
@@ -969,7 +991,9 @@ export default function Avoirs() {
                     <SelectContent>
                       <SelectItem value="En attente de demande">En attente de demande</SelectItem>
                       <SelectItem value="Demandé">Demandé</SelectItem>
-                      <SelectItem value="Reçu">Reçu</SelectItem>
+                      {(user as any)?.role !== 'manager' && (
+                        <SelectItem value="Reçu">Reçu</SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </td>
@@ -1024,8 +1048,8 @@ export default function Avoirs() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex items-center space-x-2">
-                    {/* Upload pour avoirs "Reçu" */}
-                    {avoir?.status === 'Reçu' && (
+                    {/* Upload pour avoirs "Reçu" - interdit aux managers */}
+                    {avoir?.status === 'Reçu' && (user as any)?.role !== 'manager' && (
                       <Button
                         variant="outline"
                         size="sm"
