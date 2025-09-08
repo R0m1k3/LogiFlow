@@ -41,8 +41,10 @@ import {
   insertWeatherDataSchema,
   insertWeatherSettingsSchema,
   insertWebhookBapConfigSchema,
+  insertAvoirSchema,
   users, groups, userGroups, suppliers, orders, deliveries, publicities, publicityParticipations,
-  customerOrders, nocodbConfig, dlcProducts, tasks, invoiceVerificationCache, dashboardMessages, webhookBapConfig
+  customerOrders, nocodbConfig, dlcProducts, tasks, invoiceVerificationCache, dashboardMessages, webhookBapConfig,
+  avoirs
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
@@ -2333,6 +2335,255 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting customer order:", error);
       res.status(500).json({ message: "Failed to delete customer order" });
+    }
+  });
+
+  // Avoir routes
+  app.get('/api/avoirs', requireModulePermission('avoir', 'view'), async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { storeId } = req.query;
+      let groupIds: number[] | undefined;
+      
+      if (user.role === 'admin' || user.role === 'directeur') {
+        groupIds = storeId ? [parseInt(storeId as string)] : undefined;
+      } else {
+        // Managers can only see their group's avoirs
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (storeId && userGroupIds.includes(parseInt(storeId as string))) {
+          groupIds = [parseInt(storeId as string)];
+        } else if (!storeId) {
+          groupIds = userGroupIds;
+        } else {
+          return res.json([]);
+        }
+      }
+
+      console.log('🔍 Avoirs API called with:', { groupIds, userRole: user.role });
+      const avoirs = await storage.getAvoirs(groupIds);
+      console.log('📋 Avoirs returned:', avoirs.length, 'items');
+      res.json(avoirs);
+    } catch (error) {
+      console.error("Error fetching avoirs:", error);
+      res.status(500).json({ message: "Failed to fetch avoirs" });
+    }
+  });
+
+  app.get('/api/avoirs/:id', requireModulePermission('avoir', 'view'), async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const avoir = await storage.getAvoir(id);
+      
+      if (!avoir) {
+        return res.status(404).json({ message: "Avoir not found" });
+      }
+
+      // Check if user has access to this avoir's group
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(avoir.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      res.json(avoir);
+    } catch (error) {
+      console.error("Error fetching avoir:", error);
+      res.status(500).json({ message: "Failed to fetch avoir" });
+    }
+  });
+
+  app.post('/api/avoirs', requireModulePermission('avoir', 'create'), async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Validate data with Zod schema
+      const validatedData = insertAvoirSchema.parse({
+        ...req.body,
+        createdBy: user.id,
+      });
+
+      // Check if user has access to the specified group
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(validatedData.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      const avoir = await storage.createAvoir(validatedData);
+      console.log('✅ Avoir created:', avoir.id, 'by user:', user.id);
+      
+      // Send webhook after avoir creation
+      try {
+        const group = await storage.getGroup(avoir.groupId);
+        if (group && group.webhookUrl) {
+          const webhookData = {
+            type: "Avoir",
+            avoirId: avoir.id,
+            invoiceReference: avoir.invoiceReference,
+            amount: avoir.amount,
+            supplierName: validatedData.supplierId ? (await storage.getSupplier(validatedData.supplierId))?.name : "Unknown",
+            groupName: group.name,
+            comment: avoir.comment || "",
+            commercialProcessed: avoir.commercialProcessed,
+            createdBy: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username,
+            createdAt: avoir.createdAt
+          };
+          
+          const webhookResponse = await fetch(group.webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(webhookData)
+          });
+          
+          if (webhookResponse.ok) {
+            await storage.updateAvoirWebhookStatus(avoir.id, true);
+            console.log('✅ Avoir webhook sent successfully:', avoir.id);
+          } else {
+            console.error('❌ Failed to send avoir webhook:', webhookResponse.status);
+          }
+        }
+      } catch (webhookError) {
+        console.error('❌ Error sending avoir webhook:', webhookError);
+      }
+      
+      res.json(avoir);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error creating avoir:", error);
+      res.status(500).json({ message: "Failed to create avoir" });
+    }
+  });
+
+  app.put('/api/avoirs/:id', requireModulePermission('avoir', 'edit'), async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const existingAvoir = await storage.getAvoir(id);
+      
+      if (!existingAvoir) {
+        return res.status(404).json({ message: "Avoir not found" });
+      }
+
+      // Check permissions
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(existingAvoir.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      const updatedAvoir = await storage.updateAvoir(id, req.body);
+      console.log('✅ Avoir updated:', id, 'by user:', user.id);
+      res.json(updatedAvoir);
+    } catch (error) {
+      console.error("Error updating avoir:", error);
+      res.status(500).json({ message: "Failed to update avoir" });
+    }
+  });
+
+  app.delete('/api/avoirs/:id', requireModulePermission('avoir', 'delete'), async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const avoir = await storage.getAvoir(id);
+      
+      if (!avoir) {
+        return res.status(404).json({ message: "Avoir not found" });
+      }
+
+      // Check permissions (only admin and directeur can delete)
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        return res.status(403).json({ message: "Insufficient permissions to delete avoirs" });
+      }
+
+      // For directeur, check group access
+      if (user.role === 'directeur') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(avoir.groupId)) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+
+      await storage.deleteAvoir(id);
+      console.log('✅ Avoir deleted:', id, 'by user:', user.id);
+      res.json({ message: "Avoir deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting avoir:", error);
+      res.status(500).json({ message: "Failed to delete avoir" });
+    }
+  });
+
+  // Avoir status update routes
+  app.put('/api/avoirs/:id/webhook-status', requireModulePermission('avoir', 'edit'), async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const { webhookSent } = req.body;
+      
+      // Only allow admin and directeur to update webhook status
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      await storage.updateAvoirWebhookStatus(id, webhookSent);
+      res.json({ message: "Webhook status updated successfully" });
+    } catch (error) {
+      console.error("Error updating avoir webhook status:", error);
+      res.status(500).json({ message: "Failed to update webhook status" });
+    }
+  });
+
+  app.put('/api/avoirs/:id/nocodb-verification', requireModulePermission('avoir', 'edit'), async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const { verified } = req.body;
+      
+      // Only allow admin and directeur to update verification status
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      await storage.updateAvoirNocodbVerification(id, verified);
+      console.log('✅ Avoir NocoDB verification updated:', id, 'verified:', verified, 'by user:', user.id);
+      res.json({ message: "NocoDB verification status updated successfully" });
+    } catch (error) {
+      console.error("Error updating avoir NocoDB verification:", error);
+      res.status(500).json({ message: "Failed to update verification status" });
     }
   });
 

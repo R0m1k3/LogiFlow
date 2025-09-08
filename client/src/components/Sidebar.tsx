@@ -32,7 +32,8 @@ import {
   Settings,
   Wrench,
   FileUp,
-  Send
+  Send,
+  Receipt
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -283,6 +284,12 @@ export default function Sidebar() {
       label: "SAV", 
       icon: Wrench, 
       roles: ["admin", "directeur", "manager", "employee"] 
+    },
+    { 
+      path: "/avoirs", 
+      label: "Avoirs", 
+      icon: Receipt, 
+      roles: ["admin", "directeur", "manager"] 
     },
   ];
 
