@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload, XCircle } from "lucide-react";
 import { useStore } from "@/components/Layout";
@@ -362,42 +362,61 @@ export default function Avoirs() {
   };
 
   // Handle validation/devalidation
-  const handleValidateAvoir = (avoirId: number) => {
-    const avoir = avoirs.find(a => a.id === avoirId);
-    if (avoir) {
-      editAvoirMutation.mutate({ 
-        id: avoirId, 
-        data: {
-          supplierId: avoir.supplierId,
-          groupId: avoir.groupId,
-          invoiceReference: avoir.invoiceReference || "",
-          amount: avoir.amount,
-          comment: avoir.comment || "",
-          commercialProcessed: avoir.commercialProcessed,
-          status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
-          nocodbVerified: true,
-          nocodbVerifiedAt: new Date(),
+  const handleValidateAvoir = async (avoirId: number) => {
+    try {
+      // Utiliser la route spécifique pour la vérification NocoDB
+      await apiRequest(`/api/avoirs/${avoirId}/nocodb-verification`, 'PUT', {
+        verified: true
+      });
+
+      // Marquer le cache comme réconcilié (permanent)
+      const avoir = avoirs.find(a => a.id === avoirId);
+      if (avoir?.invoiceReference) {
+        try {
+          await apiRequest('/api/cache/mark-reconciled', 'POST', {
+            invoiceReference: avoir.invoiceReference,
+            groupId: avoir.groupId
+          });
+        } catch (cacheError) {
+          console.warn('Cache marking failed but verification succeeded:', cacheError);
         }
+      }
+
+      // Recharger les avoirs pour voir les changements
+      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
+      
+      toast({
+        title: "Avoir validé",
+        description: "L'avoir a été marqué comme validé avec succès",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur de validation",
+        description: error instanceof Error ? error.message : "Erreur lors de la validation",
+        variant: "destructive",
       });
     }
   };
 
-  const handleDevalidateAvoir = (avoirId: number) => {
-    const avoir = avoirs.find(a => a.id === avoirId);
-    if (avoir) {
-      editAvoirMutation.mutate({ 
-        id: avoirId, 
-        data: {
-          supplierId: avoir.supplierId,
-          groupId: avoir.groupId,
-          invoiceReference: avoir.invoiceReference || "",
-          amount: avoir.amount,
-          comment: avoir.comment || "",
-          commercialProcessed: avoir.commercialProcessed,
-          status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
-          nocodbVerified: false,
-          nocodbVerifiedAt: null,
-        }
+  const handleDevalidateAvoir = async (avoirId: number) => {
+    try {
+      // Utiliser la route spécifique pour la vérification NocoDB
+      await apiRequest(`/api/avoirs/${avoirId}/nocodb-verification`, 'PUT', {
+        verified: false
+      });
+
+      // Recharger les avoirs pour voir les changements
+      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
+      
+      toast({
+        title: "Avoir dévalidé",
+        description: "L'avoir a été marqué comme non-validé avec succès",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur de dévalidation", 
+        description: error instanceof Error ? error.message : "Erreur lors de la dévalidation",
+        variant: "destructive",
       });
     }
   };
@@ -421,6 +440,26 @@ export default function Avoirs() {
         ...prev,
         [variables.avoirId]: result
       }));
+
+      // Auto-remplissage si facture trouvée et montant disponible
+      if (result.exists && result.invoiceAmount) {
+        // Auto-remplir le montant dans l'avoir via API
+        const avoir = avoirs.find(a => a.id === variables.avoirId);
+        if (avoir) {
+          editAvoirMutation.mutate({
+            id: variables.avoirId,
+            data: {
+              supplierId: avoir.supplierId,
+              groupId: avoir.groupId,
+              invoiceReference: avoir.invoiceReference || "",
+              amount: result.invoiceAmount, // Auto-remplissage du montant
+              comment: avoir.comment || "",
+              commercialProcessed: avoir.commercialProcessed,
+              status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
+            }
+          });
+        }
+      }
       
       setVerifyingAvoirs(prev => {
         const newSet = new Set(prev);
@@ -518,6 +557,59 @@ export default function Avoirs() {
       description: `Vérification de ${avoirsToVerify.length} avoir(s) en cours...`,
     });
   };
+
+  // Charger les résultats de vérification depuis le cache au démarrage
+  useEffect(() => {
+    const loadVerificationResults = async () => {
+      if (!avoirs || avoirs.length === 0) return;
+
+      const avoirsWithReferences = avoirs.filter(avoir => 
+        avoir.invoiceReference?.trim() && 
+        (avoir.group?.nocodbTableName || avoir.group?.nocodbConfigId)
+      );
+
+      if (avoirsWithReferences.length === 0) return;
+
+      console.log(`🔍 Chargement des résultats de vérification pour ${avoirsWithReferences.length} avoirs`);
+
+      // Charger les résultats depuis le cache en parallèle
+      const results = await Promise.allSettled(
+        avoirsWithReferences.map(async (avoir) => {
+          try {
+            const result = await apiRequest(`/api/avoirs/${avoir.id}/verify-invoice`, 'POST', { 
+              invoiceReference: avoir.invoiceReference,
+              forceRefresh: false // Utiliser le cache si disponible
+            });
+            return { avoirId: avoir.id, result };
+          } catch (error) {
+            console.error(`Erreur chargement cache avoir ${avoir.id}:`, error);
+            return { 
+              avoirId: avoir.id, 
+              result: { 
+                exists: false, 
+                matchType: 'none', 
+                errorMessage: 'Erreur de chargement' 
+              } 
+            };
+          }
+        })
+      );
+
+      // Appliquer les résultats chargés
+      const newResults: Record<number, any> = {};
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          const { avoirId, result: verificationResult } = result.value;
+          newResults[avoirId] = verificationResult;
+        }
+      });
+
+      setAvoirVerificationResults(newResults);
+      console.log(`✅ Résultats de vérification chargés pour ${Object.keys(newResults).length} avoirs`);
+    };
+
+    loadVerificationResults();
+  }, [avoirs]); // Se déclenche quand les avoirs sont chargés
 
   // 🔥 FONCTIONS WEBHOOK MODAL (comme rapprochement)
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
