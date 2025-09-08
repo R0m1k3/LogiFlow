@@ -2615,8 +2615,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Avoir not found" });
       }
 
-      // Check permissions
-      if (!hasPermission(user.role, 'avoirs', 'view')) {
+      // Check permissions (using 'deliveries' module for similar logic)
+      if (!hasPermission(user.role, 'deliveries', 'view')) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 

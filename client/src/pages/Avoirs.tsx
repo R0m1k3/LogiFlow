@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload } from "lucide-react";
+import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload, XCircle } from "lucide-react";
 import { useStore } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,6 +111,10 @@ export default function Avoirs() {
   const [showWaitingModal, setShowWaitingModal] = useState(false);
   const [processingSeconds, setProcessingSeconds] = useState(0);
   const [processingTimeout, setProcessingTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // États pour le système de vérification de facture
+  const [avoirVerificationResults, setAvoirVerificationResults] = useState<Record<number, any>>({});
+  const [verifyingAvoirs, setVerifyingAvoirs] = useState<Set<number>>(new Set());
   // Utiliser le contexte global du magasin
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
@@ -326,6 +330,123 @@ export default function Avoirs() {
   const handleDelete = (avoir: Avoir) => {
     setSelectedAvoir(avoir);
     setIsDeleteDialogOpen(true);
+  };
+
+  // 🔍 FONCTION DE VÉRIFICATION DE FACTURE (comme rapprochement)
+  const verifyAvoirInvoiceMutation = useMutation({
+    mutationFn: async ({ avoirId, invoiceReference, forceRefresh }: { avoirId: number; invoiceReference?: string; forceRefresh?: boolean }) => {
+      try {
+        const result = await apiRequest(`/api/avoirs/${avoirId}/verify-invoice`, 'POST', { 
+          invoiceReference,
+          forceRefresh: forceRefresh || false
+        });
+        return result;
+      } catch (error: any) {
+        console.error('Erreur API vérification avoir:', error);
+        throw new Error(error.message || 'Erreur de vérification');
+      }
+    },
+    onSuccess: (result, variables) => {
+      setAvoirVerificationResults(prev => ({
+        ...prev,
+        [variables.avoirId]: result
+      }));
+      
+      setVerifyingAvoirs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variables.avoirId);
+        return newSet;
+      });
+    },
+    onError: (error, variables) => {
+      console.error('Erreur vérification facture avoir:', error);
+      setAvoirVerificationResults(prev => ({
+        ...prev,
+        [variables.avoirId]: {
+          exists: false,
+          matchType: 'none',
+          errorMessage: error instanceof Error ? error.message : 'Erreur inconnue'
+        }
+      }));
+      
+      setVerifyingAvoirs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variables.avoirId);
+        return newSet;
+      });
+      
+      toast({
+        title: "Erreur de vérification",
+        description: error instanceof Error ? error.message : 'Erreur inconnue',
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Fonction pour déclencher la vérification d'un avoir
+  const handleVerifyAvoirInvoice = (avoir: Avoir, forceRefresh: boolean = false) => {
+    const hasInvoiceRef = avoir.invoiceReference?.trim();
+    
+    if (!hasInvoiceRef) {
+      toast({
+        title: "Référence manquante",
+        description: "Veuillez saisir une référence de facture avant la vérification",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!avoir.group?.nocodbTableName && !avoir.group?.nocodbConfigId) {
+      toast({
+        title: "Vérification non disponible", 
+        description: "Ce magasin n'a pas de configuration NocoDB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('🔍 Déclenchement vérification avoir:', {
+      avoirId: avoir.id,
+      invoiceReference: avoir.invoiceReference,
+      supplier: avoir.supplier?.name,
+      group: avoir.group?.name
+    });
+    
+    setVerifyingAvoirs(prev => new Set(prev).add(avoir.id));
+    
+    verifyAvoirInvoiceMutation.mutate({
+      avoirId: avoir.id,
+      invoiceReference: avoir.invoiceReference,
+      forceRefresh
+    });
+  };
+
+  // Fonction pour vérifier tous les avoirs avec une référence facture
+  const handleVerifyAllAvoirInvoices = () => {
+    const avoirsToVerify = avoirs.filter(avoir => 
+      avoir.invoiceReference?.trim() && 
+      (avoir.group?.nocodbTableName || avoir.group?.nocodbConfigId)
+    );
+
+    if (avoirsToVerify.length === 0) {
+      toast({
+        title: "Aucun avoir à vérifier",
+        description: "Aucun avoir avec référence de facture trouvé",
+      });
+      return;
+    }
+
+    avoirsToVerify.forEach((avoir, index) => {
+      // Délai échelonné pour éviter la surcharge
+      setTimeout(() => {
+        handleVerifyAvoirInvoice(avoir, true); // Force refresh pour tous
+      }, index * 200); // 200ms entre chaque vérification
+    });
+
+    toast({
+      title: "Vérification lancée",
+      description: `Vérification de ${avoirsToVerify.length} avoir(s) en cours...`,
+    });
   };
 
   // 🔥 FONCTIONS WEBHOOK MODAL (comme rapprochement)
