@@ -346,7 +346,9 @@ export default function Tasks() {
           userRole: user?.role,
           storeInitialized,
           url: `/api/tasks?${params.toString()}`,
-          willFilterByStore: !!selectedStoreId
+          willFilterByStore: !!selectedStoreId,
+          enabled: !!user,
+          timestamp: new Date().toISOString()
         });
         
         const response = await fetch(`/api/tasks?${params.toString()}`, {
@@ -384,7 +386,7 @@ export default function Tasks() {
         throw error;
       }
     },
-    enabled: !!user && (user.role === 'admin' || user.role === 'directeur' ? storeInitialized : true),
+    enabled: !!user,
   });
 
   // Fetch users for task assignment - seulement pour admin/manager/directeur
