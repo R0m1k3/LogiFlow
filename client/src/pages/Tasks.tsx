@@ -387,7 +387,7 @@ export default function Tasks() {
         throw error;
       }
     },
-    enabled: !!user,
+    enabled: !!user && (user.role === 'admin' || (user.role === 'directeur' || user.role === 'manager' ? !!selectedStoreId : true)),
   });
 
   // Fetch users for task assignment - seulement pour admin/manager/directeur
