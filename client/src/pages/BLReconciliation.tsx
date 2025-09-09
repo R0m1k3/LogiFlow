@@ -142,6 +142,42 @@ export default function BLReconciliation() {
     }
   });
 
+  // Mutation pour mettre à jour les notes
+  const updateNoteMutation = useMutation({
+    mutationFn: async ({ deliveryId, notes }: { deliveryId: number; notes: string }) => {
+      const response = await apiRequest(`/api/deliveries/${deliveryId}/notes`, 'PUT', { notes });
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Commentaire sauvegardé",
+        description: "Le commentaire a été mis à jour avec succès",
+      });
+      // Rafraîchir les données
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+      handleCloseCommentModal();
+    },
+    onError: (error) => {
+      console.error('Erreur sauvegarde commentaire:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder le commentaire",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Fonction pour sauvegarder le commentaire
+  const handleSaveComment = () => {
+    if (!selectedDeliveryForComment) return;
+    
+    updateNoteMutation.mutate({
+      deliveryId: selectedDeliveryForComment.id,
+      notes: commentText
+    });
+  };
+
   // Fonction pour déclencher la vérification
   const handleVerifyInvoice = (delivery: any, forceRefresh: boolean = false) => {
     // Accepter soit une référence de facture soit un numéro BL
@@ -350,6 +386,19 @@ export default function BLReconciliation() {
     setSelectedDeliveryForInvoice(delivery);
     setSelectedFile(null);
     setShowInvoiceModal(true);
+  };
+
+  // Fonctions pour le modal de commentaire
+  const handleOpenCommentModal = (delivery: any) => {
+    setSelectedDeliveryForComment(delivery);
+    setCommentText(delivery.notes || "");
+    setShowCommentModal(true);
+  };
+
+  const handleCloseCommentModal = () => {
+    setShowCommentModal(false);
+    setSelectedDeliveryForComment(null);
+    setCommentText("");
   };
 
   const handleCloseInvoiceModal = () => {
@@ -931,6 +980,15 @@ export default function BLReconciliation() {
                                     <Upload className="h-4 w-4" />
                                   </Button>
                                 )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenCommentModal(delivery)}
+                                  className={`h-8 w-8 p-0 ${delivery.notes ? 'text-blue-600 hover:text-blue-700' : 'text-gray-400 hover:text-gray-600'}`}
+                                  title={delivery.notes ? "Voir/Modifier commentaire" : "Ajouter commentaire"}
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </Button>
                                 {!delivery.reconciled ? (
                                   <>
                                     {permissions.canValidate('reconciliation') && (
@@ -1134,6 +1192,17 @@ export default function BLReconciliation() {
                                     <Upload className="h-4 w-4" />
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => handleOpenCommentModal(delivery)}
+                                  className={`transition-colors duration-200 p-1 rounded ${
+                                    delivery.notes 
+                                      ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50' 
+                                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                                  }`}
+                                  title={delivery.notes ? "Voir/Modifier commentaire" : "Ajouter commentaire"}
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </button>
                                 {(permissions.canEdit('reconciliation') || permissions.canValidate('reconciliation')) && (
                                   <button
                                     onClick={() => handleDevalidateReconciliation(delivery.id)}
