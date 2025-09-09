@@ -348,7 +348,8 @@ export default function Tasks() {
           url: `/api/tasks?${params.toString()}`,
           willFilterByStore: !!selectedStoreId,
           enabled: !!user,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          userGroups: user?.userGroups?.map(ug => ug.groupId) || 'NONE'
         });
         
         const response = await fetch(`/api/tasks?${params.toString()}`, {
