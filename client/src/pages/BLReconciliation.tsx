@@ -12,10 +12,11 @@ import { useStore } from "@/components/Layout";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { usePermissions } from "@shared/permissions";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload, CheckCircle, XCircle, Clock, MessageSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import ReconciliationModal from "@/components/modals/ReconciliationModal";
 
 export default function BLReconciliation() {
@@ -65,6 +66,11 @@ export default function BLReconciliation() {
   // État pour le système de vérification de facture
   const [verificationResults, setVerificationResults] = useState<Record<number, any>>({});
   const [verifyingDeliveries, setVerifyingDeliveries] = useState<Set<number>>(new Set());
+
+  // État pour le modal de commentaire
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [selectedDeliveryForComment, setSelectedDeliveryForComment] = useState<any>(null);
+  const [commentText, setCommentText] = useState("");
 
   // Récupérer les fournisseurs pour la logique automatique
   const { data: suppliers = [] } = useQuery<any[]>({
@@ -136,6 +142,42 @@ export default function BLReconciliation() {
       });
     }
   });
+
+  // Mutation pour mettre à jour les notes
+  const updateNoteMutation = useMutation({
+    mutationFn: async ({ deliveryId, notes }: { deliveryId: number; notes: string }) => {
+      const response = await apiRequest(`/api/deliveries/${deliveryId}/notes`, 'PUT', { notes });
+      return response;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Commentaire sauvegardé",
+        description: "Le commentaire a été mis à jour avec succès",
+      });
+      // Rafraîchir les données
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+      handleCloseCommentModal();
+    },
+    onError: (error) => {
+      console.error('Erreur sauvegarde commentaire:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder le commentaire",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Fonction pour sauvegarder le commentaire
+  const handleSaveComment = () => {
+    if (!selectedDeliveryForComment) return;
+    
+    updateNoteMutation.mutate({
+      deliveryId: selectedDeliveryForComment.id,
+      notes: commentText
+    });
+  };
 
   // Fonction pour déclencher la vérification
   const handleVerifyInvoice = (delivery: any, forceRefresh: boolean = false) => {
@@ -345,6 +387,19 @@ export default function BLReconciliation() {
     setSelectedDeliveryForInvoice(delivery);
     setSelectedFile(null);
     setShowInvoiceModal(true);
+  };
+
+  // Fonctions pour le modal de commentaire
+  const handleOpenCommentModal = (delivery: any) => {
+    setSelectedDeliveryForComment(delivery);
+    setCommentText(delivery.notes || "");
+    setShowCommentModal(true);
+  };
+
+  const handleCloseCommentModal = () => {
+    setShowCommentModal(false);
+    setSelectedDeliveryForComment(null);
+    setCommentText("");
   };
 
   const handleCloseInvoiceModal = () => {
@@ -926,6 +981,15 @@ export default function BLReconciliation() {
                                     <Upload className="h-4 w-4" />
                                   </Button>
                                 )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenCommentModal(delivery)}
+                                  className={`h-8 w-8 p-0 ${delivery.notes ? 'text-blue-600 hover:text-blue-700' : 'text-gray-400 hover:text-gray-600'}`}
+                                  title={delivery.notes ? "Voir/Modifier commentaire" : "Ajouter commentaire"}
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </Button>
                                 {!delivery.reconciled ? (
                                   <>
                                     {permissions.canValidate('reconciliation') && (
@@ -1129,6 +1193,17 @@ export default function BLReconciliation() {
                                     <Upload className="h-4 w-4" />
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => handleOpenCommentModal(delivery)}
+                                  className={`transition-colors duration-200 p-1 rounded ${
+                                    delivery.notes 
+                                      ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50' 
+                                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                                  }`}
+                                  title={delivery.notes ? "Voir/Modifier commentaire" : "Ajouter commentaire"}
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </button>
                                 {(permissions.canEdit('reconciliation') || permissions.canValidate('reconciliation')) && (
                                   <button
                                     onClick={() => handleDevalidateReconciliation(delivery.id)}
@@ -1304,6 +1379,66 @@ export default function BLReconciliation() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de commentaire */}
+      <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <MessageSquare className="w-5 h-5 text-blue-600" />
+              <span>Commentaire de livraison</span>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedDeliveryForComment && (
+            <div className="grid gap-4 py-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="text-sm font-medium text-gray-900">
+                  {selectedDeliveryForComment.supplier?.name}
+                </div>
+                <div className="text-sm text-gray-600">
+                  BL: {selectedDeliveryForComment.blNumber || 'Non renseigné'} | 
+                  Facture: {selectedDeliveryForComment.invoiceReference || 'Non renseignée'}
+                </div>
+                <div className="text-sm text-gray-600">
+                  Date prévue: {selectedDeliveryForComment.scheduledDate ? new Date(selectedDeliveryForComment.scheduledDate).toLocaleDateString('fr-FR') : 'Non renseignée'}
+                </div>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="comment">Commentaire</Label>
+                <Textarea
+                  id="comment"
+                  placeholder="Ajouter un commentaire sur cette livraison..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  rows={4}
+                  className="min-h-[100px]"
+                />
+                <div className="text-xs text-gray-500">
+                  {commentText.length}/500 caractères
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={handleCloseCommentModal}
+              disabled={updateNoteMutation.isPending}
+            >
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleSaveComment}
+              disabled={updateNoteMutation.isPending || commentText.length > 500}
+            >
+              {updateNoteMutation.isPending ? "Sauvegarde..." : "Enregistrer"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
