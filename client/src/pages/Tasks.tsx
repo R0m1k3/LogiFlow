@@ -92,7 +92,7 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
         method, 
         taskData,
         selectedStoreId,
-        finalGroupId: taskData.groupId 
+        finalGroupId: (taskData as any).groupId 
       });
       
       const response = await fetch(url, {
