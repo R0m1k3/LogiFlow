@@ -1356,6 +1356,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { notes } = req.body;
       
+      // Check if delivery is reconciled (read-only)
+      if (delivery.reconciled) {
+        return res.status(403).json({ message: "Impossible de modifier le commentaire d'une livraison réconciliée" });
+      }
+      
       // Validate notes length
       if (notes && notes.length > 500) {
         return res.status(400).json({ message: "Commentaire trop long (maximum 500 caractères)" });
