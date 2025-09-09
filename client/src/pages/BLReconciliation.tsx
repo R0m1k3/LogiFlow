@@ -985,8 +985,8 @@ export default function BLReconciliation() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleOpenCommentModal(delivery)}
-                                  className={`h-8 w-8 p-0 ${delivery.notes ? 'text-blue-600 hover:text-blue-700' : 'text-gray-400 hover:text-gray-600'}`}
-                                  title={delivery.notes ? "Voir/Modifier commentaire" : "Ajouter commentaire"}
+                                  className={`h-8 w-8 p-0 ${delivery.notes ? 'text-blue-600 hover:text-blue-700' : 'text-gray-400 hover:text-gray-600'} ${delivery.reconciled ? 'opacity-70' : ''}`}
+                                  title={delivery.reconciled ? (delivery.notes ? "Voir commentaire (lecture seule)" : "Aucun commentaire") : (delivery.notes ? "Voir/Modifier commentaire" : "Ajouter commentaire")}
                                 >
                                   <MessageSquare className="h-4 w-4" />
                                 </Button>
@@ -1199,8 +1199,8 @@ export default function BLReconciliation() {
                                     delivery.notes 
                                       ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50' 
                                       : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                                  }`}
-                                  title={delivery.notes ? "Voir/Modifier commentaire" : "Ajouter commentaire"}
+                                  } ${delivery.reconciled ? 'opacity-70' : ''}`}
+                                  title={delivery.reconciled ? (delivery.notes ? "Voir commentaire (lecture seule)" : "Aucun commentaire") : (delivery.notes ? "Voir/Modifier commentaire" : "Ajouter commentaire")}
                                 >
                                   <MessageSquare className="h-4 w-4" />
                                 </button>
@@ -1389,6 +1389,9 @@ export default function BLReconciliation() {
             <DialogTitle className="flex items-center space-x-2">
               <MessageSquare className="w-5 h-5 text-blue-600" />
               <span>Commentaire de livraison</span>
+              {selectedDeliveryForComment?.reconciled && (
+                <span className="text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded">Lecture seule</span>
+              )}
             </DialogTitle>
           </DialogHeader>
           
@@ -1411,15 +1414,24 @@ export default function BLReconciliation() {
                 <Label htmlFor="comment">Commentaire</Label>
                 <Textarea
                   id="comment"
-                  placeholder="Ajouter un commentaire sur cette livraison..."
+                  placeholder={selectedDeliveryForComment?.reconciled ? "Aucun commentaire" : "Ajouter un commentaire sur cette livraison..."}
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   rows={4}
                   className="min-h-[100px]"
+                  disabled={selectedDeliveryForComment?.reconciled}
+                  readOnly={selectedDeliveryForComment?.reconciled}
                 />
-                <div className="text-xs text-gray-500">
-                  {commentText.length}/500 caractères
-                </div>
+                {!selectedDeliveryForComment?.reconciled && (
+                  <div className="text-xs text-gray-500">
+                    {commentText.length}/500 caractères
+                  </div>
+                )}
+                {selectedDeliveryForComment?.reconciled && (
+                  <div className="text-xs text-orange-600">
+                    Le commentaire ne peut pas être modifié car le rapprochement est validé
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1430,14 +1442,16 @@ export default function BLReconciliation() {
               onClick={handleCloseCommentModal}
               disabled={updateNoteMutation.isPending}
             >
-              Annuler
+              {selectedDeliveryForComment?.reconciled ? "Fermer" : "Annuler"}
             </Button>
-            <Button 
-              onClick={handleSaveComment}
-              disabled={updateNoteMutation.isPending || commentText.length > 500}
-            >
-              {updateNoteMutation.isPending ? "Sauvegarde..." : "Enregistrer"}
-            </Button>
+            {!selectedDeliveryForComment?.reconciled && (
+              <Button 
+                onClick={handleSaveComment}
+                disabled={updateNoteMutation.isPending || commentText.length > 500}
+              >
+                {updateNoteMutation.isPending ? "Sauvegarde..." : "Enregistrer"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
