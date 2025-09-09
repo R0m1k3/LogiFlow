@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/components/Layout";
@@ -92,7 +92,7 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
         method, 
         taskData,
         selectedStoreId,
-        finalGroupId: taskData.groupId 
+        finalGroupId: (taskData as any).groupId 
       });
       
       const response = await fetch(url, {
@@ -317,6 +317,32 @@ export default function Tasks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Debug enablement condition for tasks query
+  const isQueryEnabled = !!user && (user.role === 'admin' || (user.role === 'directeur' || user.role === 'manager' ? !!selectedStoreId : true));
+  console.log('🔍 TASK QUERY ENABLEMENT DEBUG:', {
+    hasUser: !!user,
+    userRole: user?.role,
+    selectedStoreId,
+    isAdmin: user?.role === 'admin',
+    isDirecteurOrManager: user?.role === 'directeur' || user?.role === 'manager',
+    hasSelectedStore: !!selectedStoreId,
+    finalEnabled: isQueryEnabled,
+    storeInitialized,
+    timestamp: new Date().toISOString()
+  });
+
+  // Force refresh when selectedStoreId changes for directeur/manager
+  useEffect(() => {
+    if (user && (user.role === 'directeur' || user.role === 'manager') && selectedStoreId) {
+      console.log('🔄 FORCE REFRESH: selectedStoreId changed for directeur/manager:', {
+        userRole: user.role,
+        selectedStoreId,
+        timestamp: new Date().toISOString()
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    }
+  }, [selectedStoreId, user, queryClient]);
+
   // États locaux
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -348,7 +374,8 @@ export default function Tasks() {
           url: `/api/tasks?${params.toString()}`,
           willFilterByStore: !!selectedStoreId,
           enabled: !!user,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          userGroups: user?.userGroups?.map((ug: any) => ug.groupId) || 'NONE'
         });
         
         const response = await fetch(`/api/tasks?${params.toString()}`, {
@@ -386,7 +413,7 @@ export default function Tasks() {
         throw error;
       }
     },
-    enabled: !!user,
+    enabled: !!user && (user.role === 'admin' || (user.role === 'directeur' || user.role === 'manager' ? !!selectedStoreId : true)),
   });
 
   // Fetch users for task assignment - seulement pour admin/manager/directeur
