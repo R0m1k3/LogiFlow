@@ -1111,7 +1111,7 @@ export default function Avoirs() {
                       </Button>
                     )}
 
-                    {canEditDelete && !avoir.nocodbVerified && (
+                    {canEditDelete && (!avoir.nocodbVerified || (user as any)?.role === 'admin') && (
                       <>
                         <Button
                           variant="outline"
