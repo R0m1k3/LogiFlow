@@ -458,6 +458,18 @@ export default function Avoirs() {
 
   // Handle status change
   const handleStatusChange = (avoirId: number, newStatus: string) => {
+    const avoir = avoirs?.find(a => a?.id === avoirId);
+    
+    // Empêcher la modification du statut pour les avoirs validés
+    if (avoir?.nocodbVerified) {
+      toast({
+        title: "Modification interdite",
+        description: "Impossible de modifier le statut d'un avoir validé",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     // Empêcher les managers de mettre le statut en "Reçu"
     if ((user as any)?.role === 'manager' && newStatus === 'Reçu') {
       toast({
@@ -467,8 +479,6 @@ export default function Avoirs() {
       });
       return;
     }
-
-    const avoir = avoirs?.find(a => a?.id === avoirId);
     if (avoir && avoir.supplierId && avoir.groupId) {
       editAvoirMutation.mutate({ 
         id: avoirId, 
@@ -984,8 +994,9 @@ export default function Avoirs() {
                   <Select 
                     value={avoir?.status || ''}
                     onValueChange={(newStatus) => handleStatusChange(avoir.id, newStatus)}
+                    disabled={avoir.nocodbVerified}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className={`w-full ${avoir.nocodbVerified ? 'opacity-50 cursor-not-allowed' : ''}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
