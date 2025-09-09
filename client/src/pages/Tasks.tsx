@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/components/Layout";
@@ -375,7 +375,7 @@ export default function Tasks() {
           willFilterByStore: !!selectedStoreId,
           enabled: !!user,
           timestamp: new Date().toISOString(),
-          userGroups: user?.userGroups?.map(ug => ug.groupId) || 'NONE'
+          userGroups: user?.userGroups?.map((ug: any) => ug.groupId) || 'NONE'
         });
         
         const response = await fetch(`/api/tasks?${params.toString()}`, {
