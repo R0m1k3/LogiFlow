@@ -1048,8 +1048,8 @@ export default function Avoirs() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex items-center space-x-2">
-                    {/* Upload pour avoirs "Reçu" - interdit aux managers */}
-                    {avoir?.status === 'Reçu' && (user as any)?.role !== 'manager' && (
+                    {/* Upload pour avoirs "Reçu" - interdit aux managers et avoirs validés */}
+                    {avoir?.status === 'Reçu' && (user as any)?.role !== 'manager' && !avoir.nocodbVerified && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -1100,7 +1100,7 @@ export default function Avoirs() {
                       </Button>
                     )}
 
-                    {canEditDelete && (
+                    {canEditDelete && !avoir.nocodbVerified && (
                       <>
                         <Button
                           variant="outline"
