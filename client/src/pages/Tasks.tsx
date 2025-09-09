@@ -317,6 +317,20 @@ export default function Tasks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Debug enablement condition for tasks query
+  const isQueryEnabled = !!user && (user.role === 'admin' || (user.role === 'directeur' || user.role === 'manager' ? !!selectedStoreId : true));
+  console.log('🔍 TASK QUERY ENABLEMENT DEBUG:', {
+    hasUser: !!user,
+    userRole: user?.role,
+    selectedStoreId,
+    isAdmin: user?.role === 'admin',
+    isDirecteurOrManager: user?.role === 'directeur' || user?.role === 'manager',
+    hasSelectedStore: !!selectedStoreId,
+    finalEnabled: isQueryEnabled,
+    storeInitialized,
+    timestamp: new Date().toISOString()
+  });
+
   // États locaux
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
