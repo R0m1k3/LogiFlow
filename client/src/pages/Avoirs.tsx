@@ -906,9 +906,9 @@ export default function Avoirs() {
     }
   };
 
-  // Séparer les avoirs par statut
-  const pendingAvoirs = avoirs.filter(avoir => avoir.status !== 'Reçu');
-  const completedAvoirs = avoirs.filter(avoir => avoir.status === 'Reçu');
+  // Séparer les avoirs par statut : Finalisé = Reçu ET validé
+  const pendingAvoirs = avoirs.filter(avoir => !(avoir.status === 'Reçu' && avoir.nocodbVerified));
+  const completedAvoirs = avoirs.filter(avoir => avoir.status === 'Reçu' && avoir.nocodbVerified);
 
   // Filtrage par recherche
   const filterAvoirs = (avoirsList: Avoir[]) => {
