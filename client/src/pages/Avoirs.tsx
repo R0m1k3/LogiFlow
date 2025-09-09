@@ -460,8 +460,8 @@ export default function Avoirs() {
   const handleStatusChange = (avoirId: number, newStatus: string) => {
     const avoir = avoirs?.find(a => a?.id === avoirId);
     
-    // Empêcher la modification du statut pour les avoirs validés
-    if (avoir?.nocodbVerified) {
+    // Empêcher la modification du statut pour les avoirs validés, SAUF pour les administrateurs
+    if (avoir?.nocodbVerified && (user as any)?.role !== 'admin') {
       toast({
         title: "Modification interdite",
         description: "Impossible de modifier le statut d'un avoir validé",
