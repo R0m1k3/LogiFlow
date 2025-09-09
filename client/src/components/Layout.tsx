@@ -98,7 +98,14 @@ export default function Layout({ children }: LayoutProps) {
       // IMPORTANT FIX: Pour les rôles directeur/manager, forcer la sélection d'un magasin spécifique
       // si aucun n'est sélectionné et qu'ils n'ont accès qu'à un seul magasin
       if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1 && !needsUpdate) {
-        console.log('🏪 Auto-selecting single available store for directeur/manager:', stores[0].id);
+        console.log('🏪 Auto-selecting single available store for directeur/manager:', {
+          storeId: stores[0].id,
+          storeName: stores[0].name,
+          userRole: user.role,
+          userId: user.id,
+          previousSelectedStoreId: selectedStoreId,
+          timestamp: new Date().toISOString()
+        });
         const singleStoreId = stores[0].id;
         setSelectedStoreId(singleStoreId);
         localStorage.setItem('selectedStoreId', singleStoreId.toString());

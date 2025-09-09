@@ -331,6 +331,18 @@ export default function Tasks() {
     timestamp: new Date().toISOString()
   });
 
+  // Force refresh when selectedStoreId changes for directeur/manager
+  useEffect(() => {
+    if (user && (user.role === 'directeur' || user.role === 'manager') && selectedStoreId) {
+      console.log('🔄 FORCE REFRESH: selectedStoreId changed for directeur/manager:', {
+        userRole: user.role,
+        selectedStoreId,
+        timestamp: new Date().toISOString()
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    }
+  }, [selectedStoreId, user, queryClient]);
+
   // États locaux
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
