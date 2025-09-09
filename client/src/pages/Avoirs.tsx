@@ -1085,24 +1085,14 @@ export default function Avoirs() {
                       </Button>
                     )}
 
-                    {/* Bouton Dévalider - Pour admin: sur avoirs validés OU statut Reçu */}
-                    {canEditDelete && (
-                      (avoir.nocodbVerified || 
-                       ((user as any)?.role === 'admin' && avoir.status === 'Reçu'))
-                    ) && (
+                    {/* Bouton Dévalider - Uniquement sur les avoirs validés */}
+                    {avoir.nocodbVerified && canEditDelete && (
                       <Button
                         variant="outline"
                         size="sm"
                         className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                        title={avoir.nocodbVerified ? "Dévalider l'avoir" : "Remettre en statut Demandé"}
-                        onClick={() => {
-                          if (avoir.nocodbVerified) {
-                            handleDevalidateAvoir(avoir.id);
-                          } else if ((user as any)?.role === 'admin' && avoir.status === 'Reçu') {
-                            // Pour les avoirs non-validés mais avec statut Reçu, changer le statut
-                            handleStatusChange(avoir.id, 'Demandé');
-                          }
-                        }}
+                        title="Dévalider l'avoir"
+                        onClick={() => handleDevalidateAvoir(avoir.id)}
                       >
                         <XCircle className="h-4 w-4" />
                       </Button>
