@@ -1327,57 +1327,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Route pour mettre à jour uniquement les notes d'une livraison
-  app.put('/api/deliveries/:id/notes', isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const id = parseInt(req.params.id);
-      const delivery = await storage.getDelivery(id);
-      
-      if (!delivery) {
-        return res.status(404).json({ message: "Delivery not found" });
-      }
-
-      // Check edit permissions
-      if (!hasPermission(user.role, 'deliveries', 'edit')) {
-        return res.status(403).json({ message: "Insufficient permissions to edit deliveries" });
-      }
-
-      // Check group access
-      if (user.role !== 'admin') {
-        const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
-        if (!userGroupIds.includes(delivery.groupId)) {
-          return res.status(403).json({ message: "Access denied" });
-        }
-      }
-
-      const { notes } = req.body;
-      
-      // Check if delivery is reconciled (read-only)
-      if (delivery.reconciled) {
-        return res.status(403).json({ message: "Impossible de modifier le commentaire d'une livraison réconciliée" });
-      }
-      
-      // Validate notes length
-      if (notes && notes.length > 500) {
-        return res.status(400).json({ message: "Commentaire trop long (maximum 500 caractères)" });
-      }
-
-      console.log('📝 Updating delivery notes:', { id, notes: notes ? notes.slice(0, 50) + '...' : 'empty', user: user.id });
-      
-      // Update only the notes field
-      const updatedDelivery = await storage.updateDelivery(id, { notes });
-      
-      res.json(updatedDelivery);
-    } catch (error) {
-      console.error("Error updating delivery notes:", error);
-      res.status(500).json({ message: "Failed to update delivery notes" });
-    }
-  });
+  // Route obsolète supprimée - utiliser le système de commentaires de rapprochement à la place
+  // Les commentaires sont désormais gérés via /api/deliveries/:id/reconciliation-comments
 
   // Routes pour les commentaires de rapprochement
   // GET - Récupérer les commentaires d'une livraison
