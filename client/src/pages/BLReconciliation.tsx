@@ -143,16 +143,19 @@ export default function BLReconciliation() {
     }
   });
 
-  // Mutation pour mettre à jour les notes
-  const updateNoteMutation = useMutation({
-    mutationFn: async ({ deliveryId, notes }: { deliveryId: number; notes: string }) => {
-      const response = await apiRequest(`/api/deliveries/${deliveryId}/notes`, 'PUT', { notes });
+  // Mutation pour créer un nouveau commentaire de rapprochement
+  const createCommentMutation = useMutation({
+    mutationFn: async ({ deliveryId, content }: { deliveryId: number; content: string }) => {
+      const response = await apiRequest(`/api/deliveries/${deliveryId}/reconciliation-comments`, 'POST', { 
+        content,
+        type: 'info'
+      });
       return response;
     },
     onSuccess: () => {
       toast({
-        title: "Commentaire sauvegardé",
-        description: "Le commentaire a été mis à jour avec succès",
+        title: "Commentaire ajouté",
+        description: "Le commentaire a été ajouté avec succès",
       });
       // Rafraîchir les données
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
@@ -160,10 +163,10 @@ export default function BLReconciliation() {
       handleCloseCommentModal();
     },
     onError: (error) => {
-      console.error('Erreur sauvegarde commentaire:', error);
+      console.error('Erreur ajout commentaire:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de sauvegarder le commentaire",
+        description: "Impossible d'ajouter le commentaire",
         variant: "destructive",
       });
     }
@@ -171,11 +174,11 @@ export default function BLReconciliation() {
 
   // Fonction pour sauvegarder le commentaire
   const handleSaveComment = () => {
-    if (!selectedDeliveryForComment) return;
+    if (!selectedDeliveryForComment || !commentText.trim()) return;
     
-    updateNoteMutation.mutate({
+    createCommentMutation.mutate({
       deliveryId: selectedDeliveryForComment.id,
-      notes: commentText
+      content: commentText
     });
   };
 
@@ -1440,16 +1443,16 @@ export default function BLReconciliation() {
             <Button 
               variant="outline" 
               onClick={handleCloseCommentModal}
-              disabled={updateNoteMutation.isPending}
+              disabled={createCommentMutation.isPending}
             >
               {selectedDeliveryForComment?.reconciled ? "Fermer" : "Annuler"}
             </Button>
             {!selectedDeliveryForComment?.reconciled && (
               <Button 
                 onClick={handleSaveComment}
-                disabled={updateNoteMutation.isPending || commentText.length > 500}
+                disabled={createCommentMutation.isPending || commentText.length > 500}
               >
-                {updateNoteMutation.isPending ? "Sauvegarde..." : "Enregistrer"}
+                {createCommentMutation.isPending ? "Sauvegarde..." : "Enregistrer"}
               </Button>
             )}
           </DialogFooter>
