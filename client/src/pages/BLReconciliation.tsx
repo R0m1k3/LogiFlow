@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import ReconciliationComments from "@/components/ReconciliationComments";
 import ReconciliationModal from "@/components/modals/ReconciliationModal";
 
 export default function BLReconciliation() {
@@ -70,7 +71,6 @@ export default function BLReconciliation() {
   // État pour le modal de commentaire
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [selectedDeliveryForComment, setSelectedDeliveryForComment] = useState<any>(null);
-  const [commentText, setCommentText] = useState("");
 
   // Récupérer les fournisseurs pour la logique automatique
   const { data: suppliers = [] } = useQuery<any[]>({
@@ -143,43 +143,6 @@ export default function BLReconciliation() {
     }
   });
 
-  // Mutation pour créer un nouveau commentaire de rapprochement
-  const createCommentMutation = useMutation({
-    mutationFn: async ({ deliveryId, content }: { deliveryId: number; content: string }) => {
-      const response = await apiRequest(`/api/deliveries/${deliveryId}/reconciliation-comments`, 'POST', { 
-        content
-      });
-      return response;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Commentaire ajouté",
-        description: "Le commentaire a été ajouté avec succès",
-      });
-      // Rafraîchir les données
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      handleCloseCommentModal();
-    },
-    onError: (error) => {
-      console.error('Erreur ajout commentaire:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'ajouter le commentaire",
-        variant: "destructive",
-      });
-    }
-  });
-
-  // Fonction pour sauvegarder le commentaire
-  const handleSaveComment = () => {
-    if (!selectedDeliveryForComment || !commentText.trim()) return;
-    
-    createCommentMutation.mutate({
-      deliveryId: selectedDeliveryForComment.id,
-      content: commentText
-    });
-  };
 
   // Fonction pour déclencher la vérification
   const handleVerifyInvoice = (delivery: any, forceRefresh: boolean = false) => {
@@ -394,14 +357,12 @@ export default function BLReconciliation() {
   // Fonctions pour le modal de commentaire
   const handleOpenCommentModal = (delivery: any) => {
     setSelectedDeliveryForComment(delivery);
-    setCommentText(delivery.notes || "");
     setShowCommentModal(true);
   };
 
   const handleCloseCommentModal = () => {
     setShowCommentModal(false);
     setSelectedDeliveryForComment(null);
-    setCommentText("");
   };
 
   const handleCloseInvoiceModal = () => {
@@ -987,8 +948,8 @@ export default function BLReconciliation() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleOpenCommentModal(delivery)}
-                                  className={`h-8 w-8 p-0 ${delivery.notes ? 'text-blue-600 hover:text-blue-700' : 'text-gray-400 hover:text-gray-600'} ${delivery.reconciled ? 'opacity-70' : ''}`}
-                                  title={delivery.reconciled ? (delivery.notes ? "Voir commentaire (lecture seule)" : "Aucun commentaire") : (delivery.notes ? "Voir/Modifier commentaire" : "Ajouter commentaire")}
+                                  className={`h-8 w-8 p-0 text-gray-600 hover:text-gray-700 ${delivery.reconciled ? 'opacity-70' : ''}`}
+                                  title="Voir/Gérer les commentaires"
                                 >
                                   <MessageSquare className="h-4 w-4" />
                                 </Button>
@@ -1197,12 +1158,8 @@ export default function BLReconciliation() {
                                 )}
                                 <button
                                   onClick={() => handleOpenCommentModal(delivery)}
-                                  className={`transition-colors duration-200 p-1 rounded ${
-                                    delivery.notes 
-                                      ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50' 
-                                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
-                                  } ${delivery.reconciled ? 'opacity-70' : ''}`}
-                                  title={delivery.reconciled ? (delivery.notes ? "Voir commentaire (lecture seule)" : "Aucun commentaire") : (delivery.notes ? "Voir/Modifier commentaire" : "Ajouter commentaire")}
+                                  className={`transition-colors duration-200 p-1 rounded text-gray-600 hover:text-gray-700 hover:bg-gray-50 ${delivery.reconciled ? 'opacity-70' : ''}`}
+                                  title="Voir/Gérer les commentaires"
                                 >
                                   <MessageSquare className="h-4 w-4" />
                                 </button>
@@ -1384,16 +1341,13 @@ export default function BLReconciliation() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de commentaire */}
+      {/* Modal de commentaires de rapprochement */}
       <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <MessageSquare className="w-5 h-5 text-blue-600" />
-              <span>Commentaire de livraison</span>
-              {selectedDeliveryForComment?.reconciled && (
-                <span className="text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded">Lecture seule</span>
-              )}
+              <span>Commentaires de rapprochement</span>
             </DialogTitle>
           </DialogHeader>
           
@@ -1412,29 +1366,11 @@ export default function BLReconciliation() {
                 </div>
               </div>
               
-              <div className="grid gap-2">
-                <Label htmlFor="comment">Commentaire</Label>
-                <Textarea
-                  id="comment"
-                  placeholder={selectedDeliveryForComment?.reconciled ? "Aucun commentaire" : "Ajouter un commentaire sur cette livraison..."}
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  rows={4}
-                  className="min-h-[100px]"
-                  disabled={selectedDeliveryForComment?.reconciled}
-                  readOnly={selectedDeliveryForComment?.reconciled}
-                />
-                {!selectedDeliveryForComment?.reconciled && (
-                  <div className="text-xs text-gray-500">
-                    {commentText.length}/500 caractères
-                  </div>
-                )}
-                {selectedDeliveryForComment?.reconciled && (
-                  <div className="text-xs text-orange-600">
-                    Le commentaire ne peut pas être modifié car le rapprochement est validé
-                  </div>
-                )}
-              </div>
+              {/* Composant de commentaires de rapprochement */}
+              <ReconciliationComments 
+                deliveryId={selectedDeliveryForComment.id}
+                className="max-h-[400px] overflow-y-auto"
+              />
             </div>
           )}
           
@@ -1442,18 +1378,9 @@ export default function BLReconciliation() {
             <Button 
               variant="outline" 
               onClick={handleCloseCommentModal}
-              disabled={createCommentMutation.isPending}
             >
-              {selectedDeliveryForComment?.reconciled ? "Fermer" : "Annuler"}
+              Fermer
             </Button>
-            {!selectedDeliveryForComment?.reconciled && (
-              <Button 
-                onClick={handleSaveComment}
-                disabled={createCommentMutation.isPending || commentText.length > 500}
-              >
-                {createCommentMutation.isPending ? "Sauvegarde..." : "Enregistrer"}
-              </Button>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
