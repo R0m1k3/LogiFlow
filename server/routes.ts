@@ -42,6 +42,7 @@ import {
   insertWeatherSettingsSchema,
   insertWebhookBapConfigSchema,
   insertAvoirSchema,
+  insertReconciliationCommentSchema,
   users, groups, userGroups, suppliers, orders, deliveries, publicities, publicityParticipations,
   customerOrders, nocodbConfig, dlcProducts, tasks, invoiceVerificationCache, dashboardMessages, webhookBapConfig,
   avoirs
@@ -1375,6 +1376,162 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating delivery notes:", error);
       res.status(500).json({ message: "Failed to update delivery notes" });
+    }
+  });
+
+  // Routes pour les commentaires de rapprochement
+  // GET - Récupérer les commentaires d'une livraison
+  app.get('/api/deliveries/:id/reconciliation-comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const deliveryId = parseInt(req.params.id);
+      const delivery = await storage.getDelivery(deliveryId);
+      
+      if (!delivery) {
+        return res.status(404).json({ message: "Delivery not found" });
+      }
+
+      // Check permissions
+      if (!hasPermission(user.role, 'deliveries', 'view')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      // Check group access
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
+        if (!userGroupIds.includes(delivery.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      const comments = await storage.getReconciliationComments(deliveryId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching reconciliation comments:", error);
+      res.status(500).json({ message: "Failed to fetch reconciliation comments" });
+    }
+  });
+
+  // POST - Créer un nouveau commentaire
+  app.post('/api/deliveries/:id/reconciliation-comments', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const deliveryId = parseInt(req.params.id);
+      const delivery = await storage.getDelivery(deliveryId);
+      
+      if (!delivery) {
+        return res.status(404).json({ message: "Delivery not found" });
+      }
+
+      // Check permissions
+      if (!hasPermission(user.role, 'deliveries', 'edit')) {
+        return res.status(403).json({ message: "Insufficient permissions to create comments" });
+      }
+
+      // Check group access
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
+        if (!userGroupIds.includes(delivery.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      const commentData = insertReconciliationCommentSchema.parse({
+        ...req.body,
+        deliveryId,
+        authorId: user.id,
+        groupId: delivery.groupId,
+      });
+
+      const comment = await storage.createReconciliationComment(commentData);
+      res.status(201).json(comment);
+    } catch (error) {
+      console.error("Error creating reconciliation comment:", error);
+      res.status(500).json({ message: "Failed to create reconciliation comment" });
+    }
+  });
+
+  // PUT - Modifier un commentaire
+  app.put('/api/reconciliation-comments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const commentId = parseInt(req.params.id);
+      const comments = await storage.getReconciliationComments(0); // Get all to find the comment
+      const comment = comments.find(c => c.id === commentId);
+      
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Check permissions - only author or admin can edit
+      if (user.role !== 'admin' && comment.authorId !== user.id) {
+        return res.status(403).json({ message: "Only comment author or admin can edit comments" });
+      }
+
+      // Check group access
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
+        if (!userGroupIds.includes(comment.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      const updateData = insertReconciliationCommentSchema.partial().parse(req.body);
+      const updatedComment = await storage.updateReconciliationComment(commentId, updateData);
+      
+      res.json(updatedComment);
+    } catch (error) {
+      console.error("Error updating reconciliation comment:", error);
+      res.status(500).json({ message: "Failed to update reconciliation comment" });
+    }
+  });
+
+  // DELETE - Supprimer un commentaire
+  app.delete('/api/reconciliation-comments/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const commentId = parseInt(req.params.id);
+      const comments = await storage.getReconciliationComments(0); // Get all to find the comment
+      const comment = comments.find(c => c.id === commentId);
+      
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+
+      // Check permissions - only author or admin can delete
+      if (user.role !== 'admin' && comment.authorId !== user.id) {
+        return res.status(403).json({ message: "Only comment author or admin can delete comments" });
+      }
+
+      // Check group access
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
+        if (!userGroupIds.includes(comment.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      await storage.deleteReconciliationComment(commentId);
+      res.json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting reconciliation comment:", error);
+      res.status(500).json({ message: "Failed to delete reconciliation comment" });
     }
   });
 
