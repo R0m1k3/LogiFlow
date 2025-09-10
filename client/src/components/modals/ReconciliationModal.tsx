@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { safeFormat } from "@/lib/dateUtils";
-import { FileText, Settings, Check, X } from "lucide-react";
+import { FileText, Settings, Check, X, MessageSquare } from "lucide-react";
+import ReconciliationComments from "@/components/ReconciliationComments";
 
 interface ReconciliationModalProps {
   isOpen: boolean;
@@ -91,7 +93,7 @@ export default function ReconciliationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             {isAutomaticMode ? (
@@ -138,94 +140,118 @@ export default function ReconciliationModal({
 
           <Separator />
 
-          {/* Formulaire de rapprochement */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Données BL */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-900">Bon de Livraison (BL)</h4>
-                
-                <div>
-                  <Label htmlFor="blNumber">N° BL</Label>
-                  <Input
-                    id="blNumber"
-                    value={formData.blNumber}
-                    onChange={(e) => setFormData(prev => ({ ...prev, blNumber: e.target.value }))}
-                    placeholder="Ex: BL-2025-001 (optionnel)"
-                  />
+          {/* Onglets pour les données de rapprochement et les commentaires */}
+          <Tabs defaultValue="reconciliation" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="reconciliation" className="flex items-center space-x-2">
+                <FileText className="w-4 h-4" />
+                <span>Données de rapprochement</span>
+              </TabsTrigger>
+              <TabsTrigger value="comments" className="flex items-center space-x-2">
+                <MessageSquare className="w-4 h-4" />
+                <span>Commentaires</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="reconciliation" className="space-y-4">
+              {/* Formulaire de rapprochement */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Données BL */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-gray-900">Bon de Livraison (BL)</h4>
+                    
+                    <div>
+                      <Label htmlFor="blNumber">N° BL</Label>
+                      <Input
+                        id="blNumber"
+                        value={formData.blNumber}
+                        onChange={(e) => setFormData(prev => ({ ...prev, blNumber: e.target.value }))}
+                        placeholder="Ex: BL-2025-001 (optionnel)"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="blAmount">Montant BL (€)</Label>
+                      <Input
+                        id="blAmount"
+                        type="number"
+                        step="0.01"
+                        value={formData.blAmount}
+                        onChange={(e) => setFormData(prev => ({ ...prev, blAmount: e.target.value }))}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Données Facture */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-gray-900">Facture</h4>
+                    
+                    <div>
+                      <Label htmlFor="invoiceReference">Référence Facture</Label>
+                      <Input
+                        id="invoiceReference"
+                        value={formData.invoiceReference}
+                        onChange={(e) => setFormData(prev => ({ ...prev, invoiceReference: e.target.value }))}
+                        placeholder="Ex: FAC-2025-001"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="invoiceAmount">Montant Facture (€)</Label>
+                      <Input
+                        id="invoiceAmount"
+                        type="number"
+                        step="0.01"
+                        value={formData.invoiceAmount}
+                        onChange={(e) => setFormData(prev => ({ ...prev, invoiceAmount: e.target.value }))}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="blAmount">Montant BL (€)</Label>
-                  <Input
-                    id="blAmount"
-                    type="number"
-                    step="0.01"
-                    value={formData.blAmount}
-                    onChange={(e) => setFormData(prev => ({ ...prev, blAmount: e.target.value }))}
-                    placeholder="0.00"
-                  />
+                {/* Actions */}
+                <div className="flex justify-end pt-4">
+                  <div className="flex space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onClose}
+                      disabled={updateDeliveryMutation.isPending}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Annuler
+                    </Button>
+                    
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={updateDeliveryMutation.isPending}
+                    >
+                      {updateDeliveryMutation.isPending ? "Enregistrement..." : "Enregistrer"}
+                    </Button>
+                  </div>
                 </div>
+              </form>
+
+              {/* Note d'aide */}
+              <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded">
+                <strong>Note :</strong> Tous les champs sont optionnels. 
+                Les données BL et facture sont recommandées pour un suivi précis mais pas obligatoires.
               </div>
+            </TabsContent>
 
-              {/* Données Facture */}
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-900">Facture</h4>
-                
-                <div>
-                  <Label htmlFor="invoiceReference">Référence Facture</Label>
-                  <Input
-                    id="invoiceReference"
-                    value={formData.invoiceReference}
-                    onChange={(e) => setFormData(prev => ({ ...prev, invoiceReference: e.target.value }))}
-                    placeholder="Ex: FAC-2025-001"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="invoiceAmount">Montant Facture (€)</Label>
-                  <Input
-                    id="invoiceAmount"
-                    type="number"
-                    step="0.01"
-                    value={formData.invoiceAmount}
-                    onChange={(e) => setFormData(prev => ({ ...prev, invoiceAmount: e.target.value }))}
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end pt-4">
-              <div className="flex space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onClose}
-                  disabled={updateDeliveryMutation.isPending}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Annuler
-                </Button>
-                
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={updateDeliveryMutation.isPending}
-                >
-                  {updateDeliveryMutation.isPending ? "Enregistrement..." : "Enregistrer"}
-                </Button>
-              </div>
-
-            </div>
-          </form>
-
-          {/* Note d'aide */}
-          <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded">
-            <strong>Note :</strong> Tous les champs sont optionnels. 
-            Les données BL et facture sont recommandées pour un suivi précis mais pas obligatoires.
-          </div>
+            <TabsContent value="comments" className="space-y-4">
+              {delivery?.id && (
+                <ReconciliationComments 
+                  deliveryId={delivery.id}
+                  className="min-h-[400px]"
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </DialogContent>
     </Dialog>

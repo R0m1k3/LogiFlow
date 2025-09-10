@@ -177,6 +177,18 @@ export const invoiceVerificationCache = pgTable("invoice_verification_cache", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Commentaires de rapprochement - Système indépendant pour le module de rapprochement
+export const reconciliationComments = pgTable("reconciliation_comments", {
+  id: serial("id").primaryKey(),
+  deliveryId: integer("delivery_id").notNull(), // Référence vers la livraison concernée
+  groupId: integer("group_id").notNull(), // Magasin/groupe pour filtrage
+  content: text("content").notNull(), // Contenu du commentaire
+  type: varchar("type", { length: 50 }).notNull().default("info"), // info, warning, error, success
+  authorId: varchar("author_id").notNull(), // Utilisateur auteur du commentaire
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 
 
 
@@ -307,6 +319,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   assignedTasks: many(tasks),
   createdAnnouncements: many(dashboardMessages),
   createdAvoirs: many(avoirs),
+  createdReconciliationComments: many(reconciliationComments),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
@@ -319,6 +332,7 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   tasks: many(tasks),
   announcements: many(dashboardMessages),
   avoirs: many(avoirs),
+  reconciliationComments: many(reconciliationComments),
 }));
 
 export const userGroupsRelations = relations(userGroups, ({ one }) => ({
@@ -355,7 +369,7 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   deliveries: many(deliveries),
 }));
 
-export const deliveriesRelations = relations(deliveries, ({ one }) => ({
+export const deliveriesRelations = relations(deliveries, ({ one, many }) => ({
   order: one(orders, {
     fields: [deliveries.orderId],
     references: [orders.id],
@@ -372,6 +386,7 @@ export const deliveriesRelations = relations(deliveries, ({ one }) => ({
     fields: [deliveries.createdBy],
     references: [users.id],
   }),
+  reconciliationComments: many(reconciliationComments),
 }));
 
 export const publicitiesRelations = relations(publicities, ({ one, many }) => ({
@@ -468,6 +483,22 @@ export const dashboardMessagesRelations = relations(dashboardMessages, ({ one })
 
 // Alias pour compatibilité
 export const announcementsRelations = dashboardMessagesRelations;
+
+// Relations pour les commentaires de rapprochement
+export const reconciliationCommentsRelations = relations(reconciliationComments, ({ one }) => ({
+  delivery: one(deliveries, {
+    fields: [reconciliationComments.deliveryId],
+    references: [deliveries.id],
+  }),
+  group: one(groups, {
+    fields: [reconciliationComments.groupId],
+    references: [groups.id],
+  }),
+  author: one(users, {
+    fields: [reconciliationComments.authorId],
+    references: [users.id],
+  }),
+}));
 
 // Zod schemas
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -598,6 +629,14 @@ export const insertDashboardMessageSchema = createInsertSchema(dashboardMessages
 
 export const insertAnnouncementSchema = insertDashboardMessageSchema;
 
+export const insertReconciliationCommentSchema = createInsertSchema(reconciliationComments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  type: z.enum(["info", "warning", "error", "success"]).default("info"),
+});
+
 export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
   id: true,
   createdAt: true,
@@ -658,6 +697,8 @@ export type Avoir = typeof avoirs.$inferSelect;
 export type InsertAvoir = z.infer<typeof insertAvoirSchema>;
 export type DashboardMessage = typeof dashboardMessages.$inferSelect;
 export type InsertDashboardMessage = z.infer<typeof insertDashboardMessageSchema>;
+export type ReconciliationComment = typeof reconciliationComments.$inferSelect;
+export type InsertReconciliationComment = z.infer<typeof insertReconciliationCommentSchema>;
 
 // Alias pour compatibilité
 export type Announcement = DashboardMessage;
@@ -725,6 +766,13 @@ export type DashboardMessageWithRelations = DashboardMessage & {
 
 // Alias pour compatibilité
 export type AnnouncementWithRelations = DashboardMessageWithRelations;
+
+// Reconciliation Comment with relations type
+export type ReconciliationCommentWithRelations = ReconciliationComment & {
+  delivery: DeliveryWithRelations;
+  group: Group;
+  author: User;
+};
 
 // SAV (Service Après-Vente) Tables
 export const savTickets = pgTable("sav_tickets", {
