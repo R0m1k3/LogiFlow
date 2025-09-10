@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { safeFormat } from "@/lib/dateUtils";
-import { MessageSquare, Plus, Edit2, Trash2, Save, X, AlertCircle, Info, CheckCircle, AlertTriangle } from "lucide-react";
+import { MessageSquare, Plus, Edit2, Trash2, Save, X, AlertCircle, CheckCircle, AlertTriangle } from "lucide-react";
 
 interface ReconciliationCommentsProps {
   deliveryId: number;
@@ -20,7 +20,7 @@ interface ReconciliationCommentsProps {
 interface ReconciliationComment {
   id: number;
   content: string;
-  type: 'info' | 'warning' | 'error' | 'success';
+  type: 'warning' | 'error' | 'success';
   deliveryId: number;
   authorId: string;
   groupId: number;
@@ -34,21 +34,18 @@ interface ReconciliationComment {
 }
 
 const typeColors = {
-  info: "bg-blue-50 border-blue-200 text-blue-800",
   warning: "bg-yellow-50 border-yellow-200 text-yellow-800",
   error: "bg-red-50 border-red-200 text-red-800",
   success: "bg-green-50 border-green-200 text-green-800",
 };
 
 const typeIcons = {
-  info: Info,
   warning: AlertTriangle,
   error: AlertCircle,
   success: CheckCircle,
 };
 
 const typeLabels = {
-  info: "Information",
   warning: "Attention",
   error: "Erreur",
   success: "Succès",
@@ -62,17 +59,17 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
   const [editingId, setEditingId] = useState<number | null>(null);
   const [newComment, setNewComment] = useState<{
     content: string;
-    type: 'info' | 'warning' | 'error' | 'success';
+    type: 'warning' | 'error' | 'success';
   }>({
     content: "",
-    type: "info",
+    type: "warning",
   });
   const [editComment, setEditComment] = useState<{
     content: string;
-    type: 'info' | 'warning' | 'error' | 'success';
+    type: 'warning' | 'error' | 'success';
   }>({
     content: "",
-    type: "info",
+    type: "warning",
   });
 
   // Récupérer les commentaires
@@ -94,7 +91,7 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
       });
       queryClient.invalidateQueries({ queryKey: [`/api/deliveries/${deliveryId}/reconciliation-comments`] });
       setIsAdding(false);
-      setNewComment({ content: "", type: "info" });
+      setNewComment({ content: "", type: "warning" });
     },
     onError: (error: any) => {
       toast({
@@ -174,7 +171,7 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setEditComment({ content: "", type: "info" });
+    setEditComment({ content: "", type: "warning" });
   };
 
   const handleDeleteComment = (id: number) => {
@@ -235,7 +232,7 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="info">Information</SelectItem>
+
                     <SelectItem value="warning">Attention</SelectItem>
                     <SelectItem value="error">Erreur</SelectItem>
                     <SelectItem value="success">Succès</SelectItem>
@@ -261,7 +258,7 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
                   size="sm"
                   onClick={() => {
                     setIsAdding(false);
-                    setNewComment({ content: "", type: "info" });
+                    setNewComment({ content: "", type: "warning" });
                   }}
                 >
                   <X className="w-4 h-4 mr-1" />
@@ -308,7 +305,7 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="info">Information</SelectItem>
+        
                             <SelectItem value="warning">Attention</SelectItem>
                             <SelectItem value="error">Erreur</SelectItem>
                             <SelectItem value="success">Succès</SelectItem>

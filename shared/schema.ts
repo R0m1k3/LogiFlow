@@ -183,7 +183,7 @@ export const reconciliationComments = pgTable("reconciliation_comments", {
   deliveryId: integer("delivery_id").notNull(), // Référence vers la livraison concernée
   groupId: integer("group_id").notNull(), // Magasin/groupe pour filtrage
   content: text("content").notNull(), // Contenu du commentaire
-  type: varchar("type", { length: 50 }).notNull().default("info"), // info, warning, error, success
+  type: varchar("type", { length: 50 }).notNull().default("warning"), // warning, error, success
   authorId: varchar("author_id").notNull(), // Utilisateur auteur du commentaire
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

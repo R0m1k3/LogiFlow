@@ -148,7 +148,7 @@ export default function BLReconciliation() {
     mutationFn: async ({ deliveryId, content }: { deliveryId: number; content: string }) => {
       const response = await apiRequest(`/api/deliveries/${deliveryId}/reconciliation-comments`, 'POST', { 
         content,
-        type: 'info'
+        type: 'warning'
       });
       return response;
     },
