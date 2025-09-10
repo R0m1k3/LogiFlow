@@ -2585,7 +2585,6 @@ export class DatabaseStorage implements IStorage {
         deliveryId: reconciliationComments.deliveryId,
         groupId: reconciliationComments.groupId,
         content: reconciliationComments.content,
-        type: reconciliationComments.type,
         authorId: reconciliationComments.authorId,
         createdAt: reconciliationComments.createdAt,
         updatedAt: reconciliationComments.updatedAt,

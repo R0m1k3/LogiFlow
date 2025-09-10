@@ -1,16 +1,14 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { safeFormat } from "@/lib/dateUtils";
-import { MessageSquare, Plus, Edit2, Trash2, Save, X, AlertCircle, Info, CheckCircle, AlertTriangle } from "lucide-react";
+import { MessageSquare, Plus, Edit2, Trash2, Save, X } from "lucide-react";
 
 interface ReconciliationCommentsProps {
   deliveryId: number;
@@ -20,7 +18,6 @@ interface ReconciliationCommentsProps {
 interface ReconciliationComment {
   id: number;
   content: string;
-  type: 'info' | 'warning' | 'error' | 'success';
   deliveryId: number;
   authorId: string;
   groupId: number;
@@ -33,47 +30,14 @@ interface ReconciliationComment {
   };
 }
 
-const typeColors = {
-  info: "bg-blue-50 border-blue-200 text-blue-800",
-  warning: "bg-yellow-50 border-yellow-200 text-yellow-800",
-  error: "bg-red-50 border-red-200 text-red-800",
-  success: "bg-green-50 border-green-200 text-green-800",
-};
-
-const typeIcons = {
-  info: Info,
-  warning: AlertTriangle,
-  error: AlertCircle,
-  success: CheckCircle,
-};
-
-const typeLabels = {
-  info: "Information",
-  warning: "Attention",
-  error: "Erreur",
-  success: "Succès",
-};
-
 export default function ReconciliationComments({ deliveryId, className = "" }: ReconciliationCommentsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [newComment, setNewComment] = useState<{
-    content: string;
-    type: 'info' | 'warning' | 'error' | 'success';
-  }>({
-    content: "",
-    type: "info",
-  });
-  const [editComment, setEditComment] = useState<{
-    content: string;
-    type: 'info' | 'warning' | 'error' | 'success';
-  }>({
-    content: "",
-    type: "info",
-  });
+  const [newComment, setNewComment] = useState("");
+  const [editComment, setEditComment] = useState("");
 
   // Récupérer les commentaires
   const { data: comments = [], isLoading } = useQuery({
@@ -84,8 +48,8 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
 
   // Créer un commentaire
   const createCommentMutation = useMutation({
-    mutationFn: async (data: { content: string; type: string }) => {
-      return apiRequest(`/api/deliveries/${deliveryId}/reconciliation-comments`, "POST", data);
+    mutationFn: async (content: string) => {
+      return apiRequest(`/api/deliveries/${deliveryId}/reconciliation-comments`, "POST", { content });
     },
     onSuccess: () => {
       toast({
@@ -94,7 +58,7 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
       });
       queryClient.invalidateQueries({ queryKey: [`/api/deliveries/${deliveryId}/reconciliation-comments`] });
       setIsAdding(false);
-      setNewComment({ content: "", type: "info" });
+      setNewComment("");
     },
     onError: (error: any) => {
       toast({
@@ -107,8 +71,8 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
 
   // Modifier un commentaire
   const updateCommentMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: { content: string; type: string } }) => {
-      return apiRequest(`/api/reconciliation-comments/${id}`, "PUT", data);
+    mutationFn: async ({ id, content }: { id: number; content: string }) => {
+      return apiRequest(`/api/reconciliation-comments/${id}`, "PUT", { content });
     },
     onSuccess: () => {
       toast({
@@ -150,31 +114,28 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
 
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.content.trim()) return;
+    if (!newComment.trim()) return;
     
     createCommentMutation.mutate(newComment);
   };
 
   const handleEditComment = (comment: ReconciliationComment) => {
     setEditingId(comment.id);
-    setEditComment({
-      content: comment.content,
-      type: comment.type,
-    });
+    setEditComment(comment.content);
   };
 
   const handleSaveEdit = () => {
-    if (!editComment.content.trim() || !editingId) return;
+    if (!editComment.trim() || !editingId) return;
     
     updateCommentMutation.mutate({
       id: editingId,
-      data: editComment,
+      content: editComment,
     });
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setEditComment({ content: "", type: "info" });
+    setEditComment("");
   };
 
   const handleDeleteComment = (id: number) => {
@@ -197,7 +158,7 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
       <div className="flex items-center justify-between mb-4">
         <h4 className="font-medium text-gray-900 flex items-center">
           <MessageSquare className="w-4 h-4 mr-2" />
-          Commentaires de rapprochement
+          Commentaires
           {comments.length > 0 && (
             <Badge variant="secondary" className="ml-2">
               {comments.length}
@@ -205,52 +166,31 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
           )}
         </h4>
         
-        {!isAdding && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setIsAdding(true)}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Ajouter
-          </Button>
-        )}
+        <Button
+          onClick={() => setIsAdding(true)}
+          size="sm"
+          variant="outline"
+          className="text-xs"
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          Ajouter
+        </Button>
       </div>
 
       {/* Formulaire d'ajout */}
       {isAdding && (
-        <Card className="mb-4 border-dashed">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-600">Nouveau commentaire</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Card className="mb-4 border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
             <form onSubmit={handleAddComment} className="space-y-3">
               <div>
-                <Label htmlFor="comment-type">Type</Label>
-                <Select
-                  value={newComment.type}
-                  onValueChange={(value: any) => setNewComment(prev => ({ ...prev, type: value }))}
-                >
-                  <SelectTrigger id="comment-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="info">Information</SelectItem>
-                    <SelectItem value="warning">Attention</SelectItem>
-                    <SelectItem value="error">Erreur</SelectItem>
-                    <SelectItem value="success">Succès</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="comment-content">Commentaire</Label>
+                <Label htmlFor="new-comment">Nouveau commentaire</Label>
                 <Textarea
-                  id="comment-content"
-                  value={newComment.content}
-                  onChange={(e) => setNewComment(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Saisissez votre commentaire..."
+                  id="new-comment"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Tapez votre commentaire..."
                   rows={3}
+                  required
                 />
               </div>
               
@@ -261,18 +201,18 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
                   size="sm"
                   onClick={() => {
                     setIsAdding(false);
-                    setNewComment({ content: "", type: "info" });
+                    setNewComment("");
                   }}
                 >
-                  <X className="w-4 h-4 mr-1" />
+                  <X className="w-3 h-3 mr-1" />
                   Annuler
                 </Button>
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={!newComment.content.trim() || createCommentMutation.isPending}
+                  disabled={createCommentMutation.isPending || !newComment.trim()}
                 >
-                  <Save className="w-4 h-4 mr-1" />
+                  <Save className="w-3 h-3 mr-1" />
                   {createCommentMutation.isPending ? "Ajout..." : "Ajouter"}
                 </Button>
               </div>
@@ -290,38 +230,19 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
           </div>
         ) : (
           comments.map((comment: ReconciliationComment) => {
-            const TypeIcon = typeIcons[comment.type];
             const isEditing = editingId === comment.id;
             
             return (
-              <Card key={comment.id} className={`border ${typeColors[comment.type]}`}>
+              <Card key={comment.id} className="border">
                 <CardContent className="p-4">
                   {isEditing ? (
                     <div className="space-y-3">
                       <div>
-                        <Label htmlFor={`edit-type-${comment.id}`}>Type</Label>
-                        <Select
-                          value={editComment.type}
-                          onValueChange={(value: any) => setEditComment(prev => ({ ...prev, type: value }))}
-                        >
-                          <SelectTrigger id={`edit-type-${comment.id}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="info">Information</SelectItem>
-                            <SelectItem value="warning">Attention</SelectItem>
-                            <SelectItem value="error">Erreur</SelectItem>
-                            <SelectItem value="success">Succès</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div>
                         <Label htmlFor={`edit-content-${comment.id}`}>Commentaire</Label>
                         <Textarea
                           id={`edit-content-${comment.id}`}
-                          value={editComment.content}
-                          onChange={(e) => setEditComment(prev => ({ ...prev, content: e.target.value }))}
+                          value={editComment}
+                          onChange={(e) => setEditComment(e.target.value)}
                           rows={3}
                         />
                       </div>
@@ -333,55 +254,48 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
                           size="sm"
                           onClick={handleCancelEdit}
                         >
-                          <X className="w-4 h-4 mr-1" />
+                          <X className="w-3 h-3 mr-1" />
                           Annuler
                         </Button>
                         <Button
                           type="button"
                           size="sm"
                           onClick={handleSaveEdit}
-                          disabled={!editComment.content.trim() || updateCommentMutation.isPending}
+                          disabled={updateCommentMutation.isPending || !editComment.trim()}
                         >
-                          <Save className="w-4 h-4 mr-1" />
-                          {updateCommentMutation.isPending ? "Sauvegarde..." : "Sauvegarder"}
+                          <Save className="w-3 h-3 mr-1" />
+                          {updateCommentMutation.isPending ? "Enregistrement..." : "Enregistrer"}
                         </Button>
                       </div>
                     </div>
                   ) : (
                     <div>
                       <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <TypeIcon className="w-4 h-4" />
-                          <Badge variant="outline">
-                            {typeLabels[comment.type]}
-                          </Badge>
+                        <div className="flex-1">
+                          <p className="text-gray-900 mb-2">{comment.content}</p>
+                          <div className="text-xs text-gray-500">
+                            Par {comment.author.email} • {safeFormat(comment.createdAt, "dd/MM/yyyy 'à' HH:mm")}
+                          </div>
                         </div>
                         
-                        <div className="flex items-center space-x-1">
+                        <div className="flex space-x-1 ml-2">
                           <Button
-                            size="sm"
                             variant="ghost"
+                            size="sm"
                             onClick={() => handleEditComment(comment)}
-                            className="h-6 w-6 p-0"
+                            className="h-8 w-8 p-0"
                           >
                             <Edit2 className="w-3 h-3" />
                           </Button>
                           <Button
-                            size="sm"
                             variant="ghost"
+                            size="sm"
                             onClick={() => handleDeleteComment(comment.id)}
-                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
                           >
                             <Trash2 className="w-3 h-3" />
                           </Button>
                         </div>
-                      </div>
-                      
-                      <p className="text-sm mb-2">{comment.content}</p>
-                      
-                      <div className="text-xs text-gray-500 flex items-center justify-between">
-                        <span>Par {comment.author.email}</span>
-                        <span>{safeFormat(new Date(comment.createdAt), 'dd/MM/yyyy HH:mm')}</span>
                       </div>
                     </div>
                   )}
