@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { Plus, Edit, Trash2, Phone, PhoneCall, Printer, Eye, Package } from "lucide-react";
+import { Plus, Edit, Trash2, Phone, PhoneCall, Printer, Eye, Package, AlertCircle } from "lucide-react";
 import JsBarcode from 'jsbarcode';
 import { safeFormat, safeDate } from "@/lib/dateUtils";
 import { format } from "date-fns";
@@ -39,6 +40,7 @@ import type { CustomerOrderWithRelations, Group } from "@shared/schema";
 import { CustomerOrderForm } from "@/components/CustomerOrderForm";
 import { CustomerOrderDetails } from "@/components/CustomerOrderDetails";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
+import ClientCallsModal from "@/components/modals/ClientCallsModal";
 import { useStore } from "@/contexts/StoreContext";
 import { usePermissions } from "@shared/permissions";
 
@@ -52,6 +54,7 @@ export default function CustomerOrders() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showClientCallsModal, setShowClientCallsModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<CustomerOrderWithRelations | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "status" | "supplier">("date");
@@ -62,6 +65,22 @@ export default function CustomerOrders() {
   // Fetch groups for store filter
   const { data: groups = [] } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
+  });
+
+  // Query pour les appels clients en attente
+  const { data: pendingCalls = [], isLoading: isPendingCallsLoading } = useQuery<CustomerOrderWithRelations[]>({
+    queryKey: ['/api/customer-orders/pending-calls', selectedStoreId],
+    queryFn: async () => {
+      const pendingCallsUrl = `/api/customer-orders/pending-calls${selectedStoreId ? `?storeId=${selectedStoreId}` : ''}`;
+      const response = await fetch(pendingCallsUrl, { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('Failed to fetch pending calls');
+      }
+      const data = await response.json();
+      console.log('📞 Customer Orders - Pending calls received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
+      return data;
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // Fetch suppliers for filter
@@ -688,6 +707,23 @@ export default function CustomerOrders() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Alerte pour les appels clients en attente */}
+      {!isPendingCallsLoading && pendingCalls.length > 0 && (
+        <Alert 
+          className="sticky top-0 z-50 bg-orange-50 border-orange-200 cursor-pointer hover:bg-orange-100 transition-colors"
+          onClick={() => setShowClientCallsModal(true)}
+          data-testid="alert-client-calls"
+        >
+          <Phone className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-700">
+            <strong>📞 {pendingCalls.length} client{pendingCalls.length > 1 ? 's' : ''} à appeler</strong>
+            <span className="block text-sm mt-1">
+              Produits disponibles - Cliquez pour voir la liste des clients à contacter
+            </span>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-6 shadow-sm -m-6 mb-6">
         <div className="flex items-center justify-between">
@@ -995,6 +1031,13 @@ export default function CustomerOrders() {
         description={`Êtes-vous sûr de vouloir supprimer la commande de ${selectedOrder?.customerName} ? Cette action est irréversible.`}
         confirmText="Supprimer"
         isLoading={deleteMutation.isPending}
+      />
+
+      {/* Modal pour les appels clients */}
+      <ClientCallsModal
+        isOpen={showClientCallsModal}
+        onClose={() => setShowClientCallsModal(false)}
+        pendingCalls={pendingCalls}
       />
     </div>
   );
