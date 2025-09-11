@@ -455,22 +455,29 @@ export default function SavTickets() {
   });
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Service Après-Vente</h1>
-          <p className="text-gray-600 mt-1">Gestion des tickets SAV et suivi des réparations</p>
-        </div>
-        {canCreate && (
-          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-            <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Nouveau Ticket
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white border-b border-gray-200 p-4 sm:p-6 shadow-sm -m-3 sm:-m-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center">
+              <Wrench className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600" />
+              Service Après-Vente
+            </h1>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
+              Gestion des tickets SAV et suivi des réparations
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {canCreate && (
+              <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+                <DialogTrigger asChild>
+                  <Button className="w-full sm:w-auto">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouveau Ticket
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Créer un nouveau ticket SAV</DialogTitle>
                 <DialogDescription>
@@ -689,6 +696,8 @@ export default function SavTickets() {
           </Dialog>
         )}
       </div>
+        </div>
+      </div>
 
       {/* Stats Cards */}
       {statsData && (
@@ -826,143 +835,126 @@ export default function SavTickets() {
               <p className="text-gray-500">Aucun ticket trouvé</p>
             </div>
           ) : (
-            <div>
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ticket
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Client
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Produit
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Problème
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Priorité
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fournisseur
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredTickets.map((ticket) => {
-                    const StatusIcon = statusConfig[ticket.status as keyof typeof statusConfig]?.icon || Clock;
-                    return (
-                      <tr key={ticket.id} className={`hover:bg-gray-50 ${ticket.status === 'ferme' ? 'bg-gray-100 opacity-60' : ''}`}>
-                        <td className="px-6 py-4 whitespace-nowrap">
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredTickets.map((ticket) => {
+                  const StatusIcon = statusConfig[ticket.status as keyof typeof statusConfig]?.icon || Clock;
+                  const priorityColor = priorityConfig[ticket.priority as keyof typeof priorityConfig]?.color || "bg-gray-100 text-gray-800";
+                  const statusColor = statusConfig[ticket.status as keyof typeof statusConfig]?.color || "bg-gray-100 text-gray-800";
+                  
+                  return (
+                    <Card key={ticket.id} className={`hover:shadow-md transition-shadow cursor-pointer ${ticket.status === 'ferme' ? 'opacity-60' : ''}`}>
+                      <CardContent className="p-4">
+                        {/* Header avec numéro de ticket et statut */}
+                        <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center">
                             <Wrench className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="text-sm font-medium text-gray-900 mr-2">
-                              {ticket.ticketNumber}
-                            </span>
+                            <h5 className="font-medium text-gray-900 text-sm">{ticket.ticketNumber}</h5>
                             {hasRecentComments(ticket) && (
-                              <Badge className="bg-orange-100 text-orange-800 text-xs">
+                              <Badge className="bg-orange-100 text-orange-800 text-xs ml-2">
                                 <MessageCircle className="h-3 w-3 mr-1" />
                                 Nouveau
                               </Badge>
                             )}
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {ticket.clientName || 'N/A'}
-                            </div>
-                            {ticket.clientPhone && (
-                              <div className="text-sm text-gray-500">
-                                {ticket.clientPhone}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div>
-                            {ticket.productDesignation && (
-                              <div className="text-sm font-medium text-gray-900">
-                                {ticket.productDesignation}
-                              </div>
-                            )}
-                            {ticket.productGencode && (
-                              <div className="text-sm text-gray-500">
-                                {ticket.productGencode}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 max-w-xs truncate">
-                            {ticket.problemDescription}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <StatusIcon className="h-4 w-4 mr-2" />
-                            <Badge className={statusConfig[ticket.status as keyof typeof statusConfig]?.color}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            <Badge className={`${statusColor} text-xs`}>
                               {statusConfig[ticket.status as keyof typeof statusConfig]?.label}
                             </Badge>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge className={priorityConfig[ticket.priority as keyof typeof priorityConfig]?.color}>
+                        </div>
+
+                        {/* Client */}
+                        <div className="mb-2">
+                          <div className="text-sm font-medium text-gray-900">
+                            {ticket.clientName || 'N/A'}
+                          </div>
+                          {ticket.clientPhone && (
+                            <div className="text-xs text-gray-500">
+                              📞 {ticket.clientPhone}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Produit */}
+                        <div className="mb-2">
+                          {ticket.productDesignation && (
+                            <div className="text-xs text-gray-600 font-medium">
+                              {ticket.productDesignation}
+                            </div>
+                          )}
+                          {ticket.productGencode && (
+                            <div className="text-xs text-gray-500">
+                              📦 {ticket.productGencode}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Problème */}
+                        {ticket.problemDescription && (
+                          <div className="mb-3">
+                            <p className="text-xs text-gray-600 line-clamp-2">
+                              {ticket.problemDescription}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Priorité et fournisseur */}
+                        <div className="flex items-center justify-between mb-3">
+                          <Badge className={`${priorityColor} text-xs`}>
                             {priorityConfig[ticket.priority as keyof typeof priorityConfig]?.label}
                           </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <Building className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-900">
-                              {ticket.supplier?.name}
-                            </span>
+                          
+                          <div className="flex items-center text-xs text-gray-500">
+                            <Building className="h-3 w-3 mr-1" />
+                            {ticket.supplier?.name}
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-1" />
-                            {safeFormat(ticket.createdAt, 'dd/MM/yyyy')}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end space-x-2">
+                        </div>
+
+                        {/* Date */}
+                        <div className="text-xs text-gray-500 mb-3 flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {safeFormat(ticket.createdAt, 'dd/MM/yyyy')}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleViewTicket(ticket)}
+                            title="Suivi du ticket"
+                            className="text-xs h-7"
+                          >
+                            <ClipboardList className="h-3 w-3" />
+                          </Button>
+                          {canModify && (
                             <Button 
-                              variant="ghost" 
+                              variant="outline" 
                               size="sm" 
-                              onClick={() => handleViewTicket(ticket)}
-                              title="Suivi du ticket"
+                              onClick={() => handleEditTicket(ticket)}
+                              className="text-xs h-7"
                             >
-                              <ClipboardList className="h-4 w-4" />
+                              <Edit className="h-3 w-3" />
                             </Button>
-                            {canModify && (
-                              <Button variant="ghost" size="sm" onClick={() => handleEditTicket(ticket)}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {canDelete && (
-                              <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-900" onClick={() => handleDeleteTicket(ticket)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          )}
+                          {canDelete && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-red-600 hover:text-red-700 text-xs h-7" 
+                              onClick={() => handleDeleteTicket(ticket)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
           )}
         </CardContent>
