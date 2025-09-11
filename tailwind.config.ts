@@ -18,6 +18,7 @@ export default {
     // Classes pour alertes appels clients (production-safe)
     'bg-orange-50', 'border-orange-200', 'text-orange-700', 'bg-orange-600', 'hover:bg-orange-700',
     'bg-green-600', 'hover:bg-green-700', 'bg-blue-600', 'hover:bg-blue-700',
+    'border-green-600', 'text-white', 'hover:bg-gray-50',
     'sticky', 'top-0', 'z-50', 'cursor-pointer',
     'max-w-2xl', 'w-full', 'mx-4', 'max-h-[80vh]', 'overflow-y-auto'
   ],
