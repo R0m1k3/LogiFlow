@@ -1682,8 +1682,8 @@ export class DatabaseStorage implements IStorage {
 
   async getPendingClientCalls(groupIds?: number[]): Promise<CustomerOrderWithRelations[]> {
     const conditions = [
-      eq(dlcProducts.status, 'valides'),
-      eq(customerOrders.customerNotified, false)
+      eq(customerOrders.customerNotified, false),
+      inArray(customerOrders.status, ['Disponible', 'disponible', 'Arrivé', 'arrivé', 'Prêt', 'prêt'])
     ];
 
     if (groupIds && groupIds.length > 0) {
@@ -1697,7 +1697,6 @@ export class DatabaseStorage implements IStorage {
         group: groups
       })
       .from(customerOrders)
-      .innerJoin(dlcProducts, eq(customerOrders.gencode, dlcProducts.gencode))
       .leftJoin(suppliers, eq(customerOrders.supplierId, suppliers.id))
       .leftJoin(groups, eq(customerOrders.groupId, groups.id))
       .where(and(...conditions))
@@ -3477,15 +3476,12 @@ export class MemStorage implements IStorage {
       orders = orders.filter(order => groupIds.includes(order.groupId));
     }
     
-    // Find orders where client not notified and product is available
+    // Find orders where client not notified and status is 'Disponible'
     const pendingOrders = orders.filter(order => {
-      if (order.customerNotified) return false;
-      
-      // Check if there's a DLC product with status 'valides' matching this gencode
-      const matchingDlcProduct = Array.from(this.dlcProducts.values())
-        .find(dlc => dlc.gencode === order.gencode && dlc.status === 'valides');
-      
-      return !!matchingDlcProduct;
+      return !order.customerNotified && 
+             (order.status === 'Disponible' || order.status === 'disponible' || 
+              order.status === 'Arrivé' || order.status === 'arrivé' ||
+              order.status === 'Prêt' || order.status === 'prêt');
     });
     
     return pendingOrders.map(order => ({
