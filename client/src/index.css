@@ -396,3 +396,92 @@ button[data-day-weekend="true"],
 .bg-gray-150 {
   background-color: #f1f3f4;
 }
+
+/* Styles pour le mode téléphone */
+.phone-mode {
+  /* Classe principale pour le mode téléphone */
+}
+
+/* Safe area pour la bottom navigation */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Optimisations pour le mode téléphone */
+.layout-container.phone-mode {
+  /* Assurer que le layout prend toute la hauteur */
+  height: 100vh;
+  overflow: hidden;
+}
+
+.phone-mode main {
+  /* Optimisation pour le scroll sur téléphone */
+  overflow-x: hidden;
+}
+
+.phone-mode .main-content {
+  /* Padding bottom pour éviter que le contenu soit caché par la bottom nav */
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+/* Animation de transition pour le basculement de mode */
+.layout-container {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Styles spécifiques pour la bottom navigation */
+.bottom-nav {
+  backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+/* Dark mode pour la bottom navigation */
+.dark .bottom-nav {
+  background-color: rgba(26, 26, 26, 0.95);
+}
+
+/* Optimisation des cartes pour le mode téléphone */
+.phone-mode .card {
+  border-radius: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Optimisation des boutons pour le mode téléphone */
+.phone-mode button {
+  min-height: 48px;
+}
+
+/* Style pour les éléments interactifs en mode téléphone */
+.phone-mode .interactive-element {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 12px;
+}
+
+/* Adaptation des formulaires pour téléphone */
+.phone-mode .form-container {
+  padding: 16px;
+  max-width: 100%;
+}
+
+.phone-mode input, 
+.phone-mode select, 
+.phone-mode textarea {
+  min-height: 48px;
+  font-size: 16px; /* Évite le zoom automatique sur iOS */
+}
+
+/* Optimisation des modals pour téléphone */
+.phone-mode .modal-content {
+  margin: 8px;
+  max-height: calc(100vh - 16px);
+  border-radius: 16px;
+}
+
+/* Style pour les alertes en mode téléphone */
+.phone-mode .alert {
+  margin: 8px;
+  border-radius: 12px;
+  padding: 16px;
+}

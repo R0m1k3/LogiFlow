@@ -105,6 +105,17 @@ function RouterProduction() {
         <Route path="/database-debug" component={Utilities} />
         <Route path="/weather-settings" component={Utilities} />
         
+        {/* Redirection depuis /auth vers dashboard après authentification */}
+        <Route path="/auth">
+          {() => {
+            if (typeof window !== 'undefined') {
+              console.log('🔄 Authenticated user on /auth, redirecting to dashboard');
+              window.location.href = '/';
+            }
+            return <Dashboard />;
+          }}
+        </Route>
+        
         <Route path="/" component={Dashboard} />
         <Route component={NotFound} />
       </Switch>
