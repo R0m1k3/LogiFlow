@@ -132,10 +132,8 @@ export default function Layout({ children }: LayoutProps) {
         <Sidebar />
         
         <main className={`flex-1 flex flex-col h-full ${
-          // Ajuster la marge gauche selon la taille de l'écran et l'état de la sidebar
-          isMobile ? 'ml-0' : 
-          isTablet ? (sidebarCollapsed ? 'ml-16' : 'ml-48') : 
-          (sidebarCollapsed ? 'ml-16' : 'ml-64')
+          // Marge gauche uniquement si la sidebar est en position fixed (tablet expanded)
+          isMobile ? 'ml-0' : (isTablet && !sidebarCollapsed) ? 'ml-48' : 'ml-0'
         }`}>
           {/* Header with mobile menu and store selector */}
           <header className={`h-16 bg-white border-b border-gray-200 flex items-center justify-between ${
