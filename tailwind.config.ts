@@ -3,6 +3,19 @@ import type { Config } from "tailwindcss";
 export default {
   darkMode: ["class"],
   content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
+  safelist: [
+    // Classes responsive critiques pour le module Tâches
+    'hidden', 'block', 'flex', 'grid',
+    'sm:hidden', 'sm:block', 'sm:flex', 'sm:grid', 
+    'md:hidden', 'md:block', 'md:flex', 'md:grid',
+    'lg:hidden', 'lg:block', 'lg:flex', 'lg:grid',
+    'grid-cols-1', 'sm:grid-cols-2', 'sm:grid-cols-3', 'lg:grid-cols-4',
+    'min-h-[44px]', 'text-base', 'text-sm', 'text-xs',
+    'p-3', 'p-4', 'px-3', 'px-4', 'py-2', 'py-3',
+    'gap-2', 'gap-3', 'gap-4', 'sm:gap-4',
+    'order-1', 'order-2', 'sm:order-1', 'sm:order-2',
+    'flex-col', 'sm:flex-row', 'justify-stretch', 'sm:justify-end'
+  ],
   theme: {
     extend: {
       borderRadius: {
