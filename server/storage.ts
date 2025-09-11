@@ -179,6 +179,10 @@ export interface IStorage {
   createCustomerOrder(customerOrder: InsertCustomerOrder): Promise<CustomerOrder>;
   updateCustomerOrder(id: number, customerOrder: Partial<InsertCustomerOrder>): Promise<CustomerOrder>;
   deleteCustomerOrder(id: number): Promise<void>;
+  
+  // Client call tracking
+  getPendingClientCalls(groupIds?: number[]): Promise<CustomerOrderWithRelations[]>;
+  markClientCalled(customerOrderId: number, calledBy: string): Promise<CustomerOrder>;
 
   // DLC Product operations
   getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]>;
@@ -1674,6 +1678,50 @@ export class DatabaseStorage implements IStorage {
 
   async deleteCustomerOrder(id: number): Promise<void> {
     await db.delete(customerOrders).where(eq(customerOrders.id, id));
+  }
+
+  async getPendingClientCalls(groupIds?: number[]): Promise<CustomerOrderWithRelations[]> {
+    const conditions = [
+      eq(dlcProducts.status, 'valides'),
+      eq(customerOrders.customerNotified, false)
+    ];
+
+    if (groupIds && groupIds.length > 0) {
+      conditions.push(inArray(customerOrders.groupId, groupIds));
+    }
+
+    const results = await db
+      .select({
+        customerOrder: customerOrders,
+        supplier: suppliers,
+        group: groups
+      })
+      .from(customerOrders)
+      .innerJoin(dlcProducts, eq(customerOrders.gencode, dlcProducts.gencode))
+      .leftJoin(suppliers, eq(customerOrders.supplierId, suppliers.id))
+      .leftJoin(groups, eq(customerOrders.groupId, groups.id))
+      .where(and(...conditions))
+      .orderBy(desc(customerOrders.createdAt));
+    
+    return results.map(result => ({
+      ...result.customerOrder,
+      supplier: result.supplier!,
+      group: result.group!,
+      creator: null // Will be populated if needed
+    }));
+  }
+
+  async markClientCalled(customerOrderId: number, calledBy: string): Promise<CustomerOrder> {
+    const [updated] = await db
+      .update(customerOrders)
+      .set({ 
+        customerNotified: true,
+        updatedAt: new Date()
+      })
+      .where(eq(customerOrders.id, customerOrderId))
+      .returning();
+    
+    return updated;
   }
 
   async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]> {
@@ -3419,6 +3467,49 @@ export class MemStorage implements IStorage {
 
   async deleteCustomerOrder(id: number): Promise<void> {
     this.customerOrders.delete(id);
+  }
+
+  async getPendingClientCalls(groupIds?: number[]): Promise<CustomerOrderWithRelations[]> {
+    let orders = Array.from(this.customerOrders.values());
+    
+    // Filter by groupIds if provided
+    if (groupIds && groupIds.length > 0) {
+      orders = orders.filter(order => groupIds.includes(order.groupId));
+    }
+    
+    // Find orders where client not notified and product is available
+    const pendingOrders = orders.filter(order => {
+      if (order.customerNotified) return false;
+      
+      // Check if there's a DLC product with status 'valides' matching this gencode
+      const matchingDlcProduct = Array.from(this.dlcProducts.values())
+        .find(dlc => dlc.gencode === order.gencode && dlc.status === 'valides');
+      
+      return !!matchingDlcProduct;
+    });
+    
+    return pendingOrders.map(order => ({
+      ...order,
+      supplier: this.suppliers.get(order.supplierId)!,
+      group: this.groups.get(order.groupId)!,
+      creator: this.users.get(order.createdBy)!
+    }));
+  }
+
+  async markClientCalled(customerOrderId: number, calledBy: string): Promise<CustomerOrder> {
+    const order = this.customerOrders.get(customerOrderId);
+    if (!order) {
+      throw new Error(`CustomerOrder with id ${customerOrderId} not found`);
+    }
+    
+    const updatedOrder = {
+      ...order,
+      customerNotified: true,
+      updatedAt: new Date()
+    };
+    
+    this.customerOrders.set(customerOrderId, updatedOrder);
+    return updatedOrder;
   }
 
   async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]> {

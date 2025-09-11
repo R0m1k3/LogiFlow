@@ -2498,6 +2498,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Client call tracking routes
+  app.get('/api/customer-orders/pending-calls', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      let groupIds: number[] | undefined;
+
+      // Only admin, directeur, and manager can view pending calls
+      if (user.role === 'employee') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      if (user.role === 'admin') {
+        // Admin can optionally filter by store
+        const { storeId } = req.query;
+        if (storeId) {
+          groupIds = [parseInt(storeId as string)];
+        }
+      } else {
+        // For directeur and manager, filter by their assigned groups
+        const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
+        groupIds = userGroupIds;
+      }
+
+      const pendingCalls = await storage.getPendingClientCalls(groupIds);
+      
+      console.log(`📞 Pending client calls fetched: ${pendingCalls.length} calls for user ${user.role}`);
+      res.json(pendingCalls);
+    } catch (error) {
+      console.error("Error fetching pending client calls:", error);
+      res.status(500).json({ message: "Failed to fetch pending client calls" });
+    }
+  });
+
+  app.patch('/api/customer-orders/:id/mark-called', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+
+      // Only admin, directeur, and manager can mark calls
+      if (user.role === 'employee') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      // Check if user has access to this customer order
+      const customerOrder = await storage.getCustomerOrder(id);
+      if (!customerOrder) {
+        return res.status(404).json({ message: "Customer order not found" });
+      }
+
+      if (user.role !== 'admin') {
+        const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
+        if (!userGroupIds.includes(customerOrder.groupId)) {
+          return res.status(403).json({ message: "Access denied to this customer order" });
+        }
+      }
+
+      const updatedOrder = await storage.markClientCalled(id, user.id);
+      
+      console.log(`📞 Client marked as called: order ${id} by user ${user.id} (${user.role})`);
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error("Error marking client as called:", error);
+      res.status(500).json({ message: "Failed to mark client as called" });
+    }
+  });
+
   // Avoir routes
   app.get('/api/avoirs', isAuthenticated, async (req: any, res) => {
     try {

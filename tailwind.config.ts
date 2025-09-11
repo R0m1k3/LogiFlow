@@ -14,7 +14,12 @@ export default {
     'p-3', 'p-4', 'px-3', 'px-4', 'py-2', 'py-3',
     'gap-2', 'gap-3', 'gap-4', 'sm:gap-4',
     'order-1', 'order-2', 'sm:order-1', 'sm:order-2',
-    'flex-col', 'sm:flex-row', 'justify-stretch', 'sm:justify-end'
+    'flex-col', 'sm:flex-row', 'justify-stretch', 'sm:justify-end',
+    // Classes pour alertes appels clients (production-safe)
+    'bg-orange-50', 'border-orange-200', 'text-orange-700', 'bg-orange-600', 'hover:bg-orange-700',
+    'bg-green-600', 'hover:bg-green-700', 'bg-blue-600', 'hover:bg-blue-700',
+    'sticky', 'top-0', 'z-50', 'cursor-pointer',
+    'max-w-2xl', 'w-full', 'mx-4', 'max-h-[80vh]', 'overflow-y-auto'
   ],
   theme: {
     extend: {
