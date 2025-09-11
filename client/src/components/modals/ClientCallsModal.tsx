@@ -33,8 +33,12 @@ export default function ClientCallsModal({ isOpen, onClose, pendingCalls }: Clie
         description: "L'appel a été enregistré avec succès",
       });
       
-      // Invalider les caches
-      queryClient.invalidateQueries({ queryKey: ['/api/customer-orders/pending-calls'] });
+      // Invalider les caches avec la bonne stratégie
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          return query.queryKey[0] === '/api/customer-orders/pending-calls';
+        }
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/customer-orders'] });
     },
     onError: (error, customerOrderId) => {
