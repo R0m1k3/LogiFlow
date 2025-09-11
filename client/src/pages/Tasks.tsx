@@ -24,7 +24,11 @@ import {
   Calendar,
   CalendarX,
   CalendarClock,
-  Kanban
+  Kanban,
+  Filter,
+  X,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { format, isToday, isThisWeek, isPast, differenceInDays } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -178,7 +182,8 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        {/* Grille responsive pour priorité et statut */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
               Priorité *
@@ -186,13 +191,7 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
             <select
               name="priority"
               defaultValue={task?.priority || "medium"}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '0px',
-                fontSize: '14px'
-              }}
+              className="w-full p-3 border border-gray-300 rounded-md text-base min-h-[44px] bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             >
               <option value="low">🟢 Faible</option>
               <option value="medium">🟡 Moyenne</option>
@@ -207,13 +206,7 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
             <select
               name="status"
               defaultValue={task?.status || "pending"}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '0px',
-                fontSize: '14px'
-              }}
+              className="w-full p-3 border border-gray-300 rounded-md text-base min-h-[44px] bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             >
               <option value="pending">⏳ En cours</option>
               <option value="completed">✅ Terminée</option>
@@ -221,7 +214,8 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        {/* Grille responsive pour les dates */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}>
               📅 Date de début <span style={{ fontSize: '12px', color: '#6b7280' }}>(optionnel)</span>
@@ -230,13 +224,7 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
               name="startDate"
               type="date"
               defaultValue={task?.startDate ? new Date(task.startDate).toISOString().split('T')[0] : ""}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '0px',
-                fontSize: '14px'
-              }}
+              className="w-full p-3 border border-gray-300 rounded-md text-base min-h-[44px] bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
           </div>
 
@@ -248,13 +236,7 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
               name="dueDate"
               type="date"
               defaultValue={task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ""}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '0px',
-                fontSize: '14px'
-              }}
+              className="w-full p-3 border border-gray-300 rounded-md text-base min-h-[44px] bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             />
           </div>
         </div>
@@ -268,40 +250,22 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
             type="text"
             defaultValue={task?.assignedTo || ""}
             placeholder="Nom de la personne assignée"
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '0px',
-              fontSize: '14px'
-            }}
+            className="w-full p-3 border border-gray-300 rounded-md text-base min-h-[44px] bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-white"
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+        {/* Boutons responsive - Stack sur mobile */}
+        <div className="flex flex-col sm:flex-row gap-3 justify-stretch sm:justify-end mt-6">
           <button
             type="button"
             onClick={onClose}
-            style={{
-              padding: '8px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '0px',
-              backgroundColor: 'white',
-              cursor: 'pointer'
-            }}
+            className="order-2 sm:order-1 px-4 py-3 border border-gray-300 rounded-md bg-white dark:bg-gray-800 cursor-pointer min-h-[44px] text-base hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-white"
           >
             Annuler
           </button>
           <button
             type="submit"
-            style={{
-              padding: '8px 16px',
-              border: 'none',
-              borderRadius: '0px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              cursor: 'pointer'
-            }}
+            className="order-1 sm:order-2 px-4 py-3 border-none rounded-md bg-blue-600 text-white cursor-pointer min-h-[44px] text-base font-medium hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700"
           >
             {task ? "Modifier" : "Créer"}
           </button>
@@ -349,6 +313,7 @@ export default function Tasks() {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [dueDateFilter, setDueDateFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<string>("list");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -711,95 +676,69 @@ export default function Tasks() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-6 shadow-sm -m-6 mb-6">
-        <div className="flex items-center justify-between">
+      <div className="bg-white border-b border-gray-200 p-4 sm:p-6 shadow-sm -m-3 sm:-m-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900 flex items-center">
-              <ListTodo className="w-6 h-6 mr-3 text-blue-600" />
+            <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center">
+              <ListTodo className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600" />
               Gestion des Tâches
             </h2>
-            <p className="text-gray-600 mt-1">
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
               {totalItems} tâche{totalItems !== 1 ? 's' : ''} trouvée{totalItems !== 1 ? 's' : ''}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Bouton filtres mobile */}
+            <Button
+              variant="outline"
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              className="sm:hidden flex items-center justify-center gap-2"
+              data-testid="button-mobile-filters"
+            >
+              <Filter className="w-4 h-4" />
+              Filtres
+              {filtersOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+            
             {/* Sélecteur de vue */}
-            <Tabs value={viewMode} onValueChange={setViewMode} className="w-auto">
+            <Tabs value={viewMode} onValueChange={setViewMode} className="w-full sm:w-auto">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="list" className="flex items-center gap-2">
-                  <ListTodo className="w-4 h-4" />
-                  Liste
+                <TabsTrigger value="list" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                  <ListTodo className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Liste</span>
                 </TabsTrigger>
-                <TabsTrigger value="kanban" className="flex items-center gap-2">
-                  <Kanban className="w-4 h-4" />
-                  Kanban
+                <TabsTrigger value="kanban" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                  <Kanban className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Kanban</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
             
-{canCreateTasks && (
+            {canCreateTasks && (
               <>
                 <Button 
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-md text-xs sm:text-sm min-h-[44px] px-3 sm:px-4"
                   onClick={() => setShowCreateModal(true)}
+                  data-testid="button-create-task"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nouvelle Tâche
+                  <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Nouvelle Tâche</span>
+                  <span className="sm:hidden">Créer</span>
                 </Button>
                 
                 {showCreateModal && (
-                  <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    zIndex: 1000,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <div style={{
-                      backgroundColor: 'white',
-                      borderRadius: '0px',
-                      maxWidth: '600px',
-                      width: '90%',
-                      maxHeight: '90vh',
-                      overflow: 'auto',
-                      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-                    }}>
-                      <div style={{
-                        padding: '24px 24px 16px',
-                        borderBottom: '1px solid #e5e7eb',
-                        position: 'relative'
-                      }}>
-                        <h2 style={{
-                          fontSize: '18px',
-                          fontWeight: '600',
-                          margin: '0'
-                        }}>
+                  <div className="fixed inset-0 bg-black bg-opacity-50 z-[1000] flex items-start sm:items-center justify-center p-4 sm:p-5">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl sm:rounded-lg max-w-none sm:max-w-2xl w-full max-h-[calc(100vh-2rem)] sm:max-h-[90vh] overflow-auto shadow-2xl mt-5 sm:mt-0">
+                      <div className="p-5 sm:p-6 pb-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
+                        <h2 className="text-base sm:text-lg font-semibold m-0 pr-10 dark:text-white">
                           Créer une nouvelle tâche
                         </h2>
                         <button
                           onClick={() => setShowCreateModal(false)}
-                          style={{
-                            position: 'absolute',
-                            top: '16px',
-                            right: '16px',
-                            background: 'none',
-                            border: 'none',
-                            fontSize: '20px',
-                            cursor: 'pointer',
-                            padding: '4px',
-                            borderRadius: '0px',
-                            color: '#6b7280',
-                            transition: 'color 0.2s'
-                          }}
-                          onMouseEnter={(e) => (e.target as HTMLButtonElement).style.color = '#374151'}
-                          onMouseLeave={(e) => (e.target as HTMLButtonElement).style.color = '#6b7280'}
+                          className="absolute top-4 right-4 bg-transparent border-none text-lg sm:text-xl cursor-pointer p-2 rounded text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors min-h-8 min-w-8 flex items-center justify-center"
+                          data-testid="button-close-modal"
                         >
                           ✕
                         </button>
@@ -818,10 +757,342 @@ export default function Tasks() {
         </div>
       </div>
 
-      <div className="flex gap-6">
-        {/* Sidebar avec filtres */}
+      {/* Section filtres - Responsive */}
+      <div className={`${filtersOpen ? 'block' : 'hidden'} lg:hidden mb-4`}>
+        <Card className="mb-4 sm:mb-6">
+          <CardHeader className="pb-3 sm:pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base sm:text-lg">Filtres</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFiltersOpen(false)}
+                className="sm:hidden p-1"
+                data-testid="button-close-filters"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3 sm:space-y-4">
+            {/* Recherche */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-11 sm:h-10 text-base sm:text-sm"
+                data-testid="input-search-tasks"
+              />
+            </div>
+
+            {/* Filtres en grille responsive */}
+            <div className="grid grid-cols-1 gap-3 sm:gap-4">
+              {/* Filtre par statut */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Statut
+                </label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-11 sm:h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes</SelectItem>
+                    <SelectItem value="pending">En cours</SelectItem>
+                    <SelectItem value="completed">Terminées</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filtre par priorité */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Priorité
+                </label>
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger className="h-11 sm:h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes</SelectItem>
+                    <SelectItem value="high">Élevée</SelectItem>
+                    <SelectItem value="medium">Moyenne</SelectItem>
+                    <SelectItem value="low">Faible</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Filtre par échéance */}
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Échéance
+                </label>
+                <Select value={dueDateFilter} onValueChange={setDueDateFilter}>
+                  <SelectTrigger className="h-11 sm:h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes</SelectItem>
+                    <SelectItem value="today">Aujourd'hui</SelectItem>
+                    <SelectItem value="this_week">Cette semaine</SelectItem>
+                    <SelectItem value="overdue">En retard</SelectItem>
+                    <SelectItem value="no_due_date">Sans échéance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Zone principale mobile/tablet - Contenu pleine largeur */}
+      <div className="block lg:hidden">
+        <Tabs value={viewMode} onValueChange={setViewMode} className="h-full">
+          <TabsContent value="list" className="mt-0">
+            {/* Contenu mobile identique au desktop mais optimisé */}
+            {totalItems === 0 ? (
+              <div className="text-center py-8 sm:py-12">
+                <ListTodo className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+                  Aucune tâche
+                </h3>
+                <p className="text-gray-600 text-sm sm:text-base">
+                  Aucune tâche trouvée avec les filtres sélectionnés.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 sm:space-y-4">
+                {/* Tâches en cours - Mobile optimisé */}
+                {paginatedTasks.filter(task => task.status === 'pending').length > 0 && (
+                  <div>
+                    <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 px-1">
+                      Tâches en cours ({paginatedTasks.filter(task => task.status === 'pending').length})
+                    </h4>
+                    <div className="space-y-2 sm:space-y-3">
+                      {paginatedTasks
+                        .filter(task => task.status === 'pending')
+                        .map((task) => {
+                          const priorityConfig = getPriorityConfig(task.priority);
+                          const PriorityIcon = priorityConfig.icon;
+                          const isFuture = isTaskFuture(task);
+                          const startDateStatus = getStartDateStatus(task.startDate);
+                          
+                          return (
+                            <Card key={task.id} className={`${isFuture ? 
+                              "hover:shadow-md transition-all duration-200 bg-gray-50 border-dashed border-gray-300 opacity-75" : 
+                              "hover:shadow-md transition-all duration-200 bg-white border-solid"} touch-manipulation`}
+                              data-testid={`task-card-${task.id}`}>
+                              <CardContent className="p-3 sm:p-4">
+                                {/* Layout mobile : vertical stack */}
+                                <div className="space-y-3">
+                                  {/* Header de la tâche */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <h5 className={`font-medium text-sm sm:text-base leading-tight ${isFuture ? "text-gray-600 italic" : "text-gray-900"}`}>
+                                        {task.title}
+                                        {isFuture && " (Programmée)"}
+                                      </h5>
+                                    </div>
+                                    
+                                    {/* Badges de priorité et statut */}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <Badge variant={priorityConfig.color} className="flex items-center gap-1 text-xs">
+                                        <PriorityIcon className="w-3 h-3" />
+                                        {priorityConfig.label}
+                                      </Badge>
+                                      {isFuture && (
+                                        <Badge variant="outline" className="flex items-center gap-1 text-xs border-orange-300 text-orange-700 bg-orange-50">
+                                          <Clock className="w-3 h-3" />
+                                          Future
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Description */}
+                                  {task.description && (
+                                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                  
+                                  {/* Info assignation et création */}
+                                  <div className="text-xs text-gray-500 space-y-1">
+                                    <div>Assigné à: {task.assignedTo}</div>
+                                    <div>Créée: {format(new Date(task.createdAt), 'dd/MM/yyyy HH:mm', { locale: fr })}</div>
+                                  </div>
+
+                                  {/* Dates importantes */}
+                                  <div className="space-y-2">
+                                    {[
+                                      // Date de départ
+                                      startDateStatus && (
+                                        <div key="start" className="flex items-center gap-2">
+                                          <Badge variant={startDateStatus.color} className="flex items-center gap-1 text-xs">
+                                            <startDateStatus.icon className="w-3 h-3" />
+                                            📅 {startDateStatus.text}
+                                          </Badge>
+                                          <span className="text-xs text-gray-500">
+                                            {startDateStatus.label}
+                                            {task.startDate && ` (${format(new Date(task.startDate), 'dd/MM/yyyy', { locale: fr })})`}
+                                          </span>
+                                        </div>
+                                      ),
+                                      // Date d'échéance
+                                      (() => {
+                                        const dueDateStatus = getDueDateStatus(task.dueDate, task.status);
+                                        if (dueDateStatus) {
+                                          const DueDateIcon = dueDateStatus.icon;
+                                          return (
+                                            <div key="due" className="flex items-center gap-2">
+                                              <Badge variant={dueDateStatus.color} className="flex items-center gap-1 text-xs">
+                                                <DueDateIcon className="w-3 h-3" />
+                                                ⏰ {dueDateStatus.text}
+                                              </Badge>
+                                              <span className="text-xs text-gray-500">{dueDateStatus.label}</span>
+                                            </div>
+                                          );
+                                        } else if (task.dueDate) {
+                                          return (
+                                            <div key="due-normal" className="flex items-center gap-2">
+                                              <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                                                <Calendar className="w-3 h-3" />
+                                                ⏰ {format(new Date(task.dueDate), 'dd/MM', { locale: fr })}
+                                              </Badge>
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      })()
+                                    ].filter(Boolean)}
+                                  </div>
+                                  
+                                  {/* Actions - Mobile friendly */}
+                                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+                                    {isFuture && (
+                                      <div className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                                        Visible en avance ({user?.role})
+                                      </div>
+                                    )}
+                                    
+                                    {canEditTasks && !isFuture && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleCompleteTask(task.id)}
+                                        className="text-green-600 hover:text-green-700 min-h-[36px] px-3"
+                                        data-testid={`button-complete-task-${task.id}`}
+                                      >
+                                        <CheckCircle className="w-4 h-4 mr-1" />
+                                        <span className="text-xs">Terminer</span>
+                                      </Button>
+                                    )}
+                                    {canEditTasks && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleEditTask(task)}
+                                        className={`${isFuture ? "opacity-60" : ""} min-h-[36px] px-3`}
+                                        data-testid={`button-edit-task-${task.id}`}
+                                      >
+                                        <Edit className="w-4 h-4 mr-1" />
+                                        <span className="text-xs">Modifier</span>
+                                      </Button>
+                                    )}
+                                    {canEditTasks && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleDeleteClick(task)}
+                                        className={`${isFuture ? "text-red-600 hover:text-red-700 opacity-60" : "text-red-600 hover:text-red-700"} min-h-[36px] px-3`}
+                                        data-testid={`button-delete-task-${task.id}`}
+                                      >
+                                        <Trash2 className="w-4 h-4 mr-1" />
+                                        <span className="text-xs">Supprimer</span>
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tâches terminées - Mobile optimisé */}
+                {paginatedTasks.filter(task => task.status === 'completed').length > 0 && (
+                  <div>
+                    <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 mt-6 px-1">
+                      Tâches terminées ({paginatedTasks.filter(task => task.status === 'completed').length})
+                    </h4>
+                    <div className="space-y-2 sm:space-y-3">
+                      {paginatedTasks
+                        .filter(task => task.status === 'completed')
+                        .map((task) => {
+                          const priorityConfig = getPriorityConfig(task.priority);
+                          const PriorityIcon = priorityConfig.icon;
+                          
+                          return (
+                            <Card key={task.id} className="hover:shadow-md transition-all duration-200 bg-green-50 border-green-200 touch-manipulation"
+                              data-testid={`task-card-completed-${task.id}`}>
+                              <CardContent className="p-3 sm:p-4">
+                                <div className="space-y-2">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <h5 className="font-medium text-sm sm:text-base text-gray-700 line-through">
+                                      {task.title}
+                                    </h5>
+                                    <Badge variant="secondary" className="flex items-center gap-1 text-xs bg-green-100 text-green-700">
+                                      <CheckCircle className="w-3 h-3" />
+                                      Terminée
+                                    </Badge>
+                                  </div>
+                                  
+                                  {task.description && (
+                                    <p className="text-xs sm:text-sm text-gray-500">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                  
+                                  <div className="flex items-center justify-between text-xs text-gray-500">
+                                    <span>Assigné à: {task.assignedTo}</span>
+                                    <span>Terminée: {format(new Date(task.updatedAt), 'dd/MM/yyyy', { locale: fr })}</span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Pagination - Mobile friendly */}
+                {totalPages > 1 && (
+                  <div className="mt-6 flex justify-center">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={totalItems}
+                      onPageChange={setCurrentPage}
+                      itemsPerPage={itemsPerPage}
+                      onItemsPerPageChange={setItemsPerPage}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Sidebar desktop uniquement */}
+      <div className="hidden lg:flex gap-6">
+        {/* Sidebar avec filtres desktop */}
         <div className="w-80 bg-gray-50 border-r border-gray-200 p-4 flex-shrink-0">
-          {/* Filtres */}
           <Card>
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Filtres</CardTitle>
@@ -895,7 +1166,7 @@ export default function Tasks() {
           </Card>
         </div>
 
-        {/* Zone principale avec les tâches */}
+        {/* Zone principale avec les tâches - Desktop */}
         <div className="flex-1">
           {/* Contenu selon la vue sélectionnée */}
           <Tabs value={viewMode} onValueChange={setViewMode} className="h-full">
