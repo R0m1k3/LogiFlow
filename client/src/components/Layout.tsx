@@ -3,14 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { LogOut, Store, Menu, AlertTriangle, Smartphone, Monitor } from "lucide-react";
+import { LogOut, Store, Menu, AlertTriangle } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useScreenSize } from "@/hooks/use-screen-size";
-import { usePhoneMode } from "@/hooks/use-phone-mode";
 import { StoreProvider } from "@/contexts/StoreContext";
 import Sidebar from "./Sidebar";
-import PhoneBottomNav from "./PhoneBottomNav";
 import WeatherWidget from "./WeatherWidget";
 import DateWidget from "./DateWidget";
 import type { Group } from "@shared/schema";
@@ -26,7 +24,6 @@ export default function Layout({ children }: LayoutProps) {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { screenSize, isMobileOrTablet, isTablet } = useScreenSize();
-  const { isPhoneMode, setPhoneMode, canUsePhoneMode } = usePhoneMode();
   
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
     // Restaurer le selectedStoreId depuis localStorage si disponible
@@ -125,9 +122,9 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <StoreProvider value={{ selectedStoreId, setSelectedStoreId, stores, sidebarCollapsed, setSidebarCollapsed, mobileMenuOpen, setMobileMenuOpen, storeInitialized }}>
-      <div className={`layout-container flex bg-gray-50 ${isPhoneMode ? 'phone-mode' : ''}`}>
+      <div className="layout-container flex bg-gray-50">
         {/* Mobile overlay for normal mode */}
-        {!isPhoneMode && isMobile && mobileMenuOpen && (
+        {isMobile && mobileMenuOpen && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setMobileMenuOpen(false)}
@@ -135,25 +132,21 @@ export default function Layout({ children }: LayoutProps) {
         )}
         
         {/* Sidebar for normal mode */}
-        {!isPhoneMode && <Sidebar />}
+        <Sidebar />
         
         <main className={`flex-1 flex flex-col h-full ${
           // Ajustement des marges selon le mode
-          isPhoneMode 
-            ? 'ml-0 mb-20' // Mode téléphone : pas de marge gauche, marge bas pour bottom nav
-            : isMobile 
+          isMobile 
               ? 'ml-0' 
               : (isTablet && !sidebarCollapsed) ? 'ml-48' : 'ml-0'
         }`}>
           {/* Header with mobile menu and store selector */}
-          <header className={`${
-            isPhoneMode ? 'h-12' : 'h-16'
-          } bg-white border-b border-gray-200 flex items-center justify-between ${
+          <header className={`h-16 bg-white border-b border-gray-200 flex items-center justify-between ${
             isMobileOrTablet ? 'px-3' : 'px-6'
           }`}>
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               {/* Mobile menu button (only in normal mode) */}
-              {!isPhoneMode && isMobile && (
+              {isMobile && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -169,47 +162,13 @@ export default function Layout({ children }: LayoutProps) {
               <div className={`flex items-center ${
                 isMobile ? 'gap-1' : 'gap-3'
               } min-w-0`}>
-                {/* En mode téléphone, affichage simplifié */}
-                {isPhoneMode ? (
-                  <div className="flex items-center gap-2">
-                    <WeatherWidget />
-                    {/* Phone mode toggle button */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setPhoneMode(!isPhoneMode)}
-                      className="min-h-[44px] min-w-[44px] p-2 flex-shrink-0"
-                      data-testid="button-phone-mode-toggle"
-                      title="Basculer vers le mode normal"
-                    >
-                      <Monitor className="h-4 w-4 text-blue-600" />
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <WeatherWidget />
-                    {!isMobile && <DateWidget />}
-                    
-                    {/* Phone mode toggle button */}
-                    {canUsePhoneMode && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPhoneMode(!isPhoneMode)}
-                        className="min-h-[44px] min-w-[44px] p-2 flex-shrink-0"
-                        data-testid="button-phone-mode-toggle"
-                        title="Basculer vers le mode téléphone"
-                      >
-                        <Smartphone className="h-4 w-4 text-gray-600" />
-                      </Button>
-                    )}
-                  </>
-                )}
+                <WeatherWidget />
+                {!isMobile && <DateWidget />}
               </div>
             </div>
 
             {/* Store selector for admin, directeur, and manager - responsive */}
-            {!isPhoneMode && user && (user.role === 'admin' || user.role === 'directeur' || user.role === 'manager') && stores.length > 0 && (
+            {user && (user.role === 'admin' || user.role === 'directeur' || user.role === 'manager') && stores.length > 0 && (
               <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 <Store className="h-4 w-4 text-gray-500 hidden sm:block" />
                 <Select
@@ -299,16 +258,12 @@ export default function Layout({ children }: LayoutProps) {
           )}
 
           <div className={`flex-1 bg-gray-50 h-full overflow-y-auto ${
-            isPhoneMode 
-              ? 'p-2' // Mode téléphone : padding réduit
-              : isMobileOrTablet ? 'p-3' : 'p-6'
+              isMobileOrTablet ? 'p-3' : 'p-6'
           }`}>
             {children}
           </div>
         </main>
         
-        {/* Bottom navigation for phone mode (only when authenticated) */}
-        {isPhoneMode && user && <PhoneBottomNav user={user} location={location} />}
       </div>
     </StoreProvider>
   );

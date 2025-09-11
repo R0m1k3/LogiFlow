@@ -1565,37 +1565,10 @@ export default function Tasks() {
 
 {/* Modal d'édition */}
       {showEditModal && selectedTask && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '0px',
-            maxWidth: '600px',
-            width: '90%',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-          }}>
-            <div style={{
-              padding: '24px 24px 16px',
-              borderBottom: '1px solid #e5e7eb',
-              position: 'relative'
-            }}>
-              <h2 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                margin: '0'
-              }}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[1000] flex items-start sm:items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-full sm:max-w-2xl w-full max-h-[calc(100vh-2rem)] overflow-y-auto shadow-2xl">
+            <div className="p-6 pb-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+              <h2 className="text-lg font-semibold m-0 pr-10 dark:text-white">
                 Modifier la tâche
               </h2>
               <button
@@ -1603,21 +1576,7 @@ export default function Tasks() {
                   setShowEditModal(false);
                   setSelectedTask(null);
                 }}
-                style={{
-                  position: 'absolute',
-                  top: '16px',
-                  right: '16px',
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '20px',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  borderRadius: '0px',
-                  color: '#6b7280',
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={(e) => (e.target as HTMLButtonElement).style.color = '#374151'}
-                onMouseLeave={(e) => (e.target as HTMLButtonElement).style.color = '#6b7280'}
+                className="absolute top-4 right-4 bg-transparent border-none text-xl cursor-pointer p-2 rounded text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
               >
                 ✕
               </button>
@@ -1637,86 +1596,32 @@ export default function Tasks() {
 
 {/* Modal de confirmation de suppression */}
       {showDeleteModal && taskToDelete && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '0px',
-            maxWidth: '400px',
-            width: '90%',
-            padding: '24px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
-          }}>
-            <h2 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              margin: '0 0 16px 0',
-              color: '#dc2626',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[1000] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-sm w-full p-6 shadow-2xl mx-4">
+            <h2 className="text-lg font-semibold mb-4 text-red-600 dark:text-red-400 flex items-center gap-2">
               ⚠️ Confirmer la suppression
             </h2>
-            <div style={{ marginBottom: '24px' }}>
-              <p style={{
-                color: '#374151',
-                lineHeight: '1.5',
-                margin: '0 0 8px 0'
-              }}>
+            <div className="mb-6">
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
                 Êtes-vous sûr de vouloir supprimer la tâche "{taskToDelete.title}" ?
               </p>
-              <p style={{
-                fontSize: '14px',
-                color: '#6b7280',
-                margin: '0'
-              }}>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Cette action est irréversible.
               </p>
             </div>
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end'
-            }}>
+            <div className="flex gap-3 flex-col sm:flex-row">
               <button
                 onClick={() => {
                   setShowDeleteModal(false);
                   setTaskToDelete(null);
                 }}
-                style={{
-                  padding: '8px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0px',
-                  backgroundColor: 'white',
-                  cursor: 'pointer'
-                }}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 order-2 sm:order-1"
               >
                 Annuler
               </button>
               <button 
                 onClick={handleConfirmDelete}
-                style={{
-                  padding: '8px 16px',
-                  border: 'none',
-                  borderRadius: '0px',
-                  backgroundColor: '#dc2626',
-                  color: 'white',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
+                className="px-4 py-2 border-none rounded-md bg-red-600 text-white cursor-pointer hover:bg-red-700 flex items-center justify-center gap-2 order-1 sm:order-2"
               >
                 🗑️ Supprimer
               </button>
