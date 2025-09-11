@@ -9,7 +9,7 @@ import CreateOrderModal from "@/components/modals/CreateOrderModal";
 import CreateDeliveryModal from "@/components/modals/CreateDeliveryModal";
 import StatsPanel from "@/components/StatsPanel";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { useStore } from "@/components/Layout";
+import { useStore } from "@/contexts/StoreContext";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfMonth, endOfMonth } from "date-fns";

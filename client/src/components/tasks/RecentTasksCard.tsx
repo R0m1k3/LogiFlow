@@ -13,7 +13,7 @@ import {
 import { format, addDays, isAfter, isBefore } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useLocation } from "wouter";
-import { useStore } from "@/components/Layout";
+import { useStore } from "@/contexts/StoreContext";
 import { Task } from "@shared/schema";
 
 type TaskWithRelations = Task & {

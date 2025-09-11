@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { insertCustomerOrderFrontendSchema, type CustomerOrderWithRelations, type Group, type Supplier } from "@shared/schema";
-import { useStore } from "@/components/Layout";
+import { useStore } from "@/contexts/StoreContext";
 
 const customerOrderFormSchema = z.object({
   orderTaker: z.string().min(1, "Qui a pris la commande est requis"),

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Package, Truck, Clock } from "lucide-react";
-import { useStore } from "./Layout";
+import { useStore } from "@/contexts/StoreContext";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 
 interface StatsPanelProps {

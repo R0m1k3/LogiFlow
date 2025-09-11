@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { safeFormat } from "@/lib/dateUtils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useStore } from "@/components/Layout";
+import { useStore } from "@/contexts/StoreContext";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { usePermissions } from "@shared/permissions";
 import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, ChevronLeft, ChevronRight } from "lucide-react";

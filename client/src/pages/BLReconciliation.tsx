@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useStore } from "@/components/Layout";
+import { useStore } from "@/contexts/StoreContext";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { usePermissions } from "@shared/permissions";
 import { Pagination, usePagination } from "@/components/ui/pagination";

@@ -39,7 +39,7 @@ import type { CustomerOrderWithRelations, Group } from "@shared/schema";
 import { CustomerOrderForm } from "@/components/CustomerOrderForm";
 import { CustomerOrderDetails } from "@/components/CustomerOrderDetails";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
-import { useStore } from "@/components/Layout";
+import { useStore } from "@/contexts/StoreContext";
 import { usePermissions } from "@shared/permissions";
 
 export default function CustomerOrders() {

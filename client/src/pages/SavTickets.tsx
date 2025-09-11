@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useStore } from "@/components/Layout";
+import { useStore } from "@/contexts/StoreContext";
 import { 
   Plus, 
   Search, 

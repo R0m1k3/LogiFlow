@@ -80,6 +80,17 @@
     max-width: 4rem !important;
   }
   
+  .sidebar-tablet {
+    width: 12rem !important;
+    min-width: 12rem !important;
+    max-width: 12rem !important;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 30;
+  }
+  
   .sidebar-expanded {
     width: 16rem !important;
     min-width: 16rem !important;
