@@ -912,7 +912,7 @@ export default function BLReconciliation() {
                                 const blAmount = delivery.blAmount ? parseFloat(delivery.blAmount) : 0;
                                 const invoiceAmount = delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0;
                                 if (blAmount && invoiceAmount) {
-                                  const diff = blAmount - invoiceAmount;
+                                  const diff = invoiceAmount - blAmount;
                                   const diffAbs = Math.abs(diff);
                                   return (
                                     <div className={`font-medium text-center ${
