@@ -11,8 +11,8 @@ export interface PhoneModeConfig {
 export function usePhoneMode(): PhoneModeConfig {
   const { isMobile, dimensions } = useScreenSize()
   
-  // Déterminer si l'appareil peut bénéficier du mode téléphone
-  const canUsePhoneMode = isMobile || dimensions.width <= 480
+  // L'icône de mode téléphone est toujours disponible pour permettre aux utilisateurs de tester
+  const canUsePhoneMode = true
   
   // Auto-suggestion pour très petits écrans (< 400px)
   const autoSuggestPhoneMode = dimensions.width < 400
