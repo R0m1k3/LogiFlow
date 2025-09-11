@@ -39,7 +39,7 @@ import {
   Sparkles 
 } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { useStore } from "@/components/Layout";
+import { useStore } from "@/contexts/StoreContext";
 import { safeFormat, safeDate } from "@/lib/dateUtils";
 import { 
   insertAnnouncementSchema,

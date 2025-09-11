@@ -21,7 +21,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { useStore } from "@/components/Layout";
+import { useStore } from "@/contexts/StoreContext";
 import { apiRequest } from "@/lib/queryClient";
 import type { DlcProductWithRelations, InsertDlcProduct } from "@shared/schema";
 

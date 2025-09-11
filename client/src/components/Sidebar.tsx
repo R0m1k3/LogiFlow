@@ -1,8 +1,9 @@
 import { Link, useLocation } from "wouter";
 import { useAuthSimple } from "@/hooks/useAuthSimple";
 import { Button } from "@/components/ui/button";
-import { useStore } from "./Layout";
+import { useStore } from "@/contexts/StoreContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useScreenSize } from "@/hooks/use-screen-size";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,6 +42,7 @@ export default function Sidebar() {
   const [location] = useLocation();
   const { sidebarCollapsed, setSidebarCollapsed, mobileMenuOpen, setMobileMenuOpen } = useStore();
   const isMobile = useIsMobile();
+  const { screenSize, isMobileOrTablet, isTablet } = useScreenSize();
   const [showBapModal, setShowBapModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedRecipient, setSelectedRecipient] = useState<string>('');
@@ -338,12 +340,24 @@ export default function Sidebar() {
 
 
 
-  // Classes responsives pour la sidebar avec classes CSS forcées pour cohérence
-  const sidebarClasses = isMobile 
-    ? `fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 shadow-lg transform transition-transform duration-300 ease-in-out ${
+  // Classes responsives adaptées avec support tablette
+  const getSidebarClasses = () => {
+    if (isMobile) {
+      return `fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 shadow-lg transform transition-transform duration-300 ease-in-out ${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-      }`
-    : `${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`;
+      }`;
+    }
+    
+    // Mode tablette : semi-collapsed par défaut ou collapsed si forcé
+    if (isTablet) {
+      return `${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-tablet'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`;
+    }
+    
+    // Mode desktop standard
+    return `${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`;
+  };
+  
+  const sidebarClasses = getSidebarClasses();
   
   // Debug log pour vérifier l'état de la sidebar
   console.log('🔧 Sidebar Debug:', { 
@@ -542,16 +556,32 @@ export default function Sidebar() {
             return (
               <Link key={item.path} href={item.path}>
                 <div
-                  className={`flex items-center ${sidebarCollapsed && !isMobile ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 ${
+                  className={`flex items-center transition-colors hover:bg-gray-100 ${
+                    // Espacement adaptatif selon l'écran et l'état
+                    sidebarCollapsed && !isMobile 
+                      ? 'px-3 py-3 justify-center min-h-[44px]' 
+                      : isMobileOrTablet 
+                        ? 'px-4 py-3 min-h-[48px]' 
+                        : 'px-3 py-2 min-h-[40px]'
+                  } text-sm font-medium ${
                     active
-                      ? 'bg-gray-100 text-gray-900 border-r-2 border-gray-700'
+                      ? 'bg-gray-100 text-gray-900 border-r-2 border-blue-600'
                       : 'text-gray-700'
                   }`}
                   title={sidebarCollapsed && !isMobile ? item.label : undefined}
                   onClick={handleMenuClick}
                 >
-                  <Icon className={`h-4 w-4 ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
-                  {(!sidebarCollapsed || isMobile) && item.label}
+                  <Icon className={`${
+                    // Tailles d'icônes adaptatives
+                    isMobile ? 'h-5 w-5' : 
+                    isTablet ? 'h-6 w-6' : 
+                    'h-5 w-5'
+                  } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
+                  {(!sidebarCollapsed || isMobile) && (
+                    <span className={`${isMobileOrTablet ? 'text-base' : 'text-sm'} font-medium`}>
+                      {item.label}
+                    </span>
+                  )}
                 </div>
               </Link>
             );
@@ -582,15 +612,29 @@ export default function Sidebar() {
                 return (
                   <div key={item.path}>
                     <div
-                      className={`flex items-center cursor-pointer ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 text-gray-700`}
-                      title={sidebarCollapsed ? item.label : undefined}
+                      className={`flex items-center cursor-pointer transition-colors hover:bg-gray-100 text-gray-700 ${
+                        sidebarCollapsed && !isMobile 
+                          ? 'px-3 py-3 justify-center min-h-[44px]' 
+                          : isMobileOrTablet 
+                            ? 'px-4 py-3 min-h-[48px]' 
+                            : 'px-3 py-2 min-h-[40px]'
+                      } text-sm font-medium`}
+                      title={sidebarCollapsed && !isMobile ? item.label : undefined}
                       onClick={() => {
                         setShowBapModal(true);
                         if (isMobile) setMobileMenuOpen(false);
                       }}
                     >
-                      <Icon className={`h-4 w-4 ${sidebarCollapsed ? '' : 'mr-3'}`} />
-                      {!sidebarCollapsed && item.label}
+                      <Icon className={`${
+                        isMobile ? 'h-5 w-5' : 
+                        isTablet ? 'h-6 w-6' : 
+                        'h-5 w-5'
+                      } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
+                      {(!sidebarCollapsed || isMobile) && (
+                        <span className={`${isMobileOrTablet ? 'text-base' : 'text-sm'} font-medium`}>
+                          {item.label}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -599,16 +643,30 @@ export default function Sidebar() {
               return (
                 <Link key={item.path} href={item.path}>
                   <div
-                    className={`flex items-center ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-3 py-2'} text-sm font-medium transition-colors hover:bg-gray-100 ${
+                    className={`flex items-center transition-colors hover:bg-gray-100 ${
+                      sidebarCollapsed && !isMobile 
+                        ? 'px-3 py-3 justify-center min-h-[44px]' 
+                        : isMobileOrTablet 
+                          ? 'px-4 py-3 min-h-[48px]' 
+                          : 'px-3 py-2 min-h-[40px]'
+                    } text-sm font-medium ${
                       active
-                        ? 'bg-gray-100 text-gray-900 border-r-2 border-gray-700'
+                        ? 'bg-gray-100 text-gray-900 border-r-2 border-blue-600'
                         : 'text-gray-700'
                     }`}
-                    title={sidebarCollapsed ? item.label : undefined}
+                    title={sidebarCollapsed && !isMobile ? item.label : undefined}
                     onClick={() => console.log(`Navigating to admin: ${item.path}`)}
                   >
-                    <Icon className={`h-4 w-4 ${sidebarCollapsed ? '' : 'mr-3'}`} />
-                    {!sidebarCollapsed && item.label}
+                    <Icon className={`${
+                      isMobile ? 'h-5 w-5' : 
+                      isTablet ? 'h-6 w-6' : 
+                      'h-5 w-5'
+                    } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
+                    {(!sidebarCollapsed || isMobile) && (
+                      <span className={`${isMobileOrTablet ? 'text-base' : 'text-sm'} font-medium`}>
+                        {item.label}
+                      </span>
+                    )}
                   </div>
                 </Link>
               );

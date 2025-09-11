@@ -1,35 +1,17 @@
-import { ReactNode, useState, createContext, useContext, useEffect } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { LogOut, Store, Menu, AlertTriangle } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useScreenSize } from "@/hooks/use-screen-size";
+import { StoreProvider } from "@/contexts/StoreContext";
 import Sidebar from "./Sidebar";
 import WeatherWidget from "./WeatherWidget";
 import DateWidget from "./DateWidget";
 import type { Group } from "@shared/schema";
 
-interface StoreContextType {
-  selectedStoreId: number | null;
-  setSelectedStoreId: (storeId: number | null) => void;
-  stores: Group[];
-  sidebarCollapsed: boolean;
-  setSidebarCollapsed: (collapsed: boolean) => void;
-  mobileMenuOpen: boolean;
-  setMobileMenuOpen: (open: boolean) => void;
-  storeInitialized: boolean;
-}
-
-const StoreContext = createContext<StoreContextType | undefined>(undefined);
-
-export const useStore = () => {
-  const context = useContext(StoreContext);
-  if (!context) {
-    throw new Error("useStore must be used within a StoreProvider");
-  }
-  return context;
-};
 
 interface LayoutProps {
   children: ReactNode;
@@ -39,6 +21,7 @@ export default function Layout({ children }: LayoutProps) {
   const { user } = useAuthUnified();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const { screenSize, isMobileOrTablet, isTablet } = useScreenSize();
   
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
     // Restaurer le selectedStoreId depuis localStorage si disponible
@@ -136,7 +119,7 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <StoreContext.Provider value={{ selectedStoreId, setSelectedStoreId, stores, sidebarCollapsed, setSidebarCollapsed, mobileMenuOpen, setMobileMenuOpen, storeInitialized }}>
+    <StoreProvider value={{ selectedStoreId, setSelectedStoreId, stores, sidebarCollapsed, setSidebarCollapsed, mobileMenuOpen, setMobileMenuOpen, storeInitialized }}>
       <div className="layout-container flex bg-gray-50">
         {/* Mobile overlay */}
         {isMobile && mobileMenuOpen && (
@@ -148,32 +131,42 @@ export default function Layout({ children }: LayoutProps) {
         
         <Sidebar />
         
-        <main className="flex-1 flex flex-col h-full">
+        <main className={`flex-1 flex flex-col h-full ${
+          // Ajuster la marge gauche selon la taille de l'écran et l'état de la sidebar
+          isMobile ? 'ml-0' : 
+          isTablet ? (sidebarCollapsed ? 'ml-16' : 'ml-48') : 
+          (sidebarCollapsed ? 'ml-16' : 'ml-64')
+        }`}>
           {/* Header with mobile menu and store selector */}
-          <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6">
-            <div className="flex items-center gap-4">
+          <header className={`h-16 bg-white border-b border-gray-200 flex items-center justify-between ${
+            isMobileOrTablet ? 'px-3' : 'px-6'
+          }`}>
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               {/* Mobile menu button */}
               {isMobile && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setMobileMenuOpen(true)}
-                  className="h-8 w-8 p-0"
+                  className="min-h-[44px] min-w-[44px] p-0 flex-shrink-0"
+                  data-testid="button-mobile-menu"
                 >
                   <Menu className="h-5 w-5" />
                 </Button>
               )}
 
-              {/* Weather and Date widgets */}
-              <div className="flex items-center gap-3">
+              {/* Weather and Date widgets - responsive */}
+              <div className={`flex items-center ${
+                isMobile ? 'gap-1' : 'gap-3'
+              } min-w-0`}>
                 <WeatherWidget />
-                <DateWidget />
+                {!isMobile && <DateWidget />}
               </div>
             </div>
 
             {/* Store selector for admin, directeur, and manager - responsive */}
             {user && (user.role === 'admin' || user.role === 'directeur' || user.role === 'manager') && stores.length > 0 && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 <Store className="h-4 w-4 text-gray-500 hidden sm:block" />
                 <Select
                   value={selectedStoreId?.toString() || (user.role === 'admin' ? "all" : "")}
@@ -206,8 +199,12 @@ export default function Layout({ children }: LayoutProps) {
                     setSelectedStoreId(newStoreId);
                   }}
                 >
-                  <SelectTrigger className="w-32 sm:w-64 border border-gray-300">
-                    <SelectValue placeholder="Sélectionnez un magasin" />
+                  <SelectTrigger className={`border border-gray-300 min-h-[44px] ${
+                    isMobile ? 'w-28 text-xs' : 
+                    isTablet ? 'w-40 text-sm' : 
+                    'w-64 text-sm'
+                  }`} data-testid="select-store">
+                    <SelectValue placeholder="Magasin" />
                   </SelectTrigger>
                   <SelectContent>
                     {/* Only show "Tous les magasins" option for admin */}
@@ -215,7 +212,9 @@ export default function Layout({ children }: LayoutProps) {
                       <SelectItem value="all">
                         <div className="flex items-center gap-2">
                           <div className="w-3 h-3 bg-gray-400"></div>
-                          <span>Tous les magasins</span>
+                          <span className={isMobile ? 'text-xs' : 'text-sm'}>
+                            {isMobile ? 'Tous' : 'Tous les magasins'}
+                          </span>
                         </div>
                       </SelectItem>
                     )}
@@ -226,7 +225,9 @@ export default function Layout({ children }: LayoutProps) {
                             className="w-3 h-3" 
                             style={{ backgroundColor: store.color || '#gray-400' }}
                           />
-                          <span>{store.name}</span>
+                          <span className={`${isMobile ? 'text-xs' : 'text-sm'} truncate max-w-[120px]`}>
+                            {store.name}
+                          </span>
                         </div>
                       </SelectItem>
                     ))}
@@ -253,11 +254,13 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           )}
 
-          <div className="flex-1 bg-gray-50 p-6 h-full overflow-y-auto">
+          <div className={`flex-1 bg-gray-50 h-full overflow-y-auto ${
+            isMobileOrTablet ? 'p-3' : 'p-6'
+          }`}>
             {children}
           </div>
         </main>
       </div>
-    </StoreContext.Provider>
+    </StoreProvider>
   );
 }
