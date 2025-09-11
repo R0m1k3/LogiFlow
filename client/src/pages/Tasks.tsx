@@ -378,7 +378,7 @@ export default function Tasks() {
         throw error;
       }
     },
-    enabled: !!user && (user.role === 'admin' || (user.role === 'directeur' || user.role === 'manager' ? !!selectedStoreId : true)),
+    enabled: !!user, // Charger les données dès que l'utilisateur est connecté
   });
 
   // Fetch users for task assignment - seulement pour admin/manager/directeur
