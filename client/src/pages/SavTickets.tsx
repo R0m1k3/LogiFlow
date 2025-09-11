@@ -455,22 +455,29 @@ export default function SavTickets() {
   });
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Service Après-Vente</h1>
-          <p className="text-gray-600 mt-1">Gestion des tickets SAV et suivi des réparations</p>
-        </div>
-        {canCreate && (
-          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-            <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Nouveau Ticket
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white border-b border-gray-200 p-4 sm:p-6 shadow-sm -m-3 sm:-m-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center">
+              <Wrench className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 text-blue-600" />
+              Service Après-Vente
+            </h1>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
+              Gestion des tickets SAV et suivi des réparations
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {canCreate && (
+              <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+                <DialogTrigger asChild>
+                  <Button className="w-full sm:w-auto">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouveau Ticket
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Créer un nouveau ticket SAV</DialogTitle>
                 <DialogDescription>
@@ -688,6 +695,8 @@ export default function SavTickets() {
             </DialogContent>
           </Dialog>
         )}
+      </div>
+        </div>
       </div>
 
       {/* Stats Cards */}
