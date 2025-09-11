@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
@@ -23,15 +22,13 @@ import {
   Trash2,
   Building,
   User,
-  Phone
 } from "lucide-react";
 import { safeFormat } from "@/lib/dateUtils";
 import CreateOrderModal from "@/components/modals/CreateOrderModal";
 import EditOrderModal from "@/components/modals/EditOrderModal";
 import OrderDetailModal from "@/components/modals/OrderDetailModal";
 import ConfirmDeleteModal from "@/components/modals/ConfirmDeleteModal";
-import ClientCallsModal from "@/components/modals/ClientCallsModal";
-import type { OrderWithRelations, CustomerOrderWithRelations } from "@shared/schema";
+import type { OrderWithRelations } from "@shared/schema";
 
 export default function Orders() {
   const { user } = useAuthUnified();
@@ -68,7 +65,6 @@ export default function Orders() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showClientCallsModal, setShowClientCallsModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithRelations | null>(null);
   const [orderToDelete, setOrderToDelete] = useState<OrderWithRelations | null>(null);
 
@@ -76,21 +72,6 @@ export default function Orders() {
   // CRITICAL FIX: Appliquer le filtrage par storeId pour TOUS les rôles, pas seulement admin
   const ordersUrl = `/api/orders${selectedStoreId ? `?storeId=${selectedStoreId}` : ''}`;
   
-  // Query pour les appels clients en attente
-  const pendingCallsUrl = `/api/customer-orders/pending-calls${selectedStoreId ? `?storeId=${selectedStoreId}` : ''}`;
-  const { data: pendingCalls = [], isLoading: isPendingCallsLoading } = useQuery<CustomerOrderWithRelations[]>({
-    queryKey: [pendingCallsUrl, selectedStoreId],
-    queryFn: async () => {
-      const response = await fetch(pendingCallsUrl, { credentials: 'include' });
-      if (!response.ok) {
-        throw new Error('Failed to fetch pending calls');
-      }
-      const data = await response.json();
-      console.log('📞 Pending calls received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
-      return data;
-    },
-    refetchInterval: 30000, // Refetch every 30 seconds
-  });
   
   const { data: ordersData = [], isLoading } = useQuery<OrderWithRelations[]>({
     queryKey: [ordersUrl, selectedStoreId],
@@ -272,22 +253,6 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* Alerte pour les appels clients en attente */}
-      {!isPendingCallsLoading && pendingCalls.length > 0 && (
-        <Alert 
-          className="sticky top-0 z-50 bg-orange-50 border-orange-200 cursor-pointer hover:bg-orange-100 transition-colors"
-          onClick={() => setShowClientCallsModal(true)}
-          data-testid="alert-client-calls"
-        >
-          <Phone className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-orange-700">
-            <strong>📞 {pendingCalls.length} client{pendingCalls.length > 1 ? 's' : ''} à appeler</strong>
-            <span className="block text-sm mt-1">
-              Produits disponibles - Cliquez pour voir la liste des clients à contacter
-            </span>
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Filters */}
       <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
@@ -503,12 +468,6 @@ export default function Orders() {
         isLoading={deleteMutation.isPending}
       />
 
-      {/* Modal pour les appels clients */}
-      <ClientCallsModal
-        isOpen={showClientCallsModal}
-        onClose={() => setShowClientCallsModal(false)}
-        pendingCalls={pendingCalls}
-      />
     </div>
   );
 }
