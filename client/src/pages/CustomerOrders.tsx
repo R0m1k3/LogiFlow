@@ -890,10 +890,11 @@ export default function CustomerOrders() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleNotificationToggle(order)}
-                              className={order.customerNotified ? "bg-green-100" : ""}
+                              className={order.customerNotified ? "bg-green-600 hover:bg-green-700 text-white border-green-600" : "hover:bg-gray-50"}
+                              title={order.customerNotified ? "Client contacté ✓" : "Cliquer pour marquer comme contacté"}
                             >
                               {order.customerNotified ? (
-                                <PhoneCall className="h-4 w-4" />
+                                <PhoneCall className="h-4 w-4 text-white" />
                               ) : (
                                 <Phone className="h-4 w-4" />
                               )}
