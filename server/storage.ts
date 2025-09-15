@@ -1479,8 +1479,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePublicity(id: number): Promise<void> {
-    await db.delete(publicityParticipations).where(eq(publicityParticipations.publicityId, id));
-    await db.delete(publicities).where(eq(publicities.id, id));
+    console.log(`🗑️ [DELETION] Starting deletion of publicity ID: ${id}`);
+    
+    try {
+      // First, delete all participations (defensive approach for production DB constraints)
+      const deletedParticipations = await db.delete(publicityParticipations).where(eq(publicityParticipations.publicityId, id)).returning();
+      console.log(`🗑️ [DELETION] Deleted ${deletedParticipations.length} participations for publicity ${id}`);
+      
+      // Then delete the publicity itself
+      const deletedPublicity = await db.delete(publicities).where(eq(publicities.id, id)).returning();
+      console.log(`🗑️ [DELETION] Deleted publicity ${id}, found: ${deletedPublicity.length > 0 ? 'YES' : 'NO'}`);
+      
+      if (deletedPublicity.length === 0) {
+        throw new Error(`Publicity with ID ${id} not found`);
+      }
+      
+      console.log(`✅ [DELETION] Successfully deleted publicity ID: ${id}`);
+    } catch (error) {
+      console.error(`❌ [DELETION] Failed to delete publicity ID: ${id}`, error);
+      throw error;
+    }
   }
 
   async getPublicityParticipations(publicityId: number): Promise<PublicityParticipation[]> {
