@@ -3525,23 +3525,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.delete('/api/publicities/:id', isAuthenticated, async (req: any, res) => {
+    const publicityId = req.params.id;
+    console.log(`🗑️ [API] DELETE request received for publicity ID: ${publicityId}`);
+    console.log(`🗑️ [API] User info:`, { 
+      hasUser: !!req.user, 
+      userId: req.user?.id || req.user?.claims?.sub,
+      method: req.method,
+      url: req.url,
+      headers: { 'content-type': req.headers['content-type'] }
+    });
+
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
+        console.log(`❌ [API] User not found for publicity deletion: ${publicityId}`);
         return res.status(404).json({ message: "User not found" });
       }
 
+      console.log(`🗑️ [API] User found:`, { id: user.id, role: user.role, name: user.name });
+
       // Check permissions (admin only for deletion)
       if (user.role !== 'admin') {
+        console.log(`❌ [API] Insufficient permissions for publicity deletion: ${publicityId}, user role: ${user.role}`);
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      const id = parseInt(req.params.id);
+      const id = parseInt(publicityId);
+      console.log(`🗑️ [API] Admin ${user.name} (${user.id}) attempting to delete publicity ${id}`);
+      
       await storage.deletePublicity(id);
+      
+      console.log(`✅ [API] Successfully deleted publicity ${id} by admin ${user.name}`);
       res.json({ message: "Publicity deleted successfully" });
     } catch (error) {
-      console.error("Error deleting publicity:", error);
-      res.status(500).json({ message: "Failed to delete publicity" });
+      console.error(`❌ [API] Error deleting publicity ${publicityId}:`, error);
+      res.status(500).json({ message: "Failed to delete publicity", error: error.message });
     }
   });
 
