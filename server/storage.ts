@@ -4633,18 +4633,19 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use MemStorage in development, DatabaseStorage in production
+// Use DatabaseStorage when DATABASE_URL is available, MemStorage as fallback
 const isProduction = process.env.NODE_ENV === 'production';
+const hasDatabase = !!process.env.DATABASE_URL;
 console.log('🔗 Database initialization:', {
   NODE_ENV: process.env.NODE_ENV,
   isProduction: isProduction,
-  hasDbUrl: !!process.env.DATABASE_URL,
+  hasDbUrl: hasDatabase,
   dbHost: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'unknown'
 });
 
-export const storage: IStorage = isProduction ? new DatabaseStorage() : new MemStorage();
-if (isProduction) {
-  console.log('✅ Using DatabaseStorage (production PostgreSQL)');
+export const storage: IStorage = hasDatabase ? new DatabaseStorage() : new MemStorage();
+if (hasDatabase) {
+  console.log('✅ Using DatabaseStorage (PostgreSQL database detected)');
 } else {
-  console.log('🔧 DEV: Using MemStorage (development fallback)');
+  console.log('🔧 DEV: Using MemStorage (no database URL found)');
 }
