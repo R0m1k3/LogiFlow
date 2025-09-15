@@ -140,7 +140,6 @@ export const publicities = pgTable("publicities", {
 export const publicityParticipations = pgTable("publicity_participations", {
   publicityId: integer("publicity_id").notNull(),
   groupId: integer("group_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.publicityId, table.groupId] })
 }));
