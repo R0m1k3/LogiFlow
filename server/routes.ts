@@ -3563,15 +3563,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Alternative DELETE route using POST (for production environments that block DELETE)
+  app.post('/api/publicities/:id/delete', isAuthenticated, async (req: any, res) => {
+    const publicityId = req.params.id;
+    console.log(`🗑️ [API-POST] DELETE via POST request received for publicity ID: ${publicityId}`);
+    console.log(`🗑️ [API-POST] User info:`, { 
+      hasUser: !!req.user, 
+      userId: req.user?.id || req.user?.claims?.sub,
+      method: req.method,
+      url: req.url
+    });
 
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        console.log(`❌ [API-POST] User not found for publicity deletion: ${publicityId}`);
+        return res.status(404).json({ message: "User not found" });
+      }
 
+      console.log(`🗑️ [API-POST] User found:`, { id: user.id, role: user.role, name: user.name });
 
+      // Check permissions (admin only for deletion)
+      if (user.role !== 'admin') {
+        console.log(`❌ [API-POST] Insufficient permissions for publicity deletion: ${publicityId}, user role: ${user.role}`);
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
 
-
-
-
-
-
+      const id = parseInt(publicityId);
+      console.log(`🗑️ [API-POST] Admin ${user.name} (${user.id}) attempting to delete publicity ${id} via POST`);
+      
+      await storage.deletePublicity(id);
+      
+      console.log(`✅ [API-POST] Successfully deleted publicity ${id} by admin ${user.name} via POST`);
+      res.json({ message: "Publicity deleted successfully" });
+    } catch (error) {
+      console.error(`❌ [API-POST] Error deleting publicity ${publicityId} via POST:`, error);
+      res.status(500).json({ message: "Failed to delete publicity", error: error.message });
+    }
+  });
 
   // Schema logging route for production debugging
   app.get('/api/debug/log-schema', isAuthenticated, async (req: any, res) => {

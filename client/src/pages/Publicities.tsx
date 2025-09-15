@@ -94,16 +94,42 @@ export default function Publicities() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/publicities/${id}`, { method: 'DELETE' });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erreur lors de la suppression');
+      // Try POST first (for production environments that block DELETE)
+      console.log(`🗑️ [Frontend] Attempting to delete publicity ${id} using POST method`);
+      
+      try {
+        const response = await fetch(`/api/publicities/${id}/delete`, { 
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        
+        if (response.ok) {
+          console.log(`✅ [Frontend] Successfully deleted publicity ${id} using POST`);
+          return response.json();
+        } else if (response.status === 404) {
+          // Route not found, try DELETE method as fallback (for dev environment)
+          console.log(`⚠️ [Frontend] POST route not found, trying DELETE method`);
+          const deleteResponse = await fetch(`/api/publicities/${id}`, { method: 'DELETE' });
+          
+          if (!deleteResponse.ok) {
+            const error = await deleteResponse.json();
+            throw new Error(error.message || 'Erreur lors de la suppression');
+          }
+          
+          // Handle empty response (204 No Content)
+          if (deleteResponse.status === 204) {
+            return { message: "Publicity deleted successfully" };
+          }
+          return deleteResponse.json();
+        } else {
+          const error = await response.json();
+          throw new Error(error.message || 'Erreur lors de la suppression');
+        }
+      } catch (error) {
+        console.error(`❌ [Frontend] Failed to delete publicity ${id}:`, error);
+        throw error;
       }
-      // Handle empty response (204 No Content) in production
-      if (response.status === 204) {
-        return { message: "Publicity deleted successfully" };
-      }
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/publicities'] });
