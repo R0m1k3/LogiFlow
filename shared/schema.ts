@@ -182,6 +182,7 @@ export const reconciliationComments = pgTable("reconciliation_comments", {
   deliveryId: integer("delivery_id").notNull(), // Référence vers la livraison concernée
   groupId: integer("group_id").notNull(), // Magasin/groupe pour filtrage
   content: text("content").notNull(), // Contenu du commentaire
+  type: varchar("type").notNull().default("info"), // Type du commentaire: info, warning, error, success
   authorId: varchar("author_id").notNull(), // Utilisateur auteur du commentaire
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -631,6 +632,8 @@ export const insertReconciliationCommentSchema = createInsertSchema(reconciliati
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  type: z.enum(["info", "warning", "error", "success"]).default("info"),
 });
 
 export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
