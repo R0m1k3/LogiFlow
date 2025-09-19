@@ -631,8 +631,6 @@ export const insertReconciliationCommentSchema = createInsertSchema(reconciliati
   id: true,
   createdAt: true,
   updatedAt: true,
-}).extend({
-  type: z.enum(["info", "warning", "error", "success"]).default("info"),
 });
 
 export const insertNocodbConfigSchema = createInsertSchema(nocodbConfig).omit({
