@@ -717,6 +717,7 @@ export type DeliveryWithRelations = Delivery & {
   group: Group;
   creator: User;
   order?: OrderWithRelations;
+  reconciliationCommentsCount?: number;
 };
 
 export type PublicityWithRelations = Publicity & {
