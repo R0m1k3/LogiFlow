@@ -948,10 +948,20 @@ export default function BLReconciliation() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleOpenCommentModal(delivery)}
-                                  className={`h-8 w-8 p-0 text-gray-600 hover:text-gray-700 ${delivery.reconciled ? 'opacity-70' : ''}`}
-                                  title="Voir/Gérer les commentaires"
+                                  className={`h-8 w-8 p-0 ${
+                                    delivery.reconciliationCommentsCount && delivery.reconciliationCommentsCount > 0
+                                      ? 'text-blue-600 hover:text-blue-700 border-blue-300' 
+                                      : 'text-gray-600 hover:text-gray-700'
+                                  } ${delivery.reconciled ? 'opacity-70' : ''}`}
+                                  title={`Voir/Gérer les commentaires ${
+                                    delivery.reconciliationCommentsCount ? `(${delivery.reconciliationCommentsCount})` : ''
+                                  }`}
                                 >
-                                  <MessageSquare className="h-4 w-4" />
+                                  <MessageSquare className={`h-4 w-4 ${
+                                    delivery.reconciliationCommentsCount && delivery.reconciliationCommentsCount > 0
+                                      ? 'fill-blue-100' 
+                                      : ''
+                                  }`} />
                                 </Button>
                                 {!delivery.reconciled ? (
                                   <>

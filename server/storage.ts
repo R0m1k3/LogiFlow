@@ -782,9 +782,23 @@ export class DatabaseStorage implements IStorage {
           }
         }
 
+        // Compter les commentaires de rapprochement pour cette livraison
+        let commentsCount = 0;
+        try {
+          const [countResult] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(reconciliationComments)
+            .where(eq(reconciliationComments.deliveryId, delivery.id));
+          
+          commentsCount = Number(countResult?.count || 0);
+        } catch (error) {
+          console.error(`Failed to count reconciliation comments for delivery #${delivery.id}:`, error);
+        }
+
         return {
           ...delivery,
-          order: associatedOrder
+          order: associatedOrder,
+          reconciliationCommentsCount: commentsCount
         };
       })
     );
@@ -898,9 +912,23 @@ export class DatabaseStorage implements IStorage {
           }
         }
 
+        // Compter les commentaires de rapprochement pour cette livraison
+        let commentsCount = 0;
+        try {
+          const [countResult] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(reconciliationComments)
+            .where(eq(reconciliationComments.deliveryId, delivery.id));
+          
+          commentsCount = Number(countResult?.count || 0);
+        } catch (error) {
+          console.error(`Failed to count reconciliation comments for delivery #${delivery.id}:`, error);
+        }
+
         return {
           ...delivery,
-          order: associatedOrder
+          order: associatedOrder,
+          reconciliationCommentsCount: commentsCount
         };
       })
     );
@@ -978,10 +1006,24 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
+    // Compter les commentaires de rapprochement pour cette livraison
+    let commentsCount = 0;
+    try {
+      const [countResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(reconciliationComments)
+        .where(eq(reconciliationComments.deliveryId, id));
+      
+      commentsCount = Number(countResult?.count || 0);
+    } catch (error) {
+      console.error(`Failed to count reconciliation comments for delivery #${id}:`, error);
+    }
+
     return {
       ...delivery,
       creator,
-      order: associatedOrder
+      order: associatedOrder,
+      reconciliationCommentsCount: commentsCount
     } as DeliveryWithRelations;
   }
 
@@ -3278,12 +3320,17 @@ export class MemStorage implements IStorage {
         }
       }
 
+      // Compter les commentaires de rapprochement pour cette livraison
+      const commentsCount = Array.from(this.reconciliationComments.values())
+        .filter(comment => comment.deliveryId === delivery.id).length;
+
       return {
         ...delivery,
         supplier: this.suppliers.get(delivery.supplierId),
         group: this.groups.get(delivery.groupId),
         creator: this.users.get(delivery.createdBy || ''),
-        order: associatedOrder
+        order: associatedOrder,
+        reconciliationCommentsCount: commentsCount
       };
     });
   }
@@ -3315,12 +3362,17 @@ export class MemStorage implements IStorage {
         }
       }
 
+      // Compter les commentaires de rapprochement pour cette livraison
+      const commentsCount = Array.from(this.reconciliationComments.values())
+        .filter(comment => comment.deliveryId === delivery.id).length;
+
       return {
         ...delivery,
         supplier: this.suppliers.get(delivery.supplierId),
         group: this.groups.get(delivery.groupId),
         creator: this.users.get(delivery.createdBy || ''),
-        order: associatedOrder
+        order: associatedOrder,
+        reconciliationCommentsCount: commentsCount
       };
     });
   }
@@ -3343,12 +3395,17 @@ export class MemStorage implements IStorage {
       }
     }
     
+    // Compter les commentaires de rapprochement pour cette livraison
+    const commentsCount = Array.from(this.reconciliationComments.values())
+      .filter(comment => comment.deliveryId === delivery.id).length;
+
     return {
       ...delivery,
       supplier: this.suppliers.get(delivery.supplierId),
       group: this.groups.get(delivery.groupId),
       creator: this.users.get(delivery.createdBy || ''),
-      order: associatedOrder
+      order: associatedOrder,
+      reconciliationCommentsCount: commentsCount
     };
   }
 
