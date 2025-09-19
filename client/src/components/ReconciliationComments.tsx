@@ -18,6 +18,7 @@ interface ReconciliationCommentsProps {
 interface ReconciliationComment {
   id: number;
   content: string;
+  type: "info" | "warning" | "error" | "success";
   deliveryId: number;
   authorId: string;
   groupId: number;
