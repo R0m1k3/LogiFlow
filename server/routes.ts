@@ -1419,8 +1419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const commentId = parseInt(req.params.id);
-      const comments = await storage.getReconciliationComments(0); // Get all to find the comment
-      const comment = comments.find(c => c.id === commentId);
+      const comment = await storage.getReconciliationCommentById(commentId);
       
       if (!comment) {
         return res.status(404).json({ message: "Comment not found" });
@@ -1458,8 +1457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const commentId = parseInt(req.params.id);
-      const comments = await storage.getReconciliationComments(0); // Get all to find the comment
-      const comment = comments.find(c => c.id === commentId);
+      const comment = await storage.getReconciliationCommentById(commentId);
       
       if (!comment) {
         return res.status(404).json({ message: "Comment not found" });
