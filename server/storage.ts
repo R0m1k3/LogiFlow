@@ -259,6 +259,7 @@ export interface IStorage {
 
   // Reconciliation Comments operations
   getReconciliationComments(deliveryId: number): Promise<ReconciliationCommentWithRelations[]>;
+  getReconciliationCommentById(id: number): Promise<ReconciliationCommentWithRelations | undefined>;
   createReconciliationComment(comment: InsertReconciliationComment): Promise<ReconciliationComment>;
   updateReconciliationComment(id: number, comment: Partial<InsertReconciliationComment>): Promise<ReconciliationComment>;
   deleteReconciliationComment(id: number): Promise<void>;
@@ -2650,6 +2651,7 @@ export class DatabaseStorage implements IStorage {
         deliveryId: reconciliationComments.deliveryId,
         groupId: reconciliationComments.groupId,
         content: reconciliationComments.content,
+        type: reconciliationComments.type,
         authorId: reconciliationComments.authorId,
         createdAt: reconciliationComments.createdAt,
         updatedAt: reconciliationComments.updatedAt,
@@ -2693,6 +2695,60 @@ export class DatabaseStorage implements IStorage {
         creator: {} as any, // Will be filled by relations if needed
       }
     })) as ReconciliationCommentWithRelations[];
+  }
+
+  async getReconciliationCommentById(id: number): Promise<ReconciliationCommentWithRelations | undefined> {
+    const [comment] = await db
+      .select({
+        id: reconciliationComments.id,
+        deliveryId: reconciliationComments.deliveryId,
+        groupId: reconciliationComments.groupId,
+        content: reconciliationComments.content,
+        type: reconciliationComments.type,
+        authorId: reconciliationComments.authorId,
+        createdAt: reconciliationComments.createdAt,
+        updatedAt: reconciliationComments.updatedAt,
+        author: users,
+        group: groups,
+        delivery: {
+          id: deliveries.id,
+          orderId: deliveries.orderId,
+          supplierId: deliveries.supplierId,
+          groupId: deliveries.groupId,
+          scheduledDate: deliveries.scheduledDate,
+          deliveredDate: deliveries.deliveredDate,
+          quantity: deliveries.quantity,
+          unit: deliveries.unit,
+          status: deliveries.status,
+          notes: deliveries.notes,
+          blNumber: deliveries.blNumber,
+          blAmount: deliveries.blAmount,
+          invoiceReference: deliveries.invoiceReference,
+          invoiceAmount: deliveries.invoiceAmount,
+          reconciled: deliveries.reconciled,
+          validatedAt: deliveries.validatedAt,
+          createdBy: deliveries.createdBy,
+          createdAt: deliveries.createdAt,
+          updatedAt: deliveries.updatedAt,
+        }
+      })
+      .from(reconciliationComments)
+      .leftJoin(users, eq(reconciliationComments.authorId, users.id))
+      .leftJoin(groups, eq(reconciliationComments.groupId, groups.id))
+      .leftJoin(deliveries, eq(reconciliationComments.deliveryId, deliveries.id))
+      .where(eq(reconciliationComments.id, id));
+
+    if (!comment) return undefined;
+
+    return {
+      ...comment,
+      delivery: {
+        ...comment.delivery,
+        supplier: {} as any, // Will be filled by relations if needed
+        group: comment.group!,
+        creator: {} as any, // Will be filled by relations if needed
+      }
+    } as ReconciliationCommentWithRelations;
   }
 
   async createReconciliationComment(commentData: InsertReconciliationComment): Promise<ReconciliationComment> {
@@ -4619,6 +4675,38 @@ export class MemStorage implements IStorage {
         author,
       } as ReconciliationCommentWithRelations;
     });
+  }
+
+  async getReconciliationCommentById(id: number): Promise<ReconciliationCommentWithRelations | undefined> {
+    const comment = this.reconciliationComments.get(id);
+    if (!comment) return undefined;
+
+    const delivery = this.deliveries.get(comment.deliveryId);
+    const author = this.users.get(comment.authorId);
+    const group = this.groups.get(comment.groupId);
+    
+    if (!delivery || !author || !group) {
+      throw new Error('Missing related data for reconciliation comment');
+    }
+
+    const supplier = this.suppliers.get(delivery.supplierId);
+    const creator = this.users.get(delivery.createdBy);
+    
+    if (!supplier || !creator) {
+      throw new Error('Missing delivery related data for reconciliation comment');
+    }
+
+    return {
+      ...comment,
+      delivery: {
+        ...delivery,
+        supplier,
+        group,
+        creator,
+      },
+      group,
+      author,
+    } as ReconciliationCommentWithRelations;
   }
 
   async createReconciliationComment(commentData: InsertReconciliationComment): Promise<ReconciliationComment> {
