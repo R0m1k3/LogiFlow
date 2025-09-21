@@ -95,7 +95,9 @@ export default function AuthPage() {
       return response;
     },
     onSuccess: async (loginResult) => {
-      console.log('✅ Login successful, refreshing auth state...');
+      if (import.meta.env.DEV) {
+        console.log('✅ Login successful, refreshing auth state...');
+      }
       
       toast({
         title: "Connexion réussie",
@@ -108,10 +110,14 @@ export default function AuthPage() {
       
       // Force immediate authentication state refresh
       const refreshedUserData = await forceAuthRefresh();
-      console.log('🔄 Force auth refresh result:', refreshedUserData);
+      if (import.meta.env.DEV) {
+        console.log('🔄 Force auth refresh result:', refreshedUserData);
+      }
       
       if (refreshedUserData && refreshedUserData.id) {
-        console.log('🔄 User data confirmed, forcing redirect...');
+        if (import.meta.env.DEV) {
+          console.log('🔄 User data confirmed, forcing redirect...');
+        }
         setLocation("/");
       } else {
         setTimeout(() => {
@@ -133,12 +139,14 @@ export default function AuthPage() {
   });
 
   // Debug logging for authentication state
-  console.log('🔍 AuthPage Debug:', {
-    isAuthenticated,
-    isLoading,
-    userId: user?.id,
-    username: user?.username
-  });
+  if (import.meta.env.DEV) {
+    console.log('🔍 AuthPage Debug:', {
+      isAuthenticated,
+      isLoading,
+      userId: user?.id,
+      username: user?.username
+    });
+  }
 
   useEffect(() => {
     if (defaultCredentialsCheck) {
@@ -149,7 +157,9 @@ export default function AuthPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (!isLoading && isAuthenticated && user) {
-      console.log('🔄 User authenticated, redirecting to dashboard...', { user: user.username, authenticated: isAuthenticated });
+      if (import.meta.env.DEV) {
+        console.log('🔄 User authenticated, redirecting to dashboard...', { user: user.username, authenticated: isAuthenticated });
+      }
       // Force immediate redirect to home page
       setLocation("/");
     }
