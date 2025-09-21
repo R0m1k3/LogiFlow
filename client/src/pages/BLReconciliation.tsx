@@ -628,9 +628,29 @@ export default function BLReconciliation() {
 
   // Filtrage des livraisons par recherche et statut de validation
   const filterDeliveries = (deliveries: any[]) => {
+    // Debug temporaire pour production
+    if (deliveries.length > 0 && filterStatus !== "all") {
+      console.log('🔍 DEBUG Filtre Production:', {
+        filterStatus,
+        totalDeliveries: deliveries.length,
+        firstDelivery: {
+          id: deliveries[0].id,
+          reconciled: deliveries[0].reconciled,
+          type: typeof deliveries[0].reconciled,
+          rawValue: JSON.stringify(deliveries[0].reconciled)
+        }
+      });
+    }
+    
     return deliveries.filter((delivery: any) => {
-      // Conversion sûre de reconciled (peut être booléen ou nombre 0/1)
-      const isReconciled = delivery.reconciled === true || delivery.reconciled === 1;
+      // Conversion sûre de reconciled - gestion de tous les cas possibles
+      // PostgreSQL peut retourner : true/false, 1/0, "t"/"f", "true"/"false"
+      const isReconciled = 
+        delivery.reconciled === true || 
+        delivery.reconciled === 1 || 
+        delivery.reconciled === "t" ||
+        delivery.reconciled === "true" ||
+        (typeof delivery.reconciled === 'string' && delivery.reconciled.toLowerCase() === 'true');
       
       // Filtre par statut validé
       if (filterStatus === "validated" && !isReconciled) {
