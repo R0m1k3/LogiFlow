@@ -10,12 +10,14 @@ export function useAuthUnified() {
      window.location.hostname.includes('replit.dev')) &&
      import.meta.env.DEV === true;
 
-  // Debug logging pour comprendre l'environnement
-  console.log('🔍 Auth Environment Debug:', {
-    hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
-    isDev: import.meta.env.DEV,
-    environment: isDevelopment ? 'development' : 'production'
-  });
+  // Debug logging uniquement en développement
+  if (import.meta.env.DEV) {
+    console.log('🔍 Auth Environment Debug:', {
+      hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
+      isDev: import.meta.env.DEV,
+      environment: isDevelopment ? 'development' : 'production'
+    });
+  }
 
   // État pour la version production (fetch direct)
   const [productionUser, setProductionUser] = useState<any>(null);
@@ -43,28 +45,40 @@ export function useAuthUnified() {
 
   // Fonction pour rafraîchir l'authentification
   const refreshAuth = () => {
-    console.log('🔄 RefreshAuth called, isDevelopment:', isDevelopment);
+    if (import.meta.env.DEV) {
+      console.log('🔄 RefreshAuth called, isDevelopment:', isDevelopment);
+    }
     if (!isDevelopment) {
-      console.log('🔄 Triggering production auth refresh');
+      if (import.meta.env.DEV) {
+        console.log('🔄 Triggering production auth refresh');
+      }
       setRefreshTrigger(prev => {
         const newValue = prev + 1;
-        console.log('🔄 Production refresh trigger updated:', prev, '->', newValue);
+        if (import.meta.env.DEV) {
+          console.log('🔄 Production refresh trigger updated:', prev, '->', newValue);
+        }
         return newValue;
       });
     } else {
-      console.log('🔄 Development mode - using React Query refresh');
+      if (import.meta.env.DEV) {
+        console.log('🔄 Development mode - using React Query refresh');
+      }
       developmentQuery.refetch();
     }
   };
 
   // Fonction pour rafraîchir de manière synchrone (pour après login)
   const forceAuthRefresh = async () => {
-    console.log('🔄 ForceAuthRefresh called, isDevelopment:', isDevelopment);
+    if (import.meta.env.DEV) {
+      console.log('🔄 ForceAuthRefresh called, isDevelopment:', isDevelopment);
+    }
     
     if (!isDevelopment) {
       // En production, faire un fetch immédiat et forcer un re-render
       try {
-        console.log('🔄 Production force refresh - fetching user data');
+        if (import.meta.env.DEV) {
+          console.log('🔄 Production force refresh - fetching user data');
+        }
         setProductionLoading(true);
         
         const response = await fetch('/api/user', {
@@ -78,7 +92,9 @@ export function useAuthUnified() {
         
         if (response.ok) {
           const userData = await response.json();
-          console.log('✅ Production force refresh success:', { username: userData?.username, id: userData?.id });
+          if (import.meta.env.DEV) {
+            console.log('✅ Production force refresh success:', { username: userData?.username, id: userData?.id });
+          }
           setProductionUser(userData);
           setProductionError(null);
           setProductionLoading(false);
@@ -88,14 +104,18 @@ export function useAuthUnified() {
           
           return userData;
         } else {
-          console.log('❌ Production force refresh failed:', response.status);
+          if (import.meta.env.DEV) {
+            console.log('❌ Production force refresh failed:', response.status);
+          }
           setProductionUser(null);
           setProductionError(null);
           setProductionLoading(false);
           return null;
         }
       } catch (error) {
-        console.error('❌ Production force refresh error:', error);
+        if (import.meta.env.DEV) {
+          console.error('❌ Production force refresh error:', error);
+        }
         setProductionError(error);
         setProductionUser(null);
         setProductionLoading(false);
@@ -103,7 +123,9 @@ export function useAuthUnified() {
       }
     } else {
       // En développement, forcer un refetch avec invalidation du cache
-      console.log('🔄 Development mode - invalidating cache and refetching');
+      if (import.meta.env.DEV) {
+        console.log('🔄 Development mode - invalidating cache and refetching');
+      }
       const queryClient = useQueryClient();
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       
@@ -111,11 +133,13 @@ export function useAuthUnified() {
       await new Promise(resolve => setTimeout(resolve, 50));
       
       const result = await developmentQuery.refetch();
-      console.log('🔄 Development refetch result:', { 
-        success: result.isSuccess, 
-        hasData: !!result.data,
-        userId: result.data?.id 
-      });
+      if (import.meta.env.DEV) {
+        console.log('🔄 Development refetch result:', { 
+          success: result.isSuccess, 
+          hasData: !!result.data,
+          userId: result.data?.id 
+        });
+      }
       return result.data;
     }
   };
@@ -128,7 +152,9 @@ export function useAuthUnified() {
     
     const checkAuth = async () => {
       try {
-        console.log('🔄 Production auth check starting, refreshTrigger:', refreshTrigger);
+        if (import.meta.env.DEV) {
+          console.log('🔄 Production auth check starting, refreshTrigger:', refreshTrigger);
+        }
         setProductionLoading(true);
         
         const response = await fetch('/api/user', {
@@ -140,19 +166,25 @@ export function useAuthUnified() {
           }
         });
         
-        console.log('🔄 Production auth response:', response.status);
+        if (import.meta.env.DEV) {
+          console.log('🔄 Production auth response:', response.status);
+        }
         
         if (!isMounted) return;
         
         if (response.ok) {
           const userData = await response.json();
-          console.log('✅ Production auth success:', { username: userData?.username, id: userData?.id });
+          if (import.meta.env.DEV) {
+            console.log('✅ Production auth success:', { username: userData?.username, id: userData?.id });
+          }
           if (isMounted) {
             setProductionUser(userData);
             setProductionError(null);
           }
         } else if (response.status === 401) {
-          console.log('❌ Production auth 401 - user not authenticated');
+          if (import.meta.env.DEV) {
+            console.log('❌ Production auth 401 - user not authenticated');
+          }
           if (isMounted) {
             setProductionUser(null);
             setProductionError(null);
@@ -161,14 +193,18 @@ export function useAuthUnified() {
           throw new Error(`Auth failed: ${response.status}`);
         }
       } catch (err) {
-        console.error('Production auth error:', err);
+        if (import.meta.env.DEV) {
+          console.error('Production auth error:', err);
+        }
         if (isMounted) {
           setProductionError(err);
           setProductionUser(null);
         }
       } finally {
         if (isMounted) {
-          console.log('🔄 Production auth check complete, loading set to false');
+          if (import.meta.env.DEV) {
+            console.log('🔄 Production auth check complete, loading set to false');
+          }
           setProductionLoading(false);
         }
       }

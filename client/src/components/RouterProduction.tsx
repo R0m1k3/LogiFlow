@@ -28,19 +28,21 @@ import Layout from "@/components/Layout";
 function RouterProduction() {
   const { isAuthenticated, isLoading, user, environment, error } = useAuthUnified();
   
-  // Debug complet pour la production
-  console.log('🔍 RouterProduction Debug:', {
-    environment,
-    isAuthenticated,
-    isLoading,
-    hasUser: !!user,
-    userId: user?.id,
-    username: user?.username,
-    error: error?.message
-  });
+  // Debug uniquement en développement
+  if (import.meta.env.DEV) {
+    console.log('🔍 RouterProduction Debug:', {
+      environment,
+      isAuthenticated,
+      isLoading,
+      hasUser: !!user,
+      userId: user?.id,
+      username: user?.username,
+      error: error?.message
+    });
+  }
   
   // Debug minimal basé sur l'environnement
-  if (environment === 'production' && error) {
+  if (environment === 'production' && error && import.meta.env.DEV) {
     console.error('🚨 Production Auth Error:', error);
   }
 
@@ -58,7 +60,9 @@ function RouterProduction() {
   if (!isAuthenticated) {
     // Redirection automatique vers la page d'authentification
     if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
-      console.log('🔄 User not authenticated, redirecting to auth page');
+      if (import.meta.env.DEV) {
+        console.log('🔄 User not authenticated, redirecting to auth page');
+      }
       window.location.href = '/auth';
       return (
         <div className="min-h-screen w-full flex items-center justify-center bg-surface">
@@ -109,7 +113,9 @@ function RouterProduction() {
         <Route path="/auth">
           {() => {
             if (typeof window !== 'undefined') {
-              console.log('🔄 Authenticated user on /auth, redirecting to dashboard');
+              if (import.meta.env.DEV) {
+                console.log('🔄 Authenticated user on /auth, redirecting to dashboard');
+              }
               window.location.href = '/';
             }
             return <Dashboard />;

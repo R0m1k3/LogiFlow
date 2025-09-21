@@ -628,23 +628,24 @@ export default function BLReconciliation() {
 
   // Filtrage des livraisons par recherche et statut de validation
   const filterDeliveries = (deliveries: any[]) => {
-    // Debug temporaire pour production
+    // Debug temporaire pour identifier le problème
     if (deliveries.length > 0 && filterStatus !== "all") {
-      console.log('🔍 DEBUG Filtre Production:', {
+      console.log('🔍 DEBUG Filtre:', {
         filterStatus,
         totalDeliveries: deliveries.length,
-        firstDelivery: {
-          id: deliveries[0].id,
-          reconciled: deliveries[0].reconciled,
-          type: typeof deliveries[0].reconciled,
-          rawValue: JSON.stringify(deliveries[0].reconciled)
-        }
+        exemples: deliveries.slice(0, 3).map(d => ({
+          id: d.id,
+          reconciled: d.reconciled,
+          type: typeof d.reconciled,
+          rawValue: JSON.stringify(d.reconciled),
+          supplier: d.supplier?.name
+        }))
       });
     }
     
     return deliveries.filter((delivery: any) => {
       // Conversion sûre de reconciled - gestion de tous les cas possibles
-      // PostgreSQL peut retourner : true/false, 1/0, "t"/"f", "true"/"false"
+      // PostgreSQL peut retourner : true/false, 1/0, "t"/"f", "true"/"false", null, undefined
       const isReconciled = 
         delivery.reconciled === true || 
         delivery.reconciled === 1 || 
@@ -652,12 +653,31 @@ export default function BLReconciliation() {
         delivery.reconciled === "true" ||
         (typeof delivery.reconciled === 'string' && delivery.reconciled.toLowerCase() === 'true');
       
-      // Filtre par statut validé
-      if (filterStatus === "validated" && !isReconciled) {
-        return false;
+      // Filtre par statut validé - avec debug pour chaque élément filtré
+      if (filterStatus === "validated") {
+        const keep = isReconciled;
+        if (!keep && delivery.blNumber) {
+          console.log(`❌ Filtré (non validé):`, { 
+            id: delivery.id, 
+            bl: delivery.blNumber, 
+            reconciled: delivery.reconciled,
+            isReconciled 
+          });
+        }
+        return keep;
       }
-      if (filterStatus === "not_validated" && isReconciled) {
-        return false;
+      
+      if (filterStatus === "not_validated") {
+        const keep = !isReconciled;
+        if (!keep && delivery.blNumber) {
+          console.log(`❌ Filtré (validé):`, { 
+            id: delivery.id, 
+            bl: delivery.blNumber, 
+            reconciled: delivery.reconciled,
+            isReconciled 
+          });
+        }
+        return keep;
       }
       
       // Filtre par recherche
