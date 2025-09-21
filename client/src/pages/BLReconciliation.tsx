@@ -629,11 +629,14 @@ export default function BLReconciliation() {
   // Filtrage des livraisons par recherche et statut de validation
   const filterDeliveries = (deliveries: any[]) => {
     return deliveries.filter((delivery: any) => {
+      // Conversion sûre de reconciled (peut être booléen ou nombre 0/1)
+      const isReconciled = delivery.reconciled === true || delivery.reconciled === 1;
+      
       // Filtre par statut validé
-      if (filterStatus === "validated" && !delivery.reconciled) {
+      if (filterStatus === "validated" && !isReconciled) {
         return false;
       }
-      if (filterStatus === "not_validated" && delivery.reconciled) {
+      if (filterStatus === "not_validated" && isReconciled) {
         return false;
       }
       
