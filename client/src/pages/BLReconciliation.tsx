@@ -52,6 +52,7 @@ export default function BLReconciliation() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<"all" | "validated" | "not_validated">("all");
   
   // État pour le modal d'envoi de facture
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -625,9 +626,18 @@ export default function BLReconciliation() {
     }
   };
 
-  // Filtrage des livraisons par recherche
+  // Filtrage des livraisons par recherche et statut de validation
   const filterDeliveries = (deliveries: any[]) => {
     return deliveries.filter((delivery: any) => {
+      // Filtre par statut validé
+      if (filterStatus === "validated" && !delivery.reconciled) {
+        return false;
+      }
+      if (filterStatus === "not_validated" && delivery.reconciled) {
+        return false;
+      }
+      
+      // Filtre par recherche
       const searchLower = searchTerm.toLowerCase();
       return (
         delivery.supplier?.name?.toLowerCase().includes(searchLower) ||
@@ -735,6 +745,31 @@ export default function BLReconciliation() {
                 className="pl-10 border border-gray-300 shadow-sm w-full"
               />
             </div>
+          </div>
+          <div className="w-full sm:w-48">
+            <Select value={filterStatus} onValueChange={(value: "all" | "validated" | "not_validated") => setFilterStatus(value)}>
+              <SelectTrigger className="border border-gray-300 shadow-sm">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Filtrer par statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  Tous les rapprochements
+                </SelectItem>
+                <SelectItem value="validated">
+                  <div className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-600" />
+                    Validés seulement
+                  </div>
+                </SelectItem>
+                <SelectItem value="not_validated">
+                  <div className="flex items-center">
+                    <X className="w-4 h-4 mr-2 text-orange-600" />
+                    Non validés seulement
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
