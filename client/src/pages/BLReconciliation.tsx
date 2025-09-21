@@ -52,6 +52,7 @@ export default function BLReconciliation() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [hideValidated, setHideValidated] = useState(false);
   
   // État pour le modal d'envoi de facture
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -625,9 +626,15 @@ export default function BLReconciliation() {
     }
   };
 
-  // Filtrage des livraisons par recherche
+  // Filtrage des livraisons par recherche et statut de validation
   const filterDeliveries = (deliveries: any[]) => {
     return deliveries.filter((delivery: any) => {
+      // Filtre par statut validé
+      if (hideValidated && delivery.reconciled) {
+        return false;
+      }
+      
+      // Filtre par recherche
       const searchLower = searchTerm.toLowerCase();
       return (
         delivery.supplier?.name?.toLowerCase().includes(searchLower) ||
