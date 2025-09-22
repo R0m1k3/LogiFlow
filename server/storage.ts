@@ -2982,33 +2982,29 @@ export class DatabaseStorage implements IStorage {
     const dateFormat = granularity === 'day' ? 'YYYY-MM-DD' :
                        granularity === 'week' ? 'YYYY-IW' : 'YYYY-MM';
     
-    // Build WHERE clauses
+    // Build WHERE clauses with direct value substitution
     const orderConditions: string[] = [];
     const deliveryConditions: string[] = [];
-    const params: any[] = [];
     
     if (filters.startDate) {
-      orderConditions.push(`planned_date >= $${params.length + 1}`);
-      deliveryConditions.push(`scheduled_date >= $${params.length + 1}`);
-      params.push(filters.startDate.toISOString());
+      const startDate = filters.startDate.toISOString().split('T')[0];
+      orderConditions.push(`planned_date >= '${startDate}'`);
+      deliveryConditions.push(`scheduled_date >= '${startDate}'`);
     }
     if (filters.endDate) {
-      const endParamIndex = params.length + 1;
-      orderConditions.push(`planned_date <= $${endParamIndex}`);
-      deliveryConditions.push(`scheduled_date <= $${endParamIndex}`);
-      params.push(filters.endDate.toISOString());
+      const endDate = filters.endDate.toISOString().split('T')[0];
+      orderConditions.push(`planned_date <= '${endDate}'`);
+      deliveryConditions.push(`scheduled_date <= '${endDate}'`);
     }
     if (filters.supplierIds?.length) {
-      const supplierParamIndex = params.length + 1;
-      orderConditions.push(`supplier_id = ANY($${supplierParamIndex})`);
-      deliveryConditions.push(`supplier_id = ANY($${supplierParamIndex})`);
-      params.push(filters.supplierIds);
+      const supplierIds = filters.supplierIds.join(',');
+      orderConditions.push(`supplier_id IN (${supplierIds})`);
+      deliveryConditions.push(`supplier_id IN (${supplierIds})`);
     }
     if (filters.groupIds?.length) {
-      const groupParamIndex = params.length + 1;
-      orderConditions.push(`group_id = ANY($${groupParamIndex})`);
-      deliveryConditions.push(`group_id = ANY($${groupParamIndex})`);
-      params.push(filters.groupIds);
+      const groupIds = filters.groupIds.join(',');
+      orderConditions.push(`group_id IN (${groupIds})`);
+      deliveryConditions.push(`group_id IN (${groupIds})`);
     }
     
     const orderWhere = orderConditions.length > 0 ? `WHERE ${orderConditions.join(' AND ')}` : '';
@@ -3023,9 +3019,7 @@ export class DatabaseStorage implements IStorage {
       ORDER BY TO_CHAR(planned_date, '${dateFormat}')
     `;
     
-    const ordersData = params.length > 0 
-      ? await db.execute(sql.raw(ordersSql).values(params))
-      : await db.execute(sql.raw(ordersSql));
+    const ordersData = await db.execute(sql.raw(ordersSql));
     
     // Get deliveries by date using raw SQL
     const deliveriesSql = `
@@ -3036,9 +3030,7 @@ export class DatabaseStorage implements IStorage {
       ORDER BY TO_CHAR(scheduled_date, '${dateFormat}')
     `;
     
-    const deliveriesData = params.length > 0
-      ? await db.execute(sql.raw(deliveriesSql).values(params))
-      : await db.execute(sql.raw(deliveriesSql));
+    const deliveriesData = await db.execute(sql.raw(deliveriesSql));
     
     // Merge data
     const dataMap = new Map<string, { orders: number; deliveries: number }>();
