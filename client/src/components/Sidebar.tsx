@@ -258,6 +258,12 @@ export default function Sidebar() {
       roles: ["admin", "directeur"] 
     },
     { 
+      path: "/analytics", 
+      label: "Statistiques", 
+      icon: BarChart3, 
+      roles: ["admin", "directeur", "manager"] 
+    },
+    { 
       path: "/avoirs", 
       label: "Avoirs", 
       icon: Receipt, 
