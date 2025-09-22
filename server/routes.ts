@@ -5040,7 +5040,7 @@ RÉSUMÉ DU SCAN
 
       // Apply role-based filtering
       if (user.role !== 'admin' && user.role !== 'directeur') {
-        const userGroupIds = user.groups.map((g: any) => g.groupId);
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds 
           ? filters.groupIds.filter(id => userGroupIds.includes(id))
           : userGroupIds;
@@ -5071,7 +5071,7 @@ RÉSUMÉ DU SCAN
 
       // Apply role-based filtering
       if (user.role !== 'admin' && user.role !== 'directeur') {
-        const userGroupIds = user.groups.map((g: any) => g.groupId);
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds 
           ? filters.groupIds.filter(id => userGroupIds.includes(id))
           : userGroupIds;
@@ -5100,7 +5100,7 @@ RÉSUMÉ DU SCAN
 
       // Apply role-based filtering
       if (user.role !== 'admin' && user.role !== 'directeur') {
-        const userGroupIds = user.groups.map((g: any) => g.groupId);
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds 
           ? filters.groupIds.filter(id => userGroupIds.includes(id))
           : userGroupIds;
@@ -5153,7 +5153,7 @@ RÉSUMÉ DU SCAN
 
       // Apply role-based filtering
       if (user.role !== 'admin' && user.role !== 'directeur') {
-        const userGroupIds = user.groups.map((g: any) => g.groupId);
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds 
           ? filters.groupIds.filter(id => userGroupIds.includes(id))
           : userGroupIds;
