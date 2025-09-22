@@ -3085,52 +3085,64 @@ export class DatabaseStorage implements IStorage {
     endDate?: Date;
     supplierIds?: number[];
   }): Promise<Array<{ groupId: number; storeName: string; orders: number; deliveries: number }>> {
-    const orderConditions: any[] = [];
-    const deliveryConditions: any[] = [];
+    
+    try {
+      // Build date filter conditions as strings for raw SQL
+      let orderDateFilter = '1=1';
+      let deliveryDateFilter = '1=1';
+      let supplierFilter = '1=1';
+      
+      if (filters.startDate) {
+        const startDate = filters.startDate.toISOString().split('T')[0];
+        orderDateFilter += ` AND planned_date >= '${startDate}'`;
+        deliveryDateFilter += ` AND scheduled_date >= '${startDate}'`;
+      }
+      if (filters.endDate) {
+        const endDate = filters.endDate.toISOString().split('T')[0];
+        orderDateFilter += ` AND planned_date <= '${endDate}'`;
+        deliveryDateFilter += ` AND scheduled_date <= '${endDate}'`;
+      }
+      if (filters.supplierIds?.length) {
+        const supplierIds = filters.supplierIds.join(',');
+        orderDateFilter += ` AND supplier_id IN (${supplierIds})`;
+        deliveryDateFilter += ` AND supplier_id IN (${supplierIds})`;
+      }
 
-    if (filters.startDate) {
-      const startDateStr = filters.startDate.toISOString();
-      orderConditions.push(sql`${orders.plannedDate} >= ${startDateStr}`);
-      deliveryConditions.push(sql`${deliveries.scheduledDate} >= ${startDateStr}`);
-    }
-    if (filters.endDate) {
-      const endDateStr = filters.endDate.toISOString();
-      orderConditions.push(sql`${orders.plannedDate} <= ${endDateStr}`);
-      deliveryConditions.push(sql`${deliveries.scheduledDate} <= ${endDateStr}`);
-    }
-    if (filters.supplierIds?.length) {
-      orderConditions.push(inArray(orders.supplierId, filters.supplierIds));
-      deliveryConditions.push(inArray(deliveries.supplierId, filters.supplierIds));
-    }
+      const result = await db.execute(sql`
+        SELECT 
+          g.id as "groupId",
+          g.name as "storeName",
+          COALESCE(o.count, 0) as orders,
+          COALESCE(d.count, 0) as deliveries
+        FROM groups g
+        LEFT JOIN (
+          SELECT group_id, COUNT(*) as count 
+          FROM orders 
+          WHERE ${sql.raw(orderDateFilter)}
+          GROUP BY group_id
+        ) o ON g.id = o.group_id
+        LEFT JOIN (
+          SELECT group_id, COUNT(*) as count 
+          FROM deliveries 
+          WHERE ${sql.raw(deliveryDateFilter)}
+          GROUP BY group_id
+        ) d ON g.id = d.group_id
+        ORDER BY (COALESCE(o.count, 0) + COALESCE(d.count, 0)) DESC
+      `);
 
-    const result = await db.execute(sql`
-      SELECT 
-        g.id as "groupId",
-        g.name as "storeName",
-        COALESCE(o.count, 0) as orders,
-        COALESCE(d.count, 0) as deliveries
-      FROM groups g
-      LEFT JOIN (
-        SELECT group_id, COUNT(*) as count 
-        FROM orders 
-        WHERE ${orderConditions.length ? sql.join(orderConditions, sql` AND `) : sql`1=1`}
-        GROUP BY group_id
-      ) o ON g.id = o.group_id
-      LEFT JOIN (
-        SELECT group_id, COUNT(*) as count 
-        FROM deliveries 
-        WHERE ${deliveryConditions.length ? sql.join(deliveryConditions, sql` AND `) : sql`1=1`}
-        GROUP BY group_id
-      ) d ON g.id = d.group_id
-      ORDER BY (COALESCE(o.count, 0) + COALESCE(d.count, 0)) DESC
-    `);
-
-    return result.rows.map((row: any) => ({
-      groupId: row.groupId,
-      storeName: row.storeName,
-      orders: Number(row.orders),
-      deliveries: Number(row.deliveries)
-    }));
+      const mappedResult = result.rows.map((row: any) => ({
+        groupId: row.groupId,
+        storeName: row.storeName,
+        orders: Number(row.orders),
+        deliveries: Number(row.deliveries)
+      }));
+      
+      
+      return mappedResult;
+    } catch (error) {
+      console.error('Error in getAnalyticsByStore:', error);
+      return [];
+    }
   }
 }
 
