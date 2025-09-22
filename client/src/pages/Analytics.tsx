@@ -482,14 +482,20 @@ export default function Analytics() {
           <CardContent>
             {Array.isArray(byStore) && byStore.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={byStore.slice(0, 5)} layout="horizontal">
+                <BarChart 
+                  data={byStore.slice(0, 5)} 
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="storeName" type="category" />
-                  <Tooltip />
+                  <XAxis dataKey="storeName" />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value, name) => [value, name]}
+                    labelFormatter={(label) => `Magasin : ${label}`}
+                  />
                   <Legend />
-                  <Bar dataKey="orders" fill="#8884d8" name="Commandes" />
-                  <Bar dataKey="deliveries" fill="#82ca9d" name="Livraisons" />
+                  <Bar dataKey="orders" fill="#8884d8" name="Commandes" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="deliveries" fill="#82ca9d" name="Livraisons" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
