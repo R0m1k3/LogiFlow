@@ -23,6 +23,7 @@ import Tasks from "@/pages/Tasks";
 import SavTickets from "@/pages/SavTickets";
 import Avoirs from "@/pages/Avoirs";
 import WeatherSettings from "@/pages/WeatherSettings";
+import Analytics from "@/pages/Analytics";
 import Layout from "@/components/Layout";
 
 function RouterProduction() {
@@ -102,6 +103,7 @@ function RouterProduction() {
         <Route path="/tasks" component={Tasks} />
         <Route path="/sav" component={SavTickets} />
         <Route path="/avoirs" component={Avoirs} />
+        <Route path="/analytics" component={Analytics} />
         
         {/* Routes de compatibilité - redirection vers utilities */}
         <Route path="/backup" component={Utilities} />

@@ -5021,6 +5021,184 @@ RÉSUMÉ DU SCAN
     }
   });
 
+  // Analytics routes
+  app.get('/api/analytics/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Parse query parameters
+      const filters = {
+        startDate: req.query.startDate ? new Date(req.query.startDate) : undefined,
+        endDate: req.query.endDate ? new Date(req.query.endDate) : undefined,
+        supplierIds: req.query.supplierIds ? req.query.supplierIds.split(',').map(Number) : undefined,
+        groupIds: req.query.groupIds ? req.query.groupIds.split(',').map(Number) : undefined,
+        status: req.query.status ? req.query.status.split(',') : undefined
+      };
+
+      // Apply role-based filtering
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        const userGroupIds = user.groups.map((g: any) => g.groupId);
+        filters.groupIds = filters.groupIds 
+          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          : userGroupIds;
+      }
+
+      const summary = await storage.getAnalyticsSummary(filters);
+      res.json(summary);
+    } catch (error) {
+      console.error('Error fetching analytics summary:', error);
+      res.status(500).json({ message: 'Failed to fetch analytics summary' });
+    }
+  });
+
+  app.get('/api/analytics/timeseries', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const filters = {
+        startDate: req.query.startDate ? new Date(req.query.startDate) : undefined,
+        endDate: req.query.endDate ? new Date(req.query.endDate) : undefined,
+        supplierIds: req.query.supplierIds ? req.query.supplierIds.split(',').map(Number) : undefined,
+        groupIds: req.query.groupIds ? req.query.groupIds.split(',').map(Number) : undefined,
+        granularity: (req.query.granularity as 'day' | 'week' | 'month') || 'day'
+      };
+
+      // Apply role-based filtering
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        const userGroupIds = user.groups.map((g: any) => g.groupId);
+        filters.groupIds = filters.groupIds 
+          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          : userGroupIds;
+      }
+
+      const timeseries = await storage.getAnalyticsTimeseries(filters);
+      res.json(timeseries);
+    } catch (error) {
+      console.error('Error fetching analytics timeseries:', error);
+      res.status(500).json({ message: 'Failed to fetch analytics timeseries' });
+    }
+  });
+
+  app.get('/api/analytics/by-supplier', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const filters = {
+        startDate: req.query.startDate ? new Date(req.query.startDate) : undefined,
+        endDate: req.query.endDate ? new Date(req.query.endDate) : undefined,
+        groupIds: req.query.groupIds ? req.query.groupIds.split(',').map(Number) : undefined
+      };
+
+      // Apply role-based filtering
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        const userGroupIds = user.groups.map((g: any) => g.groupId);
+        filters.groupIds = filters.groupIds 
+          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          : userGroupIds;
+      }
+
+      const bySupplier = await storage.getAnalyticsBySupplier(filters);
+      res.json(bySupplier);
+    } catch (error) {
+      console.error('Error fetching analytics by supplier:', error);
+      res.status(500).json({ message: 'Failed to fetch analytics by supplier' });
+    }
+  });
+
+  app.get('/api/analytics/by-store', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const filters = {
+        startDate: req.query.startDate ? new Date(req.query.startDate) : undefined,
+        endDate: req.query.endDate ? new Date(req.query.endDate) : undefined,
+        supplierIds: req.query.supplierIds ? req.query.supplierIds.split(',').map(Number) : undefined
+      };
+
+      const byStore = await storage.getAnalyticsByStore(filters);
+      res.json(byStore);
+    } catch (error) {
+      console.error('Error fetching analytics by store:', error);
+      res.status(500).json({ message: 'Failed to fetch analytics by store' });
+    }
+  });
+
+  app.get('/api/analytics/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const type = req.query.type || 'summary';
+      const filters = {
+        startDate: req.query.startDate ? new Date(req.query.startDate) : undefined,
+        endDate: req.query.endDate ? new Date(req.query.endDate) : undefined,
+        supplierIds: req.query.supplierIds ? req.query.supplierIds.split(',').map(Number) : undefined,
+        groupIds: req.query.groupIds ? req.query.groupIds.split(',').map(Number) : undefined,
+        status: req.query.status ? req.query.status.split(',') : undefined
+      };
+
+      // Apply role-based filtering
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        const userGroupIds = user.groups.map((g: any) => g.groupId);
+        filters.groupIds = filters.groupIds 
+          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          : userGroupIds;
+      }
+
+      let data: any;
+      let filename = `analytics_${type}_${new Date().toISOString().split('T')[0]}.csv`;
+      
+      switch(type) {
+        case 'timeseries':
+          data = await storage.getAnalyticsTimeseries({ ...filters, granularity: 'day' });
+          break;
+        case 'suppliers':
+          data = await storage.getAnalyticsBySupplier(filters);
+          break;
+        case 'stores':
+          data = await storage.getAnalyticsByStore(filters);
+          break;
+        default:
+          data = [await storage.getAnalyticsSummary(filters)];
+      }
+
+      // Convert to CSV
+      if (data && data.length > 0) {
+        const headers = Object.keys(data[0]).join(',');
+        const rows = data.map((item: any) => 
+          Object.values(item).map((val: any) => 
+            typeof val === 'object' ? JSON.stringify(val) : val
+          ).join(',')
+        ).join('\n');
+        
+        const csv = `${headers}\n${rows}`;
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(csv);
+      } else {
+        res.status(404).json({ message: 'No data to export' });
+      }
+    } catch (error) {
+      console.error('Error exporting analytics:', error);
+      res.status(500).json({ message: 'Failed to export analytics' });
+    }
+  });
+
   // Create server instance
   const httpServer = createServer(app);
 

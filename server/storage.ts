@@ -263,6 +263,43 @@ export interface IStorage {
   createReconciliationComment(comment: InsertReconciliationComment): Promise<ReconciliationComment>;
   updateReconciliationComment(id: number, comment: Partial<InsertReconciliationComment>): Promise<ReconciliationComment>;
   deleteReconciliationComment(id: number): Promise<void>;
+  
+  // Analytics operations
+  getAnalyticsSummary(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    supplierIds?: number[];
+    groupIds?: number[];
+    status?: string[];
+  }): Promise<{
+    totalOrders: number;
+    totalDeliveries: number;
+    onTimeRate: number;
+    totalAmount: number;
+    avgDeliveryDelay: number;
+    topSuppliers: Array<{ id: number; name: string; count: number; amount: number }>;
+    topStores: Array<{ id: number; name: string; orders: number; deliveries: number }>;
+  }>;
+  
+  getAnalyticsTimeseries(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    supplierIds?: number[];
+    groupIds?: number[];
+    granularity?: 'day' | 'week' | 'month';
+  }): Promise<Array<{ date: string; orders: number; deliveries: number }>>;
+  
+  getAnalyticsBySupplier(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    groupIds?: number[];
+  }): Promise<Array<{ supplierId: number; supplierName: string; deliveries: number; amount: number }>>;
+  
+  getAnalyticsByStore(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    supplierIds?: number[];
+  }): Promise<Array<{ groupId: number; storeName: string; orders: number; deliveries: number }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2815,6 +2852,294 @@ export class DatabaseStorage implements IStorage {
       .delete(reconciliationComments)
       .where(eq(reconciliationComments.id, id));
   }
+
+  // Analytics implementations
+  async getAnalyticsSummary(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    supplierIds?: number[];
+    groupIds?: number[];
+    status?: string[];
+  }): Promise<{
+    totalOrders: number;
+    totalDeliveries: number;
+    onTimeRate: number;
+    totalAmount: number;
+    avgDeliveryDelay: number;
+    topSuppliers: Array<{ id: number; name: string; count: number; amount: number }>;
+    topStores: Array<{ id: number; name: string; orders: number; deliveries: number }>;
+  }> {
+    try {
+      const conditions: any[] = [];
+      const orderConditions: any[] = [];
+      const deliveryConditions: any[] = [];
+
+      // Apply filters
+      if (filters.startDate) {
+        orderConditions.push(gte(orders.plannedDate, filters.startDate));
+        deliveryConditions.push(gte(deliveries.scheduledDate, filters.startDate));
+      }
+      if (filters.endDate) {
+        orderConditions.push(lte(orders.plannedDate, filters.endDate));
+        deliveryConditions.push(lte(deliveries.scheduledDate, filters.endDate));
+      }
+      if (filters.supplierIds?.length) {
+        orderConditions.push(inArray(orders.supplierId, filters.supplierIds));
+        deliveryConditions.push(inArray(deliveries.supplierId, filters.supplierIds));
+      }
+      if (filters.groupIds?.length) {
+        orderConditions.push(inArray(orders.groupId, filters.groupIds));
+        deliveryConditions.push(inArray(deliveries.groupId, filters.groupIds));
+      }
+      if (filters.status?.length) {
+        orderConditions.push(inArray(orders.status, filters.status));
+        deliveryConditions.push(inArray(deliveries.status, filters.status));
+      }
+
+      // Get total orders
+      const orderQuery = db.select({ count: sql<number>`COUNT(*)` }).from(orders);
+      if (orderConditions.length) orderQuery.where(and(...orderConditions));
+      const [{ count: totalOrders }] = await orderQuery;
+
+      // Get total deliveries and amounts
+      const deliveryQuery = db.select({
+        count: sql<number>`COUNT(*)`,
+        totalAmount: sql<number>`COALESCE(SUM(CAST(bl_amount AS NUMERIC)), 0) + COALESCE(SUM(CAST(invoice_amount AS NUMERIC)), 0)`,
+        onTime: sql<number>`COUNT(CASE WHEN delivered_date <= scheduled_date THEN 1 END)`,
+        avgDelay: sql<number>`AVG(EXTRACT(EPOCH FROM (delivered_date - scheduled_date)) / 86400)` // days
+      }).from(deliveries);
+      if (deliveryConditions.length) deliveryQuery.where(and(...deliveryConditions));
+      const [deliveryStats] = await deliveryQuery;
+
+      // Get top suppliers
+      const supplierQuery = db.select({
+        id: suppliers.id,
+        name: suppliers.name,
+        count: sql<number>`COUNT(${deliveries.id})`,
+        amount: sql<number>`COALESCE(SUM(CAST(${deliveries.blAmount} AS NUMERIC)), 0)`
+      })
+      .from(deliveries)
+      .innerJoin(suppliers, eq(deliveries.supplierId, suppliers.id));
+      
+      if (deliveryConditions.length) supplierQuery.where(and(...deliveryConditions));
+      const topSuppliers = await supplierQuery
+        .groupBy(suppliers.id, suppliers.name)
+        .orderBy(desc(sql<number>`COUNT(${deliveries.id})`))
+        .limit(5);
+
+      // Get top stores
+      const storeQuery = db.select({
+        id: groups.id,
+        name: groups.name,
+        orders: sql<number>`COUNT(DISTINCT ${orders.id})`,
+        deliveries: sql<number>`COUNT(DISTINCT ${deliveries.id})`
+      })
+      .from(groups)
+      .leftJoin(orders, eq(groups.id, orders.groupId))
+      .leftJoin(deliveries, eq(groups.id, deliveries.groupId));
+      
+      if (filters.groupIds?.length) {
+        storeQuery.where(inArray(groups.id, filters.groupIds));
+      }
+      const topStores = await storeQuery
+        .groupBy(groups.id, groups.name)
+        .orderBy(desc(sql<number>`COUNT(DISTINCT ${orders.id}) + COUNT(DISTINCT ${deliveries.id})`))
+        .limit(5);
+
+      return {
+        totalOrders: Number(totalOrders) || 0,
+        totalDeliveries: Number(deliveryStats.count) || 0,
+        onTimeRate: deliveryStats.count ? (Number(deliveryStats.onTime) / Number(deliveryStats.count)) * 100 : 0,
+        totalAmount: Number(deliveryStats.totalAmount) || 0,
+        avgDeliveryDelay: Number(deliveryStats.avgDelay) || 0,
+        topSuppliers: topSuppliers.map(s => ({ 
+          id: s.id, 
+          name: s.name, 
+          count: Number(s.count), 
+          amount: Number(s.amount) 
+        })),
+        topStores: topStores.map(s => ({ 
+          id: s.id, 
+          name: s.name, 
+          orders: Number(s.orders), 
+          deliveries: Number(s.deliveries) 
+        }))
+      };
+    } catch (error) {
+      console.error('Analytics summary error:', error);
+      throw error;
+    }
+  }
+
+  async getAnalyticsTimeseries(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    supplierIds?: number[];
+    groupIds?: number[];
+    granularity?: 'day' | 'week' | 'month';
+  }): Promise<Array<{ date: string; orders: number; deliveries: number }>> {
+    const granularity = filters.granularity || 'day';
+    const dateFormat = granularity === 'day' ? 'YYYY-MM-DD' :
+                       granularity === 'week' ? 'YYYY-IW' : 'YYYY-MM';
+    
+    // Build WHERE clauses
+    const orderConditions: string[] = [];
+    const deliveryConditions: string[] = [];
+    const params: any[] = [];
+    
+    if (filters.startDate) {
+      orderConditions.push(`planned_date >= $${params.length + 1}`);
+      deliveryConditions.push(`scheduled_date >= $${params.length + 1}`);
+      params.push(filters.startDate.toISOString());
+    }
+    if (filters.endDate) {
+      const endParamIndex = params.length + 1;
+      orderConditions.push(`planned_date <= $${endParamIndex}`);
+      deliveryConditions.push(`scheduled_date <= $${endParamIndex}`);
+      params.push(filters.endDate.toISOString());
+    }
+    if (filters.supplierIds?.length) {
+      const supplierParamIndex = params.length + 1;
+      orderConditions.push(`supplier_id = ANY($${supplierParamIndex})`);
+      deliveryConditions.push(`supplier_id = ANY($${supplierParamIndex})`);
+      params.push(filters.supplierIds);
+    }
+    if (filters.groupIds?.length) {
+      const groupParamIndex = params.length + 1;
+      orderConditions.push(`group_id = ANY($${groupParamIndex})`);
+      deliveryConditions.push(`group_id = ANY($${groupParamIndex})`);
+      params.push(filters.groupIds);
+    }
+    
+    const orderWhere = orderConditions.length > 0 ? `WHERE ${orderConditions.join(' AND ')}` : '';
+    const deliveryWhere = deliveryConditions.length > 0 ? `WHERE ${deliveryConditions.join(' AND ')}` : '';
+    
+    // Get orders by date using raw SQL
+    const ordersSql = `
+      SELECT TO_CHAR(planned_date, '${dateFormat}') as date, COUNT(*) as count
+      FROM orders
+      ${orderWhere}
+      GROUP BY TO_CHAR(planned_date, '${dateFormat}')
+      ORDER BY TO_CHAR(planned_date, '${dateFormat}')
+    `;
+    
+    const ordersData = params.length > 0 
+      ? await db.execute(sql.raw(ordersSql).values(params))
+      : await db.execute(sql.raw(ordersSql));
+    
+    // Get deliveries by date using raw SQL
+    const deliveriesSql = `
+      SELECT TO_CHAR(scheduled_date, '${dateFormat}') as date, COUNT(*) as count
+      FROM deliveries
+      ${deliveryWhere}
+      GROUP BY TO_CHAR(scheduled_date, '${dateFormat}')
+      ORDER BY TO_CHAR(scheduled_date, '${dateFormat}')
+    `;
+    
+    const deliveriesData = params.length > 0
+      ? await db.execute(sql.raw(deliveriesSql).values(params))
+      : await db.execute(sql.raw(deliveriesSql));
+    
+    // Merge data
+    const dataMap = new Map<string, { orders: number; deliveries: number }>();
+    (ordersData.rows as any[]).forEach(row => {
+      dataMap.set(row.date, { orders: Number(row.count), deliveries: 0 });
+    });
+    (deliveriesData.rows as any[]).forEach(row => {
+      const existing = dataMap.get(row.date) || { orders: 0, deliveries: 0 };
+      dataMap.set(row.date, { ...existing, deliveries: Number(row.count) });
+    });
+    
+    return Array.from(dataMap.entries())
+      .map(([date, data]) => ({ date, ...data }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  async getAnalyticsBySupplier(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    groupIds?: number[];
+  }): Promise<Array<{ supplierId: number; supplierName: string; deliveries: number; amount: number }>> {
+    const conditions: any[] = [];
+    if (filters.startDate) conditions.push(gte(deliveries.scheduledDate, filters.startDate));
+    if (filters.endDate) conditions.push(lte(deliveries.scheduledDate, filters.endDate));
+    if (filters.groupIds?.length) conditions.push(inArray(deliveries.groupId, filters.groupIds));
+
+    const query = db.select({
+      supplierId: suppliers.id,
+      supplierName: suppliers.name,
+      deliveries: sql<number>`COUNT(${deliveries.id})`,
+      amount: sql<number>`COALESCE(SUM(CAST(${deliveries.blAmount} AS NUMERIC)), 0)`
+    })
+    .from(deliveries)
+    .innerJoin(suppliers, eq(deliveries.supplierId, suppliers.id));
+    
+    if (conditions.length) query.where(and(...conditions));
+    
+    const result = await query
+      .groupBy(suppliers.id, suppliers.name)
+      .orderBy(desc(sql<number>`COUNT(${deliveries.id})`));
+
+    return result.map(row => ({
+      supplierId: row.supplierId,
+      supplierName: row.supplierName,
+      deliveries: Number(row.deliveries),
+      amount: Number(row.amount)
+    }));
+  }
+
+  async getAnalyticsByStore(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    supplierIds?: number[];
+  }): Promise<Array<{ groupId: number; storeName: string; orders: number; deliveries: number }>> {
+    const orderConditions: any[] = [];
+    const deliveryConditions: any[] = [];
+
+    if (filters.startDate) {
+      const startDateStr = filters.startDate.toISOString();
+      orderConditions.push(sql`${orders.plannedDate} >= ${startDateStr}`);
+      deliveryConditions.push(sql`${deliveries.scheduledDate} >= ${startDateStr}`);
+    }
+    if (filters.endDate) {
+      const endDateStr = filters.endDate.toISOString();
+      orderConditions.push(sql`${orders.plannedDate} <= ${endDateStr}`);
+      deliveryConditions.push(sql`${deliveries.scheduledDate} <= ${endDateStr}`);
+    }
+    if (filters.supplierIds?.length) {
+      orderConditions.push(inArray(orders.supplierId, filters.supplierIds));
+      deliveryConditions.push(inArray(deliveries.supplierId, filters.supplierIds));
+    }
+
+    const result = await db.execute(sql`
+      SELECT 
+        g.id as "groupId",
+        g.name as "storeName",
+        COALESCE(o.count, 0) as orders,
+        COALESCE(d.count, 0) as deliveries
+      FROM groups g
+      LEFT JOIN (
+        SELECT group_id, COUNT(*) as count 
+        FROM orders 
+        WHERE ${orderConditions.length ? sql.join(orderConditions, sql` AND `) : sql`1=1`}
+        GROUP BY group_id
+      ) o ON g.id = o.group_id
+      LEFT JOIN (
+        SELECT group_id, COUNT(*) as count 
+        FROM deliveries 
+        WHERE ${deliveryConditions.length ? sql.join(deliveryConditions, sql` AND `) : sql`1=1`}
+        GROUP BY group_id
+      ) d ON g.id = d.group_id
+      ORDER BY (COALESCE(o.count, 0) + COALESCE(d.count, 0)) DESC
+    `);
+
+    return result.rows.map((row: any) => ({
+      groupId: row.groupId,
+      storeName: row.storeName,
+      orders: Number(row.orders),
+      deliveries: Number(row.deliveries)
+    }));
+  }
 }
 
 // MemStorage class for development
@@ -4793,6 +5118,213 @@ export class MemStorage implements IStorage {
 
   async deleteReconciliationComment(id: number): Promise<void> {
     this.reconciliationComments.delete(id);
+  }
+
+  // Analytics implementations for MemStorage
+  async getAnalyticsSummary(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    supplierIds?: number[];
+    groupIds?: number[];
+    status?: string[];
+  }): Promise<{
+    totalOrders: number;
+    totalDeliveries: number;
+    onTimeRate: number;
+    totalAmount: number;
+    avgDeliveryDelay: number;
+    topSuppliers: Array<{ id: number; name: string; count: number; amount: number }>;
+    topStores: Array<{ id: number; name: string; orders: number; deliveries: number }>;
+  }> {
+    // Simple implementation for development
+    const orders = Array.from(this.orders.values());
+    const deliveries = Array.from(this.deliveries.values());
+    
+    // Apply filters
+    const filteredOrders = orders.filter(order => {
+      if (filters.startDate && order.plannedDate < filters.startDate) return false;
+      if (filters.endDate && order.plannedDate > filters.endDate) return false;
+      if (filters.supplierIds?.length && !filters.supplierIds.includes(order.supplierId)) return false;
+      if (filters.groupIds?.length && !filters.groupIds.includes(order.groupId)) return false;
+      if (filters.status?.length && !filters.status.includes(order.status)) return false;
+      return true;
+    });
+
+    const filteredDeliveries = deliveries.filter(delivery => {
+      if (filters.startDate && delivery.scheduledDate < filters.startDate) return false;
+      if (filters.endDate && delivery.scheduledDate > filters.endDate) return false;
+      if (filters.supplierIds?.length && !filters.supplierIds.includes(delivery.supplierId)) return false;
+      if (filters.groupIds?.length && !filters.groupIds.includes(delivery.groupId)) return false;
+      if (filters.status?.length && !filters.status.includes(delivery.status)) return false;
+      return true;
+    });
+
+    // Calculate metrics
+    const totalOrders = filteredOrders.length;
+    const totalDeliveries = filteredDeliveries.length;
+    const onTimeDeliveries = filteredDeliveries.filter(d => 
+      d.deliveredDate && d.deliveredDate <= d.scheduledDate
+    ).length;
+    const onTimeRate = totalDeliveries > 0 ? (onTimeDeliveries / totalDeliveries) * 100 : 0;
+    
+    const totalAmount = filteredDeliveries.reduce((sum, d) => {
+      return sum + (parseFloat(d.blAmount as any) || 0) + (parseFloat(d.invoiceAmount as any) || 0);
+    }, 0);
+
+    // Top suppliers
+    const supplierStats = new Map<number, { name: string; count: number; amount: number }>();
+    filteredDeliveries.forEach(d => {
+      const supplier = this.suppliers.get(d.supplierId);
+      if (supplier) {
+        const stats = supplierStats.get(d.supplierId) || { name: supplier.name, count: 0, amount: 0 };
+        stats.count++;
+        stats.amount += parseFloat(d.blAmount as any) || 0;
+        supplierStats.set(d.supplierId, stats);
+      }
+    });
+    const topSuppliers = Array.from(supplierStats.entries())
+      .map(([id, stats]) => ({ id, ...stats }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Top stores
+    const storeStats = new Map<number, { name: string; orders: number; deliveries: number }>();
+    filteredOrders.forEach(o => {
+      const group = this.groups.get(o.groupId);
+      if (group) {
+        const stats = storeStats.get(o.groupId) || { name: group.name, orders: 0, deliveries: 0 };
+        stats.orders++;
+        storeStats.set(o.groupId, stats);
+      }
+    });
+    filteredDeliveries.forEach(d => {
+      const group = this.groups.get(d.groupId);
+      if (group) {
+        const stats = storeStats.get(d.groupId) || { name: group.name, orders: 0, deliveries: 0 };
+        stats.deliveries++;
+        storeStats.set(d.groupId, stats);
+      }
+    });
+    const topStores = Array.from(storeStats.entries())
+      .map(([id, stats]) => ({ id, ...stats }))
+      .sort((a, b) => (b.orders + b.deliveries) - (a.orders + a.deliveries))
+      .slice(0, 5);
+
+    return {
+      totalOrders,
+      totalDeliveries,
+      onTimeRate,
+      totalAmount,
+      avgDeliveryDelay: 0, // Simplified for development
+      topSuppliers,
+      topStores
+    };
+  }
+
+  async getAnalyticsTimeseries(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    supplierIds?: number[];
+    groupIds?: number[];
+    granularity?: 'day' | 'week' | 'month';
+  }): Promise<Array<{ date: string; orders: number; deliveries: number }>> {
+    const dataMap = new Map<string, { orders: number; deliveries: number }>();
+    
+    // Process orders
+    Array.from(this.orders.values()).forEach(order => {
+      if (filters.startDate && order.plannedDate < filters.startDate) return;
+      if (filters.endDate && order.plannedDate > filters.endDate) return;
+      if (filters.supplierIds?.length && !filters.supplierIds.includes(order.supplierId)) return;
+      if (filters.groupIds?.length && !filters.groupIds.includes(order.groupId)) return;
+      
+      const dateKey = order.plannedDate.toISOString().split('T')[0];
+      const existing = dataMap.get(dateKey) || { orders: 0, deliveries: 0 };
+      existing.orders++;
+      dataMap.set(dateKey, existing);
+    });
+
+    // Process deliveries
+    Array.from(this.deliveries.values()).forEach(delivery => {
+      if (filters.startDate && delivery.scheduledDate < filters.startDate) return;
+      if (filters.endDate && delivery.scheduledDate > filters.endDate) return;
+      if (filters.supplierIds?.length && !filters.supplierIds.includes(delivery.supplierId)) return;
+      if (filters.groupIds?.length && !filters.groupIds.includes(delivery.groupId)) return;
+      
+      const dateKey = delivery.scheduledDate.toISOString().split('T')[0];
+      const existing = dataMap.get(dateKey) || { orders: 0, deliveries: 0 };
+      existing.deliveries++;
+      dataMap.set(dateKey, existing);
+    });
+
+    return Array.from(dataMap.entries())
+      .map(([date, data]) => ({ date, ...data }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  async getAnalyticsBySupplier(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    groupIds?: number[];
+  }): Promise<Array<{ supplierId: number; supplierName: string; deliveries: number; amount: number }>> {
+    const supplierStats = new Map<number, { name: string; deliveries: number; amount: number }>();
+    
+    Array.from(this.deliveries.values()).forEach(delivery => {
+      if (filters.startDate && delivery.scheduledDate < filters.startDate) return;
+      if (filters.endDate && delivery.scheduledDate > filters.endDate) return;
+      if (filters.groupIds?.length && !filters.groupIds.includes(delivery.groupId)) return;
+      
+      const supplier = this.suppliers.get(delivery.supplierId);
+      if (supplier) {
+        const stats = supplierStats.get(delivery.supplierId) || { name: supplier.name, deliveries: 0, amount: 0 };
+        stats.deliveries++;
+        stats.amount += parseFloat(delivery.blAmount as any) || 0;
+        supplierStats.set(delivery.supplierId, stats);
+      }
+    });
+
+    return Array.from(supplierStats.entries())
+      .map(([id, stats]) => ({ supplierId: id, supplierName: stats.name, ...stats }))
+      .sort((a, b) => b.deliveries - a.deliveries);
+  }
+
+  async getAnalyticsByStore(filters: {
+    startDate?: Date;
+    endDate?: Date;
+    supplierIds?: number[];
+  }): Promise<Array<{ groupId: number; storeName: string; orders: number; deliveries: number }>> {
+    const storeStats = new Map<number, { name: string; orders: number; deliveries: number }>();
+    
+    // Count orders
+    Array.from(this.orders.values()).forEach(order => {
+      if (filters.startDate && order.plannedDate < filters.startDate) return;
+      if (filters.endDate && order.plannedDate > filters.endDate) return;
+      if (filters.supplierIds?.length && !filters.supplierIds.includes(order.supplierId)) return;
+      
+      const group = this.groups.get(order.groupId);
+      if (group) {
+        const stats = storeStats.get(order.groupId) || { name: group.name, orders: 0, deliveries: 0 };
+        stats.orders++;
+        storeStats.set(order.groupId, stats);
+      }
+    });
+
+    // Count deliveries
+    Array.from(this.deliveries.values()).forEach(delivery => {
+      if (filters.startDate && delivery.scheduledDate < filters.startDate) return;
+      if (filters.endDate && delivery.scheduledDate > filters.endDate) return;
+      if (filters.supplierIds?.length && !filters.supplierIds.includes(delivery.supplierId)) return;
+      
+      const group = this.groups.get(delivery.groupId);
+      if (group) {
+        const stats = storeStats.get(delivery.groupId) || { name: group.name, orders: 0, deliveries: 0 };
+        stats.deliveries++;
+        storeStats.set(delivery.groupId, stats);
+      }
+    });
+
+    return Array.from(storeStats.entries())
+      .map(([id, stats]) => ({ groupId: id, storeName: stats.name, ...stats }))
+      .sort((a, b) => (b.orders + b.deliveries) - (a.orders + a.deliveries));
   }
 }
 
