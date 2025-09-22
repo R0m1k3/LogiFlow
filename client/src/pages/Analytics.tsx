@@ -20,10 +20,10 @@ export default function Analytics() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
   
-  // États des filtres
+  // États des filtres - élargir la période par défaut pour inclure plus de données
   const [dateRange, setDateRange] = useState({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date())
+    from: addDays(new Date(), -365), // Dernière année
+    to: new Date()
   });
   const [selectedSuppliers, setSelectedSuppliers] = useState<number[]>([]);
   const [selectedStores, setSelectedStores] = useState<number[]>([]);
@@ -56,11 +56,17 @@ export default function Analytics() {
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ['/api/analytics/summary', queryParams],
     queryFn: async () => {
+      console.log('📊 [ANALYTICS] Fetching summary with params:', queryParams);
       const response = await fetch(`/api/analytics/summary?${queryParams}`, {
         credentials: 'include'
       });
-      if (!response.ok) throw new Error('Failed to fetch summary');
-      return response.json();
+      if (!response.ok) {
+        console.error('❌ [ANALYTICS] Summary fetch failed:', response.status, response.statusText);
+        throw new Error('Failed to fetch summary');
+      }
+      const data = await response.json();
+      console.log('✅ [ANALYTICS] Summary data received:', data);
+      return data;
     },
     refetchInterval: isRefreshing ? 30000 : false
   });
@@ -68,11 +74,18 @@ export default function Analytics() {
   const { data: timeseries } = useQuery({
     queryKey: ['/api/analytics/timeseries', queryParams, granularity],
     queryFn: async () => {
-      const response = await fetch(`/api/analytics/timeseries?${queryParams}&granularity=${granularity}`, {
+      const url = `/api/analytics/timeseries?${queryParams}&granularity=${granularity}`;
+      console.log('📊 [ANALYTICS] Fetching timeseries:', url);
+      const response = await fetch(url, {
         credentials: 'include'
       });
-      if (!response.ok) throw new Error('Failed to fetch timeseries');
-      return response.json();
+      if (!response.ok) {
+        console.error('❌ [ANALYTICS] Timeseries fetch failed:', response.status, response.statusText);
+        throw new Error('Failed to fetch timeseries');
+      }
+      const data = await response.json();
+      console.log('✅ [ANALYTICS] Timeseries data received:', data?.length || 0, 'entries');
+      return data;
     }
   });
 
@@ -271,7 +284,7 @@ export default function Analytics() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les fournisseurs</SelectItem>
-                  {suppliers?.map((supplier: any) => (
+                  {Array.isArray(suppliers) && suppliers.map((supplier: any) => (
                     <SelectItem key={supplier.id} value={supplier.id.toString()}>
                       {selectedSuppliers.includes(supplier.id) ? "✓ " : ""}{supplier.name}
                     </SelectItem>
@@ -304,7 +317,7 @@ export default function Analytics() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les magasins</SelectItem>
-                  {stores?.map((store: any) => (
+                  {Array.isArray(stores) && stores.map((store: any) => (
                     <SelectItem key={store.id} value={store.id.toString()}>
                       {selectedStores.includes(store.id) ? "✓ " : ""}{store.name}
                     </SelectItem>
@@ -391,17 +404,27 @@ export default function Analytics() {
             <CardDescription>Commandes vs Livraisons</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={timeseries || []}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="orders" stroke="#8884d8" name="Commandes" />
-                <Line type="monotone" dataKey="deliveries" stroke="#82ca9d" name="Livraisons" />
-              </LineChart>
-            </ResponsiveContainer>
+            {Array.isArray(timeseries) && timeseries.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={timeseries}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="orders" stroke="#8884d8" name="Commandes" />
+                  <Line type="monotone" dataKey="deliveries" stroke="#82ca9d" name="Livraisons" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <Activity className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Aucune donnée temporelle</p>
+                  <p className="text-sm mt-1">Vérifiez la période sélectionnée</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -415,25 +438,35 @@ export default function Analytics() {
             <CardDescription>Top 5 fournisseurs</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <RechartsChart>
-                <Pie
-                  data={bySupplier?.slice(0, 5) || []}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(entry) => entry.supplierName}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="deliveries"
-                >
-                  {bySupplier?.slice(0, 5).map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </RechartsChart>
-            </ResponsiveContainer>
+            {Array.isArray(bySupplier) && bySupplier.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsChart>
+                  <Pie
+                    data={bySupplier.slice(0, 5)}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => entry.supplierName}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="deliveries"
+                  >
+                    {bySupplier.slice(0, 5).map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </RechartsChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <PieChart className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Aucune donnée fournisseur</p>
+                  <p className="text-sm mt-1">Aucune livraison trouvée</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -447,17 +480,27 @@ export default function Analytics() {
             <CardDescription>Commandes et livraisons</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={byStore?.slice(0, 5) || []} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="storeName" type="category" />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="orders" fill="#8884d8" name="Commandes" />
-                <Bar dataKey="deliveries" fill="#82ca9d" name="Livraisons" />
-              </BarChart>
-            </ResponsiveContainer>
+            {Array.isArray(byStore) && byStore.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={byStore.slice(0, 5)} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="storeName" type="category" />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="orders" fill="#8884d8" name="Commandes" />
+                  <Bar dataKey="deliveries" fill="#82ca9d" name="Livraisons" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <Store className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Aucune donnée magasin</p>
+                  <p className="text-sm mt-1">Aucune activité détectée</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -472,25 +515,33 @@ export default function Analytics() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {summary?.topSuppliers?.map((supplier: any, index: number) => (
-                <div key={supplier.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="w-8 h-8 rounded-full p-0 flex items-center justify-center">
-                      {index + 1}
-                    </Badge>
-                    <div>
-                      <p className="font-medium">{supplier.name}</p>
-                      <p className="text-sm text-gray-600">
-                        {supplier.count} livraisons • {supplier.amount.toFixed(2)}€
-                      </p>
+              {Array.isArray(summary?.topSuppliers) && summary.topSuppliers.length > 0 ? (
+                summary.topSuppliers.map((supplier: any, index: number) => (
+                  <div key={supplier.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="w-8 h-8 rounded-full p-0 flex items-center justify-center">
+                        {index + 1}
+                      </Badge>
+                      <div>
+                        <p className="font-medium">{supplier.name}</p>
+                        <p className="text-sm text-gray-600">
+                          {supplier.count} livraisons • {supplier.amount.toFixed(2)}€
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{supplier.count}</div>
+                      <div className="text-xs text-gray-600">livraisons</div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium">{supplier.count}</div>
-                    <div className="text-xs text-gray-600">livraisons</div>
-                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-4">
+                  <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Aucune donnée disponible pour la période sélectionnée</p>
+                  <p className="text-xs mt-1">Essayez d'élargir la plage de dates</p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
