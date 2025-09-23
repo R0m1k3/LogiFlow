@@ -274,7 +274,7 @@ export interface IStorage {
   }): Promise<{
     totalOrders: number;
     totalDeliveries: number;
-    onTimeRate: number;
+    reconciliationRate: number;
     totalAmount: number;
     avgDeliveryDelay: number;
     topSuppliers: Array<{ id: number; name: string; count: number; amount: number }>;
@@ -2863,7 +2863,7 @@ export class DatabaseStorage implements IStorage {
   }): Promise<{
     totalOrders: number;
     totalDeliveries: number;
-    onTimeRate: number;
+    reconciliationRate: number;
     totalAmount: number;
     avgDeliveryDelay: number;
     topSuppliers: Array<{ id: number; name: string; count: number; amount: number }>;
@@ -2905,7 +2905,7 @@ export class DatabaseStorage implements IStorage {
       const deliveryQuery = db.select({
         count: sql<number>`COUNT(*)`,
         totalAmount: sql<number>`COALESCE(SUM(CAST(bl_amount AS NUMERIC)), 0) + COALESCE(SUM(CAST(invoice_amount AS NUMERIC)), 0)`,
-        onTime: sql<number>`COUNT(CASE WHEN delivered_date <= scheduled_date THEN 1 END)`,
+        reconciled: sql<number>`COUNT(CASE WHEN reconciled = true OR reconciled = 1 THEN 1 END)`,
         avgDelay: sql<number>`AVG(EXTRACT(EPOCH FROM (delivered_date - scheduled_date)) / 86400)` // days
       }).from(deliveries);
       if (deliveryConditions.length) deliveryQuery.where(and(...deliveryConditions));
@@ -2949,7 +2949,7 @@ export class DatabaseStorage implements IStorage {
       return {
         totalOrders: Number(totalOrders) || 0,
         totalDeliveries: Number(deliveryStats.count) || 0,
-        onTimeRate: deliveryStats.count ? (Number(deliveryStats.onTime) / Number(deliveryStats.count)) * 100 : 0,
+        reconciliationRate: deliveryStats.count ? (Number(deliveryStats.reconciled) / Number(deliveryStats.count)) * 100 : 0,
         totalAmount: Number(deliveryStats.totalAmount) || 0,
         avgDeliveryDelay: Number(deliveryStats.avgDelay) || 0,
         topSuppliers: topSuppliers.map(s => ({ 
@@ -5134,7 +5134,7 @@ export class MemStorage implements IStorage {
   }): Promise<{
     totalOrders: number;
     totalDeliveries: number;
-    onTimeRate: number;
+    reconciliationRate: number;
     totalAmount: number;
     avgDeliveryDelay: number;
     topSuppliers: Array<{ id: number; name: string; count: number; amount: number }>;
@@ -5166,10 +5166,10 @@ export class MemStorage implements IStorage {
     // Calculate metrics
     const totalOrders = filteredOrders.length;
     const totalDeliveries = filteredDeliveries.length;
-    const onTimeDeliveries = filteredDeliveries.filter(d => 
-      d.deliveredDate && d.deliveredDate <= d.scheduledDate
+    const reconciledDeliveries = filteredDeliveries.filter(d => 
+      d.reconciled === true || d.reconciled === 1
     ).length;
-    const onTimeRate = totalDeliveries > 0 ? (onTimeDeliveries / totalDeliveries) * 100 : 0;
+    const reconciliationRate = totalDeliveries > 0 ? (reconciledDeliveries / totalDeliveries) * 100 : 0;
     
     const totalAmount = filteredDeliveries.reduce((sum, d) => {
       return sum + (parseFloat(d.blAmount as any) || 0) + (parseFloat(d.invoiceAmount as any) || 0);
@@ -5217,7 +5217,7 @@ export class MemStorage implements IStorage {
     return {
       totalOrders,
       totalDeliveries,
-      onTimeRate,
+      reconciliationRate,
       totalAmount,
       avgDeliveryDelay: 0, // Simplified for development
       topSuppliers,
