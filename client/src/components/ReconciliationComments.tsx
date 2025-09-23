@@ -58,6 +58,9 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
         description: "Commentaire ajouté avec succès",
       });
       queryClient.invalidateQueries({ queryKey: [`/api/deliveries/${deliveryId}/reconciliation-comments`] });
+      // Invalider aussi les queries des livraisons pour mettre à jour le compteur de commentaires
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
       setIsAdding(false);
       setNewComment("");
     },
@@ -81,6 +84,9 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
         description: "Commentaire modifié avec succès",
       });
       queryClient.invalidateQueries({ queryKey: [`/api/deliveries/${deliveryId}/reconciliation-comments`] });
+      // Invalider aussi les queries des livraisons pour mettre à jour le compteur de commentaires
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
       setEditingId(null);
     },
     onError: (error: any) => {
@@ -103,6 +109,9 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
         description: "Commentaire supprimé avec succès",
       });
       queryClient.invalidateQueries({ queryKey: [`/api/deliveries/${deliveryId}/reconciliation-comments`] });
+      // Invalider aussi les queries des livraisons pour mettre à jour le compteur de commentaires
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
     },
     onError: (error: any) => {
       toast({
