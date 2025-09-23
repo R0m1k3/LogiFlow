@@ -52,7 +52,6 @@ export default function BLReconciliation() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<"all" | "validated" | "not_validated">("all");
   
   // État pour le modal d'envoi de facture
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -190,7 +189,7 @@ export default function BLReconciliation() {
 
   // Fonction pour vérifier toutes les factures avec un bouton
   const handleVerifyAllInvoices = () => {
-    const deliveriesToVerify = manualReconciliationDeliveries.filter(delivery => 
+    const deliveriesToVerify = manualNotValidatedDeliveries.filter((delivery: any) => 
       (delivery.invoiceReference?.trim() || delivery.blNumber?.trim()) && 
       (delivery.group?.nocodbTableName || delivery.group?.nocodbConfigId || delivery.group?.webhookUrl)
     );
@@ -203,7 +202,7 @@ export default function BLReconciliation() {
       return;
     }
 
-    deliveriesToVerify.forEach((delivery, index) => {
+    deliveriesToVerify.forEach((delivery: any, index: number) => {
       // Délai échelonné pour éviter la surcharge
       setTimeout(() => {
         handleVerifyInvoice(delivery, true); // Force refresh pour toutes
@@ -310,15 +309,16 @@ export default function BLReconciliation() {
     });
   }, [deliveriesWithBL, suppliers, verificationResults, verifyingDeliveries]);
 
-  // Séparer les livraisons par mode de rapprochement
-  const manualReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
+  // Séparer les livraisons : non validées manuelles et toutes les validées
+  const manualNotValidatedDeliveries = deliveriesWithBL.filter((delivery: any) => {
     const supplier = suppliers.find(s => s.id === delivery.supplierId);
-    return supplier?.automaticReconciliation !== true;
+    const isManual = supplier?.automaticReconciliation !== true;
+    const isNotValidated = delivery.reconciled !== true && delivery.reconciled !== 1;
+    return isManual && isNotValidated;
   });
 
-  const automaticReconciliationDeliveries = deliveriesWithBL.filter((delivery: any) => {
-    const supplier = suppliers.find(s => s.id === delivery.supplierId);
-    return supplier?.automaticReconciliation === true;
+  const allValidatedDeliveries = deliveriesWithBL.filter((delivery: any) => {
+    return delivery.reconciled === true || delivery.reconciled === 1;
   });
 
   // Fonctions de gestion
@@ -626,45 +626,23 @@ export default function BLReconciliation() {
     }
   };
 
-  // Filtrage des livraisons par recherche et statut de validation
+  // Filtrage des livraisons par recherche uniquement
   const filterDeliveries = (deliveries: any[]) => {
+    if (!searchTerm) return deliveries;
+    
+    const searchLower = searchTerm.toLowerCase();
     return deliveries.filter((delivery: any) => {
-      // Conversion sûre de reconciled - gestion de tous les cas possibles
-      const isReconciled = 
-        delivery.reconciled === true || 
-        delivery.reconciled === 1 || 
-        delivery.reconciled === "t" ||
-        delivery.reconciled === "true" ||
-        (typeof delivery.reconciled === 'string' && delivery.reconciled.toLowerCase() === 'true');
-      
-      // Vérifier aussi si une facture a été trouvée ET validée automatiquement
-      // (certaines livraisons ont une coche verte mais reconciled = false)
-      const hasVerifiedInvoice = verificationResults[delivery.id]?.exists === true;
-      const isValidated = isReconciled || (hasVerifiedInvoice && verificationResults[delivery.id]?.reconciled === true);
-      
-      // Filtre par statut validé
-      if (filterStatus === "validated") {
-        // Afficher seulement les livraisons vraiment validées (reconciled = true)
-        return isReconciled;
-      }
-      
-      if (filterStatus === "not_validated") {
-        // Afficher seulement les livraisons non validées (reconciled = false)
-        return !isReconciled;
-      }
-      
-      // Filtre par recherche
-      const searchLower = searchTerm.toLowerCase();
       return (
         delivery.supplier?.name?.toLowerCase().includes(searchLower) ||
         delivery.blNumber?.toLowerCase().includes(searchLower) ||
-        delivery.invoiceReference?.toLowerCase().includes(searchLower)
+        delivery.invoiceReference?.toLowerCase().includes(searchLower) ||
+        delivery.group?.name?.toLowerCase().includes(searchLower)
       );
     });
   };
 
-  const filteredManualDeliveries = filterDeliveries(manualReconciliationDeliveries);
-  const filteredAutomaticDeliveries = filterDeliveries(automaticReconciliationDeliveries);
+  const filteredManualDeliveries = filterDeliveries(manualNotValidatedDeliveries);
+  const filteredValidatedDeliveries = filterDeliveries(allValidatedDeliveries);
 
   // Pagination pour les rapprochements manuels
   const {
@@ -677,16 +655,16 @@ export default function BLReconciliation() {
     totalItems: manualTotalItems
   } = usePagination(filteredManualDeliveries, 20);
 
-  // Pagination pour les rapprochements automatiques
+  // Pagination pour les livraisons validées
   const {
-    currentPage: autoCurrentPage,
-    setCurrentPage: setAutoCurrentPage,
-    itemsPerPage: autoItemsPerPage,
-    setItemsPerPage: setAutoItemsPerPage,
-    totalPages: autoTotalPages,
-    paginatedData: paginatedAutoDeliveries,
-    totalItems: autoTotalItems
-  } = usePagination(filteredAutomaticDeliveries, 20);
+    currentPage: validatedCurrentPage,
+    setCurrentPage: setValidatedCurrentPage,
+    itemsPerPage: validatedItemsPerPage,
+    setItemsPerPage: setValidatedItemsPerPage,
+    totalPages: validatedTotalPages,
+    paginatedData: paginatedValidatedDeliveries,
+    totalItems: validatedTotalItems
+  } = usePagination(filteredValidatedDeliveries, 20);
 
   const canModify = user?.role === 'directeur' || user?.role === 'admin';
 
@@ -710,10 +688,10 @@ export default function BLReconciliation() {
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-4">
             <Badge variant="outline" className="text-xs sm:text-sm border border-gray-300">
-              {manualReconciliationDeliveries.length} manuels
+              {manualNotValidatedDeliveries.length} à traiter
             </Badge>
-            <Badge variant="outline" className="text-xs sm:text-sm border border-gray-300 bg-blue-50">
-              {automaticReconciliationDeliveries.length} automatiques
+            <Badge variant="outline" className="text-xs sm:text-sm border border-gray-300 bg-green-50">
+              {allValidatedDeliveries.length} validées
             </Badge>
             <Button
               onClick={handleVerifyAllInvoices}
@@ -734,59 +712,30 @@ export default function BLReconciliation() {
               <Edit className="w-4 h-4" />
               <span>Rapprochement Manuel</span>
               <Badge variant="secondary" className="ml-2">
-                {manualReconciliationDeliveries.length}
+                {manualNotValidatedDeliveries.length}
               </Badge>
             </TabsTrigger>
-            <TabsTrigger value="automatic" className="flex items-center space-x-2">
-              <Settings className="w-4 h-4" />
-              <span>Rapprochement Automatique</span>
+            <TabsTrigger value="validated" className="flex items-center space-x-2">
+              <CheckCircle className="w-4 h-4" />
+              <span>Livraisons Validées</span>
               <Badge variant="secondary" className="ml-2">
-                {automaticReconciliationDeliveries.length}
+                {allValidatedDeliveries.length}
               </Badge>
             </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
-      {/* Filters */}
+      {/* Barre de recherche */}
       <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Rechercher par fournisseur, BL ou facture..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 border border-gray-300 shadow-sm w-full"
-              />
-            </div>
-          </div>
-          <div className="w-full sm:w-48">
-            <Select value={filterStatus} onValueChange={(value: "all" | "validated" | "not_validated") => setFilterStatus(value)}>
-              <SelectTrigger className="border border-gray-300 shadow-sm">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Filtrer par statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  Tous les rapprochements
-                </SelectItem>
-                <SelectItem value="validated">
-                  <div className="flex items-center">
-                    <Check className="w-4 h-4 mr-2 text-green-600" />
-                    Validés seulement
-                  </div>
-                </SelectItem>
-                <SelectItem value="not_validated">
-                  <div className="flex items-center">
-                    <X className="w-4 h-4 mr-2 text-orange-600" />
-                    Non validés seulement
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Rechercher par fournisseur, BL, facture ou magasin..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 border border-gray-300 shadow-sm w-full"
+          />
         </div>
       </div>
 
@@ -1098,15 +1047,15 @@ export default function BLReconciliation() {
           )}
         </TabsContent>
         
-        <TabsContent value="automatic" className="space-y-6">
+        <TabsContent value="validated" className="space-y-6">
           {/* Message d'information */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-start space-x-3">
-              <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
+              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
               <div>
-                <h4 className="text-sm font-medium text-blue-900">Mode rapprochement automatique</h4>
-                <p className="text-sm text-blue-700 mt-1">
-                  Les livraisons de fournisseurs en mode automatique sont validées automatiquement lorsqu'elles ont le statut "delivered" et un numéro de BL.
+                <h4 className="text-sm font-medium text-green-900">Livraisons validées</h4>
+                <p className="text-sm text-green-700 mt-1">
+                  Cette section regroupe toutes les livraisons validées (manuellement ou automatiquement).
                   {(permissions.canEdit('reconciliation') || permissions.canValidate('reconciliation')) ? (
                     " Vous pouvez dévalider ces rapprochements si nécessaire."
                   ) : (
@@ -1117,14 +1066,14 @@ export default function BLReconciliation() {
             </div>
           </div>
 
-          {filteredAutomaticDeliveries.length === 0 ? (
+          {filteredValidatedDeliveries.length === 0 ? (
             <div className="text-center py-12">
-              <Settings className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Aucun rapprochement automatique trouvé
+                Aucune livraison validée trouvée
               </h3>
               <p className="text-gray-600">
-                Les livraisons de fournisseurs en mode automatique apparaîtront ici.
+                Les livraisons validées apparaîtront ici.
               </p>
             </div>
           ) : (
@@ -1133,22 +1082,21 @@ export default function BLReconciliation() {
                 {/* Pagination du haut */}
                 <div className="p-4 border-b border-gray-200">
                   <Pagination
-                    currentPage={autoCurrentPage}
-                    totalPages={autoTotalPages}
-                    totalItems={autoTotalItems}
-                    itemsPerPage={autoItemsPerPage}
-                    onPageChange={setAutoCurrentPage}
-                    onItemsPerPageChange={setAutoItemsPerPage}
+                    currentPage={validatedCurrentPage}
+                    totalPages={validatedTotalPages}
+                    totalItems={validatedTotalItems}
+                    itemsPerPage={validatedItemsPerPage}
+                    onPageChange={setValidatedCurrentPage}
+                    onItemsPerPageChange={setValidatedItemsPerPage}
                   />
                 </div>
                 
                 <div className="table-container">
-                  <table className="w-full min-w-[700px]">
+                  <table className="w-full min-w-[900px]">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Fournisseur
-                          <Badge variant="secondary" className="ml-2 text-xs">AUTO</Badge>
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           N° BL
@@ -1157,7 +1105,16 @@ export default function BLReconciliation() {
                           Date Livr.
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date Valid.
+                          Ref. Facture
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Montant BL
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Montant Fact.
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Écart
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Magasin
@@ -1168,91 +1125,116 @@ export default function BLReconciliation() {
                       </tr>
                     </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {paginatedAutoDeliveries.map((delivery: any) => (
-                          <tr key={delivery.id} className="hover:bg-gray-50 bg-green-50">
-                            <td className="px-3 py-2 text-sm">
-                              <div className="font-medium text-gray-900 truncate max-w-32">
-                                {delivery.supplier?.name}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className="text-gray-900">
-                                {delivery.blNumber || (
-                                  <span 
-                                    className="text-gray-400 italic text-xs hover:text-blue-500 cursor-pointer hover:underline transition-colors"
+                        {paginatedValidatedDeliveries.map((delivery: any) => {
+                          const supplier = suppliers.find(s => s.id === delivery.supplierId);
+                          const isAutomatic = supplier?.automaticReconciliation === true;
+                          const ecart = delivery.blAmount && delivery.invoiceAmount ? 
+                            ((parseFloat(delivery.invoiceAmount) - parseFloat(delivery.blAmount)) / parseFloat(delivery.blAmount) * 100).toFixed(1) : 
+                            null;
+                          
+                          return (
+                            <tr key={delivery.id} className="hover:bg-gray-50 bg-green-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center space-x-2">
+                                  <div className="font-medium text-gray-900 truncate max-w-32">
+                                    {delivery.supplier?.name}
+                                  </div>
+                                  {isAutomatic && (
+                                    <Badge variant="secondary" className="text-xs">AUTO</Badge>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {delivery.blNumber || (
+                                    <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {safeFormat(delivery.scheduledDate, 'dd/MM/yy')}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {delivery.invoiceReference || (
+                                    <span className="text-gray-400 italic text-xs">Non renseignée</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {delivery.blAmount ? 
+                                    `${parseFloat(delivery.blAmount).toFixed(2)}€` :
+                                    <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                  }
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {delivery.invoiceAmount ? 
+                                    `${parseFloat(delivery.invoiceAmount).toFixed(2)}€` :
+                                    <span className="text-gray-400 italic text-xs">Non renseigné</span>
+                                  }
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                {ecart !== null ? (
+                                  <Badge 
+                                    variant={parseFloat(ecart) === 0 ? "outline" : Math.abs(parseFloat(ecart)) > 5 ? "destructive" : "secondary"}
+                                    className="text-xs"
+                                  >
+                                    {parseFloat(ecart) > 0 ? '+' : ''}{ecart}%
+                                  </Badge>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">-</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {delivery.group?.name}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right">
+                                <div className="flex items-center justify-end space-x-2">
+                                  <button
+                                    onClick={() => handleOpenCommentModal(delivery)}
+                                    className="transition-colors duration-200 p-1 rounded text-gray-600 hover:text-gray-700 hover:bg-gray-50 opacity-70"
+                                    title="Voir/Gérer les commentaires"
+                                  >
+                                    <MessageSquare className="h-4 w-4" />
+                                  </button>
+                                  {(permissions.canEdit('reconciliation') || permissions.canValidate('reconciliation')) && (
+                                    <button
+                                      onClick={() => handleDevalidateReconciliation(delivery.id)}
+                                      className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
+                                      title="Dévalider le rapprochement"
+                                    >
+                                      <Ban className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  {permissions.canDelete('reconciliation') && (
+                                    <button
+                                      onClick={() => handleDeleteDelivery(delivery.id)}
+                                      className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
+                                      title="Supprimer la livraison"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  <button
                                     onClick={() => handleOpenModal(delivery)}
-                                    title="Cliquer pour modifier"
+                                    className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
+                                    title="Voir les détails"
                                   >
-                                    Non renseigné
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className="text-gray-900">
-                                {safeFormat(delivery.scheduledDate, 'dd/MM/yy')}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className="text-gray-900">
-                                {delivery.validatedAt ? 
-                                  safeFormat(delivery.validatedAt, 'dd/MM/yy HH:mm') :
-                                  <span className="text-gray-400 italic text-xs">Non validé</span>
-                                }
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className="text-gray-900">
-                                {delivery.group?.name}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className="flex items-center space-x-2">
-                                {shouldShowInvoiceButton(delivery) && (
-                                  <button
-                                    onClick={() => handleOpenInvoiceModal(delivery)}
-                                    className="text-green-600 hover:text-green-700 transition-colors duration-200 p-1 hover:bg-green-50 rounded"
-                                    title="Envoyer Facture/Avoir"
-                                  >
-                                    <Upload className="h-4 w-4" />
+                                    <Eye className="w-4 h-4" />
                                   </button>
-                                )}
-                                <button
-                                  onClick={() => handleOpenCommentModal(delivery)}
-                                  className={`transition-colors duration-200 p-1 rounded text-gray-600 hover:text-gray-700 hover:bg-gray-50 ${delivery.reconciled ? 'opacity-70' : ''}`}
-                                  title="Voir/Gérer les commentaires"
-                                >
-                                  <MessageSquare className="h-4 w-4" />
-                                </button>
-                                {(permissions.canEdit('reconciliation') || permissions.canValidate('reconciliation')) && (
-                                  <button
-                                    onClick={() => handleDevalidateReconciliation(delivery.id)}
-                                    className="text-gray-600 hover:text-orange-600 transition-colors duration-200 p-1 hover:bg-orange-50 rounded"
-                                    title="Dévalider le rapprochement automatique"
-                                  >
-                                    <Ban className="w-4 h-4" />
-                                  </button>
-                                )}
-                                {permissions.canDelete('reconciliation') && (
-                                  <button
-                                    onClick={() => handleDeleteDelivery(delivery.id)}
-                                    className="text-gray-600 hover:text-red-600 transition-colors duration-200 p-1 hover:bg-red-50 rounded"
-                                    title="Supprimer la livraison"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handleOpenModal(delivery)}
-                                  className="text-gray-600 hover:text-blue-600 transition-colors duration-200 p-1 hover:bg-blue-50 rounded"
-                                  title="Voir les détails"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1260,12 +1242,12 @@ export default function BLReconciliation() {
                 {/* Pagination du bas */}
                 <div className="p-4 border-t border-gray-200">
                   <Pagination
-                    currentPage={autoCurrentPage}
-                    totalPages={autoTotalPages}
-                    totalItems={autoTotalItems}
-                    itemsPerPage={autoItemsPerPage}
-                    onPageChange={setAutoCurrentPage}
-                    onItemsPerPageChange={setAutoItemsPerPage}
+                    currentPage={validatedCurrentPage}
+                    totalPages={validatedTotalPages}
+                    totalItems={validatedTotalItems}
+                    itemsPerPage={validatedItemsPerPage}
+                    onPageChange={setValidatedCurrentPage}
+                    onItemsPerPageChange={setValidatedItemsPerPage}
                   />
                 </div>
               </div>
