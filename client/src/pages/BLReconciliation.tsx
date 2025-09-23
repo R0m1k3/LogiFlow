@@ -1132,6 +1132,15 @@ export default function BLReconciliation() {
                             ((parseFloat(delivery.invoiceAmount) - parseFloat(delivery.blAmount)) / parseFloat(delivery.blAmount) * 100).toFixed(1) : 
                             null;
                           
+                          // Log pour déboguer le problème des commentaires
+                          if (import.meta.env.DEV && delivery.reconciliationCommentsCount) {
+                            console.log('🔍 Validated delivery comments:', {
+                              deliveryId: delivery.id,
+                              commentsCount: delivery.reconciliationCommentsCount,
+                              hasComments: delivery.reconciliationCommentsCount > 0
+                            });
+                          }
+                          
                           return (
                             <tr key={delivery.id} className="hover:bg-gray-50 bg-green-50">
                               <td className="px-6 py-4 whitespace-nowrap">
