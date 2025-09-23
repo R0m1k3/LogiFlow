@@ -1200,10 +1200,20 @@ export default function BLReconciliation() {
                                 <div className="flex items-center justify-end space-x-2">
                                   <button
                                     onClick={() => handleOpenCommentModal(delivery)}
-                                    className="transition-colors duration-200 p-1 rounded text-gray-600 hover:text-gray-700 hover:bg-gray-50 opacity-70"
-                                    title="Voir/Gérer les commentaires"
+                                    className={`transition-colors duration-200 p-1 rounded ${
+                                      delivery.reconciliationCommentsCount && delivery.reconciliationCommentsCount > 0
+                                        ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                                        : 'text-gray-600 hover:text-gray-700 hover:bg-gray-50'
+                                    } opacity-70`}
+                                    title={`Voir/Gérer les commentaires ${
+                                      delivery.reconciliationCommentsCount ? `(${delivery.reconciliationCommentsCount})` : ''
+                                    }`}
                                   >
-                                    <MessageSquare className="h-4 w-4" />
+                                    <MessageSquare className={`h-4 w-4 ${
+                                      delivery.reconciliationCommentsCount && delivery.reconciliationCommentsCount > 0
+                                        ? 'fill-blue-200'
+                                        : ''
+                                    }`} />
                                   </button>
                                   {(permissions.canEdit('reconciliation') || permissions.canValidate('reconciliation')) && (
                                     <button
