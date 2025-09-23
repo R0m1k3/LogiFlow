@@ -8,7 +8,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
-import { CalendarIcon, Download, RefreshCw, TrendingUp, Package, Clock, Euro, Store, Truck, BarChart3, PieChart, Activity, FileDown } from "lucide-react";
+import { CalendarIcon, Download, RefreshCw, TrendingUp, Package, CheckCircle2, Euro, Store, Truck, BarChart3, PieChart, Activity, FileDown } from "lucide-react";
 import { addDays, format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear } from "date-fns";
 import { fr } from "date-fns/locale";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -362,15 +362,15 @@ export default function Analytics() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">
-              Taux de ponctualité
+              Taux de réconciliation
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div className="text-2xl font-bold">
-                {summary?.onTimeRate ? `${summary.onTimeRate.toFixed(1)}%` : '0%'}
+                {summary?.reconciliationRate ? `${summary.reconciliationRate.toFixed(1)}%` : '0%'}
               </div>
-              <Clock className="h-8 w-8 text-orange-500 opacity-50" />
+              <CheckCircle2 className="h-8 w-8 text-green-500 opacity-50" />
             </div>
           </CardContent>
         </Card>
