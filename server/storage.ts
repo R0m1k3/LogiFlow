@@ -2876,12 +2876,14 @@ export class DatabaseStorage implements IStorage {
 
       // Apply filters
       if (filters.startDate) {
-        orderConditions.push(gte(orders.plannedDate, filters.startDate));
-        deliveryConditions.push(gte(deliveries.scheduledDate, filters.startDate));
+        const startDateStr = filters.startDate.toISOString().split('T')[0];
+        orderConditions.push(gte(orders.plannedDate, startDateStr));
+        deliveryConditions.push(gte(deliveries.scheduledDate, startDateStr));
       }
       if (filters.endDate) {
-        orderConditions.push(lte(orders.plannedDate, filters.endDate));
-        deliveryConditions.push(lte(deliveries.scheduledDate, filters.endDate));
+        const endDateStr = filters.endDate.toISOString().split('T')[0];
+        orderConditions.push(lte(orders.plannedDate, endDateStr));
+        deliveryConditions.push(lte(deliveries.scheduledDate, endDateStr));
       }
       if (filters.supplierIds?.length) {
         orderConditions.push(inArray(orders.supplierId, filters.supplierIds));
@@ -2905,7 +2907,7 @@ export class DatabaseStorage implements IStorage {
       const deliveryQuery = db.select({
         count: sql<number>`COUNT(*)`,
         totalAmount: sql<number>`COALESCE(SUM(CAST(bl_amount AS NUMERIC)), 0) + COALESCE(SUM(CAST(invoice_amount AS NUMERIC)), 0)`,
-        reconciled: sql<number>`COUNT(CASE WHEN reconciled = true OR reconciled = 1 THEN 1 END)`,
+        reconciled: sql<number>`COUNT(CASE WHEN reconciled = true THEN 1 END)`,
         avgDelay: sql<number>`AVG(EXTRACT(EPOCH FROM (delivered_date - scheduled_date)) / 86400)` // days
       }).from(deliveries);
       if (deliveryConditions.length) deliveryQuery.where(and(...deliveryConditions));
@@ -3053,8 +3055,14 @@ export class DatabaseStorage implements IStorage {
     groupIds?: number[];
   }): Promise<Array<{ supplierId: number; supplierName: string; deliveries: number; amount: number }>> {
     const conditions: any[] = [];
-    if (filters.startDate) conditions.push(gte(deliveries.scheduledDate, filters.startDate));
-    if (filters.endDate) conditions.push(lte(deliveries.scheduledDate, filters.endDate));
+    if (filters.startDate) {
+      const startDateStr = filters.startDate.toISOString().split('T')[0];
+      conditions.push(gte(deliveries.scheduledDate, startDateStr));
+    }
+    if (filters.endDate) {
+      const endDateStr = filters.endDate.toISOString().split('T')[0];
+      conditions.push(lte(deliveries.scheduledDate, endDateStr));
+    }
     if (filters.groupIds?.length) conditions.push(inArray(deliveries.groupId, filters.groupIds));
 
     const query = db.select({
@@ -5146,8 +5154,14 @@ export class MemStorage implements IStorage {
     
     // Apply filters
     const filteredOrders = orders.filter(order => {
-      if (filters.startDate && order.plannedDate < filters.startDate) return false;
-      if (filters.endDate && order.plannedDate > filters.endDate) return false;
+      if (filters.startDate) {
+        const orderDate = new Date(order.plannedDate);
+        if (orderDate < filters.startDate) return false;
+      }
+      if (filters.endDate) {
+        const orderDate = new Date(order.plannedDate);
+        if (orderDate > filters.endDate) return false;
+      }
       if (filters.supplierIds?.length && !filters.supplierIds.includes(order.supplierId)) return false;
       if (filters.groupIds?.length && !filters.groupIds.includes(order.groupId)) return false;
       if (filters.status?.length && !filters.status.includes(order.status)) return false;
@@ -5155,8 +5169,14 @@ export class MemStorage implements IStorage {
     });
 
     const filteredDeliveries = deliveries.filter(delivery => {
-      if (filters.startDate && delivery.scheduledDate < filters.startDate) return false;
-      if (filters.endDate && delivery.scheduledDate > filters.endDate) return false;
+      if (filters.startDate) {
+        const deliveryDate = new Date(delivery.scheduledDate);
+        if (deliveryDate < filters.startDate) return false;
+      }
+      if (filters.endDate) {
+        const deliveryDate = new Date(delivery.scheduledDate);
+        if (deliveryDate > filters.endDate) return false;
+      }
       if (filters.supplierIds?.length && !filters.supplierIds.includes(delivery.supplierId)) return false;
       if (filters.groupIds?.length && !filters.groupIds.includes(delivery.groupId)) return false;
       if (filters.status?.length && !filters.status.includes(delivery.status)) return false;
