@@ -61,10 +61,16 @@ export default function CreateDeliveryModal({
     queryKey: ['/api/orders'],
   });
 
-  // Filtrer les commandes par fournisseur sélectionné - montrer toutes les commandes non livrées
-  const availableOrders = allOrders.filter(order => 
-    formData.supplierId ? (order.supplierId === parseInt(formData.supplierId) && order.status !== 'delivered') : false
-  );
+  // Filtrer les commandes par fournisseur ET magasin sélectionnés - montrer toutes les commandes non livrées
+  const availableOrders = allOrders.filter(order => {
+    if (!formData.supplierId || !formData.groupId) return false;
+    
+    return (
+      order.supplierId === parseInt(formData.supplierId) &&
+      order.groupId === parseInt(formData.groupId) &&
+      order.status !== 'delivered'
+    );
+  });
 
   // Auto-sélectionner le magasin selon les règles
   useEffect(() => {
@@ -123,6 +129,13 @@ export default function CreateDeliveryModal({
       setFormData(prev => ({ ...prev, orderId: "" }));
     }
   }, [formData.supplierId]);
+
+  // Réinitialiser la commande sélectionnée quand on change de magasin
+  useEffect(() => {
+    if (formData.groupId) {
+      setFormData(prev => ({ ...prev, orderId: "" }));
+    }
+  }, [formData.groupId]);
 
   const createDeliveryMutation = useMutation({
     mutationFn: async (data: any) => {
