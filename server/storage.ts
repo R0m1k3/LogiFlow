@@ -2907,7 +2907,7 @@ export class DatabaseStorage implements IStorage {
       const deliveryQuery = db.select({
         count: sql<number>`COUNT(*)`,
         totalAmount: sql<number>`COALESCE(SUM(CAST(bl_amount AS NUMERIC)), 0) + COALESCE(SUM(CAST(invoice_amount AS NUMERIC)), 0)`,
-        reconciled: sql<number>`COUNT(CASE WHEN reconciled = true OR reconciled = 1 THEN 1 END)`,
+        reconciled: sql<number>`COUNT(CASE WHEN reconciled = true THEN 1 END)`,
         avgDelay: sql<number>`AVG(EXTRACT(EPOCH FROM (delivered_date - scheduled_date)) / 86400)` // days
       }).from(deliveries);
       if (deliveryConditions.length) deliveryQuery.where(and(...deliveryConditions));
