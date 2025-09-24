@@ -264,6 +264,7 @@ export default function DlcPage() {
     
     const dlcData: InsertDlcProduct = {
       ...data,
+      name: data.productName, // Copier productName vers name (requis dans la DB)
       expiryDate: dlcDate,
       quantity: 1, // Valeur par défaut
       unit: "unité", // Valeur par défaut
