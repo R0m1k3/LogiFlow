@@ -10,11 +10,13 @@ import { Calendar, Package, ShoppingCart, TrendingUp, Clock, MapPin, User, Alert
 import { safeFormat, safeDate } from "@/lib/dateUtils";
 import type { PublicityWithRelations, DashboardMessage } from "@shared/schema";
 import AnnouncementCard from "@/components/AnnouncementCard";
+import { DlcAlertModal } from "@/components/DlcAlertModal";
 
 export default function Dashboard() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [showDlcAlertModal, setShowDlcAlertModal] = useState(false);
 
   const { data: stats } = useQuery({
     queryKey: ['/api/stats/monthly', selectedStoreId],
@@ -228,6 +230,35 @@ export default function Dashboard() {
       }).then(res => res.json());
     },
   });
+
+  // Effet pour afficher automatiquement le modal DLC pour les utilisateurs non-admin
+  useEffect(() => {
+    // Vérifier si l'utilisateur n'est pas admin et qu'il y a des problèmes DLC
+    const shouldShowDlcModal = user?.role !== 'admin' && 
+                              (dlcStats.expired > 0 || dlcStats.expiringSoon > 0);
+    
+    if (shouldShowDlcModal && !showDlcAlertModal) {
+      // Vérifier s'il n'y a pas de snooze actif
+      const snoozedUntil = localStorage.getItem('dlcAlertSnooze');
+      if (snoozedUntil) {
+        const snoozeDate = new Date(snoozedUntil);
+        if (new Date() >= snoozeDate) {
+          localStorage.removeItem('dlcAlertSnooze');
+          setShowDlcAlertModal(true);
+        }
+      } else {
+        setShowDlcAlertModal(true);
+      }
+    } else if (!shouldShowDlcModal && showDlcAlertModal) {
+      // Fermer le modal si plus de problèmes DLC
+      setShowDlcAlertModal(false);
+    }
+  }, [user?.role, dlcStats.expired, dlcStats.expiringSoon, showDlcAlertModal]);
+
+  // Fonction pour fermer le modal DLC
+  const handleCloseDlcAlertModal = () => {
+    setShowDlcAlertModal(false);
+  };
 
   // Fetch tasks
   const { data: tasks = [] } = useQuery({
@@ -740,6 +771,14 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal d'alerte DLC pour les utilisateurs non-admin */}
+      <DlcAlertModal
+        isOpen={showDlcAlertModal}
+        onClose={handleCloseDlcAlertModal}
+        dlcStats={dlcStats}
+        selectedStoreId={selectedStoreId}
+      />
     </div>
   );
 }
