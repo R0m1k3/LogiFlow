@@ -927,6 +927,8 @@ export default function DlcPage() {
                                 onClick={() => handleValidate(product.id)}
                                 disabled={validateMutation.isPending}
                                 className="bg-green-600 hover:bg-green-700"
+                                data-testid={`button-validate-${product.id}`}
+                                title="Valider définitivement ce produit"
                               >
                                 <CheckCircle className="w-4 h-4" />
                               </Button>
@@ -943,6 +945,7 @@ export default function DlcPage() {
                                       onClick={() => handleMarkProcessed(product.id)}
                                       disabled={markProcessedMutation.isPending}
                                       className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                                      data-testid={`button-mark-processed-${product.id}`}
                                     >
                                       <CheckCircle2 className="w-4 h-4" />
                                     </Button>
