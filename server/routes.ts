@@ -2051,6 +2051,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route pour marquer un produit DLC comme traité temporairement (expire bientôt) - accessible à tous
+  app.put('/api/dlc-products/:id/mark-processed', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      const dlcProduct = await storage.getDlcProduct(id);
+      
+      if (!dlcProduct) {
+        return res.status(404).json({ message: "DLC Product not found" });
+      }
+
+      // For non-admin users, check if they have access to the product's group
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(dlcProduct.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group's DLC products" });
+        }
+      }
+
+      console.log('🔍 DLC Product mark as processed attempt:', { 
+        userId: user.id,
+        userRole: user.role, 
+        dlcProductId: id,
+        dlcGroupId: dlcProduct.groupId
+      });
+
+      const processedProduct = await storage.markDlcProductAsProcessed(id, user.id);
+      console.log('✅ DLC Product marked as processed by:', user.role, user.id);
+      
+      res.json(processedProduct);
+    } catch (error) {
+      console.error("Error marking DLC product as processed:", error);
+      res.status(500).json({ message: "Failed to mark DLC product as processed" });
+    }
+  });
+
+  // Route pour annuler le traitement temporaire d'un produit DLC - réservé aux admins, directeurs et managers
+  app.put('/api/dlc-products/:id/unmark-processed', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user has permission to unmark processed (admin, directeur, manager)
+      if (!['admin', 'directeur', 'manager'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions to unmark DLC product as processed" });
+      }
+
+      const id = parseInt(req.params.id);
+      const dlcProduct = await storage.getDlcProduct(id);
+      
+      if (!dlcProduct) {
+        return res.status(404).json({ message: "DLC Product not found" });
+      }
+
+      // For non-admin users, check if they have access to the product's group
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (!userGroupIds.includes(dlcProduct.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group's DLC products" });
+        }
+      }
+
+      console.log('🔍 DLC Product unmark processed attempt:', { 
+        userId: user.id,
+        userRole: user.role, 
+        dlcProductId: id,
+        dlcGroupId: dlcProduct.groupId
+      });
+
+      const unprocessedProduct = await storage.unmarkDlcProductAsProcessed(id);
+      console.log('✅ DLC Product unmarked as processed by:', user.role, user.id);
+      
+      res.json(unprocessedProduct);
+    } catch (error) {
+      console.error("Error unmarking DLC product as processed:", error);
+      res.status(500).json({ message: "Failed to unmark DLC product as processed" });
+    }
+  });
+
   // Tasks routes
   app.get('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {

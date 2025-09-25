@@ -248,6 +248,9 @@ export const dlcProducts = pgTable("dlc_products", {
   stockEpuise: boolean("stock_epuise").default(false), // Produit épuisé en stock (pas périmé)
   stockEpuiseBy: varchar("stock_epuise_by"), // Marqué comme épuisé par (optionnel)
   stockEpuiseAt: timestamp("stock_epuise_at"), // Date de marquage épuisé (optionnel)
+  processedAt: timestamp("processed_at"), // Date de traitement "expire bientôt" (optionnel)
+  processedBy: varchar("processed_by"), // Qui a marqué comme traité (optionnel)
+  processedUntilExpiry: boolean("processed_until_expiry").default(false), // Traité jusqu'à expiration
   notes: text("notes"), // Notes (optionnel)
   createdBy: varchar("created_by").notNull(), // Créateur
   validatedBy: varchar("validated_by"), // Validé par (optionnel)
