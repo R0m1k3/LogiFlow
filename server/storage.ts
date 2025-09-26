@@ -193,6 +193,8 @@ export interface IStorage {
   validateDlcProduct(id: number, validatedBy: string): Promise<DlcProductFrontend>;
   markDlcProductStockEpuise(id: number, markedBy: string): Promise<DlcProductFrontend>;
   restoreDlcProductStock(id: number): Promise<DlcProductFrontend>;
+  markDlcProductAsProcessed(id: number, processedBy: string): Promise<DlcProductFrontend>;
+  unmarkDlcProductAsProcessed(id: number): Promise<DlcProductFrontend>;
   getDlcStats(groupIds?: number[]): Promise<{ active: number; expiringSoon: number; expired: number; }>;
 
   // Task operations  
@@ -1990,6 +1992,34 @@ export class DatabaseStorage implements IStorage {
     return dlcProduct as DlcProductFrontend;
   }
 
+  async markDlcProductAsProcessed(id: number, processedBy: string): Promise<DlcProductFrontend> {
+    const [dlcProduct] = await db
+      .update(dlcProducts)
+      .set({ 
+        processedAt: new Date(),
+        processedBy: processedBy,
+        processedUntilExpiry: true,
+        updatedAt: new Date()
+      })
+      .where(eq(dlcProducts.id, id))
+      .returning();
+    return dlcProduct as DlcProductFrontend;
+  }
+
+  async unmarkDlcProductAsProcessed(id: number): Promise<DlcProductFrontend> {
+    const [dlcProduct] = await db
+      .update(dlcProducts)
+      .set({ 
+        processedAt: null,
+        processedBy: null,
+        processedUntilExpiry: false,
+        updatedAt: new Date()
+      })
+      .where(eq(dlcProducts.id, id))
+      .returning();
+    return dlcProduct as DlcProductFrontend;
+  }
+
   async getDlcStats(groupIds?: number[]): Promise<{ active: number; expiringSoon: number; expired: number; }> {
     const today = new Date();
     const alertDate = new Date();
@@ -2003,8 +2033,14 @@ export class DatabaseStorage implements IStorage {
     const [stats] = await db
       .select({
         active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} THEN 1 END)`,
-        expiringSoon: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} THEN 1 END)`,
-        expired: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} THEN 1 END)`
+        expiringSoon: sql<number>`COUNT(CASE 
+          WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} 
+          AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
+          THEN 1 END)`,
+        expired: sql<number>`COUNT(CASE 
+          WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} 
+          AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false OR ${dlcProducts.expiryDate} < ${today.toISOString().split('T')[0]})
+          THEN 1 END)`
       })
       .from(dlcProducts)
       .where(whereCondition);
@@ -4096,6 +4132,36 @@ export class MemStorage implements IStorage {
     return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
   }
 
+  async markDlcProductAsProcessed(id: number, processedBy: string): Promise<DlcProductFrontend> {
+    const existingProduct = this.dlcProducts.get(id);
+    if (!existingProduct) throw new Error('DLC Product not found');
+    
+    const updatedProduct = { 
+      ...existingProduct, 
+      processedAt: new Date(),
+      processedBy: processedBy,
+      processedUntilExpiry: true,
+      updatedAt: new Date() 
+    };
+    this.dlcProducts.set(id, updatedProduct);
+    return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
+  }
+
+  async unmarkDlcProductAsProcessed(id: number): Promise<DlcProductFrontend> {
+    const existingProduct = this.dlcProducts.get(id);
+    if (!existingProduct) throw new Error('DLC Product not found');
+    
+    const updatedProduct = { 
+      ...existingProduct, 
+      processedAt: null,
+      processedBy: null,
+      processedUntilExpiry: false,
+      updatedAt: new Date() 
+    };
+    this.dlcProducts.set(id, updatedProduct);
+    return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
+  }
+
   async getDlcStats(groupIds?: number[]): Promise<{ active: number; expiringSoon: number; expired: number; }> {
     const today = new Date();
     const alertDate = new Date();
@@ -4111,9 +4177,16 @@ export class MemStorage implements IStorage {
       active: products.filter(p => new Date(p.expiryDate) > today).length,
       expiringSoon: products.filter(p => {
         const expiry = new Date(p.expiryDate);
-        return expiry >= today && expiry <= alertDate;
+        const isExpiringSoon = expiry >= today && expiry <= alertDate;
+        const isProcessed = p.processedUntilExpiry && expiry > today;
+        return isExpiringSoon && !isProcessed;
       }).length,
-      expired: products.filter(p => new Date(p.expiryDate) <= today).length
+      expired: products.filter(p => {
+        const expiry = new Date(p.expiryDate);
+        const isExpired = expiry <= today;
+        const isProcessed = p.processedUntilExpiry && expiry > today;
+        return isExpired && !isProcessed;
+      }).length
     };
   }
 

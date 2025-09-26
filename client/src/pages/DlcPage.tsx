@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Plus, Eye, Edit, Trash2, CheckCircle, Package, Clock, AlertCircle, Filter, Download, FileText, PackageX, RotateCcw } from "lucide-react";
+import { AlertTriangle, Plus, Eye, Edit, Trash2, CheckCircle, CheckCircle2, Package, Clock, AlertCircle, Filter, Download, FileText, PackageX, RotateCcw, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -225,6 +225,40 @@ export default function DlcPage() {
     },
   });
 
+  // Marquer comme traité mutation - accessible à tous
+  const markProcessedMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/mark-processed`, "PUT"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
+      toast({ title: "Produit marqué comme traité" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur lors du marquage",
+        description: error.message || "Une erreur est survenue",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Annuler traitement mutation - réservé aux admins, directeurs et managers
+  const unmarkProcessedMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/unmark-processed`, "PUT"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
+      toast({ title: "Traitement annulé avec succès" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur lors de l'annulation",
+        description: error.message || "Une erreur est survenue",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: DlcFormData) => {
     // Calculer la date d'expiration et le seuil d'alerte (15 jours avant)
     const dlcDate = new Date(data.dlcDate);
@@ -319,6 +353,14 @@ export default function DlcPage() {
     restoreStockMutation.mutate(id);
   };
 
+  const handleMarkProcessed = (id: number) => {
+    markProcessedMutation.mutate(id);
+  };
+
+  const handleUnmarkProcessed = (id: number) => {
+    unmarkProcessedMutation.mutate(id);
+  };
+
   // Fonction pour déterminer si un produit doit afficher le bouton de validation
   const shouldShowValidateButton = (product: DlcProductWithRelations) => {
     const today = new Date();
@@ -330,13 +372,40 @@ export default function DlcPage() {
     return (daysUntilExpiry <= 15 && product.status !== "valides");
   };
 
-  const getStatusBadge = (status: string, dlcDate: string | null, stockEpuise?: boolean) => {
+  // Fonction pour déterminer si un produit doit afficher le bouton "Marquer comme traité"
+  const shouldShowMarkProcessedButton = (product: DlcProductWithRelations) => {
+    const today = new Date();
+    const expiry = new Date(product.expiryDate || new Date());
+    const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Afficher le bouton si :
+    // - Le produit expire bientôt (dans 15 jours ou moins) ET pas encore expiré
+    // - Il n'est pas déjà traité 
+    // - Il n'est pas validé et pas en stock épuisé
+    return (daysUntilExpiry <= 15 && daysUntilExpiry > 0 && 
+            !product.processedUntilExpiry && 
+            product.status !== "valides" && 
+            !product.stockEpuise);
+  };
+
+  // Fonction pour déterminer si un produit doit afficher le bouton "Annuler traitement"
+  const shouldShowUnmarkProcessedButton = (product: DlcProductWithRelations) => {
+    const today = new Date();
+    const expiry = new Date(product.expiryDate || new Date());
+    const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Afficher le bouton si le produit est traité ET pas encore expiré
+    return (product.processedUntilExpiry && daysUntilExpiry > 0);
+  };
+
+  const getStatusBadge = (status: string, dlcDate: string | null, stockEpuise?: boolean, processedAt?: string | null, processedUntilExpiry?: boolean) => {
     if (!dlcDate) return <Badge variant="outline">Non défini</Badge>;
     
     // LOGIQUE MISE À JOUR :
     // 1. Si stock épuisé, afficher "Stock épuisé" avec style spécifique
     // 2. Si le statut en base est "valides", afficher "Validé" (peu importe la date) 
-    // 3. Sinon, calculer selon la date d'expiration
+    // 3. Si traité temporairement ET pas encore expiré, afficher "Traité - Expire dans X jours"
+    // 4. Sinon, calculer selon la date d'expiration
     
     if (stockEpuise) {
       return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">Stock épuisé</Badge>;
@@ -350,6 +419,13 @@ export default function DlcPage() {
     const today = new Date();
     const expiry = new Date(dlcDate);
     const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Si traité temporairement et pas encore expiré
+    if (processedAt && processedUntilExpiry && daysUntilExpiry > 0) {
+      return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+        Traité - Expire dans {daysUntilExpiry} jour{daysUntilExpiry !== 1 ? 's' : ''}
+      </Badge>;
+    }
 
     if (daysUntilExpiry < 0) {
       return <Badge variant="destructive">Expiré</Badge>;
@@ -834,7 +910,7 @@ export default function DlcPage() {
                           {product.expiryDate ? format(new Date(product.expiryDate), "dd/MM/yyyy", { locale: fr }) : 'Date non définie'}
                         </TableCell>
                         <TableCell>{product.supplier?.name || 'Non défini'}</TableCell>
-                        <TableCell>{getStatusBadge(product.status, product.expiryDate, product.stockEpuise)}</TableCell>
+                        <TableCell>{getStatusBadge(product.status, product.expiryDate, product.stockEpuise, product.processedAt, product.processedUntilExpiry)}</TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
                             <Button
@@ -851,9 +927,62 @@ export default function DlcPage() {
                                 onClick={() => handleValidate(product.id)}
                                 disabled={validateMutation.isPending}
                                 className="bg-green-600 hover:bg-green-700"
+                                data-testid={`button-validate-${product.id}`}
+                                title="Valider définitivement ce produit"
                               >
                                 <CheckCircle className="w-4 h-4" />
                               </Button>
+                            )}
+
+                            {/* Bouton Marquer comme traité - accessible à tous, pour produits expirant bientôt non traités */}
+                            {shouldShowMarkProcessedButton(product) && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleMarkProcessed(product.id)}
+                                      disabled={markProcessedMutation.isPending}
+                                      className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                                      data-testid={`button-mark-processed-${product.id}`}
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Marquer comme traité</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Indique que vous vous êtes occupé de ce produit (réapparaîtra à expiration)
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+
+                            {/* Bouton Annuler traitement - réservé aux admins, directeurs et managers */}
+                            {shouldShowUnmarkProcessedButton(product) && (user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur') && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleUnmarkProcessed(product.id)}
+                                      disabled={unmarkProcessedMutation.isPending}
+                                      className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Annuler le traitement</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Retire le marquage "traité" de ce produit
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             )}
                             
                             {/* Bouton Stock épuisé - accessible à tous, SEULEMENT pour produits en cours qui ne sont ni expirent bientôt ni expirés */}
