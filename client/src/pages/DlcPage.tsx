@@ -985,10 +985,9 @@ export default function DlcPage() {
                               </TooltipProvider>
                             )}
                             
-                            {/* Bouton Stock épuisé - accessible à tous, SEULEMENT pour produits en cours qui ne sont ni expirent bientôt ni expirés */}
+                            {/* Bouton Stock épuisé - accessible à tous, pour tous les produits non validés et pas déjà en stock épuisé */}
                             {!product.stockEpuise && 
-                             product.status === "en_cours" && 
-                             !shouldShowValidateButton(product) && (
+                             product.status !== "valides" && (
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
