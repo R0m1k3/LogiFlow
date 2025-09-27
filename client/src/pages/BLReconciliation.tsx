@@ -965,17 +965,37 @@ export default function BLReconciliation() {
                                 </Button>
                                 {!delivery.reconciled ? (
                                   <>
-                                    {permissions.canValidate('reconciliation') && (
+                                    {permissions.canValidate('reconciliation') && verificationResults[delivery.id]?.exists === true ? (
                                       <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => handleQuickValidate(delivery)}
-                                        className="h-8 w-8 p-0"
-                                        title="Valider le rapprochement"
+                                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                                        title="Valider le rapprochement (facture vérifiée)"
                                       >
                                         <Check className="w-4 h-4" />
                                       </Button>
-                                    )}
+                                    ) : permissions.canValidate('reconciliation') && verificationResults[delivery.id]?.exists === false ? (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled
+                                        className="h-8 w-8 p-0 text-gray-400 cursor-not-allowed"
+                                        title="Validation impossible : la facture n'a pas été trouvée (coche rouge). Vérifiez la référence de facture."
+                                      >
+                                        <Check className="w-4 h-4" />
+                                      </Button>
+                                    ) : permissions.canValidate('reconciliation') ? (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled
+                                        className="h-8 w-8 p-0 text-gray-400 cursor-not-allowed"
+                                        title="Validation impossible : veuillez d'abord vérifier la facture en cliquant sur l'icône de recherche"
+                                      >
+                                        <Check className="w-4 h-4" />
+                                      </Button>
+                                    ) : null}
                                     <Button
                                       variant="outline"
                                       size="sm"
