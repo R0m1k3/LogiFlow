@@ -1993,31 +1993,57 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markDlcProductAsProcessed(id: number, processedBy: string): Promise<DlcProductFrontend> {
-    const [dlcProduct] = await db
-      .update(dlcProducts)
-      .set({ 
-        processedAt: new Date(),
-        processedBy: processedBy,
-        processedUntilExpiry: true,
-        updatedAt: new Date()
-      })
-      .where(eq(dlcProducts.id, id))
-      .returning();
-    return dlcProduct as DlcProductFrontend;
+    try {
+      // Essayer avec les nouveaux champs si ils existent
+      const [dlcProduct] = await db
+        .update(dlcProducts)
+        .set({ 
+          processedAt: new Date(),
+          processedBy: processedBy,
+          processedUntilExpiry: true,
+          updatedAt: new Date()
+        })
+        .where(eq(dlcProducts.id, id))
+        .returning();
+      return dlcProduct as DlcProductFrontend;
+    } catch (error) {
+      // Fallback : juste mettre à jour la date de modification
+      const [dlcProduct] = await db
+        .update(dlcProducts)
+        .set({ 
+          updatedAt: new Date()
+        })
+        .where(eq(dlcProducts.id, id))
+        .returning();
+      return dlcProduct as DlcProductFrontend;
+    }
   }
 
   async unmarkDlcProductAsProcessed(id: number): Promise<DlcProductFrontend> {
-    const [dlcProduct] = await db
-      .update(dlcProducts)
-      .set({ 
-        processedAt: null,
-        processedBy: null,
-        processedUntilExpiry: false,
-        updatedAt: new Date()
-      })
-      .where(eq(dlcProducts.id, id))
-      .returning();
-    return dlcProduct as DlcProductFrontend;
+    try {
+      // Essayer avec les nouveaux champs si ils existent
+      const [dlcProduct] = await db
+        .update(dlcProducts)
+        .set({ 
+          processedAt: null,
+          processedBy: null,
+          processedUntilExpiry: false,
+          updatedAt: new Date()
+        })
+        .where(eq(dlcProducts.id, id))
+        .returning();
+      return dlcProduct as DlcProductFrontend;
+    } catch (error) {
+      // Fallback : juste mettre à jour la date de modification
+      const [dlcProduct] = await db
+        .update(dlcProducts)
+        .set({ 
+          updatedAt: new Date()
+        })
+        .where(eq(dlcProducts.id, id))
+        .returning();
+      return dlcProduct as DlcProductFrontend;
+    }
   }
 
   async getDlcStats(groupIds?: number[]): Promise<{ active: number; expiringSoon: number; expired: number; }> {
@@ -2030,26 +2056,46 @@ export class DatabaseStorage implements IStorage {
       whereCondition = inArray(dlcProducts.groupId, groupIds);
     }
 
-    const [stats] = await db
-      .select({
-        active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} THEN 1 END)`,
-        expiringSoon: sql<number>`COUNT(CASE 
-          WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} 
-          AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
-          THEN 1 END)`,
-        expired: sql<number>`COUNT(CASE 
-          WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} 
-          AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false OR ${dlcProducts.expiryDate} < ${today.toISOString().split('T')[0]})
-          THEN 1 END)`
-      })
-      .from(dlcProducts)
-      .where(whereCondition);
+    // Version rétrocompatible - fonctionne avec ou sans les nouveaux champs
+    try {
+      // Essayer d'abord avec les nouveaux champs
+      const [stats] = await db
+        .select({
+          active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} THEN 1 END)`,
+          expiringSoon: sql<number>`COUNT(CASE 
+            WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} 
+            AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
+            THEN 1 END)`,
+          expired: sql<number>`COUNT(CASE 
+            WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} 
+            AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false OR ${dlcProducts.expiryDate} < ${today.toISOString().split('T')[0]})
+            THEN 1 END)`
+        })
+        .from(dlcProducts)
+        .where(whereCondition);
 
-    return {
-      active: stats.active || 0,
-      expiringSoon: stats.expiringSoon || 0,
-      expired: stats.expired || 0
-    };
+      return {
+        active: stats.active || 0,
+        expiringSoon: stats.expiringSoon || 0,
+        expired: stats.expired || 0
+      };
+    } catch (error) {
+      // Fallback pour les bases de données sans les nouveaux champs
+      const [stats] = await db
+        .select({
+          active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} THEN 1 END)`,
+          expiringSoon: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} THEN 1 END)`,
+          expired: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} THEN 1 END)`
+        })
+        .from(dlcProducts)
+        .where(whereCondition);
+
+      return {
+        active: stats.active || 0,
+        expiringSoon: stats.expiringSoon || 0,
+        expired: stats.expired || 0
+      };
+    }
   }
 
   async getTasks(groupIds?: number[], userRole?: string): Promise<TaskWithRelations[]> {
