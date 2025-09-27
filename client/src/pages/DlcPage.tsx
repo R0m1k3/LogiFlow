@@ -159,7 +159,7 @@ export default function DlcPage() {
 
   // Validate mutation - optimized cache invalidation
   const validateMutation = useMutation({
-    mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/validate`, "PUT"),
+    mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/validate`, "POST"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
