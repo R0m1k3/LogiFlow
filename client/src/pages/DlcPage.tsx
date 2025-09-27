@@ -367,9 +367,9 @@ export default function DlcPage() {
     const expiry = new Date(product.expiryDate || new Date());
     const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
-    // Afficher le bouton si le produit expire dans 15 jours ou moins, ou est déjà expiré
+    // Afficher le bouton SEULEMENT pour les produits EXPIRÉS (pas ceux qui expirent bientôt)
     // ET si le produit n'est pas déjà validé
-    return (daysUntilExpiry <= 15 && product.status !== "valides");
+    return (daysUntilExpiry < 0 && product.status !== "valides");
   };
 
   // Fonction pour déterminer si un produit doit afficher le bouton "Marquer comme traité"
