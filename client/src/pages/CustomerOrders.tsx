@@ -660,39 +660,53 @@ export default function CustomerOrders() {
     return matchesSearch && matchesSupplier && matchesStatus;
   }) : [];
 
-  // Sort orders
-  const sortedOrders = [...filteredOrders].sort((a, b) => {
-    let aValue: string | number;
-    let bValue: string | number;
+  // Sort orders - Active orders first, then "Retiré" orders last
+  const sortedOrders = (() => {
+    // Séparer les commandes en deux groupes
+    const activeOrders = filteredOrders.filter(order => order.status !== "Retiré");
+    const retiredOrders = filteredOrders.filter(order => order.status === "Retiré");
+    
+    // Fonction de tri commune
+    const sortFunction = (a: any, b: any) => {
+      let aValue: string | number;
+      let bValue: string | number;
 
-    switch (sortBy) {
-      case "date":
-        const dateA = safeDate(a.createdAt);
-        const dateB = safeDate(b.createdAt);
-        aValue = dateA ? dateA.getTime() : 0;
-        bValue = dateB ? dateB.getTime() : 0;
-        break;
-      case "status":
-        aValue = a.status;
-        bValue = b.status;
-        break;
-      case "supplier":
-        aValue = a.supplier?.name || "";
-        bValue = b.supplier?.name || "";
-        break;
-      default:
-        const defaultDateA = safeDate(a.createdAt);
-        const defaultDateB = safeDate(b.createdAt);
-        aValue = defaultDateA ? defaultDateA.getTime() : 0;
-        bValue = defaultDateB ? defaultDateB.getTime() : 0;
-    }
+      switch (sortBy) {
+        case "date":
+          const dateA = safeDate(a.createdAt);
+          const dateB = safeDate(b.createdAt);
+          aValue = dateA ? dateA.getTime() : 0;
+          bValue = dateB ? dateB.getTime() : 0;
+          break;
+        case "status":
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        case "supplier":
+          aValue = a.supplier?.name || "";
+          bValue = b.supplier?.name || "";
+          break;
+        default:
+          const defaultDateA = safeDate(a.createdAt);
+          const defaultDateB = safeDate(b.createdAt);
+          aValue = defaultDateA ? defaultDateA.getTime() : 0;
+          bValue = defaultDateB ? defaultDateB.getTime() : 0;
+      }
 
-    if (sortOrder === "desc") {
-      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-    } else {
-      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-    }
-  });
+      if (sortOrder === "desc") {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      } else {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      }
+    };
+    
+    // Trier chaque groupe séparément
+    const sortedActiveOrders = [...activeOrders].sort(sortFunction);
+    const sortedRetiredOrders = [...retiredOrders].sort(sortFunction);
+    
+    // Concaténer : commandes actives d'abord, puis retiré en dernier
+    return [...sortedActiveOrders, ...sortedRetiredOrders];
+  })();
 
   // Pagination
   const {
@@ -819,13 +833,13 @@ export default function CustomerOrders() {
                 {paginatedOrders.map((order) => (
                   <TableRow
                     key={order.id}
-                    className={isGrayedOut(order.status) ? "opacity-50" : ""}
+                    className={isGrayedOut(order.status) ? "bg-gray-50 dark:bg-gray-900" : ""}
                   >
-                    <TableCell className="font-medium">
+                    <TableCell className={`font-medium ${isGrayedOut(order.status) ? "line-through text-gray-500" : ""}`}>
                       {order.customerName}
                     </TableCell>
-                    <TableCell>{order.customerPhone}</TableCell>
-                    <TableCell>
+                    <TableCell className={isGrayedOut(order.status) ? "line-through text-gray-500" : ""}>{order.customerPhone}</TableCell>
+                    <TableCell className={isGrayedOut(order.status) ? "line-through text-gray-500" : ""}>
                       <div>
                         <div className="font-medium">{order.productDesignation}</div>
                         {order.productReference && (
@@ -835,30 +849,30 @@ export default function CustomerOrders() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary" className="font-mono">
+                    <TableCell className={`text-center ${isGrayedOut(order.status) ? "line-through text-gray-500" : ""}`}>
+                      <Badge variant="secondary" className={`font-mono ${isGrayedOut(order.status) ? "line-through text-gray-500" : ""}`}>
                         {order.quantity || 1}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={isGrayedOut(order.status) ? "line-through text-gray-500" : ""}>
                       <div className="font-medium text-sm">
                         {order.supplier?.name || "N/A"}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                    <TableCell className={isGrayedOut(order.status) ? "line-through text-gray-500" : ""}>
+                      <code className={`bg-gray-100 px-2 py-1 rounded text-sm ${isGrayedOut(order.status) ? "line-through text-gray-500" : ""}`}>
                         {order.gencode || "-"}
                       </code>
                     </TableCell>
                     <TableCell>
                       <Badge 
-                        className={`${getStatusColor(order.status)} cursor-pointer hover:opacity-80 transition-opacity rounded-none`}
+                        className={`${isGrayedOut(order.status) ? "bg-gray-200 text-gray-600 line-through border border-gray-300" : getStatusColor(order.status)} cursor-pointer hover:opacity-80 transition-opacity rounded-none`}
                         onClick={() => openStatusModal(order)}
                       >
                         {order.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className={isGrayedOut(order.status) ? "line-through text-gray-500" : ""}>
                       {safeFormat(order.createdAt, 'dd/MM/yyyy')}
                     </TableCell>
                     <TableCell>
