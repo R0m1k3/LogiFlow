@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,8 +15,15 @@ import { DlcAlertModal } from "@/components/DlcAlertModal";
 export default function Dashboard() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
+  const queryClient = useQueryClient();
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [showDlcAlertModal, setShowDlcAlertModal] = useState(false);
+
+  // Invalider les queries DLC quand le magasin change
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"] });
+  }, [selectedStoreId, queryClient]);
 
   const { data: stats } = useQuery({
     queryKey: ['/api/stats/monthly', selectedStoreId],
