@@ -240,9 +240,17 @@ export default function Dashboard() {
 
   // Effet pour afficher automatiquement le modal DLC pour les utilisateurs non-admin
   useEffect(() => {
-    // Vérifier si l'utilisateur n'est pas admin et qu'il y a des problèmes DLC
-    const shouldShowDlcModal = user?.role !== 'admin' && 
-                              (dlcStats.expired > 0 || dlcStats.expiringSoon > 0);
+    // Ne rien faire si l'utilisateur n'est pas encore chargé ou est admin
+    if (!user || user.role === 'admin') {
+      // Fermer le modal si déjà ouvert (cas où l'utilisateur devient admin)
+      if (showDlcAlertModal) {
+        setShowDlcAlertModal(false);
+      }
+      return;
+    }
+    
+    // Vérifier s'il y a des problèmes DLC
+    const shouldShowDlcModal = dlcStats.expired > 0 || dlcStats.expiringSoon > 0;
     
     if (shouldShowDlcModal && !showDlcAlertModal) {
       // Vérifier s'il n'y a pas de snooze actif
@@ -260,7 +268,7 @@ export default function Dashboard() {
       // Fermer le modal si plus de problèmes DLC
       setShowDlcAlertModal(false);
     }
-  }, [user?.role, dlcStats.expired, dlcStats.expiringSoon, showDlcAlertModal]);
+  }, [user, user?.role, dlcStats.expired, dlcStats.expiringSoon, showDlcAlertModal]);
 
   // Fonction pour fermer le modal DLC
   const handleCloseDlcAlertModal = () => {
