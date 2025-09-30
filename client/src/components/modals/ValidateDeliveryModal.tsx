@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { Check, X } from "lucide-react";
+import { Check, X, AlertTriangle } from "lucide-react";
 
 const validateDeliverySchema = z.object({
   blNumber: z.string().min(1, "Le numéro de bon de livraison est obligatoire"),
@@ -109,6 +109,21 @@ export default function ValidateDeliveryModal({
             Saisir les informations du bon de livraison
           </p>
         </DialogHeader>
+
+        {/* Alerte si le fournisseur nécessite un contrôle */}
+        {delivery.supplier?.requiresControl && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start space-x-3">
+            <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-orange-800">
+                ⚠️ Contrôle à effectuer sur cette livraison
+              </h4>
+              <p className="text-xs text-orange-700 mt-1">
+                Ce fournisseur nécessite un contrôle qualité lors de la réception de la livraison.
+              </p>
+            </div>
+          </div>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

@@ -1655,6 +1655,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Marquer le contrôle d'une livraison comme effectué
+  app.put('/api/deliveries/:id/control', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid delivery ID" });
+      }
+
+      // Vérifier que la livraison existe
+      const delivery = await storage.getDeliveryById(id);
+      if (!delivery) {
+        return res.status(404).json({ message: "Delivery not found" });
+      }
+
+      // Vérifier les permissions
+      if (!hasPermission(user.role, 'deliveries', 'edit')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      // Mettre à jour le contrôle
+      await storage.markDeliveryControlValidated(id, user.id);
+      
+      res.json({ message: "Delivery control validated successfully" });
+    } catch (error) {
+      console.error("Error validating delivery control:", error);
+      res.status(500).json({ message: "Failed to validate delivery control" });
+    }
+  });
+
   // Route pour diagnostiquer le cache des livraisons
   app.get('/api/cache/diagnosis', isAuthenticated, async (req: any, res) => {
     try {
