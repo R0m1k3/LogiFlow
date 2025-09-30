@@ -41,6 +41,11 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
   const queryClient = useQueryClient();
   const [snoozeUntil, setSnoozeUntil] = useState<Date | null>(null);
 
+  // Invalider les queries DLC quand le magasin change
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"] });
+  }, [selectedStoreId, queryClient]);
+
   // Fetch detailed DLC products for the modal
   const { data: expiredProducts = [] } = useQuery<DlcProduct[]>({
     queryKey: ["/api/dlc-products", "expires", selectedStoreId],
