@@ -23,7 +23,9 @@ import {
   Building,
   User,
   Check,
-  Package
+  Package,
+  AlertTriangle,
+  CheckCircle
 } from "lucide-react";
 import { safeFormat } from "@/lib/dateUtils";
 import CreateDeliveryModal from "@/components/modals/CreateDeliveryModal";
@@ -111,6 +113,30 @@ export default function Deliveries() {
   const groups = Array.isArray(groupsData) ? groupsData : [];
 
 
+  const markControlValidatedMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest(`/api/deliveries/${id}/control`, "PUT");
+    },
+    onSuccess: () => {
+      toast({
+        title: "Succès",
+        description: "Contrôle validé avec succès",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+      queryClient.invalidateQueries({ queryKey: [deliveriesUrl] });
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+      toast({
+        title: "Erreur",
+        description: "Impossible de valider le contrôle",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       await apiRequest(`/api/deliveries/${id}`, "DELETE");
@@ -180,6 +206,28 @@ export default function Deliveries() {
     }
   };
 
+  const getControlBadge = (delivery: DeliveryWithRelations) => {
+    if (!delivery.supplier?.requiresControl) {
+      return null;
+    }
+    
+    if (delivery.controlValidated) {
+      return (
+        <Badge className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+          <CheckCircle className="w-3 h-3" />
+          Contrôle validé
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge className="bg-orange-50 text-orange-700 border-orange-200 flex items-center gap-1">
+        <AlertTriangle className="w-3 h-3" />
+        Contrôle à faire
+      </Badge>
+    );
+  };
+
   const formatQuantity = (quantity: number, unit: string) => {
     return `${quantity} ${unit === 'palettes' ? 'P' : 'C'}`;
   };
@@ -207,6 +255,10 @@ export default function Deliveries() {
   const handleDeleteDelivery = (delivery: DeliveryWithRelations) => {
     setDeliveryToDelete(delivery);
     setShowDeleteModal(true);
+  };
+
+  const handleMarkControlValidated = (deliveryId: number) => {
+    markControlValidatedMutation.mutate(deliveryId);
   };
 
   const confirmDeleteDelivery = () => {
@@ -375,7 +427,10 @@ export default function Deliveries() {
                           </Badge>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(delivery.status)}
+                          <div className="flex flex-col gap-1">
+                            {getStatusBadge(delivery.status)}
+                            {getControlBadge(delivery)}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {delivery.order ? (
@@ -420,6 +475,18 @@ export default function Deliveries() {
                                 disabled={false}
                               >
                                 <Check className="w-4 h-4 border border-gray-300 rounded p-0.5" />
+                              </Button>
+                            )}
+                            {delivery.supplier?.requiresControl && !delivery.controlValidated && delivery.status === 'delivered' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleMarkControlValidated(delivery.id)}
+                                className="text-orange-600 hover:text-orange-700"
+                                data-testid={`button-validate-control-${delivery.id}`}
+                                title="Marquer le contrôle comme effectué"
+                              >
+                                <CheckCircle className="w-4 h-4" />
                               </Button>
                             )}
                             {canDelete && (

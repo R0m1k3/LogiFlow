@@ -124,6 +124,7 @@ export interface IStorage {
   updateDelivery(id: number, delivery: Partial<InsertDelivery>): Promise<Delivery>;
   deleteDelivery(id: number): Promise<void>;
   validateDelivery(id: number, blData?: { blNumber: string; blAmount: number }): Promise<void>;
+  markDeliveryControlValidated(id: number, userId: string): Promise<void>;
   
   // User-Group operations
   getUserGroups(userId: string): Promise<UserGroup[]>;
