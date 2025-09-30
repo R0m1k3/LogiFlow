@@ -82,6 +82,7 @@ export const suppliers = pgTable("suppliers", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   automaticReconciliation: boolean("automatic_reconciliation").default(false), // Rapprochement automatique BL/Factures
+  requiresControl: boolean("requires_control").default(false), // Fournisseur nécessite un contrôle à la livraison
 });
 
 // Orders
@@ -118,6 +119,10 @@ export const deliveries = pgTable("deliveries", {
   invoiceAmount: decimal("invoice_amount", { precision: 10, scale: 2 }), // Montant facture
   reconciled: boolean("reconciled").default(false), // Rapprochement effectué
   validatedAt: timestamp("validated_at"), // Date de validation de la livraison
+  // Champs pour le contrôle des livraisons (fournisseurs nécessitant un contrôle)
+  controlValidated: boolean("control_validated").default(false), // Contrôle effectué
+  controlValidatedBy: varchar("control_validated_by"), // Utilisateur ayant validé le contrôle
+  controlValidatedAt: timestamp("control_validated_at"), // Date de validation du contrôle
   createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -553,9 +558,7 @@ export const insertPublicitySchema = createInsertSchema(publicities).omit({
   updatedAt: true,
 });
 
-export const insertPublicityParticipationSchema = createInsertSchema(publicityParticipations).omit({
-  createdAt: true,
-});
+export const insertPublicityParticipationSchema = createInsertSchema(publicityParticipations);
 
 
 

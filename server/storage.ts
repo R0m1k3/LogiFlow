@@ -1165,6 +1165,15 @@ export class DatabaseStorage implements IStorage {
     await db.update(deliveries).set(updateData).where(eq(deliveries.id, id));
   }
 
+  async markDeliveryControlValidated(id: number, userId: string): Promise<void> {
+    await db.update(deliveries).set({
+      controlValidated: true,
+      controlValidatedBy: userId,
+      controlValidatedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(deliveries.id, id));
+  }
+
   // User-Group operations
   async getUserGroups(userId: string): Promise<UserGroup[]> {
     return await db.select().from(userGroups).where(eq(userGroups.userId, userId));

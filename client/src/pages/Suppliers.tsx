@@ -38,6 +38,7 @@ export default function Suppliers() {
     phone: "",
     hasDlc: false,
     automaticReconciliation: false,
+    requiresControl: false,
   });
 
   const { data: suppliers = [], isLoading } = useQuery<Supplier[]>({
@@ -191,6 +192,7 @@ export default function Suppliers() {
       phone: "",
       hasDlc: false,
       automaticReconciliation: false,
+      requiresControl: false,
     });
   };
 
@@ -227,6 +229,7 @@ export default function Suppliers() {
       phone: supplier.phone || "",
       hasDlc: supplier.hasDlc || false,
       automaticReconciliation: supplier.automaticReconciliation || false,
+      requiresControl: supplier.requiresControl || false,
     });
     setShowEditModal(true);
   };
@@ -410,10 +413,16 @@ export default function Suppliers() {
                               <span className="text-xs font-medium">Auto-rapprochement</span>
                             </div>
                           )}
+                          {supplier.requiresControl && (
+                            <div className="flex items-center text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              <span className="text-xs font-medium">Contrôle requis</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      {!supplier.hasDlc && !supplier.automaticReconciliation && (
+                      {!supplier.hasDlc && !supplier.automaticReconciliation && !supplier.requiresControl && (
                         <div className="text-xs text-gray-500 mt-2">
                           Aucune option activée
                         </div>
@@ -521,6 +530,18 @@ export default function Suppliers() {
               />
               <Label htmlFor="automaticReconciliation" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                 Rapprochement automatique BL/Factures
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="requiresControl"
+                checked={formData.requiresControl}
+                onCheckedChange={(checked) => handleChange('requiresControl', checked === true)}
+                data-testid="checkbox-requires-control"
+              />
+              <Label htmlFor="requiresControl" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Fournisseur à contrôler
               </Label>
             </div>
 

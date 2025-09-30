@@ -23,6 +23,9 @@ CREATE TABLE "deliveries" (
         "scheduled_date" date NOT NULL,
         "notes" text,
         "validated_at" timestamp,
+        "control_validated" boolean DEFAULT false,
+        "control_validated_by" varchar,
+        "control_validated_at" timestamp,
         CONSTRAINT "deliveries_status_check_fixed" CHECK ((status)::text = ANY ((ARRAY['planned'::character varying, 'delivered'::character varying])::text[]))
 );
 
@@ -66,7 +69,9 @@ CREATE TABLE "suppliers" (
         "phone" varchar,
         "created_at" timestamp DEFAULT now(),
         "updated_at" timestamp DEFAULT now(),
-        "has_dlc" boolean DEFAULT false
+        "has_dlc" boolean DEFAULT false,
+        "automatic_reconciliation" boolean DEFAULT false,
+        "requires_control" boolean DEFAULT false
 );
 
 CREATE TABLE "user_groups" (
