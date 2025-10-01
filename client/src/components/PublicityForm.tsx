@@ -182,7 +182,7 @@ export default function PublicityForm({ publicity, groups, onSuccess, selectedYe
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Date de début</Label>
-          <Popover open={startCalendarOpen} onOpenChange={setStartCalendarOpen}>
+          <Popover modal={false} open={startCalendarOpen} onOpenChange={setStartCalendarOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -220,7 +220,7 @@ export default function PublicityForm({ publicity, groups, onSuccess, selectedYe
 
         <div className="space-y-2">
           <Label>Date de fin</Label>
-          <Popover open={endCalendarOpen} onOpenChange={setEndCalendarOpen}>
+          <Popover modal={false} open={endCalendarOpen} onOpenChange={setEndCalendarOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
