@@ -3507,8 +3507,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Publicity routes
-  app.get('/api/publicities', isAuthenticated, async (req: any, res) => {
+  // Publicity routes (renamed to campaigns to avoid adblocker issues)
+  app.get('/api/campaigns', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -3542,7 +3542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/publicities/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/campaigns/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
