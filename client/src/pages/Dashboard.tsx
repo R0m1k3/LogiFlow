@@ -231,7 +231,8 @@ export default function Dashboard() {
     queryKey: ["/api/dlc-products/stats", selectedStoreId],
     queryFn: () => {
       const params = new URLSearchParams();
-      if (selectedStoreId && user?.role === 'admin') params.append("storeId", selectedStoreId.toString());
+      // Envoyer selectedStoreId pour tous les utilisateurs (le backend gère les permissions)
+      if (selectedStoreId) params.append("storeId", selectedStoreId.toString());
       return fetch(`/api/dlc-products/stats?${params.toString()}`, {
         credentials: 'include'
       }).then(res => res.json());
