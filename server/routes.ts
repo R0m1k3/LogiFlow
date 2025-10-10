@@ -3573,6 +3573,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all publicities (with optional year and store filtering)
+  app.get('/api/publicities', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { year, storeId } = req.query;
+      let groupIds: number[] | undefined;
+      
+      // Determine which groups to filter by
+      if (user.role === 'admin') {
+        // Admins can filter by specific store or see all
+        groupIds = storeId ? [parseInt(storeId as string)] : undefined;
+      } else {
+        // Non-admins see only their assigned groups
+        const userGroupIds = user.userGroups.map(ug => ug.groupId);
+        if (storeId && userGroupIds.includes(parseInt(storeId as string))) {
+          groupIds = [parseInt(storeId as string)];
+        } else {
+          groupIds = userGroupIds;
+        }
+      }
+
+      const yearNum = year ? parseInt(year as string) : undefined;
+      const publicities = await storage.getPublicities(yearNum, groupIds);
+      
+      res.json(publicities);
+    } catch (error) {
+      console.error("Error fetching publicities:", error);
+      res.status(500).json([]);
+    }
+  });
+
   app.post('/api/publicities', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
