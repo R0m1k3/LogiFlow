@@ -1920,6 +1920,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     const results = await query.orderBy(asc(dlcProducts.expiryDate));
+    
     return results.map((row: any) => ({
       ...row.dlcProduct,
       dlcDate: row.dlcProduct.expiryDate, // ✅ Mapping expiryDate vers dlcDate pour frontend
@@ -2076,6 +2077,9 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Version rétrocompatible - fonctionne avec ou sans les nouveaux champs
+    // IMPORTANT: Ne PAS filtrer sur processedUntilExpiry car cela crée une incohérence
+    // entre getDlcProducts (qui ne filtre pas) et getDlcStats (qui filtrait)
+    // Les produits expirés sont expirés, qu'ils aient été traités ou non
     try {
       // Essayer d'abord avec les nouveaux champs
       const [stats] = await db
@@ -2084,12 +2088,10 @@ export class DatabaseStorage implements IStorage {
           expiringSoon: sql<number>`COUNT(CASE 
             WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} 
             AND ${dlcProducts.status} != 'valides'
-            AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
             THEN 1 END)`,
           expired: sql<number>`COUNT(CASE 
             WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} 
             AND ${dlcProducts.status} != 'valides'
-            AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
             THEN 1 END)`
         })
         .from(dlcProducts)
@@ -4240,19 +4242,20 @@ export class MemStorage implements IStorage {
       products = products.filter(product => groupIds.includes(product.groupId));
     }
     
+    // IMPORTANT: Ne PAS filtrer sur processedUntilExpiry car cela crée une incohérence
+    // entre getDlcProducts (qui ne filtre pas) et getDlcStats (qui filtrait)
+    // Les produits expirés sont expirés, qu'ils aient été traités ou non
     return {
       active: products.filter(p => new Date(p.expiryDate) > today && p.status !== 'valides').length,
       expiringSoon: products.filter(p => {
         const expiry = new Date(p.expiryDate);
         const isExpiringSoon = expiry >= today && expiry <= alertDate;
-        const isProcessed = p.processedUntilExpiry && expiry > today;
-        return isExpiringSoon && !isProcessed && p.status !== 'valides';
+        return isExpiringSoon && p.status !== 'valides';
       }).length,
       expired: products.filter(p => {
         const expiry = new Date(p.expiryDate);
         const isExpired = expiry <= today;
-        const isProcessed = p.processedUntilExpiry && expiry > today;
-        return isExpired && !isProcessed && p.status !== 'valides';
+        return isExpired && p.status !== 'valides';
       }).length
     };
   }
