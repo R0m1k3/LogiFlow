@@ -2080,14 +2080,16 @@ export class DatabaseStorage implements IStorage {
       // Essayer d'abord avec les nouveaux champs
       const [stats] = await db
         .select({
-          active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} THEN 1 END)`,
+          active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} AND ${dlcProducts.status} != 'valides' THEN 1 END)`,
           expiringSoon: sql<number>`COUNT(CASE 
             WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} 
+            AND ${dlcProducts.status} != 'valides'
             AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
             THEN 1 END)`,
           expired: sql<number>`COUNT(CASE 
             WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} 
-            AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false OR ${dlcProducts.expiryDate} < ${today.toISOString().split('T')[0]})
+            AND ${dlcProducts.status} != 'valides'
+            AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
             THEN 1 END)`
         })
         .from(dlcProducts)
@@ -2102,9 +2104,9 @@ export class DatabaseStorage implements IStorage {
       // Fallback pour les bases de données sans les nouveaux champs
       const [stats] = await db
         .select({
-          active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} THEN 1 END)`,
-          expiringSoon: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} THEN 1 END)`,
-          expired: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} THEN 1 END)`
+          active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} AND ${dlcProducts.status} != 'valides' THEN 1 END)`,
+          expiringSoon: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} AND ${dlcProducts.status} != 'valides' THEN 1 END)`,
+          expired: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} AND ${dlcProducts.status} != 'valides' THEN 1 END)`
         })
         .from(dlcProducts)
         .where(whereCondition);
@@ -4239,18 +4241,18 @@ export class MemStorage implements IStorage {
     }
     
     return {
-      active: products.filter(p => new Date(p.expiryDate) > today).length,
+      active: products.filter(p => new Date(p.expiryDate) > today && p.status !== 'valides').length,
       expiringSoon: products.filter(p => {
         const expiry = new Date(p.expiryDate);
         const isExpiringSoon = expiry >= today && expiry <= alertDate;
         const isProcessed = p.processedUntilExpiry && expiry > today;
-        return isExpiringSoon && !isProcessed;
+        return isExpiringSoon && !isProcessed && p.status !== 'valides';
       }).length,
       expired: products.filter(p => {
         const expiry = new Date(p.expiryDate);
         const isExpired = expiry <= today;
         const isProcessed = p.processedUntilExpiry && expiry > today;
-        return isExpired && !isProcessed;
+        return isExpired && !isProcessed && p.status !== 'valides';
       }).length
     };
   }
