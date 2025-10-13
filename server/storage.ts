@@ -4241,18 +4241,18 @@ export class MemStorage implements IStorage {
     }
     
     return {
-      active: products.filter(p => new Date(p.expiryDate) > today).length,
+      active: products.filter(p => new Date(p.expiryDate) > today && p.status !== 'valides').length,
       expiringSoon: products.filter(p => {
         const expiry = new Date(p.expiryDate);
         const isExpiringSoon = expiry >= today && expiry <= alertDate;
         const isProcessed = p.processedUntilExpiry && expiry > today;
-        return isExpiringSoon && !isProcessed;
+        return isExpiringSoon && !isProcessed && p.status !== 'valides';
       }).length,
       expired: products.filter(p => {
         const expiry = new Date(p.expiryDate);
         const isExpired = expiry <= today;
         const isProcessed = p.processedUntilExpiry && expiry > today;
-        return isExpired && !isProcessed;
+        return isExpired && !isProcessed && p.status !== 'valides';
       }).length
     };
   }
