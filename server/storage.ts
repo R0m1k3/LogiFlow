@@ -2076,49 +2076,34 @@ export class DatabaseStorage implements IStorage {
       whereCondition = inArray(dlcProducts.groupId, groupIds);
     }
 
-    // Version rétrocompatible - fonctionne avec ou sans les nouveaux champs
-    // IMPORTANT: Ne PAS filtrer sur processedUntilExpiry car cela crée une incohérence
-    // entre getDlcProducts (qui ne filtre pas) et getDlcStats (qui filtrait)
-    // Les produits expirés sont expirés, qu'ils aient été traités ou non
-    try {
-      // Essayer d'abord avec les nouveaux champs
-      const [stats] = await db
-        .select({
-          active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} AND ${dlcProducts.status} != 'valides' THEN 1 END)`,
-          expiringSoon: sql<number>`COUNT(CASE 
-            WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} 
-            AND ${dlcProducts.status} != 'valides'
-            THEN 1 END)`,
-          expired: sql<number>`COUNT(CASE 
-            WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} 
-            AND ${dlcProducts.status} != 'valides'
-            THEN 1 END)`
-        })
-        .from(dlcProducts)
-        .where(whereCondition);
+    // IMPORTANT: Filtrer sur processedUntilExpiry pour ne pas réafficher les produits déjà traités
+    // Les produits "traités" (processedUntilExpiry=true) ne doivent pas apparaître dans les alertes quotidiennes
+    const [stats] = await db
+      .select({
+        active: sql<number>`COUNT(CASE 
+          WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} 
+          AND ${dlcProducts.status} != 'valides' 
+          AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
+          THEN 1 END)`,
+        expiringSoon: sql<number>`COUNT(CASE 
+          WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} 
+          AND ${dlcProducts.status} != 'valides'
+          AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
+          THEN 1 END)`,
+        expired: sql<number>`COUNT(CASE 
+          WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} 
+          AND ${dlcProducts.status} != 'valides'
+          AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
+          THEN 1 END)`
+      })
+      .from(dlcProducts)
+      .where(whereCondition);
 
-      return {
-        active: stats.active || 0,
-        expiringSoon: stats.expiringSoon || 0,
-        expired: stats.expired || 0
-      };
-    } catch (error) {
-      // Fallback pour les bases de données sans les nouveaux champs
-      const [stats] = await db
-        .select({
-          active: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} AND ${dlcProducts.status} != 'valides' THEN 1 END)`,
-          expiringSoon: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} AND ${dlcProducts.status} != 'valides' THEN 1 END)`,
-          expired: sql<number>`COUNT(CASE WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} AND ${dlcProducts.status} != 'valides' THEN 1 END)`
-        })
-        .from(dlcProducts)
-        .where(whereCondition);
-
-      return {
-        active: stats.active || 0,
-        expiringSoon: stats.expiringSoon || 0,
-        expired: stats.expired || 0
-      };
-    }
+    return {
+      active: stats.active || 0,
+      expiringSoon: stats.expiringSoon || 0,
+      expired: stats.expired || 0
+    };
   }
 
   async getTasks(groupIds?: number[], userRole?: string): Promise<TaskWithRelations[]> {
@@ -4242,20 +4227,23 @@ export class MemStorage implements IStorage {
       products = products.filter(product => groupIds.includes(product.groupId));
     }
     
-    // IMPORTANT: Ne PAS filtrer sur processedUntilExpiry car cela crée une incohérence
-    // entre getDlcProducts (qui ne filtre pas) et getDlcStats (qui filtrait)
-    // Les produits expirés sont expirés, qu'ils aient été traités ou non
+    // IMPORTANT: Filtrer sur processedUntilExpiry pour ne pas réafficher les produits déjà traités
+    // Les produits "traités" (processedUntilExpiry=true) ne doivent pas apparaître dans les alertes quotidiennes
     return {
-      active: products.filter(p => new Date(p.expiryDate) > today && p.status !== 'valides').length,
+      active: products.filter(p => 
+        new Date(p.expiryDate) > today && 
+        p.status !== 'valides' && 
+        !p.processedUntilExpiry
+      ).length,
       expiringSoon: products.filter(p => {
         const expiry = new Date(p.expiryDate);
         const isExpiringSoon = expiry >= today && expiry <= alertDate;
-        return isExpiringSoon && p.status !== 'valides';
+        return isExpiringSoon && p.status !== 'valides' && !p.processedUntilExpiry;
       }).length,
       expired: products.filter(p => {
         const expiry = new Date(p.expiryDate);
         const isExpired = expiry <= today;
-        return isExpired && p.status !== 'valides';
+        return isExpired && p.status !== 'valides' && !p.processedUntilExpiry;
       }).length
     };
   }
