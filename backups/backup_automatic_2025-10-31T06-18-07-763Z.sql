@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 16.9 (63f4182)
+-- Dumped from database version 16.9 (165f042)
 -- Dumped by pg_dump version 16.9
 
--- Started on 2025-09-28 06:02:00 UTC
+-- Started on 2025-10-31 06:18:07 UTC
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -20,7 +20,7 @@ SET row_security = off;
 
 DROP DATABASE IF EXISTS neondb;
 --
--- TOC entry 3846 (class 1262 OID 16389)
+-- TOC entry 3848 (class 1262 OID 16389)
 -- Name: neondb; Type: DATABASE; Schema: -; Owner: neondb_owner
 --
 
@@ -67,7 +67,7 @@ CREATE TABLE public.announcements (
 ALTER TABLE public.announcements OWNER TO neondb_owner;
 
 --
--- TOC entry 3848 (class 0 OID 0)
+-- TOC entry 3850 (class 0 OID 0)
 -- Dependencies: 272
 -- Name: TABLE announcements; Type: COMMENT; Schema: public; Owner: neondb_owner
 --
@@ -76,7 +76,7 @@ COMMENT ON TABLE public.announcements IS 'Admin-managed announcements/informatio
 
 
 --
--- TOC entry 3849 (class 0 OID 0)
+-- TOC entry 3851 (class 0 OID 0)
 -- Dependencies: 272
 -- Name: COLUMN announcements.priority; Type: COMMENT; Schema: public; Owner: neondb_owner
 --
@@ -85,7 +85,7 @@ COMMENT ON COLUMN public.announcements.priority IS 'Priority level: normal, impo
 
 
 --
--- TOC entry 3850 (class 0 OID 0)
+-- TOC entry 3852 (class 0 OID 0)
 -- Dependencies: 272
 -- Name: COLUMN announcements.group_id; Type: COMMENT; Schema: public; Owner: neondb_owner
 --
@@ -110,7 +110,7 @@ CREATE SEQUENCE public.announcements_id_seq
 ALTER SEQUENCE public.announcements_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3851 (class 0 OID 0)
+-- TOC entry 3853 (class 0 OID 0)
 -- Dependencies: 271
 -- Name: announcements_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -161,7 +161,7 @@ CREATE SEQUENCE public.avoirs_id_seq
 ALTER SEQUENCE public.avoirs_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3852 (class 0 OID 0)
+-- TOC entry 3854 (class 0 OID 0)
 -- Dependencies: 275
 -- Name: avoirs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -209,7 +209,7 @@ CREATE SEQUENCE public.calendar_events_id_seq
 ALTER SEQUENCE public.calendar_events_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3853 (class 0 OID 0)
+-- TOC entry 3855 (class 0 OID 0)
 -- Dependencies: 215
 -- Name: calendar_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -256,7 +256,7 @@ CREATE SEQUENCE public.client_orders_id_seq
 ALTER SEQUENCE public.client_orders_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3854 (class 0 OID 0)
+-- TOC entry 3856 (class 0 OID 0)
 -- Dependencies: 217
 -- Name: client_orders_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -300,7 +300,7 @@ CREATE SEQUENCE public.command_items_id_seq
 ALTER SEQUENCE public.command_items_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3855 (class 0 OID 0)
+-- TOC entry 3857 (class 0 OID 0)
 -- Dependencies: 219
 -- Name: command_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -348,7 +348,7 @@ CREATE SEQUENCE public.commands_id_seq
 ALTER SEQUENCE public.commands_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3856 (class 0 OID 0)
+-- TOC entry 3858 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: commands_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -403,7 +403,7 @@ CREATE SEQUENCE public.customer_orders_id_seq
 ALTER SEQUENCE public.customer_orders_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3857 (class 0 OID 0)
+-- TOC entry 3859 (class 0 OID 0)
 -- Dependencies: 246
 -- Name: customer_orders_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -448,7 +448,7 @@ CREATE SEQUENCE public.customers_id_seq
 ALTER SEQUENCE public.customers_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3858 (class 0 OID 0)
+-- TOC entry 3860 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: customers_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -491,7 +491,7 @@ CREATE SEQUENCE public.dashboard_messages_id_seq
 ALTER SEQUENCE public.dashboard_messages_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3859 (class 0 OID 0)
+-- TOC entry 3861 (class 0 OID 0)
 -- Dependencies: 267
 -- Name: dashboard_messages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -544,6 +544,9 @@ CREATE TABLE public.deliveries (
     created_by character varying NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    control_validated boolean DEFAULT false,
+    control_validated_by character varying,
+    control_validated_at timestamp without time zone,
     CONSTRAINT deliveries_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'planned'::character varying, 'delivered'::character varying, 'cancelled'::character varying])::text[])))
 );
 
@@ -567,7 +570,7 @@ CREATE SEQUENCE public.deliveries_id_seq
 ALTER SEQUENCE public.deliveries_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3860 (class 0 OID 0)
+-- TOC entry 3862 (class 0 OID 0)
 -- Dependencies: 258
 -- Name: deliveries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -611,7 +614,7 @@ CREATE SEQUENCE public.delivery_items_id_seq
 ALTER SEQUENCE public.delivery_items_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3861 (class 0 OID 0)
+-- TOC entry 3863 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: delivery_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -660,7 +663,7 @@ CREATE TABLE public.dlc_products (
 ALTER TABLE public.dlc_products OWNER TO neondb_owner;
 
 --
--- TOC entry 3862 (class 0 OID 0)
+-- TOC entry 3864 (class 0 OID 0)
 -- Dependencies: 249
 -- Name: COLUMN dlc_products.stock_epuise; Type: COMMENT; Schema: public; Owner: neondb_owner
 --
@@ -669,7 +672,7 @@ COMMENT ON COLUMN public.dlc_products.stock_epuise IS 'Indique si le produit est
 
 
 --
--- TOC entry 3863 (class 0 OID 0)
+-- TOC entry 3865 (class 0 OID 0)
 -- Dependencies: 249
 -- Name: COLUMN dlc_products.stock_epuise_by; Type: COMMENT; Schema: public; Owner: neondb_owner
 --
@@ -678,7 +681,7 @@ COMMENT ON COLUMN public.dlc_products.stock_epuise_by IS 'ID de l''utilisateur q
 
 
 --
--- TOC entry 3864 (class 0 OID 0)
+-- TOC entry 3866 (class 0 OID 0)
 -- Dependencies: 249
 -- Name: COLUMN dlc_products.stock_epuise_at; Type: COMMENT; Schema: public; Owner: neondb_owner
 --
@@ -703,7 +706,7 @@ CREATE SEQUENCE public.dlc_products_id_seq
 ALTER SEQUENCE public.dlc_products_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3865 (class 0 OID 0)
+-- TOC entry 3867 (class 0 OID 0)
 -- Dependencies: 248
 -- Name: dlc_products_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -755,7 +758,7 @@ CREATE SEQUENCE public.groups_id_seq
 ALTER SEQUENCE public.groups_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3866 (class 0 OID 0)
+-- TOC entry 3868 (class 0 OID 0)
 -- Dependencies: 236
 -- Name: groups_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -807,7 +810,7 @@ CREATE SEQUENCE public.invoice_verification_cache_id_seq
 ALTER SEQUENCE public.invoice_verification_cache_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3867 (class 0 OID 0)
+-- TOC entry 3869 (class 0 OID 0)
 -- Dependencies: 265
 -- Name: invoice_verification_cache_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -853,7 +856,7 @@ CREATE SEQUENCE public.invoice_verifications_id_seq
 ALTER SEQUENCE public.invoice_verifications_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3868 (class 0 OID 0)
+-- TOC entry 3870 (class 0 OID 0)
 -- Dependencies: 263
 -- Name: invoice_verifications_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -902,7 +905,7 @@ CREATE SEQUENCE public.invoices_id_seq
 ALTER SEQUENCE public.invoices_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3869 (class 0 OID 0)
+-- TOC entry 3871 (class 0 OID 0)
 -- Dependencies: 227
 -- Name: invoices_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -941,7 +944,7 @@ CREATE SEQUENCE public.migrations_id_seq
 ALTER SEQUENCE public.migrations_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3870 (class 0 OID 0)
+-- TOC entry 3872 (class 0 OID 0)
 -- Dependencies: 269
 -- Name: migrations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -987,7 +990,7 @@ CREATE SEQUENCE public.nocodb_config_id_seq
 ALTER SEQUENCE public.nocodb_config_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3871 (class 0 OID 0)
+-- TOC entry 3873 (class 0 OID 0)
 -- Dependencies: 238
 -- Name: nocodb_config_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1035,7 +1038,7 @@ CREATE SEQUENCE public.orders_id_seq
 ALTER SEQUENCE public.orders_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3872 (class 0 OID 0)
+-- TOC entry 3874 (class 0 OID 0)
 -- Dependencies: 242
 -- Name: orders_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1080,7 +1083,7 @@ CREATE SEQUENCE public.permissions_id_seq
 ALTER SEQUENCE public.permissions_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3873 (class 0 OID 0)
+-- TOC entry 3875 (class 0 OID 0)
 -- Dependencies: 254
 -- Name: permissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1127,7 +1130,7 @@ CREATE SEQUENCE public.publicities_id_seq
 ALTER SEQUENCE public.publicities_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3874 (class 0 OID 0)
+-- TOC entry 3876 (class 0 OID 0)
 -- Dependencies: 244
 -- Name: publicities_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1185,7 +1188,7 @@ CREATE SEQUENCE public.reconciliation_comments_id_seq
 ALTER SEQUENCE public.reconciliation_comments_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3875 (class 0 OID 0)
+-- TOC entry 3877 (class 0 OID 0)
 -- Dependencies: 277
 -- Name: reconciliation_comments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1244,7 +1247,7 @@ CREATE SEQUENCE public.roles_id_seq
 ALTER SEQUENCE public.roles_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3876 (class 0 OID 0)
+-- TOC entry 3878 (class 0 OID 0)
 -- Dependencies: 252
 -- Name: roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1294,7 +1297,7 @@ CREATE SEQUENCE public.sav_tickets_id_seq
 ALTER SEQUENCE public.sav_tickets_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3877 (class 0 OID 0)
+-- TOC entry 3879 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: sav_tickets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1366,7 +1369,7 @@ CREATE SEQUENCE public.stores_id_seq
 ALTER SEQUENCE public.stores_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3878 (class 0 OID 0)
+-- TOC entry 3880 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: stores_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1387,7 +1390,8 @@ CREATE TABLE public.suppliers (
     has_dlc boolean DEFAULT false,
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
-    automatic_reconciliation boolean DEFAULT false
+    automatic_reconciliation boolean DEFAULT false,
+    requires_control boolean DEFAULT false
 );
 
 
@@ -1410,7 +1414,7 @@ CREATE SEQUENCE public.suppliers_id_seq
 ALTER SEQUENCE public.suppliers_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3879 (class 0 OID 0)
+-- TOC entry 3881 (class 0 OID 0)
 -- Dependencies: 240
 -- Name: suppliers_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1461,7 +1465,7 @@ CREATE SEQUENCE public.tasks_id_seq
 ALTER SEQUENCE public.tasks_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3880 (class 0 OID 0)
+-- TOC entry 3882 (class 0 OID 0)
 -- Dependencies: 250
 -- Name: tasks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1559,7 +1563,7 @@ CREATE SEQUENCE public.weather_settings_id_seq
 ALTER SEQUENCE public.weather_settings_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3881 (class 0 OID 0)
+-- TOC entry 3883 (class 0 OID 0)
 -- Dependencies: 279
 -- Name: weather_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1586,7 +1590,7 @@ CREATE TABLE public.webhook_bap_config (
 ALTER TABLE public.webhook_bap_config OWNER TO neondb_owner;
 
 --
--- TOC entry 3882 (class 0 OID 0)
+-- TOC entry 3884 (class 0 OID 0)
 -- Dependencies: 274
 -- Name: TABLE webhook_bap_config; Type: COMMENT; Schema: public; Owner: neondb_owner
 --
@@ -1611,7 +1615,7 @@ CREATE SEQUENCE public.webhook_bap_config_id_seq
 ALTER SEQUENCE public.webhook_bap_config_id_seq OWNER TO neondb_owner;
 
 --
--- TOC entry 3883 (class 0 OID 0)
+-- TOC entry 3885 (class 0 OID 0)
 -- Dependencies: 273
 -- Name: webhook_bap_config_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: neondb_owner
 --
@@ -1620,7 +1624,7 @@ ALTER SEQUENCE public.webhook_bap_config_id_seq OWNED BY public.webhook_bap_conf
 
 
 --
--- TOC entry 3477 (class 2604 OID 2359310)
+-- TOC entry 3479 (class 2604 OID 2359310)
 -- Name: announcements id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1628,7 +1632,7 @@ ALTER TABLE ONLY public.announcements ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
--- TOC entry 3486 (class 2604 OID 2367492)
+-- TOC entry 3488 (class 2604 OID 2367492)
 -- Name: avoirs id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1668,7 +1672,7 @@ ALTER TABLE ONLY public.commands ALTER COLUMN id SET DEFAULT nextval('public.com
 
 
 --
--- TOC entry 3416 (class 2604 OID 57529)
+-- TOC entry 3417 (class 2604 OID 57529)
 -- Name: customer_orders id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1684,7 +1688,7 @@ ALTER TABLE ONLY public.customers ALTER COLUMN id SET DEFAULT nextval('public.cu
 
 
 --
--- TOC entry 3472 (class 2604 OID 2342916)
+-- TOC entry 3474 (class 2604 OID 2342916)
 -- Name: dashboard_messages id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1692,7 +1696,7 @@ ALTER TABLE ONLY public.dashboard_messages ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
--- TOC entry 3449 (class 2604 OID 73737)
+-- TOC entry 3450 (class 2604 OID 73737)
 -- Name: deliveries id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1708,7 +1712,7 @@ ALTER TABLE ONLY public.delivery_items ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
--- TOC entry 3424 (class 2604 OID 57545)
+-- TOC entry 3425 (class 2604 OID 57545)
 -- Name: dlc_products id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1724,7 +1728,7 @@ ALTER TABLE ONLY public.groups ALTER COLUMN id SET DEFAULT nextval('public.group
 
 
 --
--- TOC entry 3465 (class 2604 OID 2310149)
+-- TOC entry 3467 (class 2604 OID 2310149)
 -- Name: invoice_verification_cache id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1732,7 +1736,7 @@ ALTER TABLE ONLY public.invoice_verification_cache ALTER COLUMN id SET DEFAULT n
 
 
 --
--- TOC entry 3461 (class 2604 OID 2285572)
+-- TOC entry 3463 (class 2604 OID 2285572)
 -- Name: invoice_verifications id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1748,7 +1752,7 @@ ALTER TABLE ONLY public.invoices ALTER COLUMN id SET DEFAULT nextval('public.inv
 
 
 --
--- TOC entry 3475 (class 2604 OID 2359300)
+-- TOC entry 3477 (class 2604 OID 2359300)
 -- Name: migrations id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1764,7 +1768,7 @@ ALTER TABLE ONLY public.nocodb_config ALTER COLUMN id SET DEFAULT nextval('publi
 
 
 --
--- TOC entry 3409 (class 2604 OID 57491)
+-- TOC entry 3410 (class 2604 OID 57491)
 -- Name: orders id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1772,7 +1776,7 @@ ALTER TABLE ONLY public.orders ALTER COLUMN id SET DEFAULT nextval('public.order
 
 
 --
--- TOC entry 3445 (class 2604 OID 57584)
+-- TOC entry 3446 (class 2604 OID 57584)
 -- Name: permissions id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1780,7 +1784,7 @@ ALTER TABLE ONLY public.permissions ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
--- TOC entry 3413 (class 2604 OID 57516)
+-- TOC entry 3414 (class 2604 OID 57516)
 -- Name: publicities id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1788,7 +1792,7 @@ ALTER TABLE ONLY public.publicities ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
--- TOC entry 3493 (class 2604 OID 2375684)
+-- TOC entry 3495 (class 2604 OID 2375684)
 -- Name: reconciliation_comments id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1796,7 +1800,7 @@ ALTER TABLE ONLY public.reconciliation_comments ALTER COLUMN id SET DEFAULT next
 
 
 --
--- TOC entry 3439 (class 2604 OID 57568)
+-- TOC entry 3440 (class 2604 OID 57568)
 -- Name: roles id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1828,7 +1832,7 @@ ALTER TABLE ONLY public.suppliers ALTER COLUMN id SET DEFAULT nextval('public.su
 
 
 --
--- TOC entry 3434 (class 2604 OID 57555)
+-- TOC entry 3435 (class 2604 OID 57555)
 -- Name: tasks id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1836,7 +1840,7 @@ ALTER TABLE ONLY public.tasks ALTER COLUMN id SET DEFAULT nextval('public.tasks_
 
 
 --
--- TOC entry 3496 (class 2604 OID 2383876)
+-- TOC entry 3498 (class 2604 OID 2383876)
 -- Name: weather_settings id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1844,7 +1848,7 @@ ALTER TABLE ONLY public.weather_settings ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
--- TOC entry 3481 (class 2604 OID 2359337)
+-- TOC entry 3483 (class 2604 OID 2359337)
 -- Name: webhook_bap_config id; Type: DEFAULT; Schema: public; Owner: neondb_owner
 --
 
@@ -1852,7 +1856,7 @@ ALTER TABLE ONLY public.webhook_bap_config ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
--- TOC entry 3832 (class 0 OID 2359307)
+-- TOC entry 3834 (class 0 OID 2359307)
 -- Dependencies: 272
 -- Data for Name: announcements; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -1862,7 +1866,7 @@ COPY public.announcements (id, title, content, priority, author_id, group_id, cr
 
 
 --
--- TOC entry 3836 (class 0 OID 2367489)
+-- TOC entry 3838 (class 0 OID 2367489)
 -- Dependencies: 276
 -- Data for Name: avoirs; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -1872,7 +1876,7 @@ COPY public.avoirs (id, supplier_id, group_id, invoice_reference, amount, commen
 
 
 --
--- TOC entry 3776 (class 0 OID 24577)
+-- TOC entry 3778 (class 0 OID 24577)
 -- Dependencies: 216
 -- Data for Name: calendar_events; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -1888,7 +1892,7 @@ COPY public.calendar_events (id, title, description, user_id, store_id, start_da
 
 
 --
--- TOC entry 3778 (class 0 OID 24590)
+-- TOC entry 3780 (class 0 OID 24590)
 -- Dependencies: 218
 -- Data for Name: client_orders; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -1903,7 +1907,7 @@ COPY public.client_orders (id, order_number, customer_id, store_id, user_id, sta
 
 
 --
--- TOC entry 3780 (class 0 OID 24605)
+-- TOC entry 3782 (class 0 OID 24605)
 -- Dependencies: 220
 -- Data for Name: command_items; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -1927,7 +1931,7 @@ COPY public.command_items (id, command_id, product_name, product_code, quantity,
 
 
 --
--- TOC entry 3782 (class 0 OID 24614)
+-- TOC entry 3784 (class 0 OID 24614)
 -- Dependencies: 222
 -- Data for Name: commands; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -1942,7 +1946,7 @@ COPY public.commands (id, command_number, supplier_id, store_id, user_id, status
 
 
 --
--- TOC entry 3807 (class 0 OID 57526)
+-- TOC entry 3809 (class 0 OID 57526)
 -- Dependencies: 247
 -- Data for Name: customer_orders; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -1953,11 +1957,15 @@ COPY public.customer_orders (id, order_taker, customer_name, customer_phone, cus
 336583	admin	Test Client 336583	0123456789	\N	Test Product Designation	\N	GENCODE336583	1	1	pending	0.00	f	f	\N	1	admin	2025-09-11 10:57:11.071226	2025-09-11 10:57:11.071226
 685430	admin	Test Client 685430	0123456789	\N	Test Product Designation	\N	GENCODE685430	1	1	pending	0.00	f	f	\N	1	admin	2025-09-11 10:57:46.938934	2025-09-11 10:57:46.938934
 409686	admin	Test Client 409686	0123456789	\N	Test Product Designation	\N	GENCODE409686	1	1	pending	0.00	f	f	\N	1	admin	2025-09-11 10:58:00.328537	2025-09-11 10:58:00.328537
+7	admin	C_xUIoIS	0123456789	\N	Test Product Available	\N	GENkDr_-n	1	1	Disponible	0.00	f	f	\N	1	admin_local	2025-09-28 08:38:27.557772	2025-09-28 08:38:27.557772
+8	admin	C_ZZrx9k	0123456789	\N	Test Product Retired	\N	GENOBslmz	1	1	Retiré	0.00	f	f	\N	1	admin_local	2025-09-28 08:38:27.691298	2025-09-28 08:38:27.691298
+16	tester	C_7B7JSD	0123456789	\N	Test Product Available	\N	GEN-API-AV	1	1	Disponible	0.00	f	f	\N	1	admin_local	2025-09-28 08:48:29.774306	2025-09-28 08:48:29.774306
+17	tester	C_FPC3In	0123456789	\N	Test Product Retired	\N	GEN-API-RT	1	1	Retiré	0.00	f	f	\N	1	admin_local	2025-09-28 08:49:00.887457	2025-09-28 08:49:00.887457
 \.
 
 
 --
--- TOC entry 3784 (class 0 OID 24629)
+-- TOC entry 3786 (class 0 OID 24629)
 -- Dependencies: 224
 -- Data for Name: customers; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -1975,7 +1983,7 @@ COPY public.customers (id, first_name, last_name, email, phone, address, store_i
 
 
 --
--- TOC entry 3828 (class 0 OID 2342913)
+-- TOC entry 3830 (class 0 OID 2342913)
 -- Dependencies: 268
 -- Data for Name: dashboard_messages; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -1985,73 +1993,73 @@ COPY public.dashboard_messages (id, title, content, type, store_id, created_by, 
 
 
 --
--- TOC entry 3822 (class 0 OID 819214)
+-- TOC entry 3824 (class 0 OID 819214)
 -- Dependencies: 262
 -- Data for Name: database_backups; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.database_backups (id, filename, description, size, created_at, created_by, tables_count, status, backup_type) FROM stdin;
-3BXbMdVkhtSryOk3HRGkp	backup_automatic_2025-09-17T21-56-37-345Z.sql	Automatique backup du 17/09/2025	131556	2025-09-17 21:56:37.375543	system	37	completed	automatic
-FBwVzTaCwB4AS6GVU6SJ9	backup_automatic_2025-09-19T06-11-49-625Z.sql	Automatique backup du 19/09/2025	131556	2025-09-19 06:11:49.678533	system	37	completed	automatic
-cICxm578x1hf1vPaQJROL	backup_automatic_2025-09-20T02-02-55-254Z.sql	Automatique backup du 20/09/2025	131556	2025-09-20 02:02:55.280114	system	37	completed	automatic
-MDAobkh74ZgZZI9oS2XCI	backup_automatic_2025-09-21T06-22-14-480Z.sql	Automatique backup du 21/09/2025	131555	2025-09-21 06:22:14.50849	system	37	completed	automatic
-V__NOBc-Hg8Kr9yiiGqna	backup_automatic_2025-09-22T05-28-11-122Z.sql	Automatique backup du 22/09/2025	131553	2025-09-22 05:28:11.1653	system	37	completed	automatic
-NJ_zevppkB1fhTqNVpHVQ	backup_automatic_2025-09-23T08-42-36-690Z.sql	Automatique backup du 23/09/2025	131567	2025-09-23 08:42:36.721996	system	37	completed	automatic
-T5omweVqNbmOb3c1fcDeC	backup_automatic_2025-09-24T06-04-17-915Z.sql	Automatique backup du 24/09/2025	131832	2025-09-24 06:04:17.944287	system	37	completed	automatic
-DDcEQbW5fonM241HUWnmz	backup_automatic_2025-09-25T02-54-42-765Z.sql	Automatique backup du 25/09/2025	132377	2025-09-25 02:54:42.804109	system	37	completed	automatic
-MkChSLBOwIZnScVZ5KcWd	backup_automatic_2025-09-26T02-58-35-800Z.sql	Automatique backup du 26/09/2025	133018	2025-09-26 02:58:35.841293	system	37	completed	automatic
-fZa7gVGVHvaMl9kaLvJf8	backup_automatic_2025-09-27T09-13-38-191Z.sql	Automatique backup du 27/09/2025	133018	2025-09-27 09:13:38.216295	system	37	completed	automatic
-RCy5qsra43fjigkO5fw0Z	backup_automatic_2025-09-28T06-02-00-545Z.sql	Automatique backup du 28/09/2025	0	2025-09-28 06:02:00.560751	system	0	creating	automatic
+RCy5qsra43fjigkO5fw0Z	backup_automatic_2025-09-28T06-02-00-545Z.sql	Automatique backup du 28/09/2025	133100	2025-09-28 06:02:00.560751	system	37	completed	automatic
+M0mylIvymyjNW-6oMZ2y3	backup_automatic_2025-09-29T05-35-44-890Z.sql	Automatique backup du 29/09/2025	133745	2025-09-29 05:35:44.919566	system	37	completed	automatic
+vdKzGJ9Y1Wz7D1mIqM1NL	backup_automatic_2025-09-30T07-51-20-521Z.sql	Automatique backup du 30/09/2025	133745	2025-09-30 07:51:20.576339	system	37	completed	automatic
+d_B9HrBTYc1cFV7kN_nJB	backup_automatic_2025-10-01T06-06-16-054Z.sql	Automatique backup du 01/10/2025	134303	2025-10-01 06:06:16.079366	system	37	completed	automatic
+dXL2dRq-ap4H0lpSL1r8m	backup_automatic_2025-10-02T06-01-05-439Z.sql	Automatique backup du 02/10/2025	134304	2025-10-02 06:01:05.948457	system	37	completed	automatic
+Mu8aDqc8eAJCs7uuklwUV	backup_automatic_2025-10-10T15-48-22-254Z.sql	Automatique backup du 10/10/2025	134306	2025-10-10 15:48:22.301743	system	37	completed	automatic
+s_fMW7AN9zomxObiT37Na	backup_automatic_2025-10-11T06-40-48-221Z.sql	Automatique backup du 11/10/2025	134306	2025-10-11 06:40:48.265686	system	37	completed	automatic
+LppZcsF_Tk6cLq55kuI7I	backup_automatic_2025-10-13T08-34-53-570Z.sql	Automatique backup du 13/10/2025	134306	2025-10-13 08:34:53.629196	system	37	completed	automatic
+fmrvEypZbCYIvMr-A2jtw	backup_automatic_2025-10-29T10-01-57-019Z.sql	Automatique backup du 29/10/2025	134551	2025-10-29 10:01:57.062091	system	37	completed	automatic
+VPV_k6IGvm80eOx8r93jA	backup_automatic_2025-10-30T18-47-50-161Z.sql	Automatique backup du 30/10/2025	135014	2025-10-30 18:47:50.212477	system	37	completed	automatic
+koVI-qtXrEFvNtDoEJ14R	backup_automatic_2025-10-31T06-18-07-763Z.sql	Automatique backup du 31/10/2025	0	2025-10-31 06:18:07.798008	system	0	creating	automatic
 \.
 
 
 --
--- TOC entry 3819 (class 0 OID 73734)
+-- TOC entry 3821 (class 0 OID 73734)
 -- Dependencies: 259
 -- Data for Name: deliveries; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
-COPY public.deliveries (id, order_id, supplier_id, group_id, scheduled_date, delivered_date, quantity, unit, status, notes, bl_number, bl_amount, invoice_reference, invoice_amount, reconciled, validated_at, created_by, created_at, updated_at) FROM stdin;
-1	\N	1	1	2025-07-20	\N	10	palettes	pending	Test livraison	\N	\N	\N	\N	f	\N	1	2025-07-19 20:32:20.382559	2025-07-19 20:32:20.382559
-3	\N	1	4	2025-07-25	\N	5	palettes	planned	Test statut planned	\N	\N	\N	\N	f	\N	admin_local	2025-07-19 20:34:11.951608	2025-07-19 20:34:11.951608
-2	1	1	4	2025-07-17	2025-07-19 20:33:34.611	1	palettes	delivered	\N	BL12345678	1299.00	faC454566435F	1299.00	t	2025-07-19 20:33:34.611	1	2025-07-19 20:33:27.154225	2025-07-19 21:50:36.00099
-101	2	1	4	2025-07-26	\N	3	palettes	planned	Test pour validation - liée à commande ID 2	\N	\N	\N	\N	f	\N	admin_local	2025-07-20 08:22:00.758253	2025-07-20 08:22:00.758253
-102	4	3	5	2025-07-23	2025-07-22 13:16:16.924	1	palettes	delivered	\N	BL12345678	1200.00	FC25624812	1200.00	t	2025-07-22 13:16:16.924	_1753182518439	2025-07-22 13:07:50.937609	2025-07-22 13:16:35.824
-104	\N	1	4	2025-07-23	2025-07-23 00:00:00	3	palettes	delivered	\N	BL205794	\N	\N	\N	f	\N	1	2025-07-24 13:23:51.878626	2025-07-24 13:23:51.878626
-105	\N	2	4	2025-07-23	2025-07-23 00:00:00	2	palettes	delivered	\N	BL205795	\N	\N	\N	f	\N	1	2025-07-24 13:23:51.878626	2025-07-24 13:23:51.878626
-106	\N	2	4	2025-07-16	2025-07-16 00:00:00	4	palettes	delivered	\N	BL1125071423	\N	\N	\N	f	\N	1	2025-07-24 13:23:51.878626	2025-07-24 13:23:51.878626
-107	\N	1	4	2025-07-15	2025-07-15 00:00:00	6	palettes	delivered	\N	BL377797	\N	\N	\N	f	\N	1	2025-07-24 13:23:51.878626	2025-07-24 13:23:51.878626
-108	\N	1	4	2025-07-25	\N	5	palettes	delivered	Test livraison 1 pour pagination	BL123456	1500.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256
-109	\N	2	4	2025-07-25	\N	3	palettes	delivered	Test livraison 2 pour pagination	BL123457	890.50	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256
-110	\N	1	4	2025-07-25	\N	7	palettes	delivered	Test livraison 3 pour pagination	BL123458	2100.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256
-111	\N	3	4	2025-07-26	\N	4	palettes	delivered	Test livraison 4 pour pagination	BL123459	1200.75	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256
-112	\N	1	4	2025-07-26	\N	6	palettes	delivered	Test livraison 5 pour pagination	BL123460	1800.25	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256
-113	\N	2	4	2025-07-26	\N	2	palettes	delivered	Test livraison 6 pour pagination	BL123461	650.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256
-114	\N	3	4	2025-07-27	\N	8	palettes	delivered	Test livraison 7 pour pagination	BL123462	2400.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256
-115	\N	1	4	2025-07-27	\N	5	palettes	delivered	Test livraison 8 pour pagination	BL123463	1500.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256
-116	\N	2	4	2025-07-27	\N	3	palettes	delivered	Test livraison 9 pour pagination	BL123464	900.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256
-117	\N	3	4	2025-07-28	\N	4	palettes	delivered	Test livraison 10 pour pagination	BL123465	1200.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256
-120	\N	4	1	2025-07-25	\N	1	palettes	planned	\N	\N	\N	\N	\N	f	\N	1	2025-07-25 18:34:31.897574	2025-07-25 18:34:31.897574
-122	\N	4	1	2025-07-24	2025-07-27 16:09:31.86	1	palettes	delivered	\N	bllt015904	1200.00	25025575	1200.00	f	2025-07-27 16:09:31.86	1	2025-07-27 16:09:27.001141	2025-07-28 14:39:57.081
-124	\N	5	5	2025-07-24	\N	1	palettes	delivered	\N	\N	\N	F5162713	5972.48	f	\N	_1753182518439	2025-07-30 12:59:12.824932	2025-07-30 12:59:12.824932
-103	\N	1	4	2025-07-24	2025-07-24 00:00:00	5	palettes	delivered	\N	BL00130066	\N		\N	f	\N	1	2025-07-24 13:23:51.878626	2025-07-27 22:33:18.066
-118	8	1	4	2025-08-08	2025-07-25 12:42:28.748	1	palettes	delivered	\N	BL2501644	1200.00		\N	f	2025-07-25 12:42:28.748	1	2025-07-25 12:42:19.117085	2025-07-27 22:34:05.073
-119	\N	4	1	2025-07-25	2025-07-25 18:34:43.783	1	palettes	pending	\N	25025575	2468.48	25025575	2468.48	f	\N	1	2025-07-25 18:33:33.42942	2025-07-28 13:31:47.301
-121	\N	4	1	2025-07-25	\N	2	palettes	delivered	\N	bllt015904	1200.00	25025575	1200.00	t	\N	1	2025-07-25 21:00:02.583105	2025-07-30 20:52:38.952429
-126	\N	4	1	2025-07-24	\N	1	palettes	delivered	\N	\N	\N	\N	\N	f	\N	_1753182518439	2025-07-30 14:09:31.269975	2025-07-30 20:58:03.172497
-128	\N	1	1	2025-08-20	\N	5	palettes	planned	Test cache PostgreSQL	\N	\N	FACT2025-001	1500.50	f	\N	1	2025-08-17 16:03:04.728264	2025-08-17 16:03:04.728264
-129	\N	1	1	2025-08-21	\N	3	palettes	planned	Test même facture cache	\N	\N	FACT2025-001	1500.50	f	\N	1	2025-08-17 16:03:06.006233	2025-08-17 16:03:06.006233
-130	\N	1	1	2025-08-20	\N	5	palettes	planned	Test cache MemStorage	\N	\N	FACT2025-001	1500.50	f	\N	1	2025-08-17 16:04:27.897356	2025-08-17 16:04:27.897356
-131	\N	1	1	2025-08-21	\N	3	palettes	planned	Test même facture cache	\N	\N	FACT2025-001	1500.50	f	\N	1	2025-08-17 16:04:29.232538	2025-08-17 16:04:29.232538
-132	\N	1	1	2025-08-20	\N	5	palettes	planned	Test final cache	\N	\N	FACT2025-002	2500.50	f	\N	1	2025-08-17 16:06:06.113457	2025-08-17 16:06:06.113457
-133	\N	1	1	2025-08-21	\N	3	palettes	planned	Test même facture cache final	\N	\N	FACT2025-002	2500.50	f	\N	1	2025-08-17 16:06:07.49284	2025-08-17 16:06:07.49284
-134	9	1	1	2025-09-30	\N	3	palettes	planned	\N	\N	\N	\N	\N	f	\N	admin_local	2025-09-23 09:40:01.331214	2025-09-23 09:40:01.331214
-127	\N	5	5	2025-07-30	\N	1	palettes	delivered	\N	\N	\N	F5162713	5972.48	f	\N	admin_local	2025-07-30 14:54:27.805769	2025-09-27 09:18:29.596
+COPY public.deliveries (id, order_id, supplier_id, group_id, scheduled_date, delivered_date, quantity, unit, status, notes, bl_number, bl_amount, invoice_reference, invoice_amount, reconciled, validated_at, created_by, created_at, updated_at, control_validated, control_validated_by, control_validated_at) FROM stdin;
+1	\N	1	1	2025-07-20	\N	10	palettes	pending	Test livraison	\N	\N	\N	\N	f	\N	1	2025-07-19 20:32:20.382559	2025-07-19 20:32:20.382559	f	\N	\N
+3	\N	1	4	2025-07-25	\N	5	palettes	planned	Test statut planned	\N	\N	\N	\N	f	\N	admin_local	2025-07-19 20:34:11.951608	2025-07-19 20:34:11.951608	f	\N	\N
+2	1	1	4	2025-07-17	2025-07-19 20:33:34.611	1	palettes	delivered	\N	BL12345678	1299.00	faC454566435F	1299.00	t	2025-07-19 20:33:34.611	1	2025-07-19 20:33:27.154225	2025-07-19 21:50:36.00099	f	\N	\N
+101	2	1	4	2025-07-26	\N	3	palettes	planned	Test pour validation - liée à commande ID 2	\N	\N	\N	\N	f	\N	admin_local	2025-07-20 08:22:00.758253	2025-07-20 08:22:00.758253	f	\N	\N
+102	4	3	5	2025-07-23	2025-07-22 13:16:16.924	1	palettes	delivered	\N	BL12345678	1200.00	FC25624812	1200.00	t	2025-07-22 13:16:16.924	_1753182518439	2025-07-22 13:07:50.937609	2025-07-22 13:16:35.824	f	\N	\N
+104	\N	1	4	2025-07-23	2025-07-23 00:00:00	3	palettes	delivered	\N	BL205794	\N	\N	\N	f	\N	1	2025-07-24 13:23:51.878626	2025-07-24 13:23:51.878626	f	\N	\N
+105	\N	2	4	2025-07-23	2025-07-23 00:00:00	2	palettes	delivered	\N	BL205795	\N	\N	\N	f	\N	1	2025-07-24 13:23:51.878626	2025-07-24 13:23:51.878626	f	\N	\N
+106	\N	2	4	2025-07-16	2025-07-16 00:00:00	4	palettes	delivered	\N	BL1125071423	\N	\N	\N	f	\N	1	2025-07-24 13:23:51.878626	2025-07-24 13:23:51.878626	f	\N	\N
+107	\N	1	4	2025-07-15	2025-07-15 00:00:00	6	palettes	delivered	\N	BL377797	\N	\N	\N	f	\N	1	2025-07-24 13:23:51.878626	2025-07-24 13:23:51.878626	f	\N	\N
+108	\N	1	4	2025-07-25	\N	5	palettes	delivered	Test livraison 1 pour pagination	BL123456	1500.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256	f	\N	\N
+109	\N	2	4	2025-07-25	\N	3	palettes	delivered	Test livraison 2 pour pagination	BL123457	890.50	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256	f	\N	\N
+110	\N	1	4	2025-07-25	\N	7	palettes	delivered	Test livraison 3 pour pagination	BL123458	2100.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256	f	\N	\N
+111	\N	3	4	2025-07-26	\N	4	palettes	delivered	Test livraison 4 pour pagination	BL123459	1200.75	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256	f	\N	\N
+112	\N	1	4	2025-07-26	\N	6	palettes	delivered	Test livraison 5 pour pagination	BL123460	1800.25	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256	f	\N	\N
+113	\N	2	4	2025-07-26	\N	2	palettes	delivered	Test livraison 6 pour pagination	BL123461	650.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256	f	\N	\N
+114	\N	3	4	2025-07-27	\N	8	palettes	delivered	Test livraison 7 pour pagination	BL123462	2400.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256	f	\N	\N
+115	\N	1	4	2025-07-27	\N	5	palettes	delivered	Test livraison 8 pour pagination	BL123463	1500.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256	f	\N	\N
+116	\N	2	4	2025-07-27	\N	3	palettes	delivered	Test livraison 9 pour pagination	BL123464	900.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256	f	\N	\N
+117	\N	3	4	2025-07-28	\N	4	palettes	delivered	Test livraison 10 pour pagination	BL123465	1200.00	\N	\N	f	\N	admin_local	2025-07-25 11:51:33.774256	2025-07-25 11:51:33.774256	f	\N	\N
+120	\N	4	1	2025-07-25	\N	1	palettes	planned	\N	\N	\N	\N	\N	f	\N	1	2025-07-25 18:34:31.897574	2025-07-25 18:34:31.897574	f	\N	\N
+122	\N	4	1	2025-07-24	2025-07-27 16:09:31.86	1	palettes	delivered	\N	bllt015904	1200.00	25025575	1200.00	f	2025-07-27 16:09:31.86	1	2025-07-27 16:09:27.001141	2025-07-28 14:39:57.081	f	\N	\N
+124	\N	5	5	2025-07-24	\N	1	palettes	delivered	\N	\N	\N	F5162713	5972.48	f	\N	_1753182518439	2025-07-30 12:59:12.824932	2025-07-30 12:59:12.824932	f	\N	\N
+103	\N	1	4	2025-07-24	2025-07-24 00:00:00	5	palettes	delivered	\N	BL00130066	\N		\N	f	\N	1	2025-07-24 13:23:51.878626	2025-07-27 22:33:18.066	f	\N	\N
+118	8	1	4	2025-08-08	2025-07-25 12:42:28.748	1	palettes	delivered	\N	BL2501644	1200.00		\N	f	2025-07-25 12:42:28.748	1	2025-07-25 12:42:19.117085	2025-07-27 22:34:05.073	f	\N	\N
+119	\N	4	1	2025-07-25	2025-07-25 18:34:43.783	1	palettes	pending	\N	25025575	2468.48	25025575	2468.48	f	\N	1	2025-07-25 18:33:33.42942	2025-07-28 13:31:47.301	f	\N	\N
+121	\N	4	1	2025-07-25	\N	2	palettes	delivered	\N	bllt015904	1200.00	25025575	1200.00	t	\N	1	2025-07-25 21:00:02.583105	2025-07-30 20:52:38.952429	f	\N	\N
+126	\N	4	1	2025-07-24	\N	1	palettes	delivered	\N	\N	\N	\N	\N	f	\N	_1753182518439	2025-07-30 14:09:31.269975	2025-07-30 20:58:03.172497	f	\N	\N
+128	\N	1	1	2025-08-20	\N	5	palettes	planned	Test cache PostgreSQL	\N	\N	FACT2025-001	1500.50	f	\N	1	2025-08-17 16:03:04.728264	2025-08-17 16:03:04.728264	f	\N	\N
+129	\N	1	1	2025-08-21	\N	3	palettes	planned	Test même facture cache	\N	\N	FACT2025-001	1500.50	f	\N	1	2025-08-17 16:03:06.006233	2025-08-17 16:03:06.006233	f	\N	\N
+130	\N	1	1	2025-08-20	\N	5	palettes	planned	Test cache MemStorage	\N	\N	FACT2025-001	1500.50	f	\N	1	2025-08-17 16:04:27.897356	2025-08-17 16:04:27.897356	f	\N	\N
+131	\N	1	1	2025-08-21	\N	3	palettes	planned	Test même facture cache	\N	\N	FACT2025-001	1500.50	f	\N	1	2025-08-17 16:04:29.232538	2025-08-17 16:04:29.232538	f	\N	\N
+132	\N	1	1	2025-08-20	\N	5	palettes	planned	Test final cache	\N	\N	FACT2025-002	2500.50	f	\N	1	2025-08-17 16:06:06.113457	2025-08-17 16:06:06.113457	f	\N	\N
+133	\N	1	1	2025-08-21	\N	3	palettes	planned	Test même facture cache final	\N	\N	FACT2025-002	2500.50	f	\N	1	2025-08-17 16:06:07.49284	2025-08-17 16:06:07.49284	f	\N	\N
+134	9	1	1	2025-09-30	\N	3	palettes	planned	\N	\N	\N	\N	\N	f	\N	admin_local	2025-09-23 09:40:01.331214	2025-09-23 09:40:01.331214	f	\N	\N
+127	\N	5	5	2025-07-30	\N	1	palettes	delivered	\N	\N	\N	F5162713	5972.48	f	\N	admin_local	2025-07-30 14:54:27.805769	2025-09-27 09:18:29.596	f	\N	\N
 \.
 
 
 --
--- TOC entry 3786 (class 0 OID 24654)
+-- TOC entry 3788 (class 0 OID 24654)
 -- Dependencies: 226
 -- Data for Name: delivery_items; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2061,14 +2069,13 @@ COPY public.delivery_items (id, delivery_id, command_item_id, product_name, quan
 
 
 --
--- TOC entry 3809 (class 0 OID 57542)
+-- TOC entry 3811 (class 0 OID 57542)
 -- Dependencies: 249
 -- Data for Name: dlc_products; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.dlc_products (id, name, gencode, dlc_date, quantity, store_id, created_at, group_id, created_by, status, validated_by, expiry_date, product_code, description, supplier_id, product_name, date_type, unit, location, alert_threshold, notes, updated_at, validated_at, stock_epuise, stock_epuise_by, stock_epuise_at, processed_at, processed_by, processed_until_expiry) FROM stdin;
 2	Produit Test DLC	1234567890123	2025-07-30	1	\N	2025-07-19 22:35:49.651214	4	admin_local	en_cours	\N	2025-07-30	1234567890123	\N	1	Produit Test DLC	DLC	unité	Magasin	15	Test stats	2025-07-19 22:35:49.651214	\N	f	\N	\N	\N	\N	f
-3	Produit Expirant Bientôt	2345678901234	2025-07-22	2	\N	2025-07-19 22:35:49.651214	4	admin_local	en_cours	\N	2025-07-22	2345678901234	\N	1	Produit Expirant Bientôt	DLC	unité	Magasin	15	Expire dans 3 jours	2025-07-19 22:35:49.651214	\N	f	\N	\N	\N	\N	f
 7	Produit Validé Test	VAL123	2025-08-15	1	\N	2025-07-19 23:54:00.380592	4	admin	valides	\N	\N	\N	\N	1	Produit Validé Test	DLC	unité	Magasin	15	Produit avec statut validé	2025-07-19 23:54:00.380592	\N	f	\N	\N	\N	\N	f
 15	coca 	366092323745	\N	1	\N	2025-07-22 13:35:02.427	5	_1753182518439	en_cours	\N	2025-07-27	\N	\N	3	coca 	dlc	unité	Magasin	15		2025-07-22 13:35:02.427	\N	f	\N	\N	\N	\N	f
 17	DLC Produit Test	zFGwX	\N	\N	\N	2025-09-11 11:11:28.243179	\N	\N	valides	\N	2026-01-01	\N	\N	\N	DLC Produit Test	DLC	unité	Magasin	15	\N	2025-09-11 11:11:28.243179	\N	f	\N	\N	\N	\N	f
@@ -2076,11 +2083,15 @@ COPY public.dlc_products (id, name, gencode, dlc_date, quantity, store_id, creat
 26	Test Product NIzB_	9999999999999	\N	1	\N	2025-09-25 06:52:51.837635	1	admin_local	en_cours	\N	2025-10-05	\N	\N	1	Test Product NIzB_	dlc	unité	Magasin	15		2025-09-25 06:58:05.022	\N	f	\N	\N	\N	\N	f
 25	Test Product NgC8x	9999999999999	\N	1	\N	2025-09-25 06:45:45.9093	1	admin_local	en_cours	\N	2025-10-05	\N	\N	1	Test Product NgC8x	dlc	unité	Magasin	15		2025-09-27 11:38:59.385	\N	t	admin_local	2025-09-27 11:38:59.384	2025-09-27 11:38:49.482	admin_local	t
 4	Produit Expiré	3456789012345	2025-07-15	1	\N	2025-07-19 22:35:49.651214	4	admin_local	valides	admin_local	2025-07-15	3456789012345	\N	1	Produit Expiré	DLC	unité	Magasin	15	Déjà expiré	2025-09-27 11:51:07.389	2025-09-27 11:51:07.389	f	\N	\N	\N	\N	f
+3	Produit Expirant Bientôt	2345678901234	2025-07-22	2	\N	2025-07-19 22:35:49.651214	4	admin_local	valides	admin_local	2025-07-22	2345678901234	\N	1	Produit Expirant Bientôt	DLC	unité	Magasin	15	Expire dans 3 jours	2025-10-13 08:43:25.014	2025-10-13 08:43:25.014	f	\N	\N	\N	\N	f
+28	Test DLUO Expiré	DLUO001	\N	5	\N	2025-10-13 11:43:35.791502	4	admin_local	en_cours	\N	2024-01-15	\N	\N	1	Test DLUO Expiré	DLUO	unité	Magasin	15	Produit DLUO pour test	2025-10-13 11:43:35.791502	\N	f	\N	\N	\N	\N	f
+30	Test Flux	TEST123	\N	10	\N	2025-10-29 17:44:10.215883	1	admin_local	valides	admin_local	2025-10-28	\N	\N	1	Test Flux Complet	DLC	unité	Magasin	15	\N	2025-10-29 17:44:29.771	2025-10-29 17:44:29.771	f	\N	\N	2025-10-29 17:44:11.592	admin_local	t
+31	Test Bug	BUG1	\N	10	\N	2025-10-29 17:46:16.233588	1	admin_local	en_cours	\N	2025-10-28	\N	\N	1	Test Bug Architecte	DLC	unité	Magasin	15	\N	2025-10-29 17:46:18.635	\N	f	\N	\N	2025-10-29 17:46:17.433	admin_local	t
 \.
 
 
 --
--- TOC entry 3797 (class 0 OID 57451)
+-- TOC entry 3799 (class 0 OID 57451)
 -- Dependencies: 237
 -- Data for Name: groups; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2093,7 +2104,7 @@ COPY public.groups (id, name, color, address, phone, email, nocodb_config_id, no
 
 
 --
--- TOC entry 3826 (class 0 OID 2310146)
+-- TOC entry 3828 (class 0 OID 2310146)
 -- Dependencies: 266
 -- Data for Name: invoice_verification_cache; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2103,7 +2114,7 @@ COPY public.invoice_verification_cache (id, cache_key, group_id, invoice_referen
 
 
 --
--- TOC entry 3824 (class 0 OID 2285569)
+-- TOC entry 3826 (class 0 OID 2285569)
 -- Dependencies: 264
 -- Data for Name: invoice_verifications; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2118,7 +2129,7 @@ COPY public.invoice_verifications (id, delivery_id, group_id, invoice_reference,
 
 
 --
--- TOC entry 3788 (class 0 OID 24677)
+-- TOC entry 3790 (class 0 OID 24677)
 -- Dependencies: 228
 -- Data for Name: invoices; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2128,7 +2139,7 @@ COPY public.invoices (id, invoice_number, command_id, delivery_id, store_id, use
 
 
 --
--- TOC entry 3830 (class 0 OID 2359297)
+-- TOC entry 3832 (class 0 OID 2359297)
 -- Dependencies: 270
 -- Data for Name: migrations; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2143,7 +2154,7 @@ COPY public.migrations (id, filename, executed_at) FROM stdin;
 
 
 --
--- TOC entry 3799 (class 0 OID 57464)
+-- TOC entry 3801 (class 0 OID 57464)
 -- Dependencies: 239
 -- Data for Name: nocodb_config; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2154,7 +2165,7 @@ COPY public.nocodb_config (id, name, base_url, project_id, api_token, descriptio
 
 
 --
--- TOC entry 3803 (class 0 OID 57488)
+-- TOC entry 3805 (class 0 OID 57488)
 -- Dependencies: 243
 -- Data for Name: orders; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2173,7 +2184,7 @@ COPY public.orders (id, supplier_id, group_id, planned_date, quantity, unit, sta
 
 
 --
--- TOC entry 3815 (class 0 OID 57581)
+-- TOC entry 3817 (class 0 OID 57581)
 -- Dependencies: 255
 -- Data for Name: permissions; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2237,7 +2248,7 @@ COPY public.permissions (id, name, display_name, description, category, action, 
 
 
 --
--- TOC entry 3805 (class 0 OID 57513)
+-- TOC entry 3807 (class 0 OID 57513)
 -- Dependencies: 245
 -- Data for Name: publicities; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2255,7 +2266,7 @@ COPY public.publicities (id, pub_number, designation, title, description, start_
 
 
 --
--- TOC entry 3817 (class 0 OID 57615)
+-- TOC entry 3819 (class 0 OID 57615)
 -- Dependencies: 257
 -- Data for Name: publicity_participations; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2274,7 +2285,7 @@ COPY public.publicity_participations (publicity_id, group_id) FROM stdin;
 
 
 --
--- TOC entry 3838 (class 0 OID 2375681)
+-- TOC entry 3840 (class 0 OID 2375681)
 -- Dependencies: 278
 -- Data for Name: reconciliation_comments; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2285,7 +2296,7 @@ COPY public.reconciliation_comments (id, content, type, delivery_id, author_id, 
 
 
 --
--- TOC entry 3816 (class 0 OID 57609)
+-- TOC entry 3818 (class 0 OID 57609)
 -- Dependencies: 256
 -- Data for Name: role_permissions; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2463,7 +2474,7 @@ COPY public.role_permissions (role_id, permission_id, created_at) FROM stdin;
 
 
 --
--- TOC entry 3813 (class 0 OID 57565)
+-- TOC entry 3815 (class 0 OID 57565)
 -- Dependencies: 253
 -- Data for Name: roles; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2477,7 +2488,7 @@ COPY public.roles (id, name, display_name, description, color, is_system, is_act
 
 
 --
--- TOC entry 3790 (class 0 OID 24692)
+-- TOC entry 3792 (class 0 OID 24692)
 -- Dependencies: 230
 -- Data for Name: sav_tickets; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2492,7 +2503,7 @@ COPY public.sav_tickets (id, ticket_number, customer_id, store_id, user_id, assi
 
 
 --
--- TOC entry 3793 (class 0 OID 32770)
+-- TOC entry 3795 (class 0 OID 32770)
 -- Dependencies: 233
 -- Data for Name: session; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2503,7 +2514,7 @@ COPY public.session (sid, sess, expire) FROM stdin;
 
 
 --
--- TOC entry 3794 (class 0 OID 57427)
+-- TOC entry 3796 (class 0 OID 57427)
 -- Dependencies: 234
 -- Data for Name: sessions; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2513,7 +2524,7 @@ COPY public.sessions (sid, sess, expire) FROM stdin;
 
 
 --
--- TOC entry 3792 (class 0 OID 24707)
+-- TOC entry 3794 (class 0 OID 24707)
 -- Dependencies: 232
 -- Data for Name: stores; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2528,22 +2539,22 @@ COPY public.stores (id, name, address, phone, email, is_active, created_at, upda
 
 
 --
--- TOC entry 3801 (class 0 OID 57476)
+-- TOC entry 3803 (class 0 OID 57476)
 -- Dependencies: 241
 -- Data for Name: suppliers; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
-COPY public.suppliers (id, name, contact, phone, has_dlc, created_at, updated_at, automatic_reconciliation) FROM stdin;
-2	Fournisseur Test 2	Marie Martin	01 98 76 54 32	f	2025-07-19 18:54:37.690583	2025-07-19 18:54:37.690583	f
-1	Fournisseur Test 1	Jean Dupont	01 23 45 67 89	t	2025-07-19 18:54:37.690583	2025-07-19 22:12:13.102179	f
-4	Lidis			f	2025-07-25 18:33:20.170431	2025-07-25 18:33:20.170431	f
-5	JJA Five	Contact JJA Five	01 23 45 67 89	f	2025-07-30 12:59:08.997043	2025-07-30 12:59:08.997043	f
-3	Tendance	Pierre Dubois	06 12 34 56 78	t	2025-07-20 10:26:02.261353	2025-07-30 16:15:02.260442	f
+COPY public.suppliers (id, name, contact, phone, has_dlc, created_at, updated_at, automatic_reconciliation, requires_control) FROM stdin;
+2	Fournisseur Test 2	Marie Martin	01 98 76 54 32	f	2025-07-19 18:54:37.690583	2025-07-19 18:54:37.690583	f	f
+1	Fournisseur Test 1	Jean Dupont	01 23 45 67 89	t	2025-07-19 18:54:37.690583	2025-07-19 22:12:13.102179	f	f
+4	Lidis			f	2025-07-25 18:33:20.170431	2025-07-25 18:33:20.170431	f	f
+5	JJA Five	Contact JJA Five	01 23 45 67 89	f	2025-07-30 12:59:08.997043	2025-07-30 12:59:08.997043	f	f
+3	Tendance	Pierre Dubois	06 12 34 56 78	t	2025-07-20 10:26:02.261353	2025-07-30 16:15:02.260442	f	f
 \.
 
 
 --
--- TOC entry 3811 (class 0 OID 57552)
+-- TOC entry 3813 (class 0 OID 57552)
 -- Dependencies: 251
 -- Data for Name: tasks; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2636,7 +2647,7 @@ COPY public.tasks (id, title, description, assigned_to, due_date, priority, stat
 
 
 --
--- TOC entry 3821 (class 0 OID 720923)
+-- TOC entry 3823 (class 0 OID 720923)
 -- Dependencies: 261
 -- Data for Name: user_groups; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2652,7 +2663,7 @@ _1753185587842	1	\N	2025-07-22 11:59:52.30638
 
 
 --
--- TOC entry 3820 (class 0 OID 720910)
+-- TOC entry 3822 (class 0 OID 720910)
 -- Dependencies: 260
 -- Data for Name: user_roles; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2662,7 +2673,7 @@ COPY public.user_roles (user_id, role_id, assigned_by, assigned_at) FROM stdin;
 
 
 --
--- TOC entry 3795 (class 0 OID 57435)
+-- TOC entry 3797 (class 0 OID 57435)
 -- Dependencies: 235
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2680,7 +2691,7 @@ testuser_BIMceo_1758715619295	testuser_BIMceo	testuser_BIMceo@example.com	\N			\
 
 
 --
--- TOC entry 3840 (class 0 OID 2383873)
+-- TOC entry 3842 (class 0 OID 2383873)
 -- Dependencies: 280
 -- Data for Name: weather_settings; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2691,7 +2702,7 @@ COPY public.weather_settings (id, api_key, default_city, units, update_interval,
 
 
 --
--- TOC entry 3834 (class 0 OID 2359334)
+-- TOC entry 3836 (class 0 OID 2359334)
 -- Dependencies: 274
 -- Data for Name: webhook_bap_config; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
@@ -2702,7 +2713,7 @@ COPY public.webhook_bap_config (id, name, webhook_url, description, is_active, c
 
 
 --
--- TOC entry 3884 (class 0 OID 0)
+-- TOC entry 3886 (class 0 OID 0)
 -- Dependencies: 271
 -- Name: announcements_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2711,7 +2722,7 @@ SELECT pg_catalog.setval('public.announcements_id_seq', 1, false);
 
 
 --
--- TOC entry 3885 (class 0 OID 0)
+-- TOC entry 3887 (class 0 OID 0)
 -- Dependencies: 275
 -- Name: avoirs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2720,7 +2731,7 @@ SELECT pg_catalog.setval('public.avoirs_id_seq', 1, false);
 
 
 --
--- TOC entry 3886 (class 0 OID 0)
+-- TOC entry 3888 (class 0 OID 0)
 -- Dependencies: 215
 -- Name: calendar_events_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2729,7 +2740,7 @@ SELECT pg_catalog.setval('public.calendar_events_id_seq', 6, true);
 
 
 --
--- TOC entry 3887 (class 0 OID 0)
+-- TOC entry 3889 (class 0 OID 0)
 -- Dependencies: 217
 -- Name: client_orders_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2738,7 +2749,7 @@ SELECT pg_catalog.setval('public.client_orders_id_seq', 5, true);
 
 
 --
--- TOC entry 3888 (class 0 OID 0)
+-- TOC entry 3890 (class 0 OID 0)
 -- Dependencies: 219
 -- Name: command_items_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2747,7 +2758,7 @@ SELECT pg_catalog.setval('public.command_items_id_seq', 14, true);
 
 
 --
--- TOC entry 3889 (class 0 OID 0)
+-- TOC entry 3891 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: commands_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2756,16 +2767,16 @@ SELECT pg_catalog.setval('public.commands_id_seq', 8, true);
 
 
 --
--- TOC entry 3890 (class 0 OID 0)
+-- TOC entry 3892 (class 0 OID 0)
 -- Dependencies: 246
 -- Name: customer_orders_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
 
-SELECT pg_catalog.setval('public.customer_orders_id_seq', 2, true);
+SELECT pg_catalog.setval('public.customer_orders_id_seq', 17, true);
 
 
 --
--- TOC entry 3891 (class 0 OID 0)
+-- TOC entry 3893 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: customers_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2774,7 +2785,7 @@ SELECT pg_catalog.setval('public.customers_id_seq', 8, true);
 
 
 --
--- TOC entry 3892 (class 0 OID 0)
+-- TOC entry 3894 (class 0 OID 0)
 -- Dependencies: 267
 -- Name: dashboard_messages_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2783,7 +2794,7 @@ SELECT pg_catalog.setval('public.dashboard_messages_id_seq', 2, true);
 
 
 --
--- TOC entry 3893 (class 0 OID 0)
+-- TOC entry 3895 (class 0 OID 0)
 -- Dependencies: 258
 -- Name: deliveries_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2792,7 +2803,7 @@ SELECT pg_catalog.setval('public.deliveries_id_seq', 134, true);
 
 
 --
--- TOC entry 3894 (class 0 OID 0)
+-- TOC entry 3896 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: delivery_items_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2801,16 +2812,16 @@ SELECT pg_catalog.setval('public.delivery_items_id_seq', 1, false);
 
 
 --
--- TOC entry 3895 (class 0 OID 0)
+-- TOC entry 3897 (class 0 OID 0)
 -- Dependencies: 248
 -- Name: dlc_products_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
 
-SELECT pg_catalog.setval('public.dlc_products_id_seq', 26, true);
+SELECT pg_catalog.setval('public.dlc_products_id_seq', 31, true);
 
 
 --
--- TOC entry 3896 (class 0 OID 0)
+-- TOC entry 3898 (class 0 OID 0)
 -- Dependencies: 236
 -- Name: groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2819,7 +2830,7 @@ SELECT pg_catalog.setval('public.groups_id_seq', 5, true);
 
 
 --
--- TOC entry 3897 (class 0 OID 0)
+-- TOC entry 3899 (class 0 OID 0)
 -- Dependencies: 265
 -- Name: invoice_verification_cache_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2828,7 +2839,7 @@ SELECT pg_catalog.setval('public.invoice_verification_cache_id_seq', 29, true);
 
 
 --
--- TOC entry 3898 (class 0 OID 0)
+-- TOC entry 3900 (class 0 OID 0)
 -- Dependencies: 263
 -- Name: invoice_verifications_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2837,7 +2848,7 @@ SELECT pg_catalog.setval('public.invoice_verifications_id_seq', 15, true);
 
 
 --
--- TOC entry 3899 (class 0 OID 0)
+-- TOC entry 3901 (class 0 OID 0)
 -- Dependencies: 227
 -- Name: invoices_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2846,7 +2857,7 @@ SELECT pg_catalog.setval('public.invoices_id_seq', 1, false);
 
 
 --
--- TOC entry 3900 (class 0 OID 0)
+-- TOC entry 3902 (class 0 OID 0)
 -- Dependencies: 269
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2855,7 +2866,7 @@ SELECT pg_catalog.setval('public.migrations_id_seq', 5, true);
 
 
 --
--- TOC entry 3901 (class 0 OID 0)
+-- TOC entry 3903 (class 0 OID 0)
 -- Dependencies: 238
 -- Name: nocodb_config_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2864,7 +2875,7 @@ SELECT pg_catalog.setval('public.nocodb_config_id_seq', 1, true);
 
 
 --
--- TOC entry 3902 (class 0 OID 0)
+-- TOC entry 3904 (class 0 OID 0)
 -- Dependencies: 242
 -- Name: orders_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2873,7 +2884,7 @@ SELECT pg_catalog.setval('public.orders_id_seq', 9, true);
 
 
 --
--- TOC entry 3903 (class 0 OID 0)
+-- TOC entry 3905 (class 0 OID 0)
 -- Dependencies: 254
 -- Name: permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2882,7 +2893,7 @@ SELECT pg_catalog.setval('public.permissions_id_seq', 108, true);
 
 
 --
--- TOC entry 3904 (class 0 OID 0)
+-- TOC entry 3906 (class 0 OID 0)
 -- Dependencies: 244
 -- Name: publicities_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2891,7 +2902,7 @@ SELECT pg_catalog.setval('public.publicities_id_seq', 10, true);
 
 
 --
--- TOC entry 3905 (class 0 OID 0)
+-- TOC entry 3907 (class 0 OID 0)
 -- Dependencies: 277
 -- Name: reconciliation_comments_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2900,7 +2911,7 @@ SELECT pg_catalog.setval('public.reconciliation_comments_id_seq', 1, true);
 
 
 --
--- TOC entry 3906 (class 0 OID 0)
+-- TOC entry 3908 (class 0 OID 0)
 -- Dependencies: 252
 -- Name: roles_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2909,7 +2920,7 @@ SELECT pg_catalog.setval('public.roles_id_seq', 11, true);
 
 
 --
--- TOC entry 3907 (class 0 OID 0)
+-- TOC entry 3909 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: sav_tickets_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2918,7 +2929,7 @@ SELECT pg_catalog.setval('public.sav_tickets_id_seq', 8, true);
 
 
 --
--- TOC entry 3908 (class 0 OID 0)
+-- TOC entry 3910 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: stores_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2927,7 +2938,7 @@ SELECT pg_catalog.setval('public.stores_id_seq', 5, true);
 
 
 --
--- TOC entry 3909 (class 0 OID 0)
+-- TOC entry 3911 (class 0 OID 0)
 -- Dependencies: 240
 -- Name: suppliers_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2936,7 +2947,7 @@ SELECT pg_catalog.setval('public.suppliers_id_seq', 5, true);
 
 
 --
--- TOC entry 3910 (class 0 OID 0)
+-- TOC entry 3912 (class 0 OID 0)
 -- Dependencies: 250
 -- Name: tasks_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2945,7 +2956,7 @@ SELECT pg_catalog.setval('public.tasks_id_seq', 96, true);
 
 
 --
--- TOC entry 3911 (class 0 OID 0)
+-- TOC entry 3913 (class 0 OID 0)
 -- Dependencies: 279
 -- Name: weather_settings_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2954,7 +2965,7 @@ SELECT pg_catalog.setval('public.weather_settings_id_seq', 1, true);
 
 
 --
--- TOC entry 3912 (class 0 OID 0)
+-- TOC entry 3914 (class 0 OID 0)
 -- Dependencies: 273
 -- Name: webhook_bap_config_id_seq; Type: SEQUENCE SET; Schema: public; Owner: neondb_owner
 --
@@ -2963,7 +2974,7 @@ SELECT pg_catalog.setval('public.webhook_bap_config_id_seq', 1, true);
 
 
 --
--- TOC entry 3609 (class 2606 OID 2359318)
+-- TOC entry 3611 (class 2606 OID 2359318)
 -- Name: announcements announcements_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -2972,7 +2983,7 @@ ALTER TABLE ONLY public.announcements
 
 
 --
--- TOC entry 3617 (class 2606 OID 2367502)
+-- TOC entry 3619 (class 2606 OID 2367502)
 -- Name: avoirs avoirs_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -2981,7 +2992,7 @@ ALTER TABLE ONLY public.avoirs
 
 
 --
--- TOC entry 3509 (class 2606 OID 24588)
+-- TOC entry 3511 (class 2606 OID 24588)
 -- Name: calendar_events calendar_events_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -2990,7 +3001,7 @@ ALTER TABLE ONLY public.calendar_events
 
 
 --
--- TOC entry 3511 (class 2606 OID 24603)
+-- TOC entry 3513 (class 2606 OID 24603)
 -- Name: client_orders client_orders_order_number_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -2999,7 +3010,7 @@ ALTER TABLE ONLY public.client_orders
 
 
 --
--- TOC entry 3513 (class 2606 OID 24601)
+-- TOC entry 3515 (class 2606 OID 24601)
 -- Name: client_orders client_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3008,7 +3019,7 @@ ALTER TABLE ONLY public.client_orders
 
 
 --
--- TOC entry 3515 (class 2606 OID 24612)
+-- TOC entry 3517 (class 2606 OID 24612)
 -- Name: command_items command_items_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3017,7 +3028,7 @@ ALTER TABLE ONLY public.command_items
 
 
 --
--- TOC entry 3517 (class 2606 OID 24627)
+-- TOC entry 3519 (class 2606 OID 24627)
 -- Name: commands commands_command_number_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3026,7 +3037,7 @@ ALTER TABLE ONLY public.commands
 
 
 --
--- TOC entry 3519 (class 2606 OID 24625)
+-- TOC entry 3521 (class 2606 OID 24625)
 -- Name: commands commands_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3035,7 +3046,7 @@ ALTER TABLE ONLY public.commands
 
 
 --
--- TOC entry 3558 (class 2606 OID 57540)
+-- TOC entry 3560 (class 2606 OID 57540)
 -- Name: customer_orders customer_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3044,7 +3055,7 @@ ALTER TABLE ONLY public.customer_orders
 
 
 --
--- TOC entry 3521 (class 2606 OID 24638)
+-- TOC entry 3523 (class 2606 OID 24638)
 -- Name: customers customers_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3053,7 +3064,7 @@ ALTER TABLE ONLY public.customers
 
 
 --
--- TOC entry 3600 (class 2606 OID 2342922)
+-- TOC entry 3602 (class 2606 OID 2342922)
 -- Name: dashboard_messages dashboard_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3062,7 +3073,7 @@ ALTER TABLE ONLY public.dashboard_messages
 
 
 --
--- TOC entry 3586 (class 2606 OID 819224)
+-- TOC entry 3588 (class 2606 OID 819224)
 -- Name: database_backups database_backups_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3071,7 +3082,7 @@ ALTER TABLE ONLY public.database_backups
 
 
 --
--- TOC entry 3577 (class 2606 OID 73746)
+-- TOC entry 3579 (class 2606 OID 73746)
 -- Name: deliveries deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3080,7 +3091,7 @@ ALTER TABLE ONLY public.deliveries
 
 
 --
--- TOC entry 3523 (class 2606 OID 24662)
+-- TOC entry 3525 (class 2606 OID 24662)
 -- Name: delivery_items delivery_items_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3089,7 +3100,7 @@ ALTER TABLE ONLY public.delivery_items
 
 
 --
--- TOC entry 3560 (class 2606 OID 57550)
+-- TOC entry 3562 (class 2606 OID 57550)
 -- Name: dlc_products dlc_products_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3098,7 +3109,7 @@ ALTER TABLE ONLY public.dlc_products
 
 
 --
--- TOC entry 3546 (class 2606 OID 57462)
+-- TOC entry 3548 (class 2606 OID 57462)
 -- Name: groups groups_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3107,7 +3118,7 @@ ALTER TABLE ONLY public.groups
 
 
 --
--- TOC entry 3596 (class 2606 OID 2310156)
+-- TOC entry 3598 (class 2606 OID 2310156)
 -- Name: invoice_verification_cache invoice_verification_cache_cache_key_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3116,7 +3127,7 @@ ALTER TABLE ONLY public.invoice_verification_cache
 
 
 --
--- TOC entry 3598 (class 2606 OID 2310154)
+-- TOC entry 3600 (class 2606 OID 2310154)
 -- Name: invoice_verification_cache invoice_verification_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3125,7 +3136,7 @@ ALTER TABLE ONLY public.invoice_verification_cache
 
 
 --
--- TOC entry 3590 (class 2606 OID 2285579)
+-- TOC entry 3592 (class 2606 OID 2285579)
 -- Name: invoice_verifications invoice_verifications_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3134,7 +3145,7 @@ ALTER TABLE ONLY public.invoice_verifications
 
 
 --
--- TOC entry 3525 (class 2606 OID 24690)
+-- TOC entry 3527 (class 2606 OID 24690)
 -- Name: invoices invoices_invoice_number_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3143,7 +3154,7 @@ ALTER TABLE ONLY public.invoices
 
 
 --
--- TOC entry 3527 (class 2606 OID 24688)
+-- TOC entry 3529 (class 2606 OID 24688)
 -- Name: invoices invoices_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3152,7 +3163,7 @@ ALTER TABLE ONLY public.invoices
 
 
 --
--- TOC entry 3605 (class 2606 OID 2359305)
+-- TOC entry 3607 (class 2606 OID 2359305)
 -- Name: migrations migrations_filename_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3161,7 +3172,7 @@ ALTER TABLE ONLY public.migrations
 
 
 --
--- TOC entry 3607 (class 2606 OID 2359303)
+-- TOC entry 3609 (class 2606 OID 2359303)
 -- Name: migrations migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3170,7 +3181,7 @@ ALTER TABLE ONLY public.migrations
 
 
 --
--- TOC entry 3548 (class 2606 OID 57474)
+-- TOC entry 3550 (class 2606 OID 57474)
 -- Name: nocodb_config nocodb_config_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3179,7 +3190,7 @@ ALTER TABLE ONLY public.nocodb_config
 
 
 --
--- TOC entry 3552 (class 2606 OID 57498)
+-- TOC entry 3554 (class 2606 OID 57498)
 -- Name: orders orders_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3188,7 +3199,7 @@ ALTER TABLE ONLY public.orders
 
 
 --
--- TOC entry 3569 (class 2606 OID 57592)
+-- TOC entry 3571 (class 2606 OID 57592)
 -- Name: permissions permissions_name_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3197,7 +3208,7 @@ ALTER TABLE ONLY public.permissions
 
 
 --
--- TOC entry 3571 (class 2606 OID 57590)
+-- TOC entry 3573 (class 2606 OID 57590)
 -- Name: permissions permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3206,7 +3217,7 @@ ALTER TABLE ONLY public.permissions
 
 
 --
--- TOC entry 3554 (class 2606 OID 57522)
+-- TOC entry 3556 (class 2606 OID 57522)
 -- Name: publicities publicities_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3215,7 +3226,7 @@ ALTER TABLE ONLY public.publicities
 
 
 --
--- TOC entry 3556 (class 2606 OID 57524)
+-- TOC entry 3558 (class 2606 OID 57524)
 -- Name: publicities publicities_pub_number_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3224,7 +3235,7 @@ ALTER TABLE ONLY public.publicities
 
 
 --
--- TOC entry 3575 (class 2606 OID 57620)
+-- TOC entry 3577 (class 2606 OID 57620)
 -- Name: publicity_participations publicity_participations_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3233,7 +3244,7 @@ ALTER TABLE ONLY public.publicity_participations
 
 
 --
--- TOC entry 3619 (class 2606 OID 2375691)
+-- TOC entry 3621 (class 2606 OID 2375691)
 -- Name: reconciliation_comments reconciliation_comments_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3242,7 +3253,7 @@ ALTER TABLE ONLY public.reconciliation_comments
 
 
 --
--- TOC entry 3573 (class 2606 OID 57614)
+-- TOC entry 3575 (class 2606 OID 57614)
 -- Name: role_permissions role_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3251,7 +3262,7 @@ ALTER TABLE ONLY public.role_permissions
 
 
 --
--- TOC entry 3565 (class 2606 OID 57579)
+-- TOC entry 3567 (class 2606 OID 57579)
 -- Name: roles roles_name_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3260,7 +3271,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- TOC entry 3567 (class 2606 OID 57577)
+-- TOC entry 3569 (class 2606 OID 57577)
 -- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3269,7 +3280,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- TOC entry 3529 (class 2606 OID 24703)
+-- TOC entry 3531 (class 2606 OID 24703)
 -- Name: sav_tickets sav_tickets_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3278,7 +3289,7 @@ ALTER TABLE ONLY public.sav_tickets
 
 
 --
--- TOC entry 3531 (class 2606 OID 24705)
+-- TOC entry 3533 (class 2606 OID 24705)
 -- Name: sav_tickets sav_tickets_ticket_number_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3287,7 +3298,7 @@ ALTER TABLE ONLY public.sav_tickets
 
 
 --
--- TOC entry 3536 (class 2606 OID 32776)
+-- TOC entry 3538 (class 2606 OID 32776)
 -- Name: session session_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3296,7 +3307,7 @@ ALTER TABLE ONLY public.session
 
 
 --
--- TOC entry 3539 (class 2606 OID 57433)
+-- TOC entry 3541 (class 2606 OID 57433)
 -- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3305,7 +3316,7 @@ ALTER TABLE ONLY public.sessions
 
 
 --
--- TOC entry 3533 (class 2606 OID 24717)
+-- TOC entry 3535 (class 2606 OID 24717)
 -- Name: stores stores_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3314,7 +3325,7 @@ ALTER TABLE ONLY public.stores
 
 
 --
--- TOC entry 3550 (class 2606 OID 57486)
+-- TOC entry 3552 (class 2606 OID 57486)
 -- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3323,7 +3334,7 @@ ALTER TABLE ONLY public.suppliers
 
 
 --
--- TOC entry 3563 (class 2606 OID 57563)
+-- TOC entry 3565 (class 2606 OID 57563)
 -- Name: tasks tasks_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3332,7 +3343,7 @@ ALTER TABLE ONLY public.tasks
 
 
 --
--- TOC entry 3584 (class 2606 OID 720930)
+-- TOC entry 3586 (class 2606 OID 720930)
 -- Name: user_groups user_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3341,7 +3352,7 @@ ALTER TABLE ONLY public.user_groups
 
 
 --
--- TOC entry 3582 (class 2606 OID 720917)
+-- TOC entry 3584 (class 2606 OID 720917)
 -- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3350,7 +3361,7 @@ ALTER TABLE ONLY public.user_roles
 
 
 --
--- TOC entry 3542 (class 2606 OID 57445)
+-- TOC entry 3544 (class 2606 OID 57445)
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3359,7 +3370,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- TOC entry 3544 (class 2606 OID 57447)
+-- TOC entry 3546 (class 2606 OID 57447)
 -- Name: users users_username_key; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3368,7 +3379,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- TOC entry 3621 (class 2606 OID 2383886)
+-- TOC entry 3623 (class 2606 OID 2383886)
 -- Name: weather_settings weather_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3377,7 +3388,7 @@ ALTER TABLE ONLY public.weather_settings
 
 
 --
--- TOC entry 3615 (class 2606 OID 2359345)
+-- TOC entry 3617 (class 2606 OID 2359345)
 -- Name: webhook_bap_config webhook_bap_config_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3386,7 +3397,7 @@ ALTER TABLE ONLY public.webhook_bap_config
 
 
 --
--- TOC entry 3534 (class 1259 OID 32777)
+-- TOC entry 3536 (class 1259 OID 32777)
 -- Name: IDX_session_expire; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3394,7 +3405,7 @@ CREATE INDEX "IDX_session_expire" ON public.session USING btree (expire);
 
 
 --
--- TOC entry 3610 (class 1259 OID 2359331)
+-- TOC entry 3612 (class 1259 OID 2359331)
 -- Name: idx_announcements_author_id; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3402,7 +3413,7 @@ CREATE INDEX idx_announcements_author_id ON public.announcements USING btree (au
 
 
 --
--- TOC entry 3611 (class 1259 OID 2359330)
+-- TOC entry 3613 (class 1259 OID 2359330)
 -- Name: idx_announcements_created_at; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3410,7 +3421,7 @@ CREATE INDEX idx_announcements_created_at ON public.announcements USING btree (c
 
 
 --
--- TOC entry 3612 (class 1259 OID 2359332)
+-- TOC entry 3614 (class 1259 OID 2359332)
 -- Name: idx_announcements_group_id; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3418,7 +3429,7 @@ CREATE INDEX idx_announcements_group_id ON public.announcements USING btree (gro
 
 
 --
--- TOC entry 3613 (class 1259 OID 2359329)
+-- TOC entry 3615 (class 1259 OID 2359329)
 -- Name: idx_announcements_priority; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3426,7 +3437,7 @@ CREATE INDEX idx_announcements_priority ON public.announcements USING btree (pri
 
 
 --
--- TOC entry 3591 (class 1259 OID 2310157)
+-- TOC entry 3593 (class 1259 OID 2310157)
 -- Name: idx_cache_key; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3434,7 +3445,7 @@ CREATE INDEX idx_cache_key ON public.invoice_verification_cache USING btree (cac
 
 
 --
--- TOC entry 3601 (class 1259 OID 2342923)
+-- TOC entry 3603 (class 1259 OID 2342923)
 -- Name: idx_dashboard_messages_created_at; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3442,7 +3453,7 @@ CREATE INDEX idx_dashboard_messages_created_at ON public.dashboard_messages USIN
 
 
 --
--- TOC entry 3602 (class 1259 OID 2342925)
+-- TOC entry 3604 (class 1259 OID 2342925)
 -- Name: idx_dashboard_messages_created_by; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3450,7 +3461,7 @@ CREATE INDEX idx_dashboard_messages_created_by ON public.dashboard_messages USIN
 
 
 --
--- TOC entry 3603 (class 1259 OID 2342924)
+-- TOC entry 3605 (class 1259 OID 2342924)
 -- Name: idx_dashboard_messages_store_id; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3458,7 +3469,7 @@ CREATE INDEX idx_dashboard_messages_store_id ON public.dashboard_messages USING 
 
 
 --
--- TOC entry 3592 (class 1259 OID 2310160)
+-- TOC entry 3594 (class 1259 OID 2310160)
 -- Name: idx_delivery_id; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3466,7 +3477,7 @@ CREATE INDEX idx_delivery_id ON public.invoice_verification_cache USING btree (d
 
 
 --
--- TOC entry 3561 (class 1259 OID 2334721)
+-- TOC entry 3563 (class 1259 OID 2334721)
 -- Name: idx_dlc_products_stock_epuise; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3474,7 +3485,7 @@ CREATE INDEX idx_dlc_products_stock_epuise ON public.dlc_products USING btree (s
 
 
 --
--- TOC entry 3593 (class 1259 OID 2310159)
+-- TOC entry 3595 (class 1259 OID 2310159)
 -- Name: idx_expires_at; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3482,7 +3493,7 @@ CREATE INDEX idx_expires_at ON public.invoice_verification_cache USING btree (ex
 
 
 --
--- TOC entry 3594 (class 1259 OID 2310158)
+-- TOC entry 3596 (class 1259 OID 2310158)
 -- Name: idx_group_invoice; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3490,7 +3501,7 @@ CREATE INDEX idx_group_invoice ON public.invoice_verification_cache USING btree 
 
 
 --
--- TOC entry 3537 (class 1259 OID 57434)
+-- TOC entry 3539 (class 1259 OID 57434)
 -- Name: idx_session_expire; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3498,7 +3509,7 @@ CREATE INDEX idx_session_expire ON public.sessions USING btree (expire);
 
 
 --
--- TOC entry 3578 (class 1259 OID 720946)
+-- TOC entry 3580 (class 1259 OID 720946)
 -- Name: idx_user_roles_assigned_by; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3506,7 +3517,7 @@ CREATE INDEX idx_user_roles_assigned_by ON public.user_roles USING btree (assign
 
 
 --
--- TOC entry 3579 (class 1259 OID 720945)
+-- TOC entry 3581 (class 1259 OID 720945)
 -- Name: idx_user_roles_role_id; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3514,7 +3525,7 @@ CREATE INDEX idx_user_roles_role_id ON public.user_roles USING btree (role_id);
 
 
 --
--- TOC entry 3580 (class 1259 OID 720944)
+-- TOC entry 3582 (class 1259 OID 720944)
 -- Name: idx_user_roles_user_id; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3522,7 +3533,7 @@ CREATE INDEX idx_user_roles_user_id ON public.user_roles USING btree (user_id);
 
 
 --
--- TOC entry 3587 (class 1259 OID 2285590)
+-- TOC entry 3589 (class 1259 OID 2285590)
 -- Name: invoice_verifications_delivery_idx; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3530,7 +3541,7 @@ CREATE INDEX invoice_verifications_delivery_idx ON public.invoice_verifications 
 
 
 --
--- TOC entry 3588 (class 1259 OID 2285591)
+-- TOC entry 3590 (class 1259 OID 2285591)
 -- Name: invoice_verifications_invoice_ref_idx; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3538,7 +3549,7 @@ CREATE INDEX invoice_verifications_invoice_ref_idx ON public.invoice_verificatio
 
 
 --
--- TOC entry 3540 (class 1259 OID 319488)
+-- TOC entry 3542 (class 1259 OID 319488)
 -- Name: users_email_unique; Type: INDEX; Schema: public; Owner: neondb_owner
 --
 
@@ -3546,7 +3557,7 @@ CREATE UNIQUE INDEX users_email_unique ON public.users USING btree (email) WHERE
 
 
 --
--- TOC entry 3627 (class 2606 OID 2359319)
+-- TOC entry 3629 (class 2606 OID 2359319)
 -- Name: announcements announcements_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3555,7 +3566,7 @@ ALTER TABLE ONLY public.announcements
 
 
 --
--- TOC entry 3628 (class 2606 OID 2359324)
+-- TOC entry 3630 (class 2606 OID 2359324)
 -- Name: announcements announcements_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3564,7 +3575,7 @@ ALTER TABLE ONLY public.announcements
 
 
 --
--- TOC entry 3625 (class 2606 OID 2285580)
+-- TOC entry 3627 (class 2606 OID 2285580)
 -- Name: invoice_verifications invoice_verifications_delivery_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3573,7 +3584,7 @@ ALTER TABLE ONLY public.invoice_verifications
 
 
 --
--- TOC entry 3626 (class 2606 OID 2285585)
+-- TOC entry 3628 (class 2606 OID 2285585)
 -- Name: invoice_verifications invoice_verifications_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3582,7 +3593,7 @@ ALTER TABLE ONLY public.invoice_verifications
 
 
 --
--- TOC entry 3629 (class 2606 OID 2375697)
+-- TOC entry 3631 (class 2606 OID 2375697)
 -- Name: reconciliation_comments reconciliation_comments_author_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3591,7 +3602,7 @@ ALTER TABLE ONLY public.reconciliation_comments
 
 
 --
--- TOC entry 3630 (class 2606 OID 2375692)
+-- TOC entry 3632 (class 2606 OID 2375692)
 -- Name: reconciliation_comments reconciliation_comments_delivery_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3600,7 +3611,7 @@ ALTER TABLE ONLY public.reconciliation_comments
 
 
 --
--- TOC entry 3631 (class 2606 OID 2375702)
+-- TOC entry 3633 (class 2606 OID 2375702)
 -- Name: reconciliation_comments reconciliation_comments_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3609,7 +3620,7 @@ ALTER TABLE ONLY public.reconciliation_comments
 
 
 --
--- TOC entry 3622 (class 2606 OID 2269185)
+-- TOC entry 3624 (class 2606 OID 2269185)
 -- Name: tasks tasks_completed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3618,7 +3629,7 @@ ALTER TABLE ONLY public.tasks
 
 
 --
--- TOC entry 3624 (class 2606 OID 720931)
+-- TOC entry 3626 (class 2606 OID 720931)
 -- Name: user_groups user_groups_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3627,7 +3638,7 @@ ALTER TABLE ONLY public.user_groups
 
 
 --
--- TOC entry 3623 (class 2606 OID 720918)
+-- TOC entry 3625 (class 2606 OID 720918)
 -- Name: user_roles user_roles_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
@@ -3636,8 +3647,8 @@ ALTER TABLE ONLY public.user_roles
 
 
 --
--- TOC entry 3847 (class 0 OID 0)
--- Dependencies: 3846
+-- TOC entry 3849 (class 0 OID 0)
+-- Dependencies: 3848
 -- Name: DATABASE neondb; Type: ACL; Schema: -; Owner: neondb_owner
 --
 
@@ -3660,7 +3671,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public GRANT ALL ON SEQU
 ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public GRANT ALL ON TABLES TO neon_superuser WITH GRANT OPTION;
 
 
--- Completed on 2025-09-28 06:02:06 UTC
+-- Completed on 2025-10-31 06:18:13 UTC
 
 --
 -- PostgreSQL database dump complete
