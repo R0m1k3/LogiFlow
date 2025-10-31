@@ -673,6 +673,7 @@ export const insertDatabaseBackupSchema = createInsertSchema(databaseBackups);
 export const utilities = pgTable("utilities", {
   id: serial("id").primaryKey(),
   salesAnalysisUrl: varchar("sales_analysis_url", { length: 500 }), // URL pour l'analyse des ventes
+  automaticBackupsEnabled: boolean("automatic_backups_enabled").default(true), // Activer/désactiver les backups automatiques
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
