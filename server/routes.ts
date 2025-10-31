@@ -41,10 +41,12 @@ import {
   insertWeatherDataSchema,
   insertWeatherSettingsSchema,
   insertWebhookBapConfigSchema,
+  insertUtilitiesSchema,
   insertAvoirSchema,
   insertReconciliationCommentSchema,
   users, groups, userGroups, suppliers, orders, deliveries, publicities, publicityParticipations,
   customerOrders, nocodbConfig, dlcProducts, tasks, invoiceVerificationCache, dashboardMessages, webhookBapConfig,
+  utilities,
   avoirs
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
@@ -216,6 +218,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(500).json({ error: errorMessage, details: error.message });
+    }
+  });
+
+  // Routes pour configuration utilities
+  app.get('/api/utilities', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || (user.role !== 'admin' && user.role !== 'directeur')) {
+        return res.status(403).json({ error: 'Accès refusé - Admin ou Directeur uniquement' });
+      }
+
+      const config = await storage.getUtilities();
+      res.json(config || null);
+      
+    } catch (error: any) {
+      console.error('❌ Erreur récupération utilities:', error);
+      res.status(500).json({ error: 'Erreur serveur', details: error.message });
+    }
+  });
+
+  app.post('/api/utilities', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || (user.role !== 'admin' && user.role !== 'directeur')) {
+        return res.status(403).json({ error: 'Accès refusé - Admin ou Directeur uniquement' });
+      }
+
+      const validatedData = insertUtilitiesSchema.parse(req.body);
+
+      const existingConfig = await storage.getUtilities();
+      
+      let config: any;
+      if (existingConfig) {
+        config = await storage.updateUtilities(existingConfig.id, validatedData);
+      } else {
+        config = await storage.createUtilities(validatedData);
+      }
+
+      console.log('✅ Configuration utilities sauvegardée:', { 
+        id: config.id, 
+        salesAnalysisUrl: config.salesAnalysisUrl
+      });
+      res.json(config);
+      
+    } catch (error: any) {
+      console.error('❌ Erreur sauvegarde utilities:', error);
+      res.status(500).json({ error: 'Erreur serveur', details: error.message });
     }
   });
 

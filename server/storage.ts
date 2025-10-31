@@ -73,6 +73,9 @@ import {
   webhookBapConfig,
   type WebhookBapConfig,
   type InsertWebhookBapConfig,
+  utilities,
+  type Utilities,
+  type InsertUtilities,
   avoirs,
   type Avoir,
   type InsertAvoir,
@@ -259,6 +262,11 @@ export interface IStorage {
   getWebhookBapConfig(): Promise<WebhookBapConfig | undefined>;
   createWebhookBapConfig(config: InsertWebhookBapConfig): Promise<WebhookBapConfig>;
   updateWebhookBapConfig(id: number, config: Partial<InsertWebhookBapConfig>): Promise<WebhookBapConfig>;
+
+  // Utilities operations
+  getUtilities(): Promise<Utilities | undefined>;
+  createUtilities(utilities: InsertUtilities): Promise<Utilities>;
+  updateUtilities(id: number, utilities: Partial<InsertUtilities>): Promise<Utilities>;
 
   // Reconciliation Comments operations
   getReconciliationComments(deliveryId: number): Promise<ReconciliationCommentWithRelations[]>;
@@ -2812,6 +2820,26 @@ export class DatabaseStorage implements IStorage {
     return config;
   }
 
+  // Utilities operations
+  async getUtilities(): Promise<Utilities | undefined> {
+    const [result] = await db.select().from(utilities).limit(1);
+    return result;
+  }
+
+  async createUtilities(utilitiesData: InsertUtilities): Promise<Utilities> {
+    const [result] = await db.insert(utilities).values(utilitiesData).returning();
+    return result;
+  }
+
+  async updateUtilities(id: number, utilitiesData: Partial<InsertUtilities>): Promise<Utilities> {
+    const [result] = await db
+      .update(utilities)
+      .set({ ...utilitiesData, updatedAt: new Date() })
+      .where(eq(utilities.id, id))
+      .returning();
+    return result;
+  }
+
   // Reconciliation Comments operations
   async getReconciliationComments(deliveryId: number): Promise<ReconciliationCommentWithRelations[]> {
     const comments = await db
@@ -5037,6 +5065,32 @@ export class MemStorage implements IStorage {
     return {
       ...existing!,
       ...config,
+      updatedAt: new Date()
+    };
+  }
+
+  // Utilities operations
+  async getUtilities(): Promise<Utilities | undefined> {
+    // MemStorage ne stocke pas les utilities, retourne undefined
+    return undefined;
+  }
+
+  async createUtilities(utilitiesData: InsertUtilities): Promise<Utilities> {
+    // MemStorage ne supporte pas la création de utilities
+    return {
+      id: 1,
+      salesAnalysisUrl: utilitiesData.salesAnalysisUrl ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  async updateUtilities(id: number, utilitiesData: Partial<InsertUtilities>): Promise<Utilities> {
+    // MemStorage ne supporte pas la mise à jour de utilities
+    return {
+      id,
+      salesAnalysisUrl: utilitiesData.salesAnalysisUrl ?? null,
+      createdAt: new Date(),
       updatedAt: new Date()
     };
   }
