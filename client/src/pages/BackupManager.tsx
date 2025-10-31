@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { apiRequest } from "@/lib/queryClient";
@@ -16,7 +18,8 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle,
-  Loader2
+  Loader2,
+  Settings
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -31,6 +34,14 @@ interface BackupFile {
   tablesCount: number;
   status: string;
   backupType: string;
+}
+
+interface UtilitiesConfig {
+  id?: number;
+  salesAnalysisUrl?: string | null;
+  automaticBackupsEnabled?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export default function BackupManager() {
@@ -48,6 +59,34 @@ export default function BackupManager() {
     queryFn: () => apiRequest('/api/backups'),
     enabled: canManageBackups,
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Fetch utilities configuration
+  const { data: config } = useQuery<UtilitiesConfig>({
+    queryKey: ['/api/utilities'],
+    enabled: canManageBackups,
+  });
+
+  // Toggle automatic backups
+  const toggleAutomaticBackupsMutation = useMutation({
+    mutationFn: (enabled: boolean) => 
+      apiRequest('/api/utilities', 'POST', { automaticBackupsEnabled: enabled }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/utilities'] });
+      toast({
+        title: "Configuration mise à jour",
+        description: config?.automaticBackupsEnabled 
+          ? "Sauvegardes automatiques désactivées" 
+          : "Sauvegardes automatiques activées",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de mettre à jour la configuration",
+        variant: "destructive",
+      });
+    },
   });
 
   // Create manual backup
@@ -185,6 +224,40 @@ export default function BackupManager() {
 
       {/* Content */}
       <div className="flex-1 p-6 overflow-auto">
+        {/* Configuration des backups automatiques */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5" />
+              Configuration des Sauvegardes Automatiques
+            </CardTitle>
+            <CardDescription>
+              Activez ou désactivez les sauvegardes automatiques quotidiennes à 2h00
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <Label htmlFor="automatic-backups" className="text-base font-medium">
+                  Sauvegardes automatiques
+                </Label>
+                <p className="text-sm text-gray-600">
+                  {config?.automaticBackupsEnabled === false 
+                    ? "Les sauvegardes automatiques sont actuellement désactivées" 
+                    : "Les sauvegardes automatiques sont actives"}
+                </p>
+              </div>
+              <Switch
+                id="automatic-backups"
+                checked={config?.automaticBackupsEnabled !== false}
+                onCheckedChange={(checked) => toggleAutomaticBackupsMutation.mutate(checked)}
+                disabled={toggleAutomaticBackupsMutation.isPending}
+                data-testid="switch-automatic-backups"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <Card>
@@ -228,12 +301,20 @@ export default function BackupManager() {
               <CardTitle className="text-sm font-medium">
                 Statut Système
               </CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              {config?.automaticBackupsEnabled !== false ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+              )}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">Actif</div>
+              <div className={`text-2xl font-bold ${config?.automaticBackupsEnabled !== false ? 'text-green-600' : 'text-orange-600'}`}>
+                {config?.automaticBackupsEnabled !== false ? 'Actif' : 'Désactivé'}
+              </div>
               <p className="text-xs text-muted-foreground">
-                Sauvegarde automatique 2h00
+                {config?.automaticBackupsEnabled !== false 
+                  ? 'Sauvegarde automatique 2h00' 
+                  : 'Backups automatiques désactivés'}
               </p>
             </CardContent>
           </Card>
