@@ -8,7 +8,8 @@ import {
   Bug,
   Cloud,
   Send,
-  Code
+  Code,
+  TrendingUp
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,6 +22,7 @@ import DatabaseDebug from "./DatabaseDebug";
 import WeatherSettings from "./WeatherSettings";
 import WebhookBAPConfig from "./WebhookBAPConfig";
 import SQLExecutor from "./SQLExecutor";
+import SalesAnalysisConfig from "./SalesAnalysisConfig";
 
 export default function Utilities() {
   const { user } = useAuthUnified();
@@ -41,9 +43,10 @@ export default function Utilities() {
   const canManageWeather = user?.role === 'admin';
   const canManageWebhookBAP = user?.role === 'admin';
   const canExecuteSQL = user?.role === 'admin';
+  const canManageSalesAnalysis = user?.role === 'admin' || user?.role === 'directeur';
 
   // Si l'utilisateur n'a aucune permission, afficher le message d'accès refusé
-  if (!canManageBackups && !canManageNocoDB && !canDebugDatabase && !canManageWeather && !canManageWebhookBAP && !canExecuteSQL) {
+  if (!canManageBackups && !canManageNocoDB && !canDebugDatabase && !canManageWeather && !canManageWebhookBAP && !canExecuteSQL && !canManageSalesAnalysis) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Card className="w-96">
@@ -79,7 +82,7 @@ export default function Utilities() {
       {/* Content avec onglets */}
       <div className="flex-1 p-6 overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-6 mb-6">
+          <TabsList className="grid w-full grid-cols-7 mb-6">
             {canManageBackups && (
               <TabsTrigger value="backups" className="flex items-center gap-2">
                 <Database className="w-4 h-4" />
@@ -114,6 +117,12 @@ export default function Utilities() {
               <TabsTrigger value="sql" className="flex items-center gap-2">
                 <Code className="w-4 h-4" />
                 Exécution SQL
+              </TabsTrigger>
+            )}
+            {canManageSalesAnalysis && (
+              <TabsTrigger value="salesanalysis" className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Analyse Vente
               </TabsTrigger>
             )}
           </TabsList>
@@ -163,6 +172,14 @@ export default function Utilities() {
             <TabsContent value="sql" className="flex-1 overflow-hidden">
               <div className="h-full bg-gray-50 -m-6 p-6">
                 <SQLExecutor />
+              </div>
+            </TabsContent>
+          )}
+
+          {canManageSalesAnalysis && (
+            <TabsContent value="salesanalysis" className="flex-1 overflow-hidden">
+              <div className="h-full bg-gray-50 -m-6 p-6">
+                <SalesAnalysisConfig />
               </div>
             </TabsContent>
           )}

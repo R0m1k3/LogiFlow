@@ -669,10 +669,27 @@ export const databaseBackups = pgTable("database_backups", {
 
 export const insertDatabaseBackupSchema = createInsertSchema(databaseBackups);
 
+// Utilities - Configuration générale de l'application
+export const utilities = pgTable("utilities", {
+  id: serial("id").primaryKey(),
+  salesAnalysisUrl: varchar("sales_analysis_url", { length: 500 }), // URL pour l'analyse des ventes
+  automaticBackupsEnabled: boolean("automatic_backups_enabled").default(true), // Activer/désactiver les backups automatiques
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUtilitiesSchema = createInsertSchema(utilities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertNocodbConfig = z.infer<typeof insertNocodbConfigSchema>;
 export type InsertInvoiceVerificationCache = z.infer<typeof insertInvoiceVerificationCacheSchema>;
 export type DatabaseBackup = typeof databaseBackups.$inferSelect;
 export type InsertDatabaseBackup = z.infer<typeof insertDatabaseBackupSchema>;
+export type Utilities = typeof utilities.$inferSelect;
+export type InsertUtilities = z.infer<typeof insertUtilitiesSchema>;
 
 // Types
 export type User = typeof users.$inferSelect;

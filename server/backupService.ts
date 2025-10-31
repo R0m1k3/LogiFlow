@@ -5,7 +5,7 @@ import path from 'path';
 import { nanoid } from 'nanoid';
 import { eq, desc } from "drizzle-orm";
 import { db } from "./db";
-import { databaseBackups } from "@shared/schema";
+import { databaseBackups, utilities } from "@shared/schema";
 import type { DatabaseBackup, InsertDatabaseBackup } from "@shared/schema";
 
 const execAsync = promisify(exec);
@@ -214,6 +214,20 @@ export class BackupService {
   // Nouvelle méthode : Vérifier et effectuer une sauvegarde quotidienne si nécessaire
   async checkAndPerformDailyBackup(userId: string = 'system'): Promise<{ backupPerformed: boolean; message: string }> {
     try {
+      // Vérifier si les backups automatiques sont activés
+      const [config] = await db.select()
+        .from(utilities)
+        .limit(1);
+      
+      // Si les backups automatiques sont désactivés, ne rien faire
+      if (config && config.automaticBackupsEnabled === false) {
+        console.log('ℹ️ Sauvegardes automatiques désactivées - Aucune action effectuée');
+        return {
+          backupPerformed: false,
+          message: 'Sauvegardes automatiques désactivées'
+        };
+      }
+      
       const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
       
       // Vérifier s'il y a déjà une sauvegarde automatique aujourd'hui
@@ -255,6 +269,16 @@ export class BackupService {
     // Check for automatic backup every hour
     const checkBackupNeeded = async () => {
       try {
+        // Vérifier si les backups automatiques sont activés
+        const [config] = await db.select()
+          .from(utilities)
+          .limit(1);
+        
+        // Si les backups automatiques sont désactivés, ne rien faire
+        if (config && config.automaticBackupsEnabled === false) {
+          return;
+        }
+        
         const now = new Date();
         const today = now.toISOString().split('T')[0]; // YYYY-MM-DD format
         

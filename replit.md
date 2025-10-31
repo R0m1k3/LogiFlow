@@ -39,6 +39,7 @@ The platform is built with a clear separation of concerns, utilizing a modern fu
 - **DLC Module:** Permissions allow admin, director, and manager roles to validate DLC products. Includes explanatory tooltips for UX enhancement.
 - **Reporting:** Statistical reporting, including monthly summaries of deliveries.
 - **UI Harmonization:** All detail modals across modules (orders, deliveries, calendar) use a unified component for consistent information display.
+- **Analyse Vente (Sales Analysis):** A dedicated module for admins and directors that displays a configurable external URL/IP in an iframe. Configuration is managed via a dedicated tab in the Utilities page, allowing administrators to set or update the sales analysis dashboard URL. The menu is visible only to admin and directeur roles, ensuring proper access control. Includes intelligent error handling with informative messages when the URL is not configured.
 
 ## External Dependencies
 - **API Météo:** Visual Crossing API
