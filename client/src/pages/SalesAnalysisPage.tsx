@@ -52,31 +52,14 @@ export default function SalesAnalysisPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 p-6">
-        <div className="flex items-center">
-          <TrendingUp className="w-8 h-8 text-blue-600 mr-3" />
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Analyse des Ventes
-            </h2>
-            <p className="text-gray-600 text-sm">
-              {salesAnalysisUrl}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Iframe Content */}
-      <div className="flex-1 overflow-hidden">
-        <iframe
-          src={salesAnalysisUrl}
-          className="w-full h-full border-0"
-          title="Analyse des Ventes"
-          data-testid="iframe-sales-analysis"
-        />
-      </div>
+    <div className="w-full h-screen">
+      <iframe
+        src={salesAnalysisUrl}
+        className="w-full h-full border-0"
+        title="Analyse des Ventes"
+        data-testid="iframe-sales-analysis"
+        allow="fullscreen"
+      />
     </div>
   );
 }
