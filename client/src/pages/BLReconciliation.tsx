@@ -844,6 +844,9 @@ export default function BLReconciliation() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Montant Fact.
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Échéance
+                        </th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Écart
                         </th>
@@ -960,6 +963,17 @@ export default function BLReconciliation() {
                                     Non renseigné
                                   </span>
                                 }
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm">
+                                {delivery.dueDate ? (
+                                  <span className={delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}>
+                                    {safeFormat(delivery.dueDate, 'dd/MM/yyyy')}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 italic text-xs">-</span>
+                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -1187,6 +1201,9 @@ export default function BLReconciliation() {
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Montant Fact.
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Échéance
                         </th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Écart
