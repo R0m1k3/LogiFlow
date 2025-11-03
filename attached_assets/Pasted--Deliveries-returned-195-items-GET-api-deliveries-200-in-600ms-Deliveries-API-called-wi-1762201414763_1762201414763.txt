@@ -1,0 +1,200 @@
+    
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 600ms
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+🔍 Admin deliveries filtering by store: { storeId: '1', groupIds: [ 1 ], role: 'admin' }
+
+Fetching all deliveries
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+🔍 Admin deliveries filtering by store: { storeId: '1', groupIds: [ 1 ], role: 'admin' }
+
+Fetching all deliveries
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+🔍 Admin deliveries filtering by store: { storeId: '1', groupIds: [ 1 ], role: 'admin' }
+
+Fetching all deliveries
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+🔍 Admin deliveries filtering by store: { storeId: '1', groupIds: [ 1 ], role: 'admin' }
+
+Fetching all deliveries
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+🔍 Admin deliveries filtering by store: { storeId: '1', groupIds: [ 1 ], role: 'admin' }
+
+Fetching all deliveries
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+🔍 Admin deliveries filtering by store: { storeId: '1', groupIds: [ 1 ], role: 'admin' }
+
+Fetching all deliveries
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+🔍 Admin deliveries filtering by store: { storeId: '1', groupIds: [ 1 ], role: 'admin' }
+
+Fetching all deliveries
+
+Deliveries API called with: {
+
+  startDate: undefined,
+
+  endDate: undefined,
+
+  storeId: '1',
+
+  withBL: undefined,
+
+  userRole: 'admin'
+
+}
+
+🔍 Admin deliveries filtering by store: { storeId: '1', groupIds: [ 1 ], role: 'admin' }
+
+Fetching all deliveries
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 1219ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 1173ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 304 in 1528ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 1516ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 1519ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 1546ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 1585ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 1541ms
+
+HEAD /api/health 200 in 0ms
+
+HEAD /api/health 200 in 0ms
