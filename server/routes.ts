@@ -278,6 +278,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route pour récupérer l'échéancier des paiements fournisseurs
+  app.get('/api/payment-schedule', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || (user.role !== 'admin' && user.role !== 'directeur')) {
+        return res.status(403).json({ error: 'Accès refusé - Admin ou Directeur uniquement' });
+      }
+
+      // Validation du groupId avec Zod
+      const groupIdSchema = z.coerce.number().int().positive();
+      const validation = groupIdSchema.safeParse(req.query.groupId);
+      
+      if (!validation.success) {
+        return res.status(400).json({ error: 'groupId invalide - doit être un entier positif' });
+      }
+      
+      const groupId = validation.data;
+
+      // Vérifier l'autorisation : directeur ne peut voir que ses groupes
+      if (user.role === 'directeur') {
+        const userGroupIds = await storage.getUserGroups(user.id);
+        if (!userGroupIds.includes(groupId)) {
+          return res.status(403).json({ error: 'Accès refusé - Vous ne pouvez accéder qu\'aux données de votre groupe' });
+        }
+      }
+
+      // Récupérer le groupe avec la configuration NocoDB
+      const group = await storage.getGroup(groupId);
+      if (!group || !group.nocodbConfigId || !group.nocodbTableId) {
+        return res.json({ schedules: [], message: 'Pas de configuration NocoDB pour ce groupe' });
+      }
+
+      // Récupérer la configuration NocoDB
+      const nocodbConfig = await storage.getNocodbConfig(group.nocodbConfigId);
+      if (!nocodbConfig) {
+        return res.json({ schedules: [], message: 'Configuration NocoDB non trouvée' });
+      }
+
+      // Vérifier que les colonnes nécessaires sont configurées
+      if (!group.nocodbDueDateColumnName || !group.invoiceColumnName || !group.nocodbAmountColumnName) {
+        return res.json({ 
+          schedules: [], 
+          message: 'Configuration incomplète: colonnes date échéance, facture ou montant manquantes' 
+        });
+      }
+
+      // Récupérer tous les enregistrements de NocoDB
+      const url = `${nocodbConfig.baseUrl}/api/v1/db/data/noco/${nocodbConfig.projectId}/${group.nocodbTableId}`;
+      
+      console.log('📅 Récupération échéances NocoDB:', {
+        url,
+        groupId,
+        dueDateColumn: group.nocodbDueDateColumnName
+      });
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "xc-token": nocodbConfig.apiToken,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.error('❌ Erreur NocoDB:', response.status, response.statusText);
+        return res.status(500).json({ error: 'Erreur lors de la récupération des données NocoDB' });
+      }
+
+      const data = await response.json();
+      
+      // Récupérer tous les fournisseurs pour le mapping
+      const allSuppliers = await storage.getSuppliers();
+      
+      // Fonction de normalisation pour comparer les noms de fournisseurs
+      const normalizeName = (name: string) => {
+        return name
+          .toLowerCase()
+          .trim()
+          .normalize("NFD")  // Décompose les accents
+          .replace(/[\u0300-\u036f]/g, "")  // Supprime les diacritiques
+          .replace(/\s+/g, ' ');  // Normalise les espaces multiples
+      };
+      
+      // Créer une map avec noms normalisés
+      const supplierMap = new Map(allSuppliers.map(s => [normalizeName(s.name), s]));
+
+      // Traiter les données et filtrer les enregistrements avec une date d'échéance
+      const schedules = (data.list || [])
+        .map((record: any) => {
+          const dueDate = record[group.nocodbDueDateColumnName!];
+          const invoiceRef = record[group.invoiceColumnName!];
+          const amount = record[group.nocodbAmountColumnName!];
+          const supplierName = record[group.nocodbSupplierColumnName || 'Fournisseur'];
+          
+          if (!dueDate) return null;
+          
+          // Chercher le fournisseur correspondant avec normalisation
+          const normalizedSupplierName = normalizeName(supplierName || '');
+          const supplier = supplierMap.get(normalizedSupplierName);
+          
+          return {
+            id: record.Id || record.id,
+            invoiceReference: invoiceRef,
+            dueDate: dueDate,
+            amount: amount ? parseFloat(amount) : 0,
+            supplierName: supplierName,
+            paymentMethod: supplier?.paymentMethod || null,
+            groupId: group.id,
+            groupName: group.name
+          };
+        })
+        .filter((s: any) => s !== null);
+
+      res.json({ schedules });
+      
+    } catch (error: any) {
+      console.error('❌ Erreur récupération échéances:', error);
+      res.status(500).json({ error: 'Erreur serveur', details: error.message });
+    }
+  });
+
   // Route BAP pour envoi webhook n8n
   app.post('/api/bap/send-webhook', isAuthenticated, async (req: any, res) => {
     try {

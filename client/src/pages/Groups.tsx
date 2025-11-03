@@ -51,6 +51,7 @@ export default function Groups() {
     nocodbBlColumnName: "",
     nocodbAmountColumnName: "",
     nocodbSupplierColumnName: "",
+    nocodbDueDateColumnName: "",
     webhookUrl: "",
   });
 
@@ -101,9 +102,13 @@ export default function Groups() {
         name: "",
         color: "#1976D2",
         nocodbConfigId: "",
-        nocodbTableId: "",
         nocodbTableName: "",
-        invoiceColumnName: "Ref Facture",
+        invoiceColumnName: "",
+        nocodbBlColumnName: "",
+        nocodbAmountColumnName: "",
+        nocodbSupplierColumnName: "",
+        nocodbDueDateColumnName: "",
+        webhookUrl: "",
       });
     },
     onError: (error) => {
@@ -142,9 +147,13 @@ export default function Groups() {
         name: "",
         color: "#1976D2",
         nocodbConfigId: "",
-        nocodbTableId: "",
         nocodbTableName: "",
-        invoiceColumnName: "Ref Facture",
+        invoiceColumnName: "",
+        nocodbBlColumnName: "",
+        nocodbAmountColumnName: "",
+        nocodbSupplierColumnName: "",
+        nocodbDueDateColumnName: "",
+        webhookUrl: "",
       });
     },
     onError: (error) => {
@@ -251,6 +260,7 @@ export default function Groups() {
       nocodbBlColumnName: "",
       nocodbAmountColumnName: "",
       nocodbSupplierColumnName: "",
+      nocodbDueDateColumnName: "",
       webhookUrl: "",
     });
     setShowCreateModal(true);
@@ -267,6 +277,7 @@ export default function Groups() {
       nocodbBlColumnName: group.nocodbBlColumnName || "",
       nocodbAmountColumnName: group.nocodbAmountColumnName || "",
       nocodbSupplierColumnName: group.nocodbSupplierColumnName || "",
+      nocodbDueDateColumnName: group.nocodbDueDateColumnName || "",
       webhookUrl: group.webhookUrl || "",
     });
     setShowEditModal(true);
@@ -631,6 +642,16 @@ export default function Groups() {
                           placeholder="ex: Fournisseur"
                         />
                       </div>
+
+                      <div>
+                        <Label htmlFor="nocodbDueDateColumnName">Colonne Date d'Échéance</Label>
+                        <Input
+                          id="nocodbDueDateColumnName"
+                          value={formData.nocodbDueDateColumnName}
+                          onChange={(e) => handleChange('nocodbDueDateColumnName', e.target.value)}
+                          placeholder="ex: Date_Echeance"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -693,6 +714,7 @@ export default function Groups() {
                     nocodbBlColumnName: "",
                     nocodbAmountColumnName: "",
                     nocodbSupplierColumnName: "",
+                    nocodbDueDateColumnName: "",
                     webhookUrl: "",
                   });
                 }}

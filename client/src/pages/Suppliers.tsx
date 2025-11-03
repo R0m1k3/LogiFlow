@@ -5,6 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -39,6 +46,7 @@ export default function Suppliers() {
     hasDlc: false,
     automaticReconciliation: false,
     requiresControl: false,
+    paymentMethod: "",
   });
 
   const { data: suppliers = [], isLoading } = useQuery<Supplier[]>({
@@ -193,6 +201,7 @@ export default function Suppliers() {
       hasDlc: false,
       automaticReconciliation: false,
       requiresControl: false,
+      paymentMethod: "",
     });
   };
 
@@ -230,6 +239,7 @@ export default function Suppliers() {
       hasDlc: supplier.hasDlc || false,
       automaticReconciliation: supplier.automaticReconciliation || false,
       requiresControl: supplier.requiresControl || false,
+      paymentMethod: supplier.paymentMethod || "",
     });
     setShowEditModal(true);
   };
@@ -399,6 +409,13 @@ export default function Suppliers() {
                           {supplier.phone}
                         </div>
                       )}
+                      {supplier.paymentMethod && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Package className="w-4 h-4 mr-2" />
+                          <span className="font-medium">Mode de paiement:</span>
+                          <span className="ml-1">{supplier.paymentMethod}</span>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2">
                           {supplier.hasDlc && (
@@ -509,6 +526,25 @@ export default function Suppliers() {
                 onChange={(e) => handleChange('phone', e.target.value)}
                 placeholder="Numéro de téléphone"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="paymentMethod">Mode de paiement</Label>
+              <Select
+                value={formData.paymentMethod}
+                onValueChange={(value) => handleChange('paymentMethod', value)}
+              >
+                <SelectTrigger id="paymentMethod" data-testid="select-payment-method">
+                  <SelectValue placeholder="Sélectionner un mode de paiement" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Aucun</SelectItem>
+                  <SelectItem value="Virement">Virement</SelectItem>
+                  <SelectItem value="Traite">Traite</SelectItem>
+                  <SelectItem value="Traite Magnétique">Traite Magnétique</SelectItem>
+                  <SelectItem value="Chèque">Chèque</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex items-center space-x-2">

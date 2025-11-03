@@ -35,7 +35,8 @@ import {
   FileUp,
   Send,
   Receipt,
-  TrendingUp
+  TrendingUp,
+  CreditCard
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -268,6 +269,12 @@ export default function Sidebar() {
       path: "/sales-analysis", 
       label: "Analyse Vente", 
       icon: TrendingUp, 
+      roles: ["admin", "directeur"] 
+    },
+    { 
+      path: "/payment-schedule", 
+      label: "Échéance", 
+      icon: CreditCard, 
       roles: ["admin", "directeur"] 
     },
     { 
