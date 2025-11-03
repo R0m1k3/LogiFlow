@@ -1,0 +1,201 @@
+
+      
+✅ PRODUCTION: getDelivery #427 found associated order #256 with status: delivered
+
+🔄 Updating delivery: { id: 427, data: { invoiceReference: '197771' }, user: 'admin_local' }
+
+🔍 [INVOICE] Début vérification facture: { invoiceReference: '197771', groupId: 1, forceRefresh: true }
+
+🔄 [INVOICE] Refresh forcé, ignorant le cache
+
+🔧 Configuration groupe: {
+
+  groupName: 'Frouard',
+
+  hasNocodbConfig: true,
+
+  hasTableName: true,
+
+  hasWebhook: true
+
+}
+
+🔍 Vérification NocoDB en production...
+
+🔧 Configuration NocoDB active récupérée: {
+
+  id: 1,
+
+  name: 'Nocodb',
+
+  baseUrl: 'https://nocodb.ffnancy.fr',
+
+  projectId: 'pcg4uw79ukvycxc',
+
+  apiToken: 'z4BAwLo6dgoN_E7PKJSHN7PA7kdBePtKOYcsDlwQ',
+
+  description: '',
+
+  isActive: true,
+
+  createdBy: 'admin_local',
+
+  createdAt: 2025-07-22T11:12:54.971Z,
+
+  updatedAt: 2025-07-25T23:07:17.197Z
+
+}
+
+🔧 Configuration NocoDB trouvée: {
+
+  configName: 'Nocodb',
+
+  baseUrl: 'https://nocodb.ffnancy.fr',
+
+  projectId: 'pcg4uw79ukvycxc',
+
+  hasToken: true
+
+}
+
+🔧 Utilisation table ID: {
+
+  groupTable: 'CommandeF',
+
+  configuredId: 'mrr733dfb8wtt9b',
+
+  resolvedId: 'mrr733dfb8wtt9b'
+
+}
+
+🔍 Recherche NocoDB: { tableId: 'mrr733dfb8wtt9b', column: 'RefFacture' }
+
+💾 [CACHE] Tentative sauvegarde: {
+
+  invoiceReference: '197771',
+
+  groupId: 1,
+
+  cacheKey: '1_197771',
+
+  exists: true,
+
+  isReconciled: false,
+
+  cacheType: 'temporaire 6h (trouvé)',
+
+  expiresAt: '2025-11-03T23:28:12.943Z'
+
+}
+
+Error updating delivery: TypeError: value.toISOString is not a function
+
+    at PgTimestamp.mapToDriverValue (file:///app/node_modules/drizzle-orm/pg-core/columns/timestamp.js:34:18)
+
+    at file:///app/node_modules/drizzle-orm/sql/sql.js:131:73
+
+    at Array.map (<anonymous>)
+
+    at SQL.buildQueryFromSourceParams (file:///app/node_modules/drizzle-orm/sql/sql.js:73:32)
+
+    at file:///app/node_modules/drizzle-orm/sql/sql.js:95:21
+
+    at Array.map (<anonymous>)
+
+    at SQL.buildQueryFromSourceParams (file:///app/node_modules/drizzle-orm/sql/sql.js:73:32)
+
+    at file:///app/node_modules/drizzle-orm/sql/sql.js:95:21
+
+    at Array.map (<anonymous>)
+
+    at SQL.buildQueryFromSourceParams (file:///app/node_modules/drizzle-orm/sql/sql.js:73:32)
+
+✅ [CACHE] Résultat sauvé en cache: {
+
+  id: 31803,
+
+  invoiceReference: '197771',
+
+  groupId: 1,
+
+  exists: true,
+
+  isReconciled: false,
+
+  cacheType: 'temporaire 6h (trouvé)',
+
+  cacheKey: '1_197771'
+
+}
+
+📅 Date d'échéance récupérée et normalisée: 2025-11-29 (original: 2025-11-29)
+
+PUT /api/deliveries/427 500 in 339ms
+
+🔍 Recherche NocoDB: { tableId: 'mrr733dfb8wtt9b', column: 'Numero_BL' }
+
+💾 [CACHE] Tentative sauvegarde: {
+
+  invoiceReference: '197771',
+
+  groupId: 1,
+
+  cacheKey: '1_197771',
+
+  exists: true,
+
+  isReconciled: false,
+
+  cacheType: 'temporaire 6h (trouvé)',
+
+  expiresAt: '2025-11-03T23:28:12.963Z'
+
+}
+
+✅ [CACHE] Résultat sauvé en cache: {
+
+  id: 31803,
+
+  invoiceReference: '197771',
+
+  groupId: 1,
+
+  exists: true,
+
+  isReconciled: false,
+
+  cacheType: 'temporaire 6h (trouvé)',
+
+  cacheKey: '1_197771'
+
+}
+
+📅 Date d'échéance récupérée et normalisée: 2025-11-29 (original: 2025-11-29)
+
+Error updating delivery: TypeError: value.toISOString is not a function
+
+    at PgTimestamp.mapToDriverValue (file:///app/node_modules/drizzle-orm/pg-core/columns/timestamp.js:34:18)
+
+    at file:///app/node_modules/drizzle-orm/sql/sql.js:131:73
+
+    at Array.map (<anonymous>)
+
+    at SQL.buildQueryFromSourceParams (file:///app/node_modules/drizzle-orm/sql/sql.js:73:32)
+
+    at file:///app/node_modules/drizzle-orm/sql/sql.js:95:21
+
+    at Array.map (<anonymous>)
+
+    at SQL.buildQueryFromSourceParams (file:///app/node_modules/drizzle-orm/sql/sql.js:73:32)
+
+    at file:///app/node_modules/drizzle-orm/sql/sql.js:95:21
+
+    at Array.map (<anonymous>)
+
+    at SQL.buildQueryFromSourceParams (file:///app/node_modules/drizzle-orm/sql/sql.js:73:32)
+
+PUT /api/deliveries/427 500 in 50ms
+
+HEAD /api/health 200 in 1ms
+
+HEAD /api/health 200 in 1ms
