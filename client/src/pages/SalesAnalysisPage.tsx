@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, TrendingUp, AlertCircle } from "lucide-react";
+import { Loader2, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
@@ -12,10 +13,18 @@ interface UtilitiesConfig {
 }
 
 export default function SalesAnalysisPage() {
+  // State pour forcer le rechargement de l'iframe
+  const [iframeKey, setIframeKey] = useState(0);
+  
   // Récupérer l'URL configurée
   const { data: config, isLoading } = useQuery<UtilitiesConfig>({
     queryKey: ['/api/utilities']
   });
+  
+  // Fonction pour recharger l'iframe
+  const handleRefresh = () => {
+    setIframeKey(prev => prev + 1);
+  };
 
   if (isLoading) {
     return (
@@ -52,8 +61,24 @@ export default function SalesAnalysisPage() {
   }
 
   return (
-    <div className="w-full h-screen">
+    <div className="w-full h-screen relative">
+      {/* Bouton de rechargement flottant */}
+      <div className="absolute top-4 right-4 z-10">
+        <Button
+          onClick={handleRefresh}
+          variant="default"
+          size="sm"
+          className="shadow-lg"
+          data-testid="button-refresh-iframe"
+        >
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Recharger
+        </Button>
+      </div>
+      
+      {/* iframe avec clé pour forcer le rechargement */}
       <iframe
+        key={iframeKey}
         src={salesAnalysisUrl}
         className="w-full h-full border-0"
         title="Analyse des Ventes"
