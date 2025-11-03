@@ -25,6 +25,7 @@ import Avoirs from "@/pages/Avoirs";
 import WeatherSettings from "@/pages/WeatherSettings";
 import Analytics from "@/pages/Analytics";
 import SalesAnalysisPage from "@/pages/SalesAnalysisPage";
+import PaymentSchedulePage from "@/pages/PaymentSchedulePage";
 import Layout from "@/components/Layout";
 
 function RouterProduction() {
@@ -106,6 +107,7 @@ function RouterProduction() {
         <Route path="/avoirs" component={Avoirs} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/sales-analysis" component={SalesAnalysisPage} />
+        <Route path="/payment-schedule" component={PaymentSchedulePage} />
         
         {/* Routes de compatibilité - redirection vers utilities */}
         <Route path="/backup" component={Utilities} />

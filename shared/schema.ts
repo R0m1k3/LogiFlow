@@ -58,6 +58,7 @@ export const groups = pgTable("groups", {
   nocodbBlColumnName: varchar("nocodb_bl_column_name"), // Nom de la colonne BL dans leur table
   nocodbAmountColumnName: varchar("nocodb_amount_column_name"), // Nom de la colonne montant dans leur table
   nocodbSupplierColumnName: varchar("nocodb_supplier_column_name"), // Nom de la colonne fournisseur dans leur table
+  nocodbDueDateColumnName: varchar("nocodb_due_date_column_name"), // Nom de la colonne date d'échéance dans leur table
   webhookUrl: varchar("webhook_url", { length: 500 }), // URL de webhook pour notifications par magasin
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -79,6 +80,7 @@ export const suppliers = pgTable("suppliers", {
   contact: varchar("contact"),
   phone: varchar("phone"),
   hasDlc: boolean("has_dlc").default(false), // Coche DLC pour la gestion DLC
+  paymentMethod: varchar("payment_method"), // Mode de paiement: Virement, Traite, Traite Magnétique, Chèque
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   automaticReconciliation: boolean("automatic_reconciliation").default(false), // Rapprochement automatique BL/Factures
