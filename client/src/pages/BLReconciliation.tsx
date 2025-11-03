@@ -153,18 +153,37 @@ export default function BLReconciliation() {
         });
       }
       
-      // Auto-remplissage si facture trouvée via BL
-      if (result.exists && result.matchType === 'bl_number' && result.invoiceReference) {
+      // Auto-remplissage si facture trouvée (référence facture OU numéro BL)
+      if (result.exists) {
         // Auto-remplir les champs dans la livraison via API
-        apiRequest(`/api/deliveries/${variables.deliveryId}`, "PUT", {
-          invoiceReference: result.invoiceReference,
-          invoiceAmount: result.invoiceAmount
-        }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-        }).catch((error) => {
-          console.error('Erreur auto-remplissage:', error);
-        });
+        const updateData: any = {};
+        
+        // Ajouter la référence de facture si trouvée et pas déjà renseignée
+        if (result.invoiceReference && result.matchType === 'bl_number') {
+          updateData.invoiceReference = result.invoiceReference;
+        }
+        
+        // Toujours mettre à jour le montant si disponible
+        if (result.invoiceAmount) {
+          updateData.invoiceAmount = result.invoiceAmount;
+        }
+        
+        // Toujours mettre à jour la date d'échéance si disponible
+        if (result.dueDate) {
+          updateData.dueDate = result.dueDate;
+        }
+        
+        // Ne faire l'appel que si on a des données à mettre à jour
+        if (Object.keys(updateData).length > 0) {
+          apiRequest(`/api/deliveries/${variables.deliveryId}`, "PUT", updateData)
+            .then(() => {
+              queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+            })
+            .catch((error) => {
+              console.error('Erreur auto-remplissage:', error);
+            });
+        }
       }
       
       setVerifyingDeliveries(prev => {

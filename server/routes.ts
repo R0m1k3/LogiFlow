@@ -1407,9 +1407,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transformedData.invoiceAmount = transformedData.invoiceAmount.toString();
       }
       
-      // Convert validatedAt to Date object (schema expects Date for timestamp fields)
+      // Convert timestamp fields to Date objects (schema expects Date for timestamp fields)
       if (transformedData.validatedAt && typeof transformedData.validatedAt === 'string') {
         transformedData.validatedAt = new Date(transformedData.validatedAt);
+      }
+      if (transformedData.dueDate && typeof transformedData.dueDate === 'string') {
+        transformedData.dueDate = new Date(transformedData.dueDate);
       }
       
       const data = insertDeliverySchema.partial().parse(transformedData);
