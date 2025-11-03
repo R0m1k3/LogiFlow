@@ -531,14 +531,13 @@ export default function Suppliers() {
             <div>
               <Label htmlFor="paymentMethod">Mode de paiement</Label>
               <Select
-                value={formData.paymentMethod}
+                value={formData.paymentMethod || undefined}
                 onValueChange={(value) => handleChange('paymentMethod', value)}
               >
                 <SelectTrigger id="paymentMethod" data-testid="select-payment-method">
                   <SelectValue placeholder="Sélectionner un mode de paiement" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun</SelectItem>
                   <SelectItem value="Virement">Virement</SelectItem>
                   <SelectItem value="Traite">Traite</SelectItem>
                   <SelectItem value="Traite Magnétique">Traite Magnétique</SelectItem>
