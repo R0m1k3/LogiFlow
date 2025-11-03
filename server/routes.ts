@@ -309,92 +309,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Récupérer le groupe avec la configuration NocoDB
+      // Récupérer le groupe
       const group = await storage.getGroup(groupId);
-      if (!group || !group.nocodbConfigId || !group.nocodbTableId) {
-        return res.json({ schedules: [], message: 'Pas de configuration NocoDB pour ce groupe' });
+      if (!group) {
+        return res.json({ schedules: [], message: 'Groupe non trouvé' });
       }
 
-      // Récupérer la configuration NocoDB
-      const nocodbConfig = await storage.getNocodbConfig(group.nocodbConfigId);
-      if (!nocodbConfig) {
-        return res.json({ schedules: [], message: 'Configuration NocoDB non trouvée' });
-      }
+      console.log('📅 Récupération échéances depuis deliveries:', { groupId, groupName: group.name });
 
-      // Vérifier que les colonnes nécessaires sont configurées
-      if (!group.nocodbDueDateColumnName || !group.invoiceColumnName || !group.nocodbAmountColumnName) {
-        return res.json({ 
-          schedules: [], 
-          message: 'Configuration incomplète: colonnes date échéance, facture ou montant manquantes' 
-        });
-      }
+      // Récupérer toutes les livraisons du groupe avec échéance
+      const allDeliveries = await storage.getDeliveries();
+      const deliveriesWithDueDate = allDeliveries.filter(
+        (d: any) => d.groupId === groupId && d.dueDate && d.invoiceReference
+      );
 
-      // Récupérer tous les enregistrements de NocoDB
-      const url = `${nocodbConfig.baseUrl}/api/v1/db/data/noco/${nocodbConfig.projectId}/${group.nocodbTableId}`;
-      
-      console.log('📅 Récupération échéances NocoDB:', {
-        url,
-        groupId,
-        dueDateColumn: group.nocodbDueDateColumnName
-      });
+      console.log(`📅 Trouvé ${deliveriesWithDueDate.length} livraisons avec échéance pour le groupe ${groupId}`);
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "xc-token": nocodbConfig.apiToken,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        console.error('❌ Erreur NocoDB:', response.status, response.statusText);
-        return res.status(500).json({ error: 'Erreur lors de la récupération des données NocoDB' });
-      }
-
-      const data = await response.json();
-      
-      // Récupérer tous les fournisseurs pour le mapping
+      // Récupérer tous les fournisseurs pour le mapping du mode de paiement
       const allSuppliers = await storage.getSuppliers();
-      
-      // Fonction de normalisation pour comparer les noms de fournisseurs
-      const normalizeName = (name: string) => {
-        return name
-          .toLowerCase()
-          .trim()
-          .normalize("NFD")  // Décompose les accents
-          .replace(/[\u0300-\u036f]/g, "")  // Supprime les diacritiques
-          .replace(/\s+/g, ' ');  // Normalise les espaces multiples
-      };
-      
-      // Créer une map avec noms normalisés
-      const supplierMap = new Map(allSuppliers.map(s => [normalizeName(s.name), s]));
+      const supplierMap = new Map(allSuppliers.map((s: any) => [s.id, s]));
 
-      // Traiter les données et filtrer les enregistrements avec une date d'échéance
-      const schedules = (data.list || [])
-        .map((record: any) => {
-          const dueDate = record[group.nocodbDueDateColumnName!];
-          const invoiceRef = record[group.invoiceColumnName!];
-          const amount = record[group.nocodbAmountColumnName!];
-          const supplierName = record[group.nocodbSupplierColumnName || 'Fournisseur'];
-          
-          if (!dueDate) return null;
-          
-          // Chercher le fournisseur correspondant avec normalisation
-          const normalizedSupplierName = normalizeName(supplierName || '');
-          const supplier = supplierMap.get(normalizedSupplierName);
-          
-          return {
-            id: record.Id || record.id,
-            invoiceReference: invoiceRef,
-            dueDate: dueDate,
-            amount: amount ? parseFloat(amount) : 0,
-            supplierName: supplierName,
-            paymentMethod: supplier?.paymentMethod || null,
-            groupId: group.id,
-            groupName: group.name
-          };
-        })
-        .filter((s: any) => s !== null);
+      // Formatter les échéances
+      const schedules = deliveriesWithDueDate.map((delivery: any) => {
+        const supplier = supplierMap.get(delivery.supplierId);
+        
+        return {
+          id: delivery.id,
+          invoiceReference: delivery.invoiceReference,
+          dueDate: delivery.dueDate,
+          amount: delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0,
+          supplierName: supplier?.name || 'Fournisseur inconnu',
+          paymentMethod: supplier?.paymentMethod || null,
+          groupId: group.id,
+          groupName: group.name
+        };
+      });
 
       res.json({ schedules });
       
@@ -1371,6 +1320,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           console.log(`✅ Validation OK: Livraison #${id} et commande #${data.orderId} appartiennent au même magasin ${delivery.groupId}`);
+        }
+      }
+      
+      // GESTION ÉCHÉANCE : Si la référence facture change, mettre à jour la date d'échéance
+      if (data.invoiceReference !== undefined && data.invoiceReference !== delivery.invoiceReference) {
+        if (data.invoiceReference && data.invoiceReference.trim()) {
+          // Nouvelle référence facture : reverifier dans NocoDB pour récupérer l'échéance
+          try {
+            const { InvoiceVerificationService } = await import('./invoiceVerification.js');
+            const verificationService = new InvoiceVerificationService();
+            const result = await verificationService.verifyInvoice(
+              data.invoiceReference,
+              delivery.groupId,
+              true, // forceRefresh
+              delivery.reconciled || false
+            );
+            
+            if (result.exists && result.dueDate) {
+              data.dueDate = result.dueDate;
+              console.log(`📅 Date d'échéance récupérée depuis NocoDB: ${result.dueDate}`);
+            } else {
+              data.dueDate = null;
+              console.log(`📅 Aucune date d'échéance trouvée dans NocoDB`);
+            }
+          } catch (error) {
+            console.error('❌ Erreur récupération échéance:', error);
+            // Ne pas bloquer la mise à jour, juste ne pas avoir d'échéance
+            data.dueDate = null;
+          }
+        } else {
+          // Référence facture vidée : vider aussi l'échéance
+          data.dueDate = null;
+          console.log(`📅 Référence facture vidée, échéance également vidée`);
         }
       }
       

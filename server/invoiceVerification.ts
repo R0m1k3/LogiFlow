@@ -242,6 +242,7 @@ export class InvoiceVerificationService {
     invoiceReference?: string;
     invoiceAmount?: number;
     supplierName?: string;
+    dueDate?: string | null;
     fromCache?: boolean;
   }> {
     try {
@@ -396,7 +397,8 @@ export class InvoiceVerificationService {
             matchType: 'invoice_reference' as const,
             invoiceReference: matchResult.data.invoice_reference || invoiceReference,
             invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
-            supplierName: matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || 'Inconnu'
+            supplierName: matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || 'Inconnu',
+            dueDate: matchResult.data[group.nocodbDueDateColumnName || 'Echeance'] || null
           };
           
           // Sauvegarder en cache si succès
@@ -432,7 +434,8 @@ export class InvoiceVerificationService {
               matchType: 'bl_number' as const,
               invoiceReference: matchResult.data.invoice_reference || `BL_${invoiceReference}`,
               invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
-              supplierName: matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || 'Inconnu'
+              supplierName: matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || 'Inconnu',
+              dueDate: matchResult.data[group.nocodbDueDateColumnName || 'Echeance'] || null
             };
             
             // Sauvegarder en cache si succès
@@ -599,6 +602,7 @@ export class InvoiceVerificationService {
     invoiceReference?: string;
     invoiceAmount?: number;
     supplierName?: string;
+    dueDate?: string | null;
     fromCache?: boolean;
   }> {
     try {
@@ -795,7 +799,8 @@ export class InvoiceVerificationService {
             matchType: 'bl_number' as const,
             invoiceReference: matchResult.data[group.invoiceColumnName || 'RefFacture'] || `BL_${blNumber}`,
             invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
-            supplierName: foundSupplier || supplierName
+            supplierName: foundSupplier || supplierName,
+            dueDate: matchResult.data[group.nocodbDueDateColumnName || 'Echeance'] || null
           };
           
           // Sauvegarder en cache si succès
