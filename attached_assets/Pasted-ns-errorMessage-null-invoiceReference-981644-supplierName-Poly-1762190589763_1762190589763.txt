@@ -1,0 +1,204 @@
+ns
+ 
+ 
+ 
+      
+  errorMessage: null,
+
+  invoiceReference: '981644',
+
+  supplierName: 'Polyflame',
+
+  fromCache: true,
+
+  permanent: false
+
+}
+
+POST /api/deliveries/343/verify-invoice 200 in 256ms
+
+🔍 Recherche NocoDB: { tableId: 'mrr733dfb8wtt9b', column: 'Numero_BL' }
+
+🔍 Recherche NocoDB: { tableId: 'mrr733dfb8wtt9b', column: 'Numero_BL' }
+
+💾 [CACHE] Tentative sauvegarde: {
+
+  invoiceReference: '197771',
+
+  groupId: 1,
+
+  cacheKey: '1_197771',
+
+  exists: true,
+
+  isReconciled: false,
+
+  cacheType: 'temporaire 6h (trouvé)',
+
+  expiresAt: '2025-11-03T23:21:35.673Z'
+
+}
+
+💾 [CACHE] Tentative sauvegarde: {
+
+  invoiceReference: '197771',
+
+  groupId: 1,
+
+  cacheKey: '1_197771',
+
+  exists: true,
+
+  isReconciled: false,
+
+  cacheType: 'temporaire 6h (trouvé)',
+
+  expiresAt: '2025-11-03T23:21:35.675Z'
+
+}
+
+✅ [CACHE] Résultat sauvé en cache: {
+
+  id: 31803,
+
+  invoiceReference: '197771',
+
+  groupId: 1,
+
+  exists: true,
+
+  isReconciled: false,
+
+  cacheType: 'temporaire 6h (trouvé)',
+
+  cacheKey: '1_197771'
+
+}
+
+📅 Date d'échéance récupérée et normalisée: 2025-11-29 (original: 2025-11-29)
+
+✅ [CACHE] Résultat sauvé en cache: {
+
+  id: 31803,
+
+  invoiceReference: '197771',
+
+  groupId: 1,
+
+  exists: true,
+
+  isReconciled: false,
+
+  cacheType: 'temporaire 6h (trouvé)',
+
+  cacheKey: '1_197771'
+
+}
+
+📅 Date d'échéance récupérée et normalisée: 2025-11-29 (original: 2025-11-29)
+
+Error updating delivery: error: column "due_date" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.updateDelivery (file:///app/dist/index.js:2142:28)
+
+    at async file:///app/dist/index.js:14714:31 {
+
+  length: 174,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: 'Perhaps you meant to reference the column "deliveries.dueDate".',
+
+  position: '310',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_relation.c',
+
+  line: '3665',
+
+  routine: 'errorMissingColumn'
+
+}
+
+PUT /api/deliveries/427 500 in 307ms
+
+Error updating delivery: error: column "due_date" does not exist
+
+    at /app/node_modules/pg-pool/index.js:45:11
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/node_modules/drizzle-orm/node-postgres/session.js:83:22
+
+    at async DatabaseStorage.updateDelivery (file:///app/dist/index.js:2142:28)
+
+    at async file:///app/dist/index.js:14714:31 {
+
+  length: 174,
+
+  severity: 'ERROR',
+
+  code: '42703',
+
+  detail: undefined,
+
+  hint: 'Perhaps you meant to reference the column "deliveries.dueDate".',
+
+  position: '310',
+
+  internalPosition: undefined,
+
+  internalQuery: undefined,
+
+  where: undefined,
+
+  schema: undefined,
+
+  table: undefined,
+
+  column: undefined,
+
+  dataType: undefined,
+
+  constraint: undefined,
+
+  file: 'parse_relation.c',
+
+  line: '3665',
+
+  routine: 'errorMissingColumn'
+
+}
+
+PUT /api/deliveries/427 500 in 330ms
+
+HEAD /api/health 200 in 1ms
+
+HEAD /api/health 200 in 1ms
+
+HEAD /api/health 200 in 1ms
