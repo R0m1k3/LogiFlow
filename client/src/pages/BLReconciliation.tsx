@@ -67,6 +67,7 @@ export default function BLReconciliation() {
   // État pour le système de vérification de facture
   const [verificationResults, setVerificationResults] = useState<Record<number, any>>({});
   const [verifyingDeliveries, setVerifyingDeliveries] = useState<Set<number>>(new Set());
+  const [autoVerifiedDeliveries, setAutoVerifiedDeliveries] = useState<Set<number>>(new Set());
 
   // État pour le modal de commentaire
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -178,14 +179,11 @@ export default function BLReconciliation() {
         // Ne faire l'appel que si on a des données à mettre à jour
         if (Object.keys(updateData).length > 0) {
           apiRequest(`/api/deliveries/${variables.deliveryId}`, "PUT", updateData)
-            .then(async () => {
-              console.log('✅ Données sauvegardées avec succès, rafraîchissement immédiat...');
-              // Invalider ET forcer le rafraîchissement immédiat
-              await queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-              await queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-              await queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
-              await queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
-              console.log('✅ Rafraîchissement terminé');
+            .then(() => {
+              console.log('✅ Données sauvegardées avec succès');
+              // Invalider les caches (pas de refetch pour éviter boucles)
+              queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
             })
             .catch((error) => {
               console.error('❌ Erreur auto-remplissage:', error);
@@ -365,10 +363,25 @@ export default function BLReconciliation() {
     }
     
     deliveriesWithBL.forEach((delivery: any) => {
-      // ⛔ EXCLURE COMPLÈTEMENT les livraisons déjà réconciliées
-      // Une fois validées avec coche verte, on ne contrôle plus JAMAIS
+      // CAS SPÉCIAL : Livraisons réconciliées (✅) avec cellules vides
+      // Si reconciled=true ET (cellules vides) ET blNumber existe → auto-remplir
       if (delivery.reconciled) {
-        return; // Livraison déjà validée = AUCUNE vérification nécessaire
+        const hasEmptyCells = !delivery.invoiceReference || !delivery.invoiceAmount || !delivery.dueDate;
+        const hasBLNumber = delivery.blNumber?.trim();
+        const notAlreadyAutoVerified = !autoVerifiedDeliveries.has(delivery.id);
+        const notCurrentlyVerifying = !verifyingDeliveries.has(delivery.id);
+        
+        if (hasEmptyCells && hasBLNumber && notAlreadyAutoVerified && notCurrentlyVerifying) {
+          // Livraison réconciliée avec cellules vides → vérifier pour auto-remplir (UNE SEULE FOIS)
+          if (import.meta.env.DEV) {
+            console.log(`🔄 Livraison réconciliée #${delivery.id} avec cellules vides, auto-vérification (première tentative)...`);
+          }
+          // Marquer comme auto-vérifiée AVANT de lancer pour éviter les doublons
+          setAutoVerifiedDeliveries(prev => new Set(prev).add(delivery.id));
+          // Lancer la vérification sans délai
+          handleVerifyInvoice(delivery, false);
+        }
+        return; // Autres livraisons réconciliées = AUCUNE vérification nécessaire
       }
       
       // Vérifier seulement les livraisons NON validées
