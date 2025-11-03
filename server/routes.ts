@@ -7,6 +7,79 @@ import { db, pool } from "./db";
 
 console.log('🔍 Using development storage and authentication');
 
+// Fonction de normalisation des dates pour gérer différents formats de NocoDB
+function normalizeDateString(dateString: string | null | undefined): string | null {
+  if (!dateString || typeof dateString !== 'string') return null;
+  
+  const trimmed = dateString.trim();
+  if (!trimmed) return null;
+  
+  try {
+    // Si déjà au format ISO (YYYY-MM-DD), le retourner tel quel
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+    
+    // Format slash ou tiret : DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY, MM-DD-YYYY
+    const slashMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (slashMatch) {
+      const [, first, second, year] = slashMatch;
+      const firstNum = parseInt(first);
+      const secondNum = parseInt(second);
+      
+      // Validation basique des valeurs
+      if (firstNum > 31 || secondNum > 31 || firstNum === 0 || secondNum === 0) {
+        console.warn(`⚠️ Date invalide (valeurs hors limites): ${trimmed}`);
+        return null;
+      }
+      
+      // Déterminer le format en fonction des valeurs
+      let day: string, month: string;
+      
+      if (firstNum > 12) {
+        // first > 12 → forcément DD/MM (format français/européen)
+        day = first.padStart(2, '0');
+        month = second.padStart(2, '0');
+      } else if (secondNum > 12) {
+        // second > 12 → forcément MM/DD (format américain)
+        day = second.padStart(2, '0');
+        month = first.padStart(2, '0');
+      } else {
+        // Ambiguïté (les deux < 12) → on assume format français DD/MM par défaut
+        // Pour être plus sûr, on pourrait vérifier la configuration du groupe/locale
+        day = first.padStart(2, '0');
+        month = second.padStart(2, '0');
+      }
+      
+      // Validation finale : mois entre 1-12, jour entre 1-31
+      const monthNum = parseInt(month);
+      const dayNum = parseInt(day);
+      if (monthNum < 1 || monthNum > 12 || dayNum < 1 || dayNum > 31) {
+        console.warn(`⚠️ Date invalide après parsing: ${trimmed} → month=${month}, day=${day}`);
+        return null;
+      }
+      
+      return `${year}-${month}-${day}`;
+    }
+    
+    // Essayer de parser avec Date (format ISO complet avec heures)
+    const date = new Date(trimmed);
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    
+    // Si aucun format reconnu, retourner null (ne pas persister une date invalide)
+    console.warn(`⚠️ Format de date non reconnu: ${trimmed}`);
+    return null;
+  } catch (error) {
+    console.error('❌ Erreur normalisation date:', error);
+    return null; // Retourner null en cas d'erreur pour éviter de persister des données invalides
+  }
+}
+
 // Simple hash password function using crypto
 async function hashPasswordSimple(password: string) {
   const crypto = await import('crypto');
@@ -317,20 +390,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('📅 Récupération échéances depuis deliveries:', { groupId, groupName: group.name });
 
-      // Récupérer toutes les livraisons du groupe avec échéance
+      // Récupérer toutes les livraisons du groupe
       const allDeliveries = await storage.getDeliveries();
-      const deliveriesWithDueDate = allDeliveries.filter(
-        (d: any) => d.groupId === groupId && d.dueDate && d.invoiceReference
-      );
+      const groupDeliveries = allDeliveries.filter((d: any) => d.groupId === groupId && d.invoiceReference);
 
-      console.log(`📅 Trouvé ${deliveriesWithDueDate.length} livraisons avec échéance pour le groupe ${groupId}`);
+      // Séparer les livraisons avec et sans dueDate
+      const deliveriesWithDueDate = groupDeliveries.filter((d: any) => d.dueDate);
+      const deliveriesWithoutDueDate = groupDeliveries.filter((d: any) => !d.dueDate);
+
+      console.log(`📅 Livraisons avec échéance: ${deliveriesWithDueDate.length}, sans échéance: ${deliveriesWithoutDueDate.length}`);
+
+      // FALLBACK : Pour les livraisons sans dueDate, interroger NocoDB
+      const { InvoiceVerificationService } = await import('./invoiceVerification.js');
+      const verificationService = new InvoiceVerificationService();
+      
+      for (const delivery of deliveriesWithoutDueDate) {
+        try {
+          const result = await verificationService.verifyInvoice(
+            delivery.invoiceReference!,
+            delivery.groupId,
+            false, // Ne pas forcer le refresh, utiliser cache si disponible
+            delivery.reconciled || false
+          );
+          
+          if (result.exists && result.dueDate) {
+            // Normaliser la date avant de la stocker
+            const normalizedDate = normalizeDateString(result.dueDate);
+            if (normalizedDate) {
+              // Mettre à jour deliveries avec la date normalisée (caching)
+              await storage.updateDelivery(delivery.id, { dueDate: normalizedDate });
+              delivery.dueDate = normalizedDate;
+              console.log(`📅 Fallback: échéance récupérée et normalisée pour livraison #${delivery.id}`);
+            }
+          }
+        } catch (error) {
+          console.error(`❌ Fallback échéance échoué pour livraison #${delivery.id}:`, error);
+        }
+      }
+
+      // Combiner toutes les livraisons qui ont maintenant une dueDate
+      const allDeliveriesWithDueDate = [...deliveriesWithDueDate, ...deliveriesWithoutDueDate.filter((d: any) => d.dueDate)];
 
       // Récupérer tous les fournisseurs pour le mapping du mode de paiement
       const allSuppliers = await storage.getSuppliers();
       const supplierMap = new Map(allSuppliers.map((s: any) => [s.id, s]));
 
       // Formatter les échéances
-      const schedules = deliveriesWithDueDate.map((delivery: any) => {
+      const schedules = allDeliveriesWithDueDate.map((delivery: any) => {
         const supplier = supplierMap.get(delivery.supplierId);
         
         return {
@@ -345,6 +451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
 
+      console.log(`📅 Total échéances retournées: ${schedules.length}`);
       res.json({ schedules });
       
     } catch (error: any) {
@@ -1338,8 +1445,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             
             if (result.exists && result.dueDate) {
-              data.dueDate = result.dueDate;
-              console.log(`📅 Date d'échéance récupérée depuis NocoDB: ${result.dueDate}`);
+              // Normaliser la date avant de la stocker
+              data.dueDate = normalizeDateString(result.dueDate);
+              console.log(`📅 Date d'échéance récupérée et normalisée: ${data.dueDate} (original: ${result.dueDate})`);
             } else {
               data.dueDate = null;
               console.log(`📅 Aucune date d'échéance trouvée dans NocoDB`);
