@@ -100,6 +100,7 @@ export default function BLReconciliation() {
       
       // Toast de confirmation avec détails de la vérification
       if (result.exists) {
+        // Facture trouvée - afficher les détails
         // Formater la date d'échéance si présente
         let dueDateText = '';
         if (result.dueDate) {
@@ -140,6 +141,14 @@ export default function BLReconciliation() {
               )}
             </div>
           ),
+          duration: 5000,
+        });
+      } else {
+        // Facture non trouvée - afficher message d'erreur
+        toast({
+          title: "⚠️ Facture non trouvée",
+          description: result.errorMessage || 'La facture n\'a pas été trouvée dans la base de données',
+          variant: "destructive",
           duration: 5000,
         });
       }
