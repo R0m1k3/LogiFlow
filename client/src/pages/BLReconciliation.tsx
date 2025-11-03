@@ -98,6 +98,61 @@ export default function BLReconciliation() {
         [variables.deliveryId]: result
       }));
       
+      // Toast de confirmation avec détails de la vérification
+      if (result.exists) {
+        // Facture trouvée - afficher les détails
+        // Formater la date d'échéance si présente
+        let dueDateText = '';
+        if (result.dueDate) {
+          try {
+            const date = new Date(result.dueDate);
+            dueDateText = date.toLocaleDateString('fr-FR', { 
+              day: 'numeric', 
+              month: 'long', 
+              year: 'numeric' 
+            });
+          } catch (e) {
+            dueDateText = result.dueDate; // Afficher tel quel si le format n'est pas reconnu
+          }
+        }
+        
+        // Formater le montant avec garde contre NaN
+        const amountText = result.invoiceAmount ? 
+          (() => {
+            const amount = parseFloat(result.invoiceAmount);
+            return isNaN(amount) ? 'Format invalide' : `${amount.toFixed(2)}€`;
+          })() : 
+          'Non disponible';
+        
+        toast({
+          title: "✅ Facture vérifiée avec succès",
+          description: (
+            <div className="space-y-1 text-sm">
+              <div><strong>Référence :</strong> {result.invoiceReference || 'Non disponible'}</div>
+              <div><strong>Montant :</strong> {amountText}</div>
+              {result.dueDate ? (
+                <div className="text-green-600 font-medium">
+                  <strong>📅 Échéance :</strong> {dueDateText}
+                </div>
+              ) : (
+                <div className="text-orange-600 font-medium">
+                  ⚠️ Aucune date d'échéance trouvée
+                </div>
+              )}
+            </div>
+          ),
+          duration: 5000,
+        });
+      } else {
+        // Facture non trouvée - afficher message d'erreur
+        toast({
+          title: "⚠️ Facture non trouvée",
+          description: result.errorMessage || 'La facture n\'a pas été trouvée dans la base de données',
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+      
       // Auto-remplissage si facture trouvée via BL
       if (result.exists && result.matchType === 'bl_number' && result.invoiceReference) {
         // Auto-remplir les champs dans la livraison via API
@@ -789,6 +844,9 @@ export default function BLReconciliation() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Montant Fact.
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Échéance
+                        </th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Écart
                         </th>
@@ -905,6 +963,17 @@ export default function BLReconciliation() {
                                     Non renseigné
                                   </span>
                                 }
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm">
+                                {delivery.dueDate ? (
+                                  <span className={delivery.reconciled !== true ? 'font-medium text-gray-900' : 'text-gray-600'}>
+                                    {safeFormat(delivery.dueDate, 'dd/MM/yyyy')}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400 italic text-xs">-</span>
+                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -1132,6 +1201,9 @@ export default function BLReconciliation() {
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Montant Fact.
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Échéance
                         </th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Écart
