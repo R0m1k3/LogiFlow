@@ -415,8 +415,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (result.exists && result.dueDate) {
             // Normaliser la date avant de la stocker
-            const normalizedDate = normalizeDateString(result.dueDate);
-            if (normalizedDate) {
+            const normalizedDateString = normalizeDateString(result.dueDate);
+            if (normalizedDateString) {
+              // Convertir la string normalisée en objet Date pour Drizzle
+              const normalizedDate = new Date(normalizedDateString);
               // Mettre à jour deliveries avec la date normalisée (caching)
               await storage.updateDelivery(delivery.id, { dueDate: normalizedDate });
               delivery.dueDate = normalizedDate;
@@ -1449,8 +1451,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             if (result.exists && result.dueDate) {
               // Normaliser la date avant de la stocker
-              data.dueDate = normalizeDateString(result.dueDate);
-              console.log(`📅 Date d'échéance récupérée et normalisée: ${data.dueDate} (original: ${result.dueDate})`);
+              const normalizedDateString = normalizeDateString(result.dueDate);
+              if (normalizedDateString) {
+                // Convertir la string normalisée en objet Date pour Drizzle
+                data.dueDate = new Date(normalizedDateString);
+                console.log(`📅 Date d'échéance récupérée et normalisée: ${normalizedDateString} (original: ${result.dueDate})`);
+              } else {
+                data.dueDate = null;
+                console.log(`📅 Date d'échéance invalide, ignorée`);
+              }
             } else {
               data.dueDate = null;
               console.log(`📅 Aucune date d'échéance trouvée dans NocoDB`);
