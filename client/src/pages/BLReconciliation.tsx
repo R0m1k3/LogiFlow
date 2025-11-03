@@ -178,10 +178,14 @@ export default function BLReconciliation() {
         // Ne faire l'appel que si on a des données à mettre à jour
         if (Object.keys(updateData).length > 0) {
           apiRequest(`/api/deliveries/${variables.deliveryId}`, "PUT", updateData)
-            .then(() => {
-              console.log('✅ Données sauvegardées avec succès');
-              queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+            .then(async () => {
+              console.log('✅ Données sauvegardées avec succès, rafraîchissement immédiat...');
+              // Invalider ET forcer le rafraîchissement immédiat
+              await queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+              await queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+              await queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
+              await queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
+              console.log('✅ Rafraîchissement terminé');
             })
             .catch((error) => {
               console.error('❌ Erreur auto-remplissage:', error);
