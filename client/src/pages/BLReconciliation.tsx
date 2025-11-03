@@ -158,31 +158,36 @@ export default function BLReconciliation() {
         // Auto-remplir les champs dans la livraison via API
         const updateData: any = {};
         
-        // Ajouter la référence de facture si trouvée et pas déjà renseignée
+        // Ajouter la référence de facture SEULEMENT si trouvée via BL (pas déjà renseignée)
         if (result.invoiceReference && result.matchType === 'bl_number') {
           updateData.invoiceReference = result.invoiceReference;
         }
         
-        // Toujours mettre à jour le montant si disponible
-        if (result.invoiceAmount) {
+        // TOUJOURS mettre à jour le montant si disponible (peu importe le matchType)
+        if (result.invoiceAmount !== undefined && result.invoiceAmount !== null) {
           updateData.invoiceAmount = result.invoiceAmount;
         }
         
-        // Toujours mettre à jour la date d'échéance si disponible
+        // TOUJOURS mettre à jour la date d'échéance si disponible (peu importe le matchType)
         if (result.dueDate) {
           updateData.dueDate = result.dueDate;
         }
+        
+        console.log('📝 Données à sauvegarder:', { deliveryId: variables.deliveryId, updateData, matchType: result.matchType });
         
         // Ne faire l'appel que si on a des données à mettre à jour
         if (Object.keys(updateData).length > 0) {
           apiRequest(`/api/deliveries/${variables.deliveryId}`, "PUT", updateData)
             .then(() => {
+              console.log('✅ Données sauvegardées avec succès');
               queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
               queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
             })
             .catch((error) => {
-              console.error('Erreur auto-remplissage:', error);
+              console.error('❌ Erreur auto-remplissage:', error);
             });
+        } else {
+          console.log('⚠️ Aucune donnée à sauvegarder');
         }
       }
       

@@ -119,7 +119,7 @@ export const deliveries = pgTable("deliveries", {
   blAmount: decimal("bl_amount", { precision: 10, scale: 2 }), // Montant BL
   invoiceReference: varchar("invoice_reference"), // Référence facture
   invoiceAmount: decimal("invoice_amount", { precision: 10, scale: 2 }), // Montant facture
-  dueDate: date("due_date"), // Date d'échéance de paiement (récupérée depuis NocoDB)
+  dueDate: timestamp("dueDate"), // Date d'échéance de paiement (récupérée depuis NocoDB)
   reconciled: boolean("reconciled").default(false), // Rapprochement effectué
   validatedAt: timestamp("validated_at"), // Date de validation de la livraison
   // Champs pour le contrôle des livraisons (fournisseurs nécessitant un contrôle)
