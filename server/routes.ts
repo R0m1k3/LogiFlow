@@ -589,28 +589,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .filter((schedule: any) => validatedPaymentMethods.includes(schedule.paymentMethod))
         .sort((a: any, b: any) => a.dueDate.getTime() - b.dueDate.getTime());
 
-      // Générer le fichier Excel
-      console.log('📦 [EXPORT] Import du module xlsx...');
-      const XLSX = await import('xlsx');
-      console.log('✅ [EXPORT] Module xlsx importé avec succès');
-      const workbook = XLSX.utils.book_new();
-      console.log('📄 [EXPORT] Workbook créé');
+      // Générer le fichier CSV avec tabulations
+      console.log('📄 [EXPORT] Génération du fichier CSV avec tabulations...');
 
-      // Préparer les données pour Excel
+      // Préparer les en-têtes
       const headers = ['Date d\'échéance', 'Fournisseur', 'Facture', 'Mode de paiement'];
       if (includeHT) headers.push('Montant HT');
       if (includeTTC) headers.push('Montant TTC');
 
-      const data = schedules.map((schedule: any) => {
-        const row: any = {
-          'Date d\'échéance': format(schedule.dueDate, 'dd/MM/yyyy', { locale: fr }),
-          'Fournisseur': schedule.supplierName,
-          'Facture': schedule.invoiceReference,
-          'Mode de paiement': schedule.paymentMethod,
-        };
-        if (includeHT) row['Montant HT'] = schedule.amountHT;
-        if (includeTTC) row['Montant TTC'] = schedule.amountTTC;
-        return row;
+      // Créer les lignes de données
+      const csvLines: string[] = [];
+      
+      // Ajouter la ligne d'en-tête
+      csvLines.push(headers.join('\t'));
+
+      // Ajouter les données
+      schedules.forEach((schedule: any) => {
+        const row: string[] = [
+          format(schedule.dueDate, 'dd/MM/yyyy', { locale: fr }),
+          schedule.supplierName,
+          schedule.invoiceReference,
+          schedule.paymentMethod,
+        ];
+        if (includeHT) row.push(schedule.amountHT.toFixed(2));
+        if (includeTTC) row.push(schedule.amountTTC.toFixed(2));
+        csvLines.push(row.join('\t'));
       });
 
       // Calculer les totaux
@@ -618,40 +621,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalTTC = schedules.reduce((sum: number, s: any) => sum + s.amountTTC, 0);
 
       // Ajouter une ligne de total
-      const totalRow: any = {
-        'Date d\'échéance': '',
-        'Fournisseur': '',
-        'Facture': '',
-        'Mode de paiement': 'TOTAL',
-      };
-      if (includeHT) totalRow['Montant HT'] = totalHT;
-      if (includeTTC) totalRow['Montant TTC'] = totalTTC;
-      data.push(totalRow);
+      const totalRow: string[] = ['', '', '', 'TOTAL'];
+      if (includeHT) totalRow.push(totalHT.toFixed(2));
+      if (includeTTC) totalRow.push(totalTTC.toFixed(2));
+      csvLines.push(totalRow.join('\t'));
 
-      // Créer la feuille Excel
-      const worksheet = XLSX.utils.json_to_sheet(data, { header: headers });
-
-      // Définir la largeur des colonnes
-      worksheet['!cols'] = [
-        { wch: 15 },  // Date
-        { wch: 25 },  // Fournisseur
-        { wch: 15 },  // Facture
-        { wch: 18 },  // Mode de paiement
-        { wch: 12 },  // Montant HT
-        { wch: 12 },  // Montant TTC
-      ];
-
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Échéancier');
-
-      // Générer le buffer Excel
-      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+      // Générer le contenu CSV avec BOM UTF-8 pour Excel
+      const BOM = '\uFEFF';
+      const csvContent = BOM + csvLines.join('\n');
 
       // Envoyer le fichier
-      res.setHeader('Content-Disposition', `attachment; filename="echeancier_${validatedMonth}.xlsx"`);
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.send(excelBuffer);
+      res.setHeader('Content-Disposition', `attachment; filename="echeancier_${validatedMonth}.csv"`);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.send(csvContent);
 
-      console.log(`📊 Export Excel généré: ${schedules.length} échéances pour ${group.name}`);
+      console.log(`📊 [EXPORT] CSV généré: ${schedules.length} échéances pour ${group.name}`);
 
     } catch (error: any) {
       console.error('❌ [EXPORT] Erreur export Excel:', error);

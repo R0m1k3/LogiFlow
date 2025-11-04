@@ -1,0 +1,205 @@
+Actions
+ 
+ 
+ 
+      
+  hoursRemaining: 438287
+
+}
+
+🔍 [CACHE] Résultat cache: {
+
+  found: true,
+
+  isReconciled: true,
+
+  expired: false,
+
+  expiresAt: 2075-11-04T10:58:49.338Z,
+
+  currentTime: '2025-11-04T12:17:35.661Z'
+
+}
+
+🛡️ [CACHE] PERMANENT - Facture validée avec coche verte, AUCUNE vérification: {
+
+  invoiceReference: '22529151',
+
+  groupId: 1,
+
+  exists: true,
+
+  invoiceAmount: '2653.75',
+
+  dueDate: null
+
+}
+
+✅ [INVOICE] Résultat depuis cache: {
+
+  exists: true,
+
+  matchType: 'invoice_reference',
+
+  errorMessage: null,
+
+  invoiceReference: '22529151',
+
+  supplierName: 'Sovacom',
+
+  invoiceAmount: 2653.75,
+
+  invoiceAmountTTC: 3184.5,
+
+  dueDate: null,
+
+  fromCache: true,
+
+  permanent: true
+
+}
+
+🔍 [INVOICE] Début vérification facture: { invoiceReference: 'FCLT035833', groupId: 1, forceRefresh: false }
+
+🔍 [INVOICE] Vérification cache...
+
+🔍 [CACHE] Recherche cache pour: {
+
+  invoiceReference: 'FCLT035833',
+
+  groupId: 1,
+
+  cacheKey: '1_fclt035833'
+
+}
+
+✅ [DATABASE-CACHE] Cache hit pour: {
+
+  cacheKey: '1_fclt035833',
+
+  expires: 2075-11-04T10:58:49.353Z,
+
+  hoursRemaining: 438287
+
+}
+
+🔍 [CACHE] Résultat cache: {
+
+  found: true,
+
+  isReconciled: true,
+
+  expired: false,
+
+  expiresAt: 2075-11-04T10:58:49.353Z,
+
+  currentTime: '2025-11-04T12:17:35.662Z'
+
+}
+
+🛡️ [CACHE] PERMANENT - Facture validée avec coche verte, AUCUNE vérification: {
+
+  invoiceReference: 'FCLT035833',
+
+  groupId: 1,
+
+  exists: true,
+
+  invoiceAmount: '1307.26',
+
+  dueDate: null
+
+}
+
+✅ [INVOICE] Résultat depuis cache: {
+
+  exists: true,
+
+  matchType: 'invoice_reference',
+
+  errorMessage: null,
+
+  invoiceReference: 'FCLT035833',
+
+  supplierName: 'Idvpc',
+
+  invoiceAmount: 1307.26,
+
+  invoiceAmountTTC: 1568.71,
+
+  dueDate: null,
+
+  fromCache: true,
+
+  permanent: true
+
+}
+
+💰 Livraisons nécessitant récupération TTC: 0
+
+📅 Total échéances retournées: 34
+
+GET /api/payment-schedule 304 in 892ms
+
+📊 [EXPORT] Début de l'export Excel
+
+🔍 [EXPORT] Utilisateur: admin (admin)
+
+📋 [EXPORT] Paramètres: {
+
+  groupId: 1,
+
+  month: '2025-11',
+
+  paymentMethods: [ 'Non défini' ],
+
+  includeHT: true,
+
+  includeTTC: true
+
+}
+
+❌ PRODUCTION: Delivery #127 (store 2) linked to order #81 (store 1) - STORE MISMATCH DETECTED!
+
+🔗 PRODUCTION: getDeliveries() récupéré 357 livraisons avec relations
+
+📦 [EXPORT] Import du module xlsx...
+
+❌ [EXPORT] Erreur export Excel: Error: Dynamic require of "stream" is not supported
+
+    at file:///app/dist/index.js:11:9
+
+    at make_xlsx_lib (file:///app/dist/index.js:44815:22)
+
+    at node_modules/xlsx/xlsx.js (file:///app/dist/index.js:44819:41)
+
+    at __require2 (file:///app/dist/index.js:17:50)
+
+    at file:///app/dist/index.js:47198:63
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/dist/index.js:47198:20
+
+❌ [EXPORT] Message: Dynamic require of "stream" is not supported
+
+❌ [EXPORT] Stack: Error: Dynamic require of "stream" is not supported
+
+    at file:///app/dist/index.js:11:9
+
+    at make_xlsx_lib (file:///app/dist/index.js:44815:22)
+
+    at node_modules/xlsx/xlsx.js (file:///app/dist/index.js:44819:41)
+
+    at __require2 (file:///app/dist/index.js:17:50)
+
+    at file:///app/dist/index.js:47198:63
+
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+
+    at async file:///app/dist/index.js:47198:20
+
+POST /api/payment-schedule/export 500 in 936ms
+
+HEAD /api/health 200 in 1ms
+

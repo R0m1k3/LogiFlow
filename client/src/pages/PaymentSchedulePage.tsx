@@ -212,7 +212,7 @@ export default function PaymentSchedulePage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `echeancier_${selectedMonth}.xlsx`;
+      a.download = `echeancier_${selectedMonth}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -221,7 +221,7 @@ export default function PaymentSchedulePage() {
       setShowExportModal(false);
       toast({
         title: "Export réussi",
-        description: "Le fichier Excel a été téléchargé avec succès.",
+        description: "Le fichier CSV a été téléchargé avec succès. Ouvrez-le dans Excel.",
       });
     } catch (error) {
       console.error('Erreur export:', error);
@@ -303,10 +303,10 @@ export default function PaymentSchedulePage() {
             variant="outline"
             className="gap-2"
             disabled={filteredSchedules.length === 0}
-            data-testid="button-export-excel"
+            data-testid="button-export-csv"
           >
             <FileSpreadsheet className="h-4 w-4" />
-            Exporter Excel
+            Exporter CSV
           </Button>
           <div className="w-64">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -459,16 +459,16 @@ export default function PaymentSchedulePage() {
         </CardContent>
       </Card>
 
-      {/* Modale d'export Excel */}
+      {/* Modale d'export CSV */}
       <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="h-5 w-5 text-green-600" />
-              Exporter vers Excel
+              Exporter vers CSV
             </DialogTitle>
             <DialogDescription>
-              Sélectionnez les modes de paiement et les colonnes à inclure dans l'export
+              Sélectionnez les modes de paiement et les colonnes à inclure dans l'export (ouvrez le fichier dans Excel)
             </DialogDescription>
           </DialogHeader>
 
