@@ -894,6 +894,7 @@ export default function DlcPage() {
                         key={product.id} 
                         className={
                           product.status === "valides" ? "opacity-60 bg-gray-50 dark:bg-gray-800" : 
+                          product.processedUntilExpiry ? "opacity-60 bg-blue-50 dark:bg-blue-900/20" :
                           product.stockEpuise ? "opacity-50 bg-yellow-50 dark:bg-yellow-900/20" : ""
                         }
                       >

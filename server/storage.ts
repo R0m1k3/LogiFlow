@@ -1948,14 +1948,14 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions));
     }
 
-    // Tri intelligent : produits actifs en premier, puis produits traités/validés en dernier
+    // Tri intelligent : produits traités/validés en premier (grisés), puis produits actifs
     const results = await query.orderBy(
-      // Priorité 1 : Produits actifs d'abord (non validés, non traités, stock disponible)
+      // Priorité 1 : Produits traités/validés d'abord (affichés en grisé)
       sql`CASE 
-        WHEN ${dlcProducts.status} = 'valides' THEN 3
-        WHEN ${dlcProducts.stockEpuise} = true THEN 2
-        WHEN ${dlcProducts.processedUntilExpiry} = true THEN 2
-        ELSE 1
+        WHEN ${dlcProducts.processedUntilExpiry} = true THEN 1
+        WHEN ${dlcProducts.status} = 'valides' THEN 1
+        WHEN ${dlcProducts.stockEpuise} = true THEN 1
+        ELSE 2
       END`,
       // Priorité 2 : Date d'expiration (croissante)
       asc(dlcProducts.expiryDate)
