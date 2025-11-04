@@ -513,37 +513,26 @@ export default function BLReconciliation() {
     startProcessingTimer();
 
     try {
-      // Convertir le fichier en base64 pour l'envoyer via notre route backend
-      const fileBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = (reader.result as string).split(',')[1]; // Retirer le préfixe data:...
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(selectedFile);
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('supplier', selectedDeliveryForInvoice.supplier?.name || '');
+      formData.append('blNumber', selectedDeliveryForInvoice.blNumber || '');
+      formData.append('type', 'Facture');
+
+      // Créer un AbortController pour gérer le timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
+
+      const response = await fetch(selectedDeliveryForInvoice.group.webhookUrl, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
       });
 
-      // Préparer les données pour la route backend proxy
-      const payload = {
-        webhookUrl: selectedDeliveryForInvoice.group.webhookUrl,
-        formDataFields: {
-          file: {
-            base64: fileBase64,
-            filename: selectedFile.name,
-            contentType: selectedFile.type
-          },
-          supplier: selectedDeliveryForInvoice.supplier?.name || '',
-          blNumber: selectedDeliveryForInvoice.blNumber || '',
-          type: 'Facture'
-        }
-      };
+      clearTimeout(timeoutId);
 
-      // Envoyer via la route backend proxy (évite les problèmes CORS)
-      const response = await apiRequest('/api/reconciliation/send-invoice-webhook', 'POST', payload);
-
-      if (!response || !response.success) {
-        throw new Error(response?.error || 'Erreur lors de l\'envoi');
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
       }
 
       handleCloseWaitingModal();
