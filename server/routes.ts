@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupLocalAuth, requireAuth } from "./localAuth";
 import { requireModulePermission, requireAdmin, requirePermission } from "./permissions";
 import { db, pool } from "./db";
+import Busboy from "busboy";
 
 console.log('🔍 Using development storage and authentication');
 
