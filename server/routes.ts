@@ -500,6 +500,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route pour exporter l'échéancier vers Excel
+  app.post('/api/payment-schedule/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || (user.role !== 'admin' && user.role !== 'directeur')) {
+        return res.status(403).json({ error: 'Accès refusé - Admin ou Directeur uniquement' });
+      }
+
+      // Récupérer les paramètres d'export
+      const { groupId, month, paymentMethods, includeHT, includeTTC } = req.body;
+
+      // Validation
+      const groupIdSchema = z.coerce.number().int().positive();
+      const monthSchema = z.string().regex(/^\d{4}-\d{2}$/);
+      const paymentMethodsSchema = z.array(z.string()).min(1);
+
+      const validatedGroupId = groupIdSchema.parse(groupId);
+      const validatedMonth = monthSchema.parse(month);
+      const validatedPaymentMethods = paymentMethodsSchema.parse(paymentMethods);
+
+      // Vérifier l'autorisation pour les directeurs
+      if (user.role === 'directeur') {
+        const userGroupIds = await storage.getUserGroups(user.id);
+        if (!userGroupIds.includes(validatedGroupId)) {
+          return res.status(403).json({ error: 'Accès refusé - Vous ne pouvez accéder qu\'aux données de votre groupe' });
+        }
+      }
+
+      // Récupérer le groupe
+      const group = await storage.getGroup(validatedGroupId);
+      if (!group) {
+        return res.status(404).json({ error: 'Groupe non trouvé' });
+      }
+
+      // Récupérer toutes les livraisons du groupe avec échéance
+      const allDeliveries = await storage.getDeliveries();
+      const groupDeliveries = allDeliveries.filter((d: any) => 
+        d.groupId === validatedGroupId && 
+        d.invoiceReference && 
+        d.dueDate
+      );
+
+      // Filtrer par mois
+      const { parseISO, startOfMonth, endOfMonth, isWithinInterval, format } = await import('date-fns');
+      const { fr } = await import('date-fns/locale');
+      const monthStart = parseISO(`${validatedMonth}-01`);
+      const monthEnd = endOfMonth(monthStart);
+
+      const filteredDeliveries = groupDeliveries.filter((d: any) => {
+        try {
+          const dueDate = new Date(d.dueDate);
+          return isWithinInterval(dueDate, { start: monthStart, end: monthEnd });
+        } catch {
+          return false;
+        }
+      });
+
+      // Récupérer les fournisseurs
+      const allSuppliers = await storage.getSuppliers();
+      const supplierMap = new Map(allSuppliers.map((s: any) => [s.id, s]));
+
+      // Filtrer par modes de paiement sélectionnés
+      const schedules = filteredDeliveries
+        .map((delivery: any) => {
+          const supplier = supplierMap.get(delivery.supplierId);
+          return {
+            dueDate: new Date(delivery.dueDate),
+            supplierName: supplier?.name || 'Fournisseur inconnu',
+            invoiceReference: delivery.invoiceReference,
+            paymentMethod: supplier?.paymentMethod || 'Non défini',
+            amountHT: delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0,
+            amountTTC: delivery.invoiceAmountTTC ? parseFloat(delivery.invoiceAmountTTC) : 0,
+          };
+        })
+        .filter((schedule: any) => validatedPaymentMethods.includes(schedule.paymentMethod))
+        .sort((a: any, b: any) => a.dueDate.getTime() - b.dueDate.getTime());
+
+      // Générer le fichier Excel
+      const XLSX = await import('xlsx');
+      const workbook = XLSX.utils.book_new();
+
+      // Préparer les données pour Excel
+      const headers = ['Date d\'échéance', 'Fournisseur', 'Facture', 'Mode de paiement'];
+      if (includeHT) headers.push('Montant HT');
+      if (includeTTC) headers.push('Montant TTC');
+
+      const data = schedules.map((schedule: any) => {
+        const row: any = {
+          'Date d\'échéance': format(schedule.dueDate, 'dd/MM/yyyy', { locale: fr }),
+          'Fournisseur': schedule.supplierName,
+          'Facture': schedule.invoiceReference,
+          'Mode de paiement': schedule.paymentMethod,
+        };
+        if (includeHT) row['Montant HT'] = schedule.amountHT;
+        if (includeTTC) row['Montant TTC'] = schedule.amountTTC;
+        return row;
+      });
+
+      // Calculer les totaux
+      const totalHT = schedules.reduce((sum: number, s: any) => sum + s.amountHT, 0);
+      const totalTTC = schedules.reduce((sum: number, s: any) => sum + s.amountTTC, 0);
+
+      // Ajouter une ligne de total
+      const totalRow: any = {
+        'Date d\'échéance': '',
+        'Fournisseur': '',
+        'Facture': '',
+        'Mode de paiement': 'TOTAL',
+      };
+      if (includeHT) totalRow['Montant HT'] = totalHT;
+      if (includeTTC) totalRow['Montant TTC'] = totalTTC;
+      data.push(totalRow);
+
+      // Créer la feuille Excel
+      const worksheet = XLSX.utils.json_to_sheet(data, { header: headers });
+
+      // Définir la largeur des colonnes
+      worksheet['!cols'] = [
+        { wch: 15 },  // Date
+        { wch: 25 },  // Fournisseur
+        { wch: 15 },  // Facture
+        { wch: 18 },  // Mode de paiement
+        { wch: 12 },  // Montant HT
+        { wch: 12 },  // Montant TTC
+      ];
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Échéancier');
+
+      // Générer le buffer Excel
+      const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+      // Envoyer le fichier
+      res.setHeader('Content-Disposition', `attachment; filename="echeancier_${validatedMonth}.xlsx"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.send(excelBuffer);
+
+      console.log(`📊 Export Excel généré: ${schedules.length} échéances pour ${group.name}`);
+
+    } catch (error: any) {
+      console.error('❌ Erreur export Excel:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'export', details: error.message });
+    }
+  });
+
   // Route BAP pour envoi webhook n8n
   app.post('/api/bap/send-webhook', isAuthenticated, async (req: any, res) => {
     try {
