@@ -1,0 +1,202 @@
+
+      
+  exists: true,
+
+  invoiceAmount: '1203.12',
+
+  dueDate: null
+
+}
+
+✅ [INVOICE] Résultat depuis cache: {
+
+  exists: true,
+
+  matchType: 'invoice_reference',
+
+  errorMessage: null,
+
+  invoiceReference: '000752796',
+
+  supplierName: 'CMP',
+
+  invoiceAmount: 1203.12,
+
+  dueDate: null,
+
+  fromCache: true,
+
+  permanent: true
+
+}
+
+🔍 [INVOICE] Début vérification facture: { invoiceReference: '22529151', groupId: 1, forceRefresh: false }
+
+🔍 [INVOICE] Vérification cache...
+
+🔍 [CACHE] Recherche cache pour: { invoiceReference: '22529151', groupId: 1, cacheKey: '1_22529151' }
+
+✅ [DATABASE-CACHE] Cache hit pour: {
+
+  cacheKey: '1_22529151',
+
+  expires: 2075-11-04T06:31:09.789Z,
+
+  hoursRemaining: 438288
+
+}
+
+🔍 [CACHE] Résultat cache: {
+
+  found: true,
+
+  isReconciled: true,
+
+  expired: false,
+
+  expiresAt: 2075-11-04T06:31:09.789Z,
+
+  currentTime: '2025-11-04T06:32:28.367Z'
+
+}
+
+🛡️ [CACHE] PERMANENT - Facture validée avec coche verte, AUCUNE vérification: {
+
+  invoiceReference: '22529151',
+
+  groupId: 1,
+
+  exists: true,
+
+  invoiceAmount: '2653.75',
+
+  dueDate: null
+
+}
+
+✅ [INVOICE] Résultat depuis cache: {
+
+  exists: true,
+
+  matchType: 'invoice_reference',
+
+  errorMessage: null,
+
+  invoiceReference: '22529151',
+
+  supplierName: 'Sovacom',
+
+  invoiceAmount: 2653.75,
+
+  dueDate: null,
+
+  fromCache: true,
+
+  permanent: true
+
+}
+
+🔍 [INVOICE] Début vérification facture: { invoiceReference: 'FCLT035833', groupId: 1, forceRefresh: false }
+
+🔍 [INVOICE] Vérification cache...
+
+🔍 [CACHE] Recherche cache pour: {
+
+  invoiceReference: 'FCLT035833',
+
+  groupId: 1,
+
+  cacheKey: '1_fclt035833'
+
+}
+
+✅ [DATABASE-CACHE] Cache hit pour: {
+
+  cacheKey: '1_fclt035833',
+
+  expires: 2075-11-04T06:31:09.767Z,
+
+  hoursRemaining: 438288
+
+}
+
+🔍 [CACHE] Résultat cache: {
+
+  found: true,
+
+  isReconciled: true,
+
+  expired: false,
+
+  expiresAt: 2075-11-04T06:31:09.767Z,
+
+  currentTime: '2025-11-04T06:32:28.368Z'
+
+}
+
+🛡️ [CACHE] PERMANENT - Facture validée avec coche verte, AUCUNE vérification: {
+
+  invoiceReference: 'FCLT035833',
+
+  groupId: 1,
+
+  exists: true,
+
+  invoiceAmount: '1307.26',
+
+  dueDate: null
+
+}
+
+✅ [INVOICE] Résultat depuis cache: {
+
+  exists: true,
+
+  matchType: 'invoice_reference',
+
+  errorMessage: null,
+
+  invoiceReference: 'FCLT035833',
+
+  supplierName: 'Idvpc',
+
+  invoiceAmount: 1307.26,
+
+  dueDate: null,
+
+  fromCache: true,
+
+  permanent: true
+
+}
+
+📅 Total échéances retournées: 32
+
+GET /api/payment-schedule 200 in 340ms
+
+GET /api/user 304 in 4ms
+
+GET /api/user 304 in 4ms
+
+GET /api/utilities 304 in 5ms
+
+GET /api/backups 304 in 6ms
+
+🔧 [SQL-EXECUTOR] Début exécution SQL pour admin: admin_local
+
+🔧 [SQL-EXECUTOR] Query: SELECT column_name 
+
+FROM information_schema.columns
+
+WHERE table_name = 'deliveries'
+
+AND column_name = 'due_date';...
+
+✅ [SQL-EXECUTOR] Exécution réussie
+
+POST /api/admin/execute-sql 200 in 23ms
+
+HEAD /api/health 200 in 1ms
+
+HEAD /api/health 200 in 1ms
+
