@@ -144,15 +144,8 @@ export default function BLReconciliation() {
           ),
           duration: 5000,
         });
-      } else {
-        // Facture non trouvée - afficher message d'erreur
-        toast({
-          title: "⚠️ Facture non trouvée",
-          description: result.errorMessage || 'La facture n\'a pas été trouvée dans la base de données',
-          variant: "destructive",
-          duration: 5000,
-        });
       }
+      // Pas de toast si facture non trouvée - affichage silencieux de la croix rouge
       
       // Auto-remplissage si facture trouvée (référence facture OU numéro BL)
       if (result.exists) {
@@ -675,13 +668,25 @@ export default function BLReconciliation() {
         description: "Rapprochement validé avec succès",
       });
       
-      // Force refetch immédiat pour déplacer la facture dans l'onglet validées
-      await queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
-      await queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
+      // Mise à jour optimiste du cache local pour disparition immédiate
+      queryClient.setQueryData(['/api/deliveries/bl', selectedStoreId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return oldData.map((d: any) => 
+          d.id === delivery.id 
+            ? { ...d, reconciled: true, validatedAt: new Date().toISOString() }
+            : d
+        );
+      });
+      
+      // Force refetch pour synchroniser avec le serveur
+      queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
+      queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
       
       // Passer automatiquement à l'onglet "Validées" après validation
       setActiveTab("validated");
     } catch (error) {
+      // En cas d'erreur, refetch pour annuler la mise à jour optimiste
+      queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
       toast({
         title: "Erreur",
         description: "Impossible de valider le rapprochement",
