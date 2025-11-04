@@ -128,6 +128,7 @@ import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
 import { weatherService } from "./weatherService.js";
 import fetch from "node-fetch";
+import multer from "multer";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Detect environment
@@ -788,8 +789,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configuration multer pour upload en mémoire
+  const upload = multer({ storage: multer.memoryStorage() });
+
   // Route proxy pour envoi de factures vers webhook (accessible admin + directeur)
-  app.post('/api/reconciliation/send-invoice-webhook', isAuthenticated, async (req: any, res) => {
+  app.post('/api/reconciliation/send-invoice', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) {
@@ -806,45 +810,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Accès refusé - Admin ou Directeur uniquement' });
       }
 
-      const { webhookUrl, formDataFields } = req.body;
-
-      if (!webhookUrl || !formDataFields) {
-        return res.status(400).json({ error: 'Données manquantes: webhookUrl ou formDataFields' });
+      if (!req.file || !req.body.webhookUrl) {
+        return res.status(400).json({ error: 'Fichier ou URL webhook manquant' });
       }
+
+      const { webhookUrl, supplier, blNumber, type } = req.body;
 
       console.log('📤 INVOICE: Envoi facture via webhook', { 
         webhookUrl: webhookUrl.substring(0, 50) + '...', 
         userId: user.id,
         userRole: user.role,
-        fieldsCount: Object.keys(formDataFields).length
+        fileName: req.file.originalname,
+        fileSize: req.file.size
       });
 
-      // Utiliser le FormData natif de Node.js (disponible depuis Node 18+)
-      const { FormData, File, Blob } = await import('node:buffer');
+      // Importer form-data dynamiquement pour ESM
+      const FormDataLib = await eval('import("form-data")');
+      const FormData = FormDataLib.default;
+      
       const formData = new FormData();
-
-      // Ajouter tous les champs du formData
-      for (const [key, value] of Object.entries(formDataFields)) {
-        if (key === 'file' && typeof value === 'object' && (value as any).base64) {
-          // Reconstituer le fichier depuis base64
-          const fileData = value as { base64: string; filename: string; contentType: string };
-          const buffer = Buffer.from(fileData.base64, 'base64');
-          
-          // Créer un Blob/File natif Node.js
-          const blob = new Blob([buffer], { type: fileData.contentType });
-          const file = new File([blob], fileData.filename, { type: fileData.contentType });
-          formData.append('file', file);
-        } else {
-          formData.append(key, value as string);
-        }
-      }
+      formData.append('file', req.file.buffer, {
+        filename: req.file.originalname,
+        contentType: req.file.mimetype
+      });
+      formData.append('supplier', supplier || '');
+      formData.append('blNumber', blNumber || '');
+      formData.append('type', type || 'Facture');
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
         body: formData as any,
+        headers: formData.getHeaders(),
         signal: controller.signal
       });
 
@@ -853,7 +852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ INVOICE: Erreur webhook', { status: response.status, errorText: errorText.substring(0, 200) });
-        throw new Error(`Erreur webhook: ${response.status} ${response.statusText}`);
+        return res.status(500).json({ error: `Erreur webhook: ${response.status}`, details: errorText });
       }
 
       const result = await response.text();
@@ -866,10 +865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error: any) {
-      console.error('❌ INVOICE: Erreur envoi facture:', {
-        name: error.name,
-        message: error.message
-      });
+      console.error('❌ INVOICE: Erreur envoi facture:', error);
 
       let errorMessage = 'Erreur lors de l\'envoi de la facture';
       if (error.name === 'AbortError') {
