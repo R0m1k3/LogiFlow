@@ -1886,6 +1886,7 @@ export class DatabaseStorage implements IStorage {
         
         if (filters.status === 'expires_soon') {
           // Products expiring within 15 days but not expired yet
+          // Ne pas afficher les produits déjà traités (processedUntilExpiry = true)
           const in15Days = new Date();
           in15Days.setDate(today.getDate() + 15);
           in15Days.setHours(23, 59, 59, 999); // End of day
@@ -1893,15 +1894,24 @@ export class DatabaseStorage implements IStorage {
             and(
               gt(dlcProducts.expiryDate, today),
               lte(dlcProducts.expiryDate, in15Days),
-              ne(dlcProducts.status, 'valides')
+              ne(dlcProducts.status, 'valides'),
+              or(
+                isNull(dlcProducts.processedUntilExpiry),
+                eq(dlcProducts.processedUntilExpiry, false)
+              )
             )
           );
         } else if (filters.status === 'expires') {
           // Products already expired
+          // Ne pas afficher les produits déjà traités (processedUntilExpiry = true)
           conditions.push(
             and(
               lte(dlcProducts.expiryDate, today),
-              ne(dlcProducts.status, 'valides')
+              ne(dlcProducts.status, 'valides'),
+              or(
+                isNull(dlcProducts.processedUntilExpiry),
+                eq(dlcProducts.processedUntilExpiry, false)
+              )
             )
           );
         } else if (filters.status === 'en_cours') {
