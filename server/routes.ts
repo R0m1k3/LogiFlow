@@ -589,8 +589,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .filter((schedule: any) => validatedPaymentMethods.includes(schedule.paymentMethod))
         .sort((a: any, b: any) => a.dueDate.getTime() - b.dueDate.getTime());
 
-      // Générer le fichier CSV avec tabulations
-      console.log('📄 [EXPORT] Génération du fichier CSV avec tabulations...');
+      // Générer le fichier CSV avec point-virgule (séparateur Excel France)
+      console.log('📄 [EXPORT] Génération du fichier CSV avec point-virgule...');
 
       // Préparer les en-têtes
       const headers = ['Date d\'échéance', 'Fournisseur', 'Facture', 'Mode de paiement'];
@@ -601,7 +601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const csvLines: string[] = [];
       
       // Ajouter la ligne d'en-tête
-      csvLines.push(headers.join('\t'));
+      csvLines.push(headers.join(';'));
 
       // Ajouter les données
       schedules.forEach((schedule: any) => {
@@ -613,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ];
         if (includeHT) row.push(schedule.amountHT.toFixed(2));
         if (includeTTC) row.push(schedule.amountTTC.toFixed(2));
-        csvLines.push(row.join('\t'));
+        csvLines.push(row.join(';'));
       });
 
       // Calculer les totaux
@@ -624,7 +624,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalRow: string[] = ['', '', '', 'TOTAL'];
       if (includeHT) totalRow.push(totalHT.toFixed(2));
       if (includeTTC) totalRow.push(totalTTC.toFixed(2));
-      csvLines.push(totalRow.join('\t'));
+      csvLines.push(totalRow.join(';'));
 
       // Générer le contenu CSV avec BOM UTF-8 pour Excel
       const BOM = '\uFEFF';
