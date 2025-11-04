@@ -788,6 +788,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route proxy pour envoi de factures vers webhook (accessible admin + directeur)
+  app.post('/api/reconciliation/send-invoice-webhook', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Utilisateur non authentifié' });
+      }
+
+      const user = await storage.getUserWithGroups(userId);
+      if (!user) {
+        return res.status(404).json({ error: 'Utilisateur non trouvé' });
+      }
+
+      // Autoriser admin ET directeur
+      if (user.role !== 'admin' && user.role !== 'directeur') {
+        return res.status(403).json({ error: 'Accès refusé - Admin ou Directeur uniquement' });
+      }
+
+      const { webhookUrl, formDataFields } = req.body;
+
+      if (!webhookUrl || !formDataFields) {
+        return res.status(400).json({ error: 'Données manquantes: webhookUrl ou formDataFields' });
+      }
+
+      console.log('📤 INVOICE: Envoi facture via webhook', { 
+        webhookUrl: webhookUrl.substring(0, 50) + '...', 
+        userId: user.id,
+        userRole: user.role,
+        fieldsCount: Object.keys(formDataFields).length
+      });
+
+      // Préparer le FormData pour l'envoi au webhook externe
+      const FormData = (await import('form-data')).default;
+      const formData = new FormData();
+
+      // Ajouter tous les champs du formData
+      for (const [key, value] of Object.entries(formDataFields)) {
+        if (key === 'file' && typeof value === 'object' && (value as any).base64) {
+          // Reconstituer le fichier depuis base64
+          const fileData = value as { base64: string; filename: string; contentType: string };
+          const buffer = Buffer.from(fileData.base64, 'base64');
+          formData.append('file', buffer, {
+            filename: fileData.filename,
+            contentType: fileData.contentType
+          });
+        } else {
+          formData.append(key, value as string);
+        }
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        body: formData as any,
+        headers: formData.getHeaders(),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ INVOICE: Erreur webhook', { status: response.status, errorText: errorText.substring(0, 200) });
+        throw new Error(`Erreur webhook: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.text();
+      console.log('✅ INVOICE: Webhook réussi', { userId: user.id, userRole: user.role });
+
+      res.json({
+        success: true,
+        message: 'Facture envoyée avec succès',
+        webhookResponse: result
+      });
+
+    } catch (error: any) {
+      console.error('❌ INVOICE: Erreur envoi facture:', {
+        name: error.name,
+        message: error.message
+      });
+
+      let errorMessage = 'Erreur lors de l\'envoi de la facture';
+      if (error.name === 'AbortError') {
+        errorMessage = 'Timeout - Le traitement a pris trop de temps';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      res.status(500).json({ 
+        error: errorMessage,
+        details: error.message 
+      });
+    }
+  });
+
   // Auth routes handled by authSwitch (local or Replit)
 
   // Groups routes
