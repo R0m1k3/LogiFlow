@@ -128,7 +128,6 @@ import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
 import { weatherService } from "./weatherService.js";
 import fetch from "node-fetch";
-import FormData from "form-data";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Detect environment
@@ -820,7 +819,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fieldsCount: Object.keys(formDataFields).length
       });
 
-      // Préparer le FormData pour l'envoi au webhook externe
+      // Utiliser le FormData natif de Node.js (disponible depuis Node 18+)
+      const { FormData, File, Blob } = await import('node:buffer');
       const formData = new FormData();
 
       // Ajouter tous les champs du formData
@@ -829,10 +829,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Reconstituer le fichier depuis base64
           const fileData = value as { base64: string; filename: string; contentType: string };
           const buffer = Buffer.from(fileData.base64, 'base64');
-          formData.append('file', buffer, {
-            filename: fileData.filename,
-            contentType: fileData.contentType
-          });
+          
+          // Créer un Blob/File natif Node.js
+          const blob = new Blob([buffer], { type: fileData.contentType });
+          const file = new File([blob], fileData.filename, { type: fileData.contentType });
+          formData.append('file', file);
         } else {
           formData.append(key, value as string);
         }
@@ -844,7 +845,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const response = await fetch(webhookUrl, {
         method: 'POST',
         body: formData as any,
-        headers: formData.getHeaders(),
         signal: controller.signal
       });
 
