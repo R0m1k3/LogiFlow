@@ -445,6 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           invoiceReference: delivery.invoiceReference,
           dueDate: delivery.dueDate,
           amount: delivery.invoiceAmount ? parseFloat(delivery.invoiceAmount) : 0,
+          amountTTC: delivery.invoiceAmountTTC ? parseFloat(delivery.invoiceAmountTTC) : 0,
           supplierName: supplier?.name || 'Fournisseur inconnu',
           paymentMethod: supplier?.paymentMethod || null,
           groupId: group.id,

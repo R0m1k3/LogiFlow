@@ -18,6 +18,7 @@ interface PaymentSchedule {
   invoiceReference: string;
   dueDate: string;
   amount: number;
+  amountTTC: number;
   supplierName: string;
   paymentMethod: string | null;
   groupId: number;
@@ -87,17 +88,32 @@ export default function PaymentSchedulePage() {
       });
   }, [data?.schedules, selectedMonth]);
 
-  // Calculer le total du mois
+  // Calculer le total du mois (HT)
   const monthTotal = useMemo(() => {
     return filteredSchedules.reduce((sum, schedule) => sum + schedule.amount, 0);
   }, [filteredSchedules]);
 
-  // Grouper par mode de paiement
+  // Calculer le total du mois (TTC)
+  const monthTotalTTC = useMemo(() => {
+    return filteredSchedules.reduce((sum, schedule) => sum + schedule.amountTTC, 0);
+  }, [filteredSchedules]);
+
+  // Grouper par mode de paiement (HT)
   const paymentMethodTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     filteredSchedules.forEach(schedule => {
       const method = schedule.paymentMethod || 'Non défini';
       totals[method] = (totals[method] || 0) + schedule.amount;
+    });
+    return totals;
+  }, [filteredSchedules]);
+
+  // Grouper par mode de paiement (TTC)
+  const paymentMethodTotalsTTC = useMemo(() => {
+    const totals: Record<string, number> = {};
+    filteredSchedules.forEach(schedule => {
+      const method = schedule.paymentMethod || 'Non défini';
+      totals[method] = (totals[method] || 0) + schedule.amountTTC;
     });
     return totals;
   }, [filteredSchedules]);
@@ -188,10 +204,21 @@ export default function PaymentSchedulePage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold" data-testid="text-month-total">
-              {monthTotal.toFixed(2)} €
+            <div className="space-y-1">
+              <div className="flex justify-between items-baseline">
+                <span className="text-sm text-gray-600">HT:</span>
+                <span className="text-xl font-bold" data-testid="text-month-total-ht">
+                  {monthTotal.toFixed(2)} €
+                </span>
+              </div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-sm text-gray-600">TTC:</span>
+                <span className="text-xl font-bold text-blue-600" data-testid="text-month-total-ttc">
+                  {monthTotalTTC.toFixed(2)} €
+                </span>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-2">
               {filteredSchedules.length} échéance{filteredSchedules.length > 1 ? 's' : ''}
             </p>
           </CardContent>
@@ -203,11 +230,20 @@ export default function PaymentSchedulePage() {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-sm space-y-1">
-              {Object.entries(paymentMethodTotals).map(([method, total]) => (
-                <div key={method} className="flex justify-between">
-                  <span className="text-gray-600">{method}:</span>
-                  <span className="font-semibold">{total.toFixed(2)} €</span>
+            <div className="text-sm space-y-2">
+              {Object.entries(paymentMethodTotals).map(([method, totalHT]) => (
+                <div key={method} className="border-b pb-2 last:border-b-0">
+                  <div className="font-medium text-gray-700 mb-1">{method}</div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">HT:</span>
+                    <span className="font-semibold">{totalHT.toFixed(2)} €</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">TTC:</span>
+                    <span className="font-semibold text-blue-600">
+                      {paymentMethodTotalsTTC[method]?.toFixed(2) || '0.00'} €
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -272,9 +308,18 @@ export default function PaymentSchedulePage() {
                       )}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold text-blue-600">
-                      {schedule.amount.toFixed(2)} €
+                  <div className="text-right space-y-1">
+                    <div className="flex items-center gap-2 justify-end">
+                      <span className="text-xs text-gray-500">HT:</span>
+                      <span className="text-lg font-semibold">
+                        {schedule.amount.toFixed(2)} €
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 justify-end">
+                      <span className="text-xs text-gray-500">TTC:</span>
+                      <span className="text-lg font-bold text-blue-600">
+                        {schedule.amountTTC.toFixed(2)} €
+                      </span>
                     </div>
                   </div>
                 </div>
