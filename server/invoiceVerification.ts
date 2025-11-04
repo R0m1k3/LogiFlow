@@ -35,7 +35,9 @@ export class InvoiceVerificationService {
         console.log('🛡️ [CACHE] PERMANENT - Facture validée avec coche verte, AUCUNE vérification:', { 
           invoiceReference, 
           groupId, 
-          exists: cached.exists 
+          exists: cached.exists,
+          invoiceAmount: cached.invoiceAmount,
+          dueDate: cached.dueDate
         });
         return {
           exists: cached.exists,
@@ -43,6 +45,8 @@ export class InvoiceVerificationService {
           errorMessage: cached.errorMessage,
           invoiceReference: cached.invoiceReference,
           supplierName: cached.supplierName,
+          invoiceAmount: cached.invoiceAmount ? parseFloat(cached.invoiceAmount) : undefined,
+          dueDate: cached.dueDate ? new Date(cached.dueDate).toISOString() : null,
           fromCache: true,
           permanent: true
         };
@@ -57,6 +61,8 @@ export class InvoiceVerificationService {
           errorMessage: cached.errorMessage,
           invoiceReference: cached.invoiceReference,
           supplierName: cached.supplierName,
+          invoiceAmount: cached.invoiceAmount ? parseFloat(cached.invoiceAmount) : undefined,
+          dueDate: cached.dueDate ? new Date(cached.dueDate).toISOString() : null,
           fromCache: true,
           permanent: false
         };
@@ -115,6 +121,8 @@ export class InvoiceVerificationService {
         groupId,
         invoiceReference,
         supplierName: supplierName || null,
+        invoiceAmount: result.invoiceAmount || null,
+        dueDate: result.dueDate ? new Date(result.dueDate) : null,
         exists: result.exists,
         matchType: result.matchType,
         errorMessage: result.errorMessage || null,
