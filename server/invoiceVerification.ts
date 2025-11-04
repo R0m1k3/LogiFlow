@@ -46,6 +46,7 @@ export class InvoiceVerificationService {
           invoiceReference: cached.invoiceReference,
           supplierName: cached.supplierName,
           invoiceAmount: cached.invoiceAmount ? parseFloat(cached.invoiceAmount) : undefined,
+          invoiceAmountTTC: cached.invoiceAmountTTC ? parseFloat(cached.invoiceAmountTTC) : undefined,
           dueDate: cached.dueDate ? new Date(cached.dueDate).toISOString() : null,
           fromCache: true,
           permanent: true
@@ -62,6 +63,7 @@ export class InvoiceVerificationService {
           invoiceReference: cached.invoiceReference,
           supplierName: cached.supplierName,
           invoiceAmount: cached.invoiceAmount ? parseFloat(cached.invoiceAmount) : undefined,
+          invoiceAmountTTC: cached.invoiceAmountTTC ? parseFloat(cached.invoiceAmountTTC) : undefined,
           dueDate: cached.dueDate ? new Date(cached.dueDate).toISOString() : null,
           fromCache: true,
           permanent: false
@@ -122,6 +124,7 @@ export class InvoiceVerificationService {
         invoiceReference,
         supplierName: supplierName || null,
         invoiceAmount: result.invoiceAmount || null,
+        invoiceAmountTTC: result.invoiceAmountTTC || null,
         dueDate: result.dueDate ? new Date(result.dueDate) : null,
         exists: result.exists,
         matchType: result.matchType,
@@ -405,6 +408,7 @@ export class InvoiceVerificationService {
             matchType: 'invoice_reference' as const,
             invoiceReference: matchResult.data.invoice_reference || invoiceReference,
             invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
+            invoiceAmountTTC: parseFloat(matchResult.data[group.nocodbInvoiceAmountTTCColumnName || 'Montant TTC'] || '0'),
             supplierName: matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || 'Inconnu',
             dueDate: matchResult.data[group.nocodbDueDateColumnName || 'Echeance'] || null
           };
@@ -442,6 +446,7 @@ export class InvoiceVerificationService {
               matchType: 'bl_number' as const,
               invoiceReference: matchResult.data.invoice_reference || `BL_${invoiceReference}`,
               invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
+              invoiceAmountTTC: parseFloat(matchResult.data[group.nocodbInvoiceAmountTTCColumnName || 'Montant TTC'] || '0'),
               supplierName: matchResult.data[group.nocodbSupplierColumnName || 'supplier'] || 'Inconnu',
               dueDate: matchResult.data[group.nocodbDueDateColumnName || 'Echeance'] || null
             };
@@ -807,6 +812,7 @@ export class InvoiceVerificationService {
             matchType: 'bl_number' as const,
             invoiceReference: matchResult.data[group.invoiceColumnName || 'RefFacture'] || `BL_${blNumber}`,
             invoiceAmount: parseFloat(matchResult.data[group.nocodbAmountColumnName || 'amount'] || '0'),
+            invoiceAmountTTC: parseFloat(matchResult.data[group.nocodbInvoiceAmountTTCColumnName || 'Montant TTC'] || '0'),
             supplierName: foundSupplier || supplierName,
             dueDate: matchResult.data[group.nocodbDueDateColumnName || 'Echeance'] || null
           };
