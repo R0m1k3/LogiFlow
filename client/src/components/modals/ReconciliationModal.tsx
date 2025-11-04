@@ -34,6 +34,7 @@ export default function ReconciliationModal({
     blAmount: "",
     invoiceReference: "",
     invoiceAmount: "",
+    dueDate: "",
     reconciled: false,
   });
 
@@ -45,6 +46,7 @@ export default function ReconciliationModal({
         blAmount: delivery.blAmount || "",
         invoiceReference: delivery.invoiceReference || "",
         invoiceAmount: delivery.invoiceAmount || "",
+        dueDate: delivery.dueDate ? safeFormat(delivery.dueDate, 'yyyy-MM-dd') : "",
         reconciled: delivery.reconciled || false,
       });
     }
@@ -85,6 +87,7 @@ export default function ReconciliationModal({
       blAmount: formData.blAmount ? formData.blAmount.toString() : null,
       invoiceReference: formData.invoiceReference.trim() || null,
       invoiceAmount: formData.invoiceAmount ? formData.invoiceAmount.toString() : null,
+      dueDate: formData.dueDate || null,
     });
   };
 
@@ -207,6 +210,17 @@ export default function ReconciliationModal({
                         value={formData.invoiceAmount}
                         onChange={(e) => setFormData(prev => ({ ...prev, invoiceAmount: e.target.value }))}
                         placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="dueDate">Date d'Échéance</Label>
+                      <Input
+                        id="dueDate"
+                        type="date"
+                        value={formData.dueDate}
+                        onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+                        placeholder="jj/mm/aaaa"
                       />
                     </div>
                   </div>
