@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupLocalAuth, requireAuth } from "./localAuth";
 import { requireModulePermission, requireAdmin, requirePermission } from "./permissions";
 import { db, pool } from "./db";
-import Busboy from "busboy";
+import multer from "multer";
 
 console.log('🔍 Using development storage and authentication');
 
@@ -789,8 +789,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Configuration multer pour envoi de factures
+  const invoiceUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
+  });
+
   // Route proxy SIMPLE pour envoi de factures (admin + directeur)
-  app.post('/api/reconciliation/send-invoice', isAuthenticated, async (req: any, res) => {
+  app.post('/api/reconciliation/send-invoice', isAuthenticated, invoiceUpload.single('file'), async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) {
@@ -802,43 +808,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Accès refusé' });
       }
 
-      // Utiliser busboy pour parser le multipart/form-data
-      const busboy = Busboy({ headers: req.headers });
-      const fields: any = {};
-      let fileBuffer: Buffer | null = null;
-      let fileName = '';
-      let mimeType = '';
-
-      busboy.on('file', (fieldname, file, info) => {
-        const chunks: Buffer[] = [];
-        fileName = info.filename;
-        mimeType = info.mimeType;
-        
-        file.on('data', (chunk) => chunks.push(chunk));
-        file.on('end', () => {
-          fileBuffer = Buffer.concat(chunks);
-        });
-      });
-
-      busboy.on('field', (fieldname, value) => {
-        fields[fieldname] = value;
-      });
-
-      await new Promise((resolve, reject) => {
-        busboy.on('finish', resolve);
-        busboy.on('error', reject);
-        req.pipe(busboy);
-      });
-
-      if (!fileBuffer || !fields.webhookUrl) {
+      if (!req.file || !req.body.webhookUrl) {
         return res.status(400).json({ error: 'Fichier ou webhook manquant' });
       }
 
       console.log('📤 INVOICE PROXY: Envoi facture', {
         userId: user.id,
         role: user.role,
-        fileName,
-        size: fileBuffer.length
+        fileName: req.file.originalname,
+        size: req.file.size
       });
 
       // Importer form-data dynamiquement avec eval pour ESM
@@ -846,12 +824,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const FormData = FormDataModule.default;
       
       const formData = new FormData();
-      formData.append('file', fileBuffer, { filename: fileName, contentType: mimeType });
-      formData.append('supplier', fields.supplier || '');
-      formData.append('blNumber', fields.blNumber || '');
-      formData.append('type', fields.type || 'Facture');
+      formData.append('file', req.file.buffer, { 
+        filename: req.file.originalname, 
+        contentType: req.file.mimetype 
+      });
+      formData.append('supplier', req.body.supplier || '');
+      formData.append('blNumber', req.body.blNumber || '');
+      formData.append('type', req.body.type || 'Facture');
 
-      const response = await fetch(fields.webhookUrl, {
+      const response = await fetch(req.body.webhookUrl, {
         method: 'POST',
         body: formData as any,
         headers: formData.getHeaders()
