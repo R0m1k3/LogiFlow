@@ -99,53 +99,7 @@ export default function BLReconciliation() {
         [variables.deliveryId]: result
       }));
       
-      // Toast de confirmation avec détails de la vérification
-      if (result.exists) {
-        // Facture trouvée - afficher les détails
-        // Formater la date d'échéance si présente
-        let dueDateText = '';
-        if (result.dueDate) {
-          try {
-            const date = new Date(result.dueDate);
-            dueDateText = date.toLocaleDateString('fr-FR', { 
-              day: 'numeric', 
-              month: 'long', 
-              year: 'numeric' 
-            });
-          } catch (e) {
-            dueDateText = result.dueDate; // Afficher tel quel si le format n'est pas reconnu
-          }
-        }
-        
-        // Formater le montant avec garde contre NaN
-        const amountText = result.invoiceAmount ? 
-          (() => {
-            const amount = parseFloat(result.invoiceAmount);
-            return isNaN(amount) ? 'Format invalide' : `${amount.toFixed(2)}€`;
-          })() : 
-          'Non disponible';
-        
-        toast({
-          title: "✅ Facture vérifiée avec succès",
-          description: (
-            <div className="space-y-1 text-sm">
-              <div><strong>Référence :</strong> {result.invoiceReference || 'Non disponible'}</div>
-              <div><strong>Montant :</strong> {amountText}</div>
-              {result.dueDate ? (
-                <div className="text-green-600 font-medium">
-                  <strong>📅 Échéance :</strong> {dueDateText}
-                </div>
-              ) : (
-                <div className="text-orange-600 font-medium">
-                  ⚠️ Aucune date d'échéance trouvée
-                </div>
-              )}
-            </div>
-          ),
-          duration: 5000,
-        });
-      }
-      // Pas de toast si facture non trouvée - affichage silencieux de la croix rouge
+      // Pas de toast - affichage silencieux des coches vertes/rouges
       
       // Auto-remplissage si facture trouvée (référence facture OU numéro BL)
       if (result.exists) {
@@ -681,9 +635,6 @@ export default function BLReconciliation() {
       // Force refetch pour synchroniser avec le serveur
       queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
       queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
-      
-      // Passer automatiquement à l'onglet "Validées" après validation
-      setActiveTab("validated");
     } catch (error) {
       // En cas d'erreur, refetch pour annuler la mise à jour optimiste
       queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
@@ -723,9 +674,6 @@ export default function BLReconciliation() {
       // Force refetch immédiat pour déplacer la facture dans l'onglet manuel
       await queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
       await queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
-      
-      // Passer automatiquement à l'onglet "Manuel" après dévalidation
-      setActiveTab("manual");
     } catch (error) {
       toast({
         title: "Erreur",
