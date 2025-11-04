@@ -1342,6 +1342,17 @@ export default function BLReconciliation() {
                                   }
                                 </div>
                               </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm">
+                                  {delivery.dueDate ? (
+                                    <span className="text-gray-900">
+                                      {safeFormat(delivery.dueDate, 'dd/MM/yyyy')}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400 italic text-xs">-</span>
+                                  )}
+                                </div>
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-center">
                                 {ecart !== null ? (
                                   <Badge 
