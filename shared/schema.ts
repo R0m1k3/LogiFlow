@@ -173,6 +173,8 @@ export const invoiceVerificationCache = pgTable("invoice_verification_cache", {
   groupId: integer("group_id").notNull(),
   invoiceReference: varchar("invoice_reference", { length: 255 }).notNull(),
   supplierName: varchar("supplier_name", { length: 255 }),
+  invoiceAmount: decimal("invoice_amount", { precision: 10, scale: 2 }), // Montant de la facture
+  dueDate: timestamp("due_date"), // Date d'échéance
   exists: boolean("exists").notNull(),
   matchType: varchar("match_type", { length: 50 }).notNull(),
   errorMessage: text("error_message"),
