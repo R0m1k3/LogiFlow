@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useStore } from "@/contexts/StoreContext";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Calendar, DollarSign, Building, CreditCard, AlertCircle } from "lucide-react";
+import { Loader2, Calendar, DollarSign, Building, CreditCard, AlertCircle, FileSpreadsheet, Download } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -12,6 +13,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface PaymentSchedule {
   id: string | number;
@@ -32,10 +52,18 @@ interface PaymentScheduleResponse {
 
 export default function PaymentSchedulePage() {
   const { selectedStoreId } = useStore();
+  const { toast } = useToast();
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const now = new Date();
     return format(now, 'yyyy-MM');
   });
+  
+  // États pour la modale d'export
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<string[]>([]);
+  const [includeHT, setIncludeHT] = useState(true);
+  const [includeTTC, setIncludeTTC] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Récupérer les échéances
   const { data, isLoading, error } = useQuery<PaymentScheduleResponse>({
@@ -118,6 +146,95 @@ export default function PaymentSchedulePage() {
     return totals;
   }, [filteredSchedules]);
 
+  // Récupérer tous les modes de paiement disponibles
+  const availablePaymentMethods = useMemo(() => {
+    const methods = new Set<string>();
+    filteredSchedules.forEach(schedule => {
+      methods.add(schedule.paymentMethod || 'Non défini');
+    });
+    return Array.from(methods).sort();
+  }, [filteredSchedules]);
+
+  // Handler pour ouvrir la modale d'export
+  const handleOpenExportModal = () => {
+    // Pré-sélectionner tous les modes de paiement par défaut
+    setSelectedPaymentMethods(availablePaymentMethods);
+    setShowExportModal(true);
+  };
+
+  // Handler pour basculer la sélection d'un mode de paiement
+  const togglePaymentMethod = (method: string) => {
+    setSelectedPaymentMethods(prev =>
+      prev.includes(method)
+        ? prev.filter(m => m !== method)
+        : [...prev, method]
+    );
+  };
+
+  // Handler pour sélectionner/désélectionner tous les modes de paiement
+  const toggleAllPaymentMethods = () => {
+    if (selectedPaymentMethods.length === availablePaymentMethods.length) {
+      setSelectedPaymentMethods([]);
+    } else {
+      setSelectedPaymentMethods(availablePaymentMethods);
+    }
+  };
+
+  // Handler pour exporter vers Excel
+  const handleExport = async () => {
+    if (selectedPaymentMethods.length === 0) {
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const response = await fetch('/api/payment-schedule/export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          groupId: selectedStoreId,
+          month: selectedMonth,
+          paymentMethods: selectedPaymentMethods,
+          includeHT,
+          includeTTC,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de l\'export');
+      }
+
+      // Télécharger le fichier
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `echeancier_${selectedMonth}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setShowExportModal(false);
+      toast({
+        title: "Export réussi",
+        description: "Le fichier Excel a été téléchargé avec succès.",
+      });
+    } catch (error) {
+      console.error('Erreur export:', error);
+      toast({
+        title: "Erreur d'export",
+        description: "Une erreur est survenue lors de l'export du fichier Excel.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (!selectedStoreId) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -180,19 +297,31 @@ export default function PaymentSchedulePage() {
           <h1 className="text-3xl font-bold">Échéancier des Paiements</h1>
           <p className="text-gray-600 mt-1">Gestion des échéances fournisseurs</p>
         </div>
-        <div className="w-64">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger data-testid="select-month">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {availableMonths.map(month => (
-                <SelectItem key={month.value} value={month.value}>
-                  {month.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-4">
+          <Button
+            onClick={handleOpenExportModal}
+            variant="outline"
+            className="gap-2"
+            disabled={filteredSchedules.length === 0}
+            data-testid="button-export-excel"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Exporter Excel
+          </Button>
+          <div className="w-64">
+            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+              <SelectTrigger data-testid="select-month">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableMonths.map(month => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -266,7 +395,7 @@ export default function PaymentSchedulePage() {
         </Card>
       </div>
 
-      {/* Liste des échéances */}
+      {/* Tableau des échéances */}
       <Card>
         <CardHeader>
           <CardTitle>Échéances du Mois</CardTitle>
@@ -280,54 +409,175 @@ export default function PaymentSchedulePage() {
               Aucune échéance pour ce mois
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredSchedules.map((schedule, index) => (
-                <div
-                  key={`${schedule.id}-${index}`}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                  data-testid={`schedule-item-${index}`}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="font-semibold">
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[120px]">Date</TableHead>
+                    <TableHead>Fournisseur</TableHead>
+                    <TableHead>Facture</TableHead>
+                    <TableHead className="w-[140px]">Mode de paiement</TableHead>
+                    <TableHead className="text-right w-[110px]">Montant HT</TableHead>
+                    <TableHead className="text-right w-[110px]">Montant TTC</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredSchedules.map((schedule, index) => (
+                    <TableRow 
+                      key={`${schedule.id}-${index}`}
+                      data-testid={`schedule-item-${index}`}
+                      className="hover:bg-gray-50"
+                    >
+                      <TableCell className="font-medium">
                         {format(parseISO(schedule.dueDate), 'dd/MM/yyyy', { locale: fr })}
-                      </span>
-                    </div>
-                    <div className="mt-2 space-y-1 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <Building className="w-3 h-3" />
-                        <span>{schedule.supplierName}</span>
-                      </div>
-                      <div>Facture: {schedule.invoiceReference}</div>
-                      {schedule.paymentMethod && (
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="w-3 h-3" />
-                          <span>{schedule.paymentMethod}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <div className="flex items-center gap-2 justify-end">
-                      <span className="text-xs text-gray-500">HT:</span>
-                      <span className="text-lg font-semibold">
+                      </TableCell>
+                      <TableCell>{schedule.supplierName}</TableCell>
+                      <TableCell className="font-mono text-sm">{schedule.invoiceReference}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                          schedule.paymentMethod === 'Virement' ? 'bg-blue-100 text-blue-800' :
+                          schedule.paymentMethod === 'Traite' ? 'bg-green-100 text-green-800' :
+                          schedule.paymentMethod === 'Chèque' ? 'bg-yellow-100 text-yellow-800' :
+                          schedule.paymentMethod === 'Traite Magnétique' ? 'bg-purple-100 text-purple-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {schedule.paymentMethod || 'Non défini'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
                         {schedule.amount.toFixed(2)} €
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 justify-end">
-                      <span className="text-xs text-gray-500">TTC:</span>
-                      <span className="text-lg font-bold text-blue-600">
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-blue-600">
                         {schedule.amountTTC.toFixed(2)} €
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Modale d'export Excel */}
+      <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-green-600" />
+              Exporter vers Excel
+            </DialogTitle>
+            <DialogDescription>
+              Sélectionnez les modes de paiement et les colonnes à inclure dans l'export
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Sélection des modes de paiement */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Modes de paiement</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleAllPaymentMethods}
+                  className="h-auto py-1 text-xs"
+                  data-testid="button-toggle-all-methods"
+                >
+                  {selectedPaymentMethods.length === availablePaymentMethods.length
+                    ? 'Tout désélectionner'
+                    : 'Tout sélectionner'}
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
+                {availablePaymentMethods.map((method) => (
+                  <div key={method} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`payment-method-${method}`}
+                      checked={selectedPaymentMethods.includes(method)}
+                      onCheckedChange={() => togglePaymentMethod(method)}
+                      data-testid={`checkbox-payment-method-${method}`}
+                    />
+                    <label
+                      htmlFor={`payment-method-${method}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {method}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Options de colonnes */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Colonnes à inclure</Label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="include-ht"
+                    checked={includeHT}
+                    onCheckedChange={(checked) => setIncludeHT(!!checked)}
+                    data-testid="checkbox-include-ht"
+                  />
+                  <label
+                    htmlFor="include-ht"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Montant HT
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="include-ttc"
+                    checked={includeTTC}
+                    onCheckedChange={(checked) => setIncludeTTC(!!checked)}
+                    data-testid="checkbox-include-ttc"
+                  />
+                  <label
+                    htmlFor="include-ttc"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Montant TTC
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowExportModal(false)}
+              disabled={isExporting}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleExport}
+              disabled={
+                isExporting ||
+                selectedPaymentMethods.length === 0 ||
+                (!includeHT && !includeTTC)
+              }
+              className="gap-2"
+              data-testid="button-confirm-export"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Export en cours...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Exporter
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
