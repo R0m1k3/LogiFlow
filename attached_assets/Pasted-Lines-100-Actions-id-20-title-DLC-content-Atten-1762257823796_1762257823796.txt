@@ -1,0 +1,207 @@
+Lines
+100
+Actions
+ 
+ 
+ 
+      
+  {
+
+    id: 20,
+
+    title: 'DLC',
+
+    content: 'Attention des DLC sont en expiré bientôt ou expiré, il faut s en occuper',
+
+    type: 'success',
+
+    storeId: 2,
+
+    createdBy: 'admin',
+
+    createdAt: 2025-09-24T11:26:13.521Z
+
+  },
+
+  {
+
+    id: 17,
+
+    title: 'Module Avoir',
+
+    content: "Le module d'avoir est en place",
+
+    type: 'error',
+
+    storeId: 1,
+
+    createdBy: 'admin',
+
+    createdAt: 2025-09-09T07:47:47.650Z
+
+  },
+
+  {
+
+    id: 16,
+
+    title: 'Mise à jour Prix',
+
+    content: 'Merci de mettre vos prix a jour tous les matins, certain magasin ne le font pas.',
+
+    type: 'success',
+
+    storeId: null,
+
+    createdBy: 'admin',
+
+    createdAt: 2025-08-18T10:45:08.585Z
+
+  },
+
+  {
+
+    id: 8,
+
+    title: 'Bon de Livraison',
+
+    content: 'Lorsque vous rentrez un numéro de bon de livraison, faite le a l identique, même les majuscules. Pour My candy Shop, prendre le numéro de commande.',
+
+    type: 'info',
+
+    storeId: null,
+
+    createdBy: 'admin_local',
+
+    createdAt: 2025-08-07T11:04:38.123Z
+
+  }
+
+]
+
+🔍 [PRODUCTION] Looking for user with username: admin
+
+🔍 [PRODUCTION] Looking for user with username: admin
+
+🔍 [PRODUCTION] Looking for user with username: admin
+
+🔍 [PRODUCTION] Looking for user with username: admin_local
+
+🔍 [PRODUCTION] Raw messages from DB: 4 items: [
+
+  {
+
+    id: 20,
+
+    title: 'DLC',
+
+    content: 'Attention des DLC sont en expiré bientôt ou expiré, il faut s en occuper',
+
+    type: 'success',
+
+    storeId: 2,
+
+    createdBy: 'admin',
+
+    createdAt: 2025-09-24T11:26:13.521Z
+
+  },
+
+  {
+
+    id: 17,
+
+    title: 'Module Avoir',
+
+    content: "Le module d'avoir est en place",
+
+    type: 'error',
+
+    storeId: 1,
+
+    createdBy: 'admin',
+
+    createdAt: 2025-09-09T07:47:47.650Z
+
+  },
+
+  {
+
+    id: 16,
+
+    title: 'Mise à jour Prix',
+
+    content: 'Merci de mettre vos prix a jour tous les matins, certain magasin ne le font pas.',
+
+    type: 'success',
+
+    storeId: null,
+
+    createdBy: 'admin',
+
+    createdAt: 2025-08-18T10:45:08.585Z
+
+  },
+
+  {
+
+    id: 8,
+
+    title: 'Bon de Livraison',
+
+    content: 'Lorsque vous rentrez un numéro de bon de livraison, faite le a l identique, même les majuscules. Pour My candy Shop, prendre le numéro de commande.',
+
+    type: 'info',
+
+    storeId: null,
+
+    createdBy: 'admin_local',
+
+    createdAt: 2025-08-07T11:04:38.123Z
+
+  }
+
+]
+
+🔍 [PRODUCTION] Looking for user with username: admin
+
+🔍 [PRODUCTION] Looking for user with username: admin
+
+🔍 [PRODUCTION] Looking for user with username: admin
+
+🔍 [PRODUCTION] Looking for user with username: admin_local
+
+🔍 [PRODUCTION] User search result: Found
+
+🔍 [PRODUCTION] User search result: Found
+
+🔍 [PRODUCTION] User search result: Found
+
+🔍 [PRODUCTION] User search result: Found
+
+🔍 [PRODUCTION] User search result: Not found
+
+🔍 [PRODUCTION] User search result: Not found
+
+❌ [PRODUCTION] User not found with username: admin_local
+
+❌ [PRODUCTION] User not found with username: admin_local
+
+🎯 [PRODUCTION] Found announcements: 4
+
+🔍 [PRODUCTION] User search result: Found
+
+🔍 [PRODUCTION] User search result: Found
+
+GET /api/announcements 304 in 29ms
+
+🎯 [PRODUCTION] Found announcements: 4
+
+GET /api/announcements 304 in 31ms
+
+GET /api/dlc-products 200 in 31ms
+
+GET /api/groups 200 in 5ms
+
+HEAD /api/health 200 in 1ms
+

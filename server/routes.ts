@@ -503,18 +503,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour exporter l'échéancier vers Excel
   app.post('/api/payment-schedule/export', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('📊 [EXPORT] Début de l\'export Excel');
+      
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) {
+        console.error('❌ [EXPORT] Utilisateur non authentifié');
         return res.status(401).json({ error: 'Utilisateur non authentifié' });
       }
 
       const user = await storage.getUser(userId);
+      console.log(`🔍 [EXPORT] Utilisateur: ${user?.username} (${user?.role})`);
+      
       if (!user || (user.role !== 'admin' && user.role !== 'directeur')) {
+        console.error('❌ [EXPORT] Accès refusé');
         return res.status(403).json({ error: 'Accès refusé - Admin ou Directeur uniquement' });
       }
 
       // Récupérer les paramètres d'export
       const { groupId, month, paymentMethods, includeHT, includeTTC } = req.body;
+      console.log('📋 [EXPORT] Paramètres:', { groupId, month, paymentMethods, includeHT, includeTTC });
 
       // Validation
       const groupIdSchema = z.coerce.number().int().positive();
@@ -583,8 +590,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .sort((a: any, b: any) => a.dueDate.getTime() - b.dueDate.getTime());
 
       // Générer le fichier Excel
+      console.log('📦 [EXPORT] Import du module xlsx...');
       const XLSX = await import('xlsx');
+      console.log('✅ [EXPORT] Module xlsx importé avec succès');
       const workbook = XLSX.utils.book_new();
+      console.log('📄 [EXPORT] Workbook créé');
 
       // Préparer les données pour Excel
       const headers = ['Date d\'échéance', 'Fournisseur', 'Facture', 'Mode de paiement'];
@@ -644,8 +654,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📊 Export Excel généré: ${schedules.length} échéances pour ${group.name}`);
 
     } catch (error: any) {
-      console.error('❌ Erreur export Excel:', error);
-      res.status(500).json({ error: 'Erreur lors de l\'export', details: error.message });
+      console.error('❌ [EXPORT] Erreur export Excel:', error);
+      console.error('❌ [EXPORT] Message:', error.message);
+      console.error('❌ [EXPORT] Stack:', error.stack);
+      res.status(500).json({ 
+        error: 'Erreur lors de l\'export', 
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 
