@@ -128,7 +128,6 @@ import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
 import { weatherService } from "./weatherService.js";
 import fetch from "node-fetch";
-import multer from "multer";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Detect environment
@@ -789,97 +788,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Configuration multer pour upload en mémoire
-  const upload = multer({ storage: multer.memoryStorage() });
-
-  // Route proxy pour envoi de factures vers webhook (accessible admin + directeur)
-  app.post('/api/reconciliation/send-invoice', isAuthenticated, upload.single('file'), async (req: any, res) => {
-    try {
-      const userId = req.user?.claims?.sub || req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: 'Utilisateur non authentifié' });
-      }
-
-      const user = await storage.getUserWithGroups(userId);
-      if (!user) {
-        return res.status(404).json({ error: 'Utilisateur non trouvé' });
-      }
-
-      // Autoriser admin ET directeur
-      if (user.role !== 'admin' && user.role !== 'directeur') {
-        return res.status(403).json({ error: 'Accès refusé - Admin ou Directeur uniquement' });
-      }
-
-      if (!req.file || !req.body.webhookUrl) {
-        return res.status(400).json({ error: 'Fichier ou URL webhook manquant' });
-      }
-
-      const { webhookUrl, supplier, blNumber, type } = req.body;
-
-      console.log('📤 INVOICE: Envoi facture via webhook', { 
-        webhookUrl: webhookUrl.substring(0, 50) + '...', 
-        userId: user.id,
-        userRole: user.role,
-        fileName: req.file.originalname,
-        fileSize: req.file.size
-      });
-
-      // Importer form-data dynamiquement pour ESM
-      const FormDataLib = await eval('import("form-data")');
-      const FormData = FormDataLib.default;
-      
-      const formData = new FormData();
-      formData.append('file', req.file.buffer, {
-        filename: req.file.originalname,
-        contentType: req.file.mimetype
-      });
-      formData.append('supplier', supplier || '');
-      formData.append('blNumber', blNumber || '');
-      formData.append('type', type || 'Facture');
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        body: formData as any,
-        headers: formData.getHeaders(),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ INVOICE: Erreur webhook', { status: response.status, errorText: errorText.substring(0, 200) });
-        return res.status(500).json({ error: `Erreur webhook: ${response.status}`, details: errorText });
-      }
-
-      const result = await response.text();
-      console.log('✅ INVOICE: Webhook réussi', { userId: user.id, userRole: user.role });
-
-      res.json({
-        success: true,
-        message: 'Facture envoyée avec succès',
-        webhookResponse: result
-      });
-
-    } catch (error: any) {
-      console.error('❌ INVOICE: Erreur envoi facture:', error);
-
-      let errorMessage = 'Erreur lors de l\'envoi de la facture';
-      if (error.name === 'AbortError') {
-        errorMessage = 'Timeout - Le traitement a pris trop de temps';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      res.status(500).json({ 
-        error: errorMessage,
-        details: error.message 
-      });
-    }
-  });
 
   // Auth routes handled by authSwitch (local or Replit)
 

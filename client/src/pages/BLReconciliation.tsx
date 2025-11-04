@@ -515,24 +515,25 @@ export default function BLReconciliation() {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('webhookUrl', selectedDeliveryForInvoice.group.webhookUrl);
       formData.append('supplier', selectedDeliveryForInvoice.supplier?.name || '');
       formData.append('blNumber', selectedDeliveryForInvoice.blNumber || '');
       formData.append('type', 'Facture');
 
-      // Envoyer via notre route backend proxy (évite problèmes CORS et erreurs webhook)
-      const response = await fetch('/api/reconciliation/send-invoice', {
+      // Créer un AbortController pour gérer le timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
+
+      const response = await fetch(selectedDeliveryForInvoice.group.webhookUrl, {
         method: 'POST',
         body: formData,
-        credentials: 'include' // Important pour l'authentification
+        signal: controller.signal,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Erreur ${response.status}: ${response.statusText}`);
-      }
+      clearTimeout(timeoutId);
 
-      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      }
 
       handleCloseWaitingModal();
       
