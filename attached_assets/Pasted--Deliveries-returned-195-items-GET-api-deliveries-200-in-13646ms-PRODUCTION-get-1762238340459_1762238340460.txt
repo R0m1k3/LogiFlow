@@ -1,0 +1,205 @@
+
+      
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13646ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13267ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13327ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13210ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13452ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13162ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13242ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13356ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13372ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13661ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13182ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13344ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13296ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13193ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13173ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13386ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13497ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 12887ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 12851ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13639ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13306ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13363ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13205ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13070ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 12938ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13080ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 12982ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 12915ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13080ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 12964ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13017ms
+
+🔗 PRODUCTION: getDeliveries() récupéré 195 livraisons avec relations
+
+Deliveries returned: 195 items
+
+GET /api/deliveries 200 in 13153ms
+
+HEAD /api/health 200 in 1ms
+
+HEAD /api/health 200 in 1ms
+
+HEAD /api/health 200 in 0ms
+
+HEAD /api/health 200 in 1ms
+
+HEAD /api/health 200 in 0ms
+
+
+      
+      
