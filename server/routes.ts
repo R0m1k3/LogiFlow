@@ -399,10 +399,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📅 Livraisons avec échéance: ${deliveriesWithDueDate.length}, sans échéance: ${deliveriesWithoutDueDate.length}`);
 
-      // FALLBACK : Pour les livraisons sans dueDate, interroger NocoDB
+      // FALLBACK : Pour les livraisons sans dueDate ou sans TTC, interroger NocoDB
       const { InvoiceVerificationService } = await import('./invoiceVerification.js');
       const verificationService = new InvoiceVerificationService();
       
+      // Traiter les livraisons sans dueDate
       for (const delivery of deliveriesWithoutDueDate) {
         try {
           const result = await verificationService.verifyInvoice(
@@ -412,25 +413,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
             delivery.reconciled || false
           );
           
+          const updateData: any = {};
+          
           if (result.exists && result.dueDate) {
             // Normaliser la date avant de la stocker
             const normalizedDateString = normalizeDateString(result.dueDate);
             if (normalizedDateString) {
-              // Convertir la string normalisée en objet Date pour Drizzle
               const normalizedDate = new Date(normalizedDateString);
-              // Mettre à jour deliveries avec la date normalisée (caching)
-              await storage.updateDelivery(delivery.id, { dueDate: normalizedDate });
+              updateData.dueDate = normalizedDate;
               delivery.dueDate = normalizedDate;
-              console.log(`📅 Fallback: échéance récupérée et normalisée pour livraison #${delivery.id}`);
             }
           }
+          
+          // Récupérer aussi le TTC si manquant
+          if (result.exists && result.invoiceAmountTTC && !delivery.invoiceAmountTTC) {
+            updateData.invoiceAmountTTC = result.invoiceAmountTTC.toString();
+            delivery.invoiceAmountTTC = result.invoiceAmountTTC.toString();
+          }
+          
+          // Mettre à jour si nécessaire
+          if (Object.keys(updateData).length > 0) {
+            await storage.updateDelivery(delivery.id, updateData);
+            console.log(`📅 Fallback: données récupérées pour livraison #${delivery.id}`, updateData);
+          }
         } catch (error) {
-          console.error(`❌ Fallback échéance échoué pour livraison #${delivery.id}:`, error);
+          console.error(`❌ Fallback échoué pour livraison #${delivery.id}:`, error);
         }
       }
 
       // Combiner toutes les livraisons qui ont maintenant une dueDate
       const allDeliveriesWithDueDate = [...deliveriesWithDueDate, ...deliveriesWithoutDueDate.filter((d: any) => d.dueDate)];
+      
+      // FALLBACK TTC : Pour les livraisons qui ont une dueDate mais pas de TTC
+      const deliveriesNeedingTTC = allDeliveriesWithDueDate.filter((d: any) => !d.invoiceAmountTTC || parseFloat(d.invoiceAmountTTC) === 0);
+      
+      console.log(`💰 Livraisons nécessitant récupération TTC: ${deliveriesNeedingTTC.length}`);
+      
+      for (const delivery of deliveriesNeedingTTC) {
+        try {
+          const result = await verificationService.verifyInvoice(
+            delivery.invoiceReference!,
+            delivery.groupId,
+            false,
+            delivery.reconciled || false
+          );
+          
+          if (result.exists && result.invoiceAmountTTC) {
+            await storage.updateDelivery(delivery.id, { 
+              invoiceAmountTTC: result.invoiceAmountTTC.toString() 
+            });
+            delivery.invoiceAmountTTC = result.invoiceAmountTTC.toString();
+            console.log(`💰 TTC récupéré pour livraison #${delivery.id}: ${result.invoiceAmountTTC}€`);
+          }
+        } catch (error) {
+          console.error(`❌ Fallback TTC échoué pour livraison #${delivery.id}:`, error);
+        }
+      }
 
       // Récupérer tous les fournisseurs pour le mapping du mode de paiement
       const allSuppliers = await storage.getSuppliers();
