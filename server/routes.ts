@@ -1401,20 +1401,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Transform data types before validation
       const transformedData = { ...req.body };
       
-      // Convert decimal amounts to strings (schema expects string for decimal fields)
-      if (transformedData.blAmount !== undefined && transformedData.blAmount !== null) {
-        transformedData.blAmount = transformedData.blAmount.toString();
+      // Convert decimal amounts to strings or null (schema expects string for decimal fields)
+      if (transformedData.blAmount !== undefined) {
+        transformedData.blAmount = (transformedData.blAmount === null || transformedData.blAmount === '') 
+          ? null 
+          : transformedData.blAmount.toString();
       }
-      if (transformedData.invoiceAmount !== undefined && transformedData.invoiceAmount !== null) {
-        transformedData.invoiceAmount = transformedData.invoiceAmount.toString();
+      if (transformedData.invoiceAmount !== undefined) {
+        transformedData.invoiceAmount = (transformedData.invoiceAmount === null || transformedData.invoiceAmount === '') 
+          ? null 
+          : transformedData.invoiceAmount.toString();
       }
       
-      // Convert timestamp fields to Date objects (schema expects Date for timestamp fields)
-      if (transformedData.validatedAt && typeof transformedData.validatedAt === 'string') {
-        transformedData.validatedAt = new Date(transformedData.validatedAt);
+      // Convert text fields - allow null for clearing
+      if (transformedData.invoiceReference !== undefined) {
+        transformedData.invoiceReference = (transformedData.invoiceReference === '') 
+          ? null 
+          : transformedData.invoiceReference;
       }
-      if (transformedData.dueDate && typeof transformedData.dueDate === 'string') {
-        transformedData.dueDate = new Date(transformedData.dueDate);
+      if (transformedData.blNumber !== undefined) {
+        transformedData.blNumber = (transformedData.blNumber === '') 
+          ? null 
+          : transformedData.blNumber;
+      }
+      
+      // Convert timestamp fields to Date objects or null (schema expects Date for timestamp fields)
+      if (transformedData.validatedAt !== undefined) {
+        transformedData.validatedAt = (transformedData.validatedAt === null || transformedData.validatedAt === '') 
+          ? null 
+          : new Date(transformedData.validatedAt);
+      }
+      if (transformedData.dueDate !== undefined) {
+        transformedData.dueDate = (transformedData.dueDate === null || transformedData.dueDate === '') 
+          ? null 
+          : new Date(transformedData.dueDate);
       }
       
       const data = insertDeliverySchema.partial().parse(transformedData);
@@ -1859,6 +1879,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log('✅ Résultat vérification:', result);
+      
+      // CRITICAL FIX: Sauvegarder les données dans la table deliveries après vérification réussie
+      if (result.exists && (result.invoiceAmount !== undefined || result.dueDate !== undefined || result.invoiceReference !== undefined)) {
+        try {
+          const updateData: any = {};
+          
+          // Ajouter la référence facture si trouvée
+          if (result.invoiceReference) {
+            updateData.invoiceReference = result.invoiceReference;
+          }
+          
+          // Ajouter le montant facture si trouvé
+          if (result.invoiceAmount !== undefined && result.invoiceAmount !== null) {
+            updateData.invoiceAmount = result.invoiceAmount.toString();
+          }
+          
+          // Ajouter l'échéance si trouvée
+          if (result.dueDate) {
+            const normalizedDateString = normalizeDateString(result.dueDate);
+            if (normalizedDateString) {
+              updateData.dueDate = new Date(normalizedDateString);
+              console.log(`✅ Sauvegarde échéance dans deliveries: ${normalizedDateString}`);
+            }
+          }
+          
+          // Mettre à jour la livraison si on a des données
+          if (Object.keys(updateData).length > 0) {
+            await storage.updateDelivery(deliveryId, updateData);
+            console.log(`✅ Livraison #${deliveryId} mise à jour avec:`, updateData);
+          }
+        } catch (error) {
+          console.error('❌ Erreur sauvegarde données vérification:', error);
+          // Ne pas bloquer la réponse, juste logger l'erreur
+        }
+      }
+      
       res.json(result);
     } catch (error) {
       console.error("Error verifying invoice:", error);
