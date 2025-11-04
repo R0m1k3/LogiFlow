@@ -260,6 +260,12 @@ export default function Sidebar() {
       roles: ["admin", "directeur"] 
     },
     { 
+      path: "/payment-schedule", 
+      label: "Échéance", 
+      icon: CreditCard, 
+      roles: ["admin", "directeur"] 
+    },
+    { 
       path: "/analytics", 
       label: "Statistiques", 
       icon: BarChart3, 
@@ -269,12 +275,6 @@ export default function Sidebar() {
       path: "/sales-analysis", 
       label: "Analyse Vente", 
       icon: TrendingUp, 
-      roles: ["admin", "directeur"] 
-    },
-    { 
-      path: "/payment-schedule", 
-      label: "Échéance", 
-      icon: CreditCard, 
       roles: ["admin", "directeur"] 
     },
     { 
