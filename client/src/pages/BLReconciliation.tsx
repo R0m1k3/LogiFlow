@@ -386,22 +386,42 @@ export default function BLReconciliation() {
     // CAS SPÉCIAL : Livraisons réconciliées (✅) avec cellules vides
     // Si reconciled=true ET (cellules vides) ET blNumber existe → auto-remplir
     deliveriesWithBL.forEach((delivery: any) => {
-      if (!delivery.reconciled) return; // Ignorer les livraisons non réconciliées
-      
-      const hasEmptyCells = !delivery.invoiceReference || !delivery.invoiceAmount || !delivery.dueDate;
-      const hasBLNumber = delivery.blNumber?.trim();
-      const notAlreadyAutoVerified = !autoVerifiedDeliveries.has(delivery.id);
-      const notCurrentlyVerifying = !verifyingDeliveries.has(delivery.id);
-      
-      if (hasEmptyCells && hasBLNumber && notAlreadyAutoVerified && notCurrentlyVerifying) {
-        // Livraison réconciliée avec cellules vides → vérifier pour auto-remplir (UNE SEULE FOIS)
-        if (import.meta.env.DEV) {
-          console.log(`🔄 Livraison réconciliée #${delivery.id} avec cellules vides, auto-vérification (première tentative)...`);
+      if (delivery.reconciled) {
+        const hasEmptyCells = !delivery.invoiceReference || !delivery.invoiceAmount || !delivery.dueDate;
+        const hasBLNumber = delivery.blNumber?.trim();
+        const notAlreadyAutoVerified = !autoVerifiedDeliveries.has(delivery.id);
+        const notCurrentlyVerifying = !verifyingDeliveries.has(delivery.id);
+        
+        if (hasEmptyCells && hasBLNumber && notAlreadyAutoVerified && notCurrentlyVerifying) {
+          // Livraison réconciliée avec cellules vides → vérifier pour auto-remplir (UNE SEULE FOIS)
+          if (import.meta.env.DEV) {
+            console.log(`🔄 Livraison réconciliée #${delivery.id} avec cellules vides, auto-vérification (première tentative)...`);
+          }
+          // Marquer comme auto-vérifiée AVANT de lancer pour éviter les doublons
+          setAutoVerifiedDeliveries(prev => new Set(prev).add(delivery.id));
+          // Lancer la vérification sans délai
+          handleVerifyInvoice(delivery, false);
         }
-        // Marquer comme auto-vérifiée AVANT de lancer pour éviter les doublons
-        setAutoVerifiedDeliveries(prev => new Set(prev).add(delivery.id));
-        // Lancer la vérification sans délai
-        handleVerifyInvoice(delivery, false);
+        return; // Autres livraisons réconciliées = AUCUNE vérification nécessaire
+      }
+      
+      // VÉRIFICATION AUTOMATIQUE pour afficher les coches (UNE SEULE FOIS au chargement)
+      // Vérifier seulement les livraisons NON réconciliées qui n'ont PAS encore été vérifiées
+      const hasVerifiableData = delivery.invoiceReference || delivery.blNumber;
+      const notAlreadyProcessed = !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id);
+      
+      if (hasVerifiableData && notAlreadyProcessed) {
+        if (import.meta.env.DEV) {
+          console.log(`🔍 Vérification initiale pour affichage coche ${delivery.id}:`, {
+            invoiceRef: delivery.invoiceReference,
+            blNumber: delivery.blNumber
+          });
+        }
+        
+        // Délai pour éviter de surcharger le serveur
+        setTimeout(() => {
+          handleVerifyInvoice(delivery, false);
+        }, Math.random() * 1000);
       }
     });
   }, [deliveriesWithBL, suppliers, verificationResults, verifyingDeliveries]);
