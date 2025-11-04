@@ -50,6 +50,7 @@ export default function Groups() {
     invoiceColumnName: "",
     nocodbBlColumnName: "",
     nocodbAmountColumnName: "",
+    nocodbInvoiceAmountTTCColumnName: "",
     nocodbSupplierColumnName: "",
     nocodbDueDateColumnName: "",
     webhookUrl: "",
@@ -106,6 +107,7 @@ export default function Groups() {
         invoiceColumnName: "",
         nocodbBlColumnName: "",
         nocodbAmountColumnName: "",
+        nocodbInvoiceAmountTTCColumnName: "",
         nocodbSupplierColumnName: "",
         nocodbDueDateColumnName: "",
         webhookUrl: "",
@@ -151,6 +153,7 @@ export default function Groups() {
         invoiceColumnName: "",
         nocodbBlColumnName: "",
         nocodbAmountColumnName: "",
+        nocodbInvoiceAmountTTCColumnName: "",
         nocodbSupplierColumnName: "",
         nocodbDueDateColumnName: "",
         webhookUrl: "",
@@ -259,6 +262,7 @@ export default function Groups() {
       invoiceColumnName: "",
       nocodbBlColumnName: "",
       nocodbAmountColumnName: "",
+      nocodbInvoiceAmountTTCColumnName: "",
       nocodbSupplierColumnName: "",
       nocodbDueDateColumnName: "",
       webhookUrl: "",
@@ -276,6 +280,7 @@ export default function Groups() {
       invoiceColumnName: group.invoiceColumnName || "",
       nocodbBlColumnName: group.nocodbBlColumnName || "",
       nocodbAmountColumnName: group.nocodbAmountColumnName || "",
+      nocodbInvoiceAmountTTCColumnName: group.nocodbInvoiceAmountTTCColumnName || "",
       nocodbSupplierColumnName: group.nocodbSupplierColumnName || "",
       nocodbDueDateColumnName: group.nocodbDueDateColumnName || "",
       webhookUrl: group.webhookUrl || "",
@@ -624,12 +629,22 @@ export default function Groups() {
                       </div>
 
                       <div>
-                        <Label htmlFor="nocodbAmountColumnName">Colonne Montant</Label>
+                        <Label htmlFor="nocodbAmountColumnName">Colonne Montant HT</Label>
                         <Input
                           id="nocodbAmountColumnName"
                           value={formData.nocodbAmountColumnName}
                           onChange={(e) => handleChange('nocodbAmountColumnName', e.target.value)}
                           placeholder="ex: Montant_HT"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="nocodbInvoiceAmountTTCColumnName">Colonne Montant TTC</Label>
+                        <Input
+                          id="nocodbInvoiceAmountTTCColumnName"
+                          value={formData.nocodbInvoiceAmountTTCColumnName}
+                          onChange={(e) => handleChange('nocodbInvoiceAmountTTCColumnName', e.target.value)}
+                          placeholder="ex: Montant_TTC"
                         />
                       </div>
 
@@ -713,6 +728,7 @@ export default function Groups() {
                     invoiceColumnName: "",
                     nocodbBlColumnName: "",
                     nocodbAmountColumnName: "",
+                    nocodbInvoiceAmountTTCColumnName: "",
                     nocodbSupplierColumnName: "",
                     nocodbDueDateColumnName: "",
                     webhookUrl: "",
