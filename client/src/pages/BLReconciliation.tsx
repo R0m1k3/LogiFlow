@@ -383,45 +383,25 @@ export default function BLReconciliation() {
       setVerificationResults(newVerificationResults);
     }
     
+    // CAS SPÉCIAL : Livraisons réconciliées (✅) avec cellules vides
+    // Si reconciled=true ET (cellules vides) ET blNumber existe → auto-remplir
     deliveriesWithBL.forEach((delivery: any) => {
-      // CAS SPÉCIAL : Livraisons réconciliées (✅) avec cellules vides
-      // Si reconciled=true ET (cellules vides) ET blNumber existe → auto-remplir
-      if (delivery.reconciled) {
-        const hasEmptyCells = !delivery.invoiceReference || !delivery.invoiceAmount || !delivery.dueDate;
-        const hasBLNumber = delivery.blNumber?.trim();
-        const notAlreadyAutoVerified = !autoVerifiedDeliveries.has(delivery.id);
-        const notCurrentlyVerifying = !verifyingDeliveries.has(delivery.id);
-        
-        if (hasEmptyCells && hasBLNumber && notAlreadyAutoVerified && notCurrentlyVerifying) {
-          // Livraison réconciliée avec cellules vides → vérifier pour auto-remplir (UNE SEULE FOIS)
-          if (import.meta.env.DEV) {
-            console.log(`🔄 Livraison réconciliée #${delivery.id} avec cellules vides, auto-vérification (première tentative)...`);
-          }
-          // Marquer comme auto-vérifiée AVANT de lancer pour éviter les doublons
-          setAutoVerifiedDeliveries(prev => new Set(prev).add(delivery.id));
-          // Lancer la vérification sans délai
-          handleVerifyInvoice(delivery, false);
-        }
-        return; // Autres livraisons réconciliées = AUCUNE vérification nécessaire
-      }
+      if (!delivery.reconciled) return; // Ignorer les livraisons non réconciliées
       
-      // Vérifier seulement les livraisons NON validées
-      const hasVerifiableData = delivery.invoiceReference || delivery.blNumber;
-      const notAlreadyProcessed = !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id);
+      const hasEmptyCells = !delivery.invoiceReference || !delivery.invoiceAmount || !delivery.dueDate;
+      const hasBLNumber = delivery.blNumber?.trim();
+      const notAlreadyAutoVerified = !autoVerifiedDeliveries.has(delivery.id);
+      const notCurrentlyVerifying = !verifyingDeliveries.has(delivery.id);
       
-      if (hasVerifiableData && notAlreadyProcessed) {
+      if (hasEmptyCells && hasBLNumber && notAlreadyAutoVerified && notCurrentlyVerifying) {
+        // Livraison réconciliée avec cellules vides → vérifier pour auto-remplir (UNE SEULE FOIS)
         if (import.meta.env.DEV) {
-          console.log(`🔍 Vérification auto pour livraison NON réconciliée ${delivery.id}:`, {
-            invoiceRef: delivery.invoiceReference,
-            blNumber: delivery.blNumber,
-            reconciled: delivery.reconciled
-          });
+          console.log(`🔄 Livraison réconciliée #${delivery.id} avec cellules vides, auto-vérification (première tentative)...`);
         }
-        
-        // Délai pour éviter de surcharger le serveur
-        setTimeout(() => {
-          handleVerifyInvoice(delivery, false);
-        }, Math.random() * 1000);
+        // Marquer comme auto-vérifiée AVANT de lancer pour éviter les doublons
+        setAutoVerifiedDeliveries(prev => new Set(prev).add(delivery.id));
+        // Lancer la vérification sans délai
+        handleVerifyInvoice(delivery, false);
       }
     });
   }, [deliveriesWithBL, suppliers, verificationResults, verifyingDeliveries]);
@@ -451,10 +431,9 @@ export default function BLReconciliation() {
 
   const handleSaveReconciliation = async () => {
     try {
-      // Invalidation cache + refetch forcé pour mise à jour immédiate
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      refetch();
+      // Force refetch immédiat pour mettre à jour l'affichage
+      await queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
       handleCloseModal();
     } catch (error) {
       toast({
@@ -661,10 +640,12 @@ export default function BLReconciliation() {
         description: "Rapprochement validé avec succès",
       });
       
-      // Invalidation cache + refetch forcé pour mise à jour immédiate
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      refetch(); // Force recharge immédiate des données BL
+      // Force refetch immédiat pour déplacer la facture dans l'onglet validées
+      await queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
+      
+      // Passer automatiquement à l'onglet "Validées" après validation
+      setActiveTab("validated");
     } catch (error) {
       toast({
         title: "Erreur",
@@ -699,9 +680,12 @@ export default function BLReconciliation() {
         description: "Rapprochement dévalidé avec succès",
       });
       
-      // Invalidation cache + refetch forcé pour mise à jour immédiate
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-      refetch();
+      // Force refetch immédiat pour déplacer la facture dans l'onglet manuel
+      await queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
+      
+      // Passer automatiquement à l'onglet "Manuel" après dévalidation
+      setActiveTab("manual");
     } catch (error) {
       toast({
         title: "Erreur",
