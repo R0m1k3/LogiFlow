@@ -405,14 +405,17 @@ export default function BLReconciliation() {
         return; // Autres livraisons réconciliées = AUCUNE vérification nécessaire
       }
       
-      // VÉRIFICATION AUTOMATIQUE pour afficher les coches (UNE SEULE FOIS au chargement)
-      // Vérifier seulement les livraisons NON réconciliées qui n'ont PAS encore été vérifiées
+      // VÉRIFICATION AUTOMATIQUE pour afficher les coches
+      // NE vérifier QUE les factures qui n'ont PAS encore de montant renseigné (pas encore trouvées)
       const hasVerifiableData = delivery.invoiceReference || delivery.blNumber;
-      const notAlreadyProcessed = !verificationResults[delivery.id] && !verifyingDeliveries.has(delivery.id);
+      const hasNoInvoiceAmount = !delivery.invoiceAmount; // Pas encore trouvée dans NocoDB
+      const notAlreadyVerified = !verificationResults[delivery.id];
+      const notCurrentlyVerifying = !verifyingDeliveries.has(delivery.id);
       
-      if (hasVerifiableData && notAlreadyProcessed) {
+      // Ne vérifier que si : a des données ET pas de montant (pas encore trouvée) ET pas déjà vérifiée
+      if (hasVerifiableData && hasNoInvoiceAmount && notAlreadyVerified && notCurrentlyVerifying) {
         if (import.meta.env.DEV) {
-          console.log(`🔍 Vérification initiale pour affichage coche ${delivery.id}:`, {
+          console.log(`🔍 Vérification initiale ${delivery.id} (pas encore trouvée):`, {
             invoiceRef: delivery.invoiceReference,
             blNumber: delivery.blNumber
           });
@@ -422,6 +425,18 @@ export default function BLReconciliation() {
         setTimeout(() => {
           handleVerifyInvoice(delivery, false);
         }, Math.random() * 1000);
+      }
+      
+      // Si la facture a déjà un montant → marquer comme trouvée (coche verte) sans vérifier
+      if (hasVerifiableData && delivery.invoiceAmount && !verificationResults[delivery.id]) {
+        newVerificationResults[delivery.id] = {
+          exists: true,
+          matchType: delivery.invoiceReference ? 'invoice_reference' : 'bl_number',
+          fromCache: true,
+          permanent: true,
+          invoiceAmount: delivery.invoiceAmount
+        };
+        hasNewReconciledResults = true;
       }
     });
   }, [deliveriesWithBL, suppliers, verificationResults, verifyingDeliveries]);
