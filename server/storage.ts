@@ -1948,7 +1948,18 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions));
     }
 
-    const results = await query.orderBy(asc(dlcProducts.expiryDate));
+    // Tri intelligent : produits actifs en premier, puis produits traités/validés en dernier
+    const results = await query.orderBy(
+      // Priorité 1 : Produits actifs d'abord (non validés, non traités, stock disponible)
+      sql`CASE 
+        WHEN ${dlcProducts.status} = 'valides' THEN 3
+        WHEN ${dlcProducts.stockEpuise} = true THEN 2
+        WHEN ${dlcProducts.processedUntilExpiry} = true THEN 2
+        ELSE 1
+      END`,
+      // Priorité 2 : Date d'expiration (croissante)
+      asc(dlcProducts.expiryDate)
+    );
     
     return results.map((row: any) => ({
       ...row.dlcProduct,

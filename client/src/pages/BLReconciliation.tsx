@@ -705,8 +705,18 @@ export default function BLReconciliation() {
         description: "Livraison supprimée avec succès",
       });
       
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      // Mise à jour optimiste du cache local pour disparition immédiate
+      queryClient.setQueryData(['/api/deliveries/bl', selectedStoreId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return oldData.filter((d: any) => d.id !== deliveryId);
+      });
+      
+      // Force refetch pour synchroniser avec le serveur
+      queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
+      queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
     } catch (error) {
+      // En cas d'erreur, refetch pour annuler la mise à jour optimiste
+      queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la livraison",
