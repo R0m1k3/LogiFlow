@@ -228,90 +228,110 @@ export default function Sidebar() {
     return false;
   };
 
-  const menuItems = [
-    { 
-      path: "/dashboard", 
-      label: "Tableau de bord", 
-      icon: BarChart3, 
-      roles: ["admin", "directeur", "manager", "employee"] 
+  const menuSections = [
+    {
+      title: "GESTION PRINCIPALE",
+      items: [
+        { 
+          path: "/dashboard", 
+          label: "Tableau de bord", 
+          icon: BarChart3, 
+          roles: ["admin", "directeur", "manager", "employee"] 
+        },
+        { 
+          path: "/calendar", 
+          label: "Calendrier", 
+          icon: Calendar, 
+          roles: ["admin", "directeur", "manager", "employee"] 
+        },
+      ]
     },
-    { 
-      path: "/calendar", 
-      label: "Calendrier", 
-      icon: Calendar, 
-      roles: ["admin", "directeur", "manager", "employee"] 
+    {
+      title: "LOGISTIQUE",
+      items: [
+        { 
+          path: "/orders", 
+          label: "Commandes", 
+          icon: Package, 
+          roles: ["admin", "directeur", "manager"] 
+        },
+        { 
+          path: "/deliveries", 
+          label: "Livraisons", 
+          icon: Truck, 
+          roles: ["admin", "directeur", "manager"] 
+        },
+        { 
+          path: "/bl-reconciliation", 
+          label: "Rapprochement", 
+          icon: FileText, 
+          roles: ["admin", "directeur"] 
+        },
+        { 
+          path: "/payment-schedule", 
+          label: "Échéance", 
+          icon: CreditCard, 
+          roles: ["admin", "directeur"] 
+        },
+        { 
+          path: "/avoirs", 
+          label: "Avoirs", 
+          icon: Receipt, 
+          roles: ["admin", "directeur", "manager"] 
+        },
+      ]
     },
-    { 
-      path: "/orders", 
-      label: "Commandes", 
-      icon: Package, 
-      roles: ["admin", "directeur", "manager"] 
+    {
+      title: "ANALYSES",
+      items: [
+        { 
+          path: "/analytics", 
+          label: "Statistiques", 
+          icon: BarChart3, 
+          roles: ["admin", "directeur", "manager"] 
+        },
+        { 
+          path: "/sales-analysis", 
+          label: "Analyse Vente", 
+          icon: TrendingUp, 
+          roles: ["admin", "directeur"] 
+        },
+      ]
     },
-    { 
-      path: "/deliveries", 
-      label: "Livraisons", 
-      icon: Truck, 
-      roles: ["admin", "directeur", "manager"] 
-    },
-    { 
-      path: "/bl-reconciliation", 
-      label: "Rapprochement", 
-      icon: FileText, 
-      roles: ["admin", "directeur"] 
-    },
-    { 
-      path: "/payment-schedule", 
-      label: "Échéance", 
-      icon: CreditCard, 
-      roles: ["admin", "directeur"] 
-    },
-    { 
-      path: "/analytics", 
-      label: "Statistiques", 
-      icon: BarChart3, 
-      roles: ["admin", "directeur", "manager"] 
-    },
-    { 
-      path: "/sales-analysis", 
-      label: "Analyse Vente", 
-      icon: TrendingUp, 
-      roles: ["admin", "directeur"] 
-    },
-    { 
-      path: "/avoirs", 
-      label: "Avoirs", 
-      icon: Receipt, 
-      roles: ["admin", "directeur", "manager"] 
-    },
-    { 
-      path: "/publicities", 
-      label: "Publicités", 
-      icon: Megaphone, 
-      roles: ["admin", "directeur", "manager", "employee"] 
-    },
-    { 
-      path: "/customer-orders", 
-      label: "Commandes Client", 
-      icon: ShoppingCart, 
-      roles: ["admin", "directeur", "manager", "employee"] 
-    },
-    { 
-      path: "/dlc", 
-      label: "Gestion DLC", 
-      icon: Clock, 
-      roles: ["admin", "directeur", "manager", "employee"] 
-    },
-    { 
-      path: "/tasks", 
-      label: "Tâches", 
-      icon: ListTodo, 
-      roles: ["admin", "directeur", "manager", "employee"] 
-    },
-    { 
-      path: "/sav", 
-      label: "SAV", 
-      icon: Wrench, 
-      roles: ["admin", "directeur", "manager", "employee"] 
+    {
+      title: "OPÉRATIONS",
+      items: [
+        { 
+          path: "/publicities", 
+          label: "Publicités", 
+          icon: Megaphone, 
+          roles: ["admin", "directeur", "manager", "employee"] 
+        },
+        { 
+          path: "/customer-orders", 
+          label: "Commandes Client", 
+          icon: ShoppingCart, 
+          roles: ["admin", "directeur", "manager", "employee"] 
+        },
+        { 
+          path: "/dlc", 
+          label: "Gestion DLC", 
+          icon: Clock, 
+          roles: ["admin", "directeur", "manager", "employee"] 
+        },
+        { 
+          path: "/tasks", 
+          label: "Tâches", 
+          icon: ListTodo, 
+          roles: ["admin", "directeur", "manager", "employee"] 
+        },
+        { 
+          path: "/sav", 
+          label: "SAV", 
+          icon: Wrench, 
+          roles: ["admin", "directeur", "manager", "employee"] 
+        },
+      ]
     },
   ];
 
@@ -558,70 +578,90 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-3">
-        <div className="space-y-1">
-          {menuItems.map((item) => {
-            const hasRolePermission = hasPermission(item.roles);
-            // console.log(`🔍 Menu item ${item.path} (${item.label}):`, { 
-            //   roles: item.roles, 
-            //   hasPermission: hasRolePermission,
-            //   userRole: user?.role 
-            // });
-            
-            if (!hasRolePermission) return null;
-            
-            const Icon = item.icon;
-            const active = isActive(item.path);
-            
+      <nav className="flex-1 py-5 px-3 overflow-y-auto">
+        <div className="space-y-7">
+          {menuSections.map((section, sectionIndex) => {
+            // Vérifier si au moins un item de la section est accessible
+            const hasAccessibleItems = section.items.some(item => hasPermission(item.roles));
+            if (!hasAccessibleItems) return null;
+
             return (
-              <Link key={item.path} href={item.path}>
-                <div
-                  className={`flex items-center transition-colors hover:bg-gray-100 ${
-                    // Espacement adaptatif selon l'écran et l'état
-                    sidebarCollapsed && !isMobile 
-                      ? 'px-3 py-3 justify-center min-h-[44px]' 
-                      : isMobileOrTablet 
-                        ? 'px-4 py-3 min-h-[48px]' 
-                        : 'px-3 py-2 min-h-[40px]'
-                  } text-sm font-medium ${
-                    active
-                      ? 'bg-gray-100 text-gray-900 border-r-2 border-blue-600'
-                      : 'text-gray-700'
-                  }`}
-                  title={sidebarCollapsed && !isMobile ? item.label : undefined}
-                  onClick={handleMenuClick}
-                >
-                  <Icon className={`${
-                    // Tailles d'icônes adaptatives
-                    isMobile ? 'h-5 w-5' : 
-                    isTablet ? 'h-6 w-6' : 
-                    'h-5 w-5'
-                  } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
-                  {(!sidebarCollapsed || isMobile) && (
-                    <span className={`${isMobileOrTablet ? 'text-base' : 'text-sm'} font-medium`}>
-                      {item.label}
-                    </span>
-                  )}
+              <div key={section.title} className="space-y-3">
+                {/* Titre de section - caché en mode collapsed */}
+                {!sidebarCollapsed && (
+                  <h3 className="px-3 mb-3 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                    {section.title}
+                  </h3>
+                )}
+                
+                {/* Séparateur visuel en mode collapsed */}
+                {sidebarCollapsed && sectionIndex > 0 && (
+                  <div className="border-t border-gray-200 my-4"></div>
+                )}
+                
+                {/* Items du menu */}
+                <div className="space-y-1.5">
+                  {section.items.map((item) => {
+                    const hasRolePermission = hasPermission(item.roles);
+                    
+                    if (!hasRolePermission) return null;
+                    
+                    const Icon = item.icon;
+                    const active = isActive(item.path);
+                    
+                    return (
+                      <Link key={item.path} href={item.path}>
+                        <div
+                          className={`flex items-center transition-colors hover:bg-gray-100 rounded-md ${
+                            // Espacement adaptatif selon l'écran et l'état
+                            sidebarCollapsed && !isMobile 
+                              ? 'px-3 py-3 justify-center min-h-11' 
+                              : isMobileOrTablet 
+                                ? 'px-4 py-3.5 min-h-12' 
+                                : 'px-3 py-3 min-h-11'
+                          } ${
+                            active
+                              ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
+                              : 'text-gray-700'
+                          }`}
+                          title={sidebarCollapsed && !isMobile ? item.label : undefined}
+                          onClick={handleMenuClick}
+                        >
+                          <Icon className={`${
+                            // Tailles d'icônes adaptatives
+                            isMobile ? 'h-5 w-5' : 
+                            isTablet ? 'h-6 w-6' : 
+                            'h-5 w-5'
+                          } ${
+                            active ? 'text-blue-700' : 'text-gray-600'
+                          } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
+                          {(!sidebarCollapsed || isMobile) && (
+                            <span className={`${isMobileOrTablet ? 'text-base' : 'text-[15px]'} font-medium`}>
+                              {item.label}
+                            </span>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
-
-
       </nav>
 
       {/* Administration Section */}
       {adminItems.some(item => hasPermission(item.roles)) && (
-        <div className="border-t border-gray-200 py-4 px-3">
+        <div className="border-t border-gray-200 py-5 px-3">
           {!sidebarCollapsed && (
-            <div className="mb-2">
-              <h3 className="px-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <div className="mb-3">
+              <h3 className="px-3 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                 Administration
               </h3>
             </div>
           )}
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {adminItems.map((item) => {
               if (!hasPermission(item.roles)) return null;
               
@@ -632,13 +672,13 @@ export default function Sidebar() {
                 return (
                   <div key={item.path}>
                     <div
-                      className={`flex items-center cursor-pointer transition-colors hover:bg-gray-100 text-gray-700 ${
+                      className={`flex items-center cursor-pointer transition-colors hover:bg-gray-100 rounded-md ${
                         sidebarCollapsed && !isMobile 
-                          ? 'px-3 py-3 justify-center min-h-[44px]' 
+                          ? 'px-3 py-3 justify-center min-h-11' 
                           : isMobileOrTablet 
-                            ? 'px-4 py-3 min-h-[48px]' 
-                            : 'px-3 py-2 min-h-[40px]'
-                      } text-sm font-medium`}
+                            ? 'px-4 py-3.5 min-h-12' 
+                            : 'px-3 py-3 min-h-11'
+                      } text-gray-700`}
                       title={sidebarCollapsed && !isMobile ? item.label : undefined}
                       onClick={() => {
                         setShowBapModal(true);
@@ -649,9 +689,9 @@ export default function Sidebar() {
                         isMobile ? 'h-5 w-5' : 
                         isTablet ? 'h-6 w-6' : 
                         'h-5 w-5'
-                      } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
+                      } text-gray-600 ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
                       {(!sidebarCollapsed || isMobile) && (
-                        <span className={`${isMobileOrTablet ? 'text-base' : 'text-sm'} font-medium`}>
+                        <span className={`${isMobileOrTablet ? 'text-base' : 'text-[15px]'} font-medium`}>
                           {item.label}
                         </span>
                       )}
@@ -663,27 +703,29 @@ export default function Sidebar() {
               return (
                 <Link key={item.path} href={item.path}>
                   <div
-                    className={`flex items-center transition-colors hover:bg-gray-100 ${
+                    className={`flex items-center transition-colors hover:bg-gray-100 rounded-md ${
                       sidebarCollapsed && !isMobile 
-                        ? 'px-3 py-3 justify-center min-h-[44px]' 
+                        ? 'px-3 py-3 justify-center min-h-11' 
                         : isMobileOrTablet 
-                          ? 'px-4 py-3 min-h-[48px]' 
-                          : 'px-3 py-2 min-h-[40px]'
-                    } text-sm font-medium ${
+                          ? 'px-4 py-3.5 min-h-12' 
+                          : 'px-3 py-3 min-h-11'
+                    } ${
                       active
-                        ? 'bg-gray-100 text-gray-900 border-r-2 border-blue-600'
+                        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
                         : 'text-gray-700'
                     }`}
                     title={sidebarCollapsed && !isMobile ? item.label : undefined}
-                    onClick={() => console.log(`Navigating to admin: ${item.path}`)}
+                    onClick={handleMenuClick}
                   >
                     <Icon className={`${
                       isMobile ? 'h-5 w-5' : 
                       isTablet ? 'h-6 w-6' : 
                       'h-5 w-5'
+                    } ${
+                      active ? 'text-blue-700' : 'text-gray-600'
                     } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
                     {(!sidebarCollapsed || isMobile) && (
-                      <span className={`${isMobileOrTablet ? 'text-base' : 'text-sm'} font-medium`}>
+                      <span className={`${isMobileOrTablet ? 'text-base' : 'text-[15px]'} font-medium`}>
                         {item.label}
                       </span>
                     )}
