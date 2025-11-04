@@ -578,29 +578,29 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-5 px-3 overflow-y-auto">
-        <div className="space-y-7">
+      <nav className="flex-1 py-2 px-3 overflow-y-hidden">
+        <div className="space-y-3">
           {menuSections.map((section, sectionIndex) => {
             // Vérifier si au moins un item de la section est accessible
             const hasAccessibleItems = section.items.some(item => hasPermission(item.roles));
             if (!hasAccessibleItems) return null;
 
             return (
-              <div key={section.title} className="space-y-3">
+              <div key={section.title} className="space-y-1">
                 {/* Titre de section - caché en mode collapsed */}
                 {!sidebarCollapsed && (
-                  <h3 className="px-3 mb-3 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                  <h3 className="px-3 mb-1 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                     {section.title}
                   </h3>
                 )}
                 
                 {/* Séparateur visuel en mode collapsed */}
                 {sidebarCollapsed && sectionIndex > 0 && (
-                  <div className="border-t border-gray-200 my-4"></div>
+                  <div className="border-t border-gray-200 my-2"></div>
                 )}
                 
                 {/* Items du menu */}
-                <div className="space-y-1.5">
+                <div className="space-y-0.5">
                   {section.items.map((item) => {
                     const hasRolePermission = hasPermission(item.roles);
                     
@@ -615,10 +615,10 @@ export default function Sidebar() {
                           className={`flex items-center transition-colors hover:bg-gray-100 rounded-md ${
                             // Espacement adaptatif selon l'écran et l'état
                             sidebarCollapsed && !isMobile 
-                              ? 'px-3 py-3 justify-center min-h-11' 
+                              ? 'px-3 py-2 justify-center min-h-9' 
                               : isMobileOrTablet 
-                                ? 'px-4 py-3.5 min-h-12' 
-                                : 'px-3 py-3 min-h-11'
+                                ? 'px-4 py-2.5 min-h-10' 
+                                : 'px-3 py-2 min-h-9'
                           } ${
                             active
                               ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
@@ -653,15 +653,15 @@ export default function Sidebar() {
 
       {/* Administration Section */}
       {adminItems.some(item => hasPermission(item.roles)) && (
-        <div className="border-t border-gray-200 py-5 px-3">
+        <div className="border-t border-gray-200 py-2 px-3">
           {!sidebarCollapsed && (
-            <div className="mb-3">
+            <div className="mb-1">
               <h3 className="px-3 text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                 Administration
               </h3>
             </div>
           )}
-          <div className="space-y-1.5">
+          <div className="space-y-0.5">
             {adminItems.map((item) => {
               if (!hasPermission(item.roles)) return null;
               
@@ -674,10 +674,10 @@ export default function Sidebar() {
                     <div
                       className={`flex items-center cursor-pointer transition-colors hover:bg-gray-100 rounded-md ${
                         sidebarCollapsed && !isMobile 
-                          ? 'px-3 py-3 justify-center min-h-11' 
+                          ? 'px-3 py-2 justify-center min-h-9' 
                           : isMobileOrTablet 
-                            ? 'px-4 py-3.5 min-h-12' 
-                            : 'px-3 py-3 min-h-11'
+                            ? 'px-4 py-2.5 min-h-10' 
+                            : 'px-3 py-2 min-h-9'
                       } text-gray-700`}
                       title={sidebarCollapsed && !isMobile ? item.label : undefined}
                       onClick={() => {
@@ -705,10 +705,10 @@ export default function Sidebar() {
                   <div
                     className={`flex items-center transition-colors hover:bg-gray-100 rounded-md ${
                       sidebarCollapsed && !isMobile 
-                        ? 'px-3 py-3 justify-center min-h-11' 
+                        ? 'px-3 py-2 justify-center min-h-9' 
                         : isMobileOrTablet 
-                          ? 'px-4 py-3.5 min-h-12' 
-                          : 'px-3 py-3 min-h-11'
+                          ? 'px-4 py-2.5 min-h-10' 
+                          : 'px-3 py-2 min-h-9'
                     } ${
                       active
                         ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
