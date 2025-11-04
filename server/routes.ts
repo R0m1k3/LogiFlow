@@ -128,6 +128,7 @@ import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
 import { weatherService } from "./weatherService.js";
 import fetch from "node-fetch";
+import FormData from "form-data";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Detect environment
@@ -820,7 +821,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Préparer le FormData pour l'envoi au webhook externe
-      const FormData = (await import('form-data')).default;
       const formData = new FormData();
 
       // Ajouter tous les champs du formData
