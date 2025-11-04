@@ -16,7 +16,6 @@ import {
   invoiceVerificationCache,
   reconciliationComments,
   savTickets,
-  savTicketHistory,
   weatherData,
   weatherSettings,
   type User,
@@ -62,7 +61,6 @@ import {
   type InsertInvoiceVerificationCache,
   type SavTicket,
   type InsertSavTicket,
-  type SavTicketHistory,
   type InsertSavTicketHistory,
   type SavTicketWithRelations,
   type SavTicketHistoryWithCreator,
@@ -688,6 +686,7 @@ export class DatabaseStorage implements IStorage {
         blAmount: deliveries.blAmount,
         invoiceReference: deliveries.invoiceReference,
         invoiceAmount: deliveries.invoiceAmount,
+        invoiceAmountTTC: deliveries.invoiceAmountTTC,
         dueDate: deliveries.dueDate,
         reconciled: deliveries.reconciled,
         validatedAt: deliveries.validatedAt,
@@ -757,6 +756,7 @@ export class DatabaseStorage implements IStorage {
         blAmount: deliveries.blAmount,
         invoiceReference: deliveries.invoiceReference,
         invoiceAmount: deliveries.invoiceAmount,
+        invoiceAmountTTC: deliveries.invoiceAmountTTC,
         dueDate: deliveries.dueDate,
         reconciled: deliveries.reconciled,
         validatedAt: deliveries.validatedAt,
@@ -879,6 +879,7 @@ export class DatabaseStorage implements IStorage {
         blAmount: deliveries.blAmount,
         invoiceReference: deliveries.invoiceReference,
         invoiceAmount: deliveries.invoiceAmount,
+        invoiceAmountTTC: deliveries.invoiceAmountTTC,
         dueDate: deliveries.dueDate,
         reconciled: deliveries.reconciled,
         validatedAt: deliveries.validatedAt,
@@ -1012,6 +1013,7 @@ export class DatabaseStorage implements IStorage {
         blAmount: deliveries.blAmount,
         invoiceReference: deliveries.invoiceReference,
         invoiceAmount: deliveries.invoiceAmount,
+        invoiceAmountTTC: deliveries.invoiceAmountTTC,
         dueDate: deliveries.dueDate,
         reconciled: deliveries.reconciled,
         validatedAt: deliveries.validatedAt,
@@ -2619,12 +2621,12 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     // Add initial history entry
-    await this.addSavTicketHistory({
-      ticketId: ticket.id,
-      action: 'created',
-      description: `Ticket créé avec le statut "${ticket.status}"`,
-      createdBy: ticket.createdBy,
-    });
+    // await this.addSavTicketHistory({
+    //   ticketId: ticket.id,
+    //   action: 'created',
+    //   description: `Ticket créé avec le statut "${ticket.status}"`,
+    //   createdBy: ticket.createdBy,
+    // });
 
     return ticket;
   }
@@ -2641,35 +2643,37 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSavTicket(id: number): Promise<void> {
     // Delete history first
-    await db.delete(savTicketHistory).where(eq(savTicketHistory.ticketId, id));
+    // await db.delete(savTicketHistory).where(eq(savTicketHistory.ticketId, id));
     // Delete ticket
     await db.delete(savTickets).where(eq(savTickets.id, id));
   }
 
   async getSavTicketHistory(ticketId: number): Promise<SavTicketHistoryWithCreator[]> {
-    const results = await db
-      .select({
-        history: savTicketHistory,
-        creator: users,
-      })
-      .from(savTicketHistory)
-      .leftJoin(users, eq(savTicketHistory.createdBy, users.id))
-      .where(eq(savTicketHistory.ticketId, ticketId))
-      .orderBy(desc(savTicketHistory.createdAt));
+    // const results = await db
+    //   .select({
+    //     history: savTicketHistory,
+    //     creator: users,
+    //   })
+    //   .from(savTicketHistory)
+    //   .leftJoin(users, eq(savTicketHistory.createdBy, users.id))
+    //   .where(eq(savTicketHistory.ticketId, ticketId))
+    //   .orderBy(desc(savTicketHistory.createdAt));
 
-    return results.map(result => ({
-      ...result.history,
-      creator: result.creator!,
-    }));
+    // return results.map(result => ({
+    //   ...result.history,
+    //   creator: result.creator!,
+    // }));
+    return [];
   }
 
-  async addSavTicketHistory(historyData: InsertSavTicketHistory): Promise<SavTicketHistory> {
-    const [history] = await db
-      .insert(savTicketHistory)
-      .values(historyData)
-      .returning();
+  async addSavTicketHistory(historyData: InsertSavTicketHistory): Promise<any> {
+    // const [history] = await db
+    //   .insert(savTicketHistory)
+    //   .values(historyData)
+    //   .returning();
     
-    return history;
+    // return history;
+    return null;
   }
 
   async getSavTicketStats(groupIds?: number[]): Promise<{
@@ -3298,7 +3302,6 @@ export class MemStorage implements IStorage {
   private announcements = new Map<number, Announcement>();
   private avoirs = new Map<number, Avoir>();
   private savTickets = new Map<number, SavTicket>();
-  private savTicketHistories = new Map<number, SavTicketHistory[]>();
   private invoiceVerificationCache = new Map<string, InvoiceVerificationCache>();
 
   private idCounters = {
@@ -3313,7 +3316,6 @@ export class MemStorage implements IStorage {
     announcement: 1,
     avoir: 1,
     savTicket: 1,
-    savTicketHistory: 1,
     reconciliationComment: 1,
   };
 
@@ -4761,44 +4763,17 @@ export class MemStorage implements IStorage {
 
   async deleteSavTicket(id: number): Promise<void> {
     // Delete history first
-    this.savTicketHistories.delete(id);
+    // this.savTicketHistories.delete(id);
     // Delete ticket
     this.savTickets.delete(id);
   }
 
   async getSavTicketHistory(ticketId: number): Promise<SavTicketHistoryWithCreator[]> {
-    const histories = this.savTicketHistories.get(ticketId) || [];
-    
-    const historiesWithCreators = histories.map(history => {
-      const creator = this.users.get(history.createdBy);
-      return {
-        ...history,
-        creator: creator!,
-      };
-    });
-
-    // Sort by creation date (newest first)
-    return historiesWithCreators.sort((a, b) => {
-      const dateA = a.createdAt || new Date(0);
-      const dateB = b.createdAt || new Date(0);
-      return dateB.getTime() - dateA.getTime();
-    });
+    return [];
   }
 
-  async addSavTicketHistory(historyData: InsertSavTicketHistory): Promise<SavTicketHistory> {
-    const id = this.idCounters.savTicketHistory++;
-    
-    const history: SavTicketHistory = {
-      id,
-      ...historyData,
-      createdAt: new Date(),
-    };
-
-    const existingHistories = this.savTicketHistories.get(historyData.ticketId) || [];
-    existingHistories.push(history);
-    this.savTicketHistories.set(historyData.ticketId, existingHistories);
-
-    return history;
+  async addSavTicketHistory(historyData: InsertSavTicketHistory): Promise<any> {
+    return null;
   }
 
   async getSavTicketStats(groupIds?: number[]): Promise<{
@@ -4968,20 +4943,20 @@ export class MemStorage implements IStorage {
     ];
 
     // Initialize history for each ticket
-    histories.forEach((historyEntry) => {
-      const id = this.idCounters.savTicketHistory++;
-      const history: SavTicketHistory = {
-        id,
-        ...historyEntry,
-      };
+    // histories.forEach((historyEntry) => {
+    //   const id = this.idCounters.savTicketHistory++;
+    //   const history: SavTicketHistory = {
+    //     id,
+    //     ...historyEntry,
+    //   };
       
-      const existingHistories = this.savTicketHistories.get(historyEntry.ticketId) || [];
-      existingHistories.push(history);
-      this.savTicketHistories.set(historyEntry.ticketId, existingHistories);
-    });
+    //   const existingHistories = this.savTicketHistories.get(historyEntry.ticketId) || [];
+    //   existingHistories.push(history);
+    //   this.savTicketHistories.set(historyEntry.ticketId, existingHistories);
+    // });
 
     this.idCounters.savTicket = 6;
-    console.log('✅ SAV test data initialized with 5 tickets and comprehensive history');
+    console.log('✅ SAV test data initialized with 5 tickets');
   }
 
   // Weather operations

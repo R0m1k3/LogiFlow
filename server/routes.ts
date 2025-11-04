@@ -110,7 +110,6 @@ import {
   insertAnnouncementSchema,
   insertNocodbConfigSchema,
   insertSavTicketSchema,
-  insertSavTicketHistorySchema,
   insertWeatherDataSchema,
   insertWeatherSettingsSchema,
   insertWebhookBapConfigSchema,
@@ -1881,7 +1880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('✅ Résultat vérification:', result);
       
       // CRITICAL FIX: Sauvegarder les données dans la table deliveries après vérification réussie
-      if (result.exists && (result.invoiceAmount !== undefined || result.dueDate !== undefined || result.invoiceReference !== undefined)) {
+      if (result.exists && (result.invoiceAmount !== undefined || result.invoiceAmountTTC !== undefined || result.dueDate !== undefined || result.invoiceReference !== undefined)) {
         try {
           const updateData: any = {};
           
@@ -1890,9 +1889,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             updateData.invoiceReference = result.invoiceReference;
           }
           
-          // Ajouter le montant facture si trouvé
+          // Ajouter le montant facture HT si trouvé
           if (result.invoiceAmount !== undefined && result.invoiceAmount !== null) {
             updateData.invoiceAmount = result.invoiceAmount.toString();
+          }
+          
+          // Ajouter le montant facture TTC si trouvé
+          if (result.invoiceAmountTTC !== undefined && result.invoiceAmountTTC !== null) {
+            updateData.invoiceAmountTTC = result.invoiceAmountTTC.toString();
           }
           
           // Ajouter l'échéance si trouvée
@@ -4823,14 +4827,19 @@ RÉSUMÉ DU SCAN
       }
 
       // Parse and validate history entry
-      const historyData = insertSavTicketHistorySchema.parse({
+      // const historyData = insertSavTicketHistorySchema.parse({
+      //   ticketId: ticketId,
+      //   action: 'comment',
+      //   description: req.body.description,
+      //   createdBy: user.id,
+      // });
+
+      const history = await storage.addSavTicketHistory({
         ticketId: ticketId,
         action: 'comment',
         description: req.body.description,
         createdBy: user.id,
       });
-
-      const history = await storage.addSavTicketHistory(historyData);
       res.status(201).json(history);
     } catch (error) {
       console.error("Error adding SAV ticket history:", error);

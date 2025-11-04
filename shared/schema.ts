@@ -56,7 +56,8 @@ export const groups = pgTable("groups", {
   // Mapping des colonnes par magasin dans leur table NocoDB
   invoiceColumnName: varchar("invoice_column_name"), // Nom de la colonne facture dans leur table
   nocodbBlColumnName: varchar("nocodb_bl_column_name"), // Nom de la colonne BL dans leur table
-  nocodbAmountColumnName: varchar("nocodb_amount_column_name"), // Nom de la colonne montant dans leur table
+  nocodbAmountColumnName: varchar("nocodb_amount_column_name"), // Nom de la colonne montant HT dans leur table
+  nocodbInvoiceAmountTTCColumnName: varchar("nocodb_invoice_amount_ttc_column_name"), // Nom de la colonne montant TTC dans leur table
   nocodbSupplierColumnName: varchar("nocodb_supplier_column_name"), // Nom de la colonne fournisseur dans leur table
   nocodbDueDateColumnName: varchar("nocodb_due_date_column_name"), // Nom de la colonne date d'échéance dans leur table
   webhookUrl: varchar("webhook_url", { length: 500 }), // URL de webhook pour notifications par magasin
@@ -118,7 +119,8 @@ export const deliveries = pgTable("deliveries", {
   blNumber: varchar("bl_number"), // Numéro de Bon de Livraison
   blAmount: decimal("bl_amount", { precision: 10, scale: 2 }), // Montant BL
   invoiceReference: varchar("invoice_reference"), // Référence facture
-  invoiceAmount: decimal("invoice_amount", { precision: 10, scale: 2 }), // Montant facture
+  invoiceAmount: decimal("invoice_amount", { precision: 10, scale: 2 }), // Montant facture HT
+  invoiceAmountTTC: decimal("invoice_amount_ttc", { precision: 10, scale: 2 }), // Montant facture TTC
   dueDate: timestamp("due_date"), // Date d'échéance de paiement (récupérée depuis NocoDB)
   reconciled: boolean("reconciled").default(false), // Rapprochement effectué
   validatedAt: timestamp("validated_at"), // Date de validation de la livraison
@@ -173,7 +175,8 @@ export const invoiceVerificationCache = pgTable("invoice_verification_cache", {
   groupId: integer("group_id").notNull(),
   invoiceReference: varchar("invoice_reference", { length: 255 }).notNull(),
   supplierName: varchar("supplier_name", { length: 255 }),
-  invoiceAmount: decimal("invoice_amount", { precision: 10, scale: 2 }), // Montant de la facture
+  invoiceAmount: decimal("invoice_amount", { precision: 10, scale: 2 }), // Montant de la facture HT
+  invoiceAmountTTC: decimal("invoice_amount_ttc", { precision: 10, scale: 2 }), // Montant de la facture TTC
   dueDate: timestamp("due_date"), // Date d'échéance
   exists: boolean("exists").notNull(),
   matchType: varchar("match_type", { length: 50 }).notNull(),
@@ -826,14 +829,6 @@ export const savTickets = pgTable("sav_tickets", {
   closedAt: timestamp("closed_at"),
 });
 
-export const savTicketHistory = pgTable("sav_ticket_history", {
-  id: serial("id").primaryKey(),
-  ticketId: integer("ticket_id").notNull(),
-  action: varchar("action", { length: 100 }).notNull(), // status_change, comment, resolution, etc.
-  description: text("description"),
-  createdBy: varchar("created_by", { length: 255 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
 
 // SAV Relations
 export const savTicketRelations = relations(savTickets, ({ one, many }) => ({
@@ -849,19 +844,8 @@ export const savTicketRelations = relations(savTickets, ({ one, many }) => ({
     fields: [savTickets.createdBy],
     references: [users.id],
   }),
-  history: many(savTicketHistory),
 }));
 
-export const savTicketHistoryRelations = relations(savTicketHistory, ({ one }) => ({
-  ticket: one(savTickets, {
-    fields: [savTicketHistory.ticketId],
-    references: [savTickets.id],
-  }),
-  creator: one(users, {
-    fields: [savTicketHistory.createdBy],
-    references: [users.id],
-  }),
-}));
 
 // SAV Zod Schemas
 export const insertSavTicketSchema = createInsertSchema(savTickets).omit({
@@ -877,27 +861,27 @@ export const insertSavTicketSchema = createInsertSchema(savTickets).omit({
   problemType: z.enum(["defectueux", "pieces_manquantes", "non_conforme", "autre"]).default("defectueux"),
 });
 
-export const insertSavTicketHistorySchema = createInsertSchema(savTicketHistory).omit({
-  id: true,
-  createdAt: true,
-});
+// export const insertSavTicketHistorySchema = createInsertSchema(savTicketHistory).omit({
+//   id: true,
+//   createdAt: true,
+// });
 
 // SAV Types
 export type SavTicket = typeof savTickets.$inferSelect;
 export type InsertSavTicket = z.infer<typeof insertSavTicketSchema>;
-export type SavTicketHistory = typeof savTicketHistory.$inferSelect;
-export type InsertSavTicketHistory = z.infer<typeof insertSavTicketHistorySchema>;
+// export type SavTicketHistory = typeof savTicketHistory.$inferSelect;
+// export type InsertSavTicketHistory = z.infer<typeof insertSavTicketHistorySchema>;
+export type InsertSavTicketHistory = any;
+export type SavTicketHistory = any;
 
 export type SavTicketWithRelations = SavTicket & {
   supplier: Supplier;
   group: Group;
   creator: User;
-  history: (SavTicketHistory & { creator: User })[];
+  history: any[];
 };
 
-export type SavTicketHistoryWithCreator = SavTicketHistory & {
-  creator: User;
-};
+export type SavTicketHistoryWithCreator = any;
 
 // Weather Tables
 export const weatherData = pgTable("weather_data", {
