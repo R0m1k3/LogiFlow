@@ -4,7 +4,6 @@ import { storage } from "./storage";
 import { setupLocalAuth, requireAuth } from "./localAuth";
 import { requireModulePermission, requireAdmin, requirePermission } from "./permissions";
 import { db, pool } from "./db";
-import multer from "multer";
 
 console.log('🔍 Using development storage and authentication');
 
@@ -789,14 +788,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Configuration multer pour envoi de factures
-  const invoiceUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB max
-  });
+  // Parser multipart/form-data manuellement (sans busboy/multer)
+  function parseMultipart(buffer: Buffer, boundary: string) {
+    const parts: any = {};
+    const boundaryBuffer = Buffer.from(`--${boundary}`);
+    const sections = [];
+    
+    let start = 0;
+    while (true) {
+      const boundaryIndex = buffer.indexOf(boundaryBuffer, start);
+      if (boundaryIndex === -1) break;
+      
+      if (start > 0) {
+        sections.push(buffer.slice(start, boundaryIndex));
+      }
+      start = boundaryIndex + boundaryBuffer.length;
+    }
+    
+    for (const section of sections) {
+      const headerEnd = section.indexOf('\r\n\r\n');
+      if (headerEnd === -1) continue;
+      
+      const headers = section.slice(0, headerEnd).toString();
+      const content = section.slice(headerEnd + 4, section.length - 2);
+      
+      const nameMatch = headers.match(/name="([^"]+)"/);
+      const filenameMatch = headers.match(/filename="([^"]+)"/);
+      const contentTypeMatch = headers.match(/Content-Type: ([^\r\n]+)/);
+      
+      if (!nameMatch) continue;
+      const name = nameMatch[1];
+      
+      if (filenameMatch) {
+        parts[name] = {
+          filename: filenameMatch[1],
+          contentType: contentTypeMatch ? contentTypeMatch[1] : 'application/octet-stream',
+          buffer: content
+        };
+      } else {
+        parts[name] = content.toString('utf-8');
+      }
+    }
+    
+    return parts;
+  }
 
   // Route proxy SIMPLE pour envoi de factures (admin + directeur)
-  app.post('/api/reconciliation/send-invoice', isAuthenticated, invoiceUpload.single('file'), async (req: any, res) => {
+  app.post('/api/reconciliation/send-invoice', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) {
@@ -808,15 +846,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'Accès refusé' });
       }
 
-      if (!req.file || !req.body.webhookUrl) {
+      // Parser le multipart/form-data manuellement
+      const contentType = req.headers['content-type'] || '';
+      const boundaryMatch = contentType.match(/boundary=(.+)$/);
+      if (!boundaryMatch) {
+        return res.status(400).json({ error: 'Format multipart invalide' });
+      }
+      
+      const boundary = boundaryMatch[1];
+      const chunks: Buffer[] = [];
+      
+      await new Promise<void>((resolve, reject) => {
+        req.on('data', (chunk: Buffer) => chunks.push(chunk));
+        req.on('end', () => resolve());
+        req.on('error', reject);
+      });
+      
+      const buffer = Buffer.concat(chunks);
+      const parts = parseMultipart(buffer, boundary);
+
+      if (!parts.file || !parts.webhookUrl) {
         return res.status(400).json({ error: 'Fichier ou webhook manquant' });
       }
 
       console.log('📤 INVOICE PROXY: Envoi facture', {
         userId: user.id,
         role: user.role,
-        fileName: req.file.originalname,
-        size: req.file.size
+        fileName: parts.file.filename,
+        size: parts.file.buffer.length
       });
 
       // Importer form-data dynamiquement avec eval pour ESM
@@ -824,15 +881,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const FormData = FormDataModule.default;
       
       const formData = new FormData();
-      formData.append('file', req.file.buffer, { 
-        filename: req.file.originalname, 
-        contentType: req.file.mimetype 
+      formData.append('file', parts.file.buffer, { 
+        filename: parts.file.filename, 
+        contentType: parts.file.contentType 
       });
-      formData.append('supplier', req.body.supplier || '');
-      formData.append('blNumber', req.body.blNumber || '');
-      formData.append('type', req.body.type || 'Facture');
+      formData.append('supplier', parts.supplier || '');
+      formData.append('blNumber', parts.blNumber || '');
+      formData.append('type', parts.type || 'Facture');
 
-      const response = await fetch(req.body.webhookUrl, {
+      const response = await fetch(parts.webhookUrl, {
         method: 'POST',
         body: formData as any,
         headers: formData.getHeaders()
