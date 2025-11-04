@@ -788,6 +788,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route proxy SIMPLE pour envoi de factures (admin + directeur)
+  app.post('/api/reconciliation/send-invoice', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Non authentifié' });
+      }
+
+      const user = await storage.getUserWithGroups(userId);
+      if (!user || (user.role !== 'admin' && user.role !== 'directeur')) {
+        return res.status(403).json({ error: 'Accès refusé' });
+      }
+
+      // Utiliser busboy pour parser le multipart/form-data
+      const busboy = Busboy({ headers: req.headers });
+      const fields: any = {};
+      let fileBuffer: Buffer | null = null;
+      let fileName = '';
+      let mimeType = '';
+
+      busboy.on('file', (fieldname, file, info) => {
+        const chunks: Buffer[] = [];
+        fileName = info.filename;
+        mimeType = info.mimeType;
+        
+        file.on('data', (chunk) => chunks.push(chunk));
+        file.on('end', () => {
+          fileBuffer = Buffer.concat(chunks);
+        });
+      });
+
+      busboy.on('field', (fieldname, value) => {
+        fields[fieldname] = value;
+      });
+
+      await new Promise((resolve, reject) => {
+        busboy.on('finish', resolve);
+        busboy.on('error', reject);
+        req.pipe(busboy);
+      });
+
+      if (!fileBuffer || !fields.webhookUrl) {
+        return res.status(400).json({ error: 'Fichier ou webhook manquant' });
+      }
+
+      console.log('📤 INVOICE PROXY: Envoi facture', {
+        userId: user.id,
+        role: user.role,
+        fileName,
+        size: fileBuffer.length
+      });
+
+      // Importer form-data dynamiquement avec eval pour ESM
+      const FormDataModule = await eval('import("form-data")');
+      const FormData = FormDataModule.default;
+      
+      const formData = new FormData();
+      formData.append('file', fileBuffer, { filename: fileName, contentType: mimeType });
+      formData.append('supplier', fields.supplier || '');
+      formData.append('blNumber', fields.blNumber || '');
+      formData.append('type', fields.type || 'Facture');
+
+      const response = await fetch(fields.webhookUrl, {
+        method: 'POST',
+        body: formData as any,
+        headers: formData.getHeaders()
+      });
+
+      if (!response.ok) {
+        console.error('❌ INVOICE PROXY: Webhook error', response.status);
+        return res.status(500).json({ error: `Webhook error: ${response.status}` });
+      }
+
+      console.log('✅ INVOICE PROXY: Success');
+      res.json({ success: true, message: 'Facture envoyée' });
+
+    } catch (error: any) {
+      console.error('❌ INVOICE PROXY: Error', error);
+      res.status(500).json({ error: error.message || 'Erreur serveur' });
+    }
+  });
 
   // Auth routes handled by authSwitch (local or Replit)
 
