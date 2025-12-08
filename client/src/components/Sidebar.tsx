@@ -11,15 +11,15 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { 
-  Store, 
-  Calendar, 
-  BarChart3, 
-  Package, 
-  Truck, 
-  Building, 
-  Users, 
-  UserCog, 
+import {
+  Store,
+  Calendar,
+  BarChart3,
+  Package,
+  Truck,
+  Building,
+  Users,
+  UserCog,
   LogOut,
   FileText,
   Megaphone,
@@ -106,7 +106,7 @@ export default function Sidebar() {
       const configResponse = await fetch('/api/webhook-bap-config', {
         credentials: 'include'
       });
-      
+
       if (configResponse.ok) {
         const config = await configResponse.json();
         webhookUrl = config?.webhookUrl;
@@ -150,9 +150,9 @@ export default function Sidebar() {
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}: ${response.statusText}`);
       }
-      
+
       handleCloseWaitingModal();
-      
+
       toast({
         title: "Succès",
         description: "Fichier BAP envoyé avec succès",
@@ -161,23 +161,23 @@ export default function Sidebar() {
       // Reset des données
       setSelectedFile(null);
       setSelectedRecipient('');
-      
+
     } catch (error: any) {
       handleCloseWaitingModal();
-      
+
       let errorMessage = "Impossible d'envoyer le fichier BAP";
       if (error.name === 'AbortError') {
         errorMessage = "Le traitement a pris trop de temps (timeout de 60 secondes)";
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast({
         title: "Erreur",
         description: errorMessage,
         variant: "destructive",
       });
-      
+
       // Réouvrir le modal de sélection en cas d'erreur
       setShowBapModal(true);
     } finally {
@@ -193,7 +193,7 @@ export default function Sidebar() {
   const handleLogout = async () => {
     try {
       // Force logout via fetch to ensure session is destroyed
-      await fetch('/api/logout', { 
+      await fetch('/api/logout', {
         method: 'POST',
         credentials: 'include'
       });
@@ -232,138 +232,138 @@ export default function Sidebar() {
     {
       title: "GESTION PRINCIPALE",
       items: [
-        { 
-          path: "/dashboard", 
-          label: "Tableau de bord", 
-          icon: BarChart3, 
-          roles: ["admin", "directeur", "manager", "employee"] 
+        {
+          path: "/dashboard",
+          label: "Tableau de bord",
+          icon: BarChart3,
+          roles: ["admin", "directeur", "manager", "employee"]
         },
-        { 
-          path: "/calendar", 
-          label: "Calendrier", 
-          icon: Calendar, 
-          roles: ["admin", "directeur", "manager", "employee"] 
+        {
+          path: "/calendar",
+          label: "Calendrier",
+          icon: Calendar,
+          roles: ["admin", "directeur", "manager", "employee"]
         },
       ]
     },
     {
       title: "LOGISTIQUE",
       items: [
-        { 
-          path: "/orders", 
-          label: "Commandes", 
-          icon: Package, 
-          roles: ["admin", "directeur", "manager"] 
+        {
+          path: "/orders",
+          label: "Commandes",
+          icon: Package,
+          roles: ["admin", "directeur", "manager"]
         },
-        { 
-          path: "/deliveries", 
-          label: "Livraisons", 
-          icon: Truck, 
-          roles: ["admin", "directeur", "manager"] 
+        {
+          path: "/deliveries",
+          label: "Livraisons",
+          icon: Truck,
+          roles: ["admin", "directeur", "manager"]
         },
-        { 
-          path: "/bl-reconciliation", 
-          label: "Rapprochement", 
-          icon: FileText, 
-          roles: ["admin", "directeur"] 
+        {
+          path: "/bl-reconciliation",
+          label: "Rapprochement",
+          icon: FileText,
+          roles: ["admin", "directeur"]
         },
-        { 
-          path: "/payment-schedule", 
-          label: "Échéance", 
-          icon: CreditCard, 
-          roles: ["admin", "directeur"] 
+        {
+          path: "/payment-schedule",
+          label: "Échéance",
+          icon: CreditCard,
+          roles: ["admin", "directeur"]
         },
-        { 
-          path: "/avoirs", 
-          label: "Avoirs", 
-          icon: Receipt, 
-          roles: ["admin", "directeur", "manager"] 
+        {
+          path: "/avoirs",
+          label: "Avoirs",
+          icon: Receipt,
+          roles: ["admin", "directeur", "manager"]
         },
       ]
     },
     {
       title: "ANALYSES",
       items: [
-        { 
-          path: "/analytics", 
-          label: "Statistiques", 
-          icon: BarChart3, 
-          roles: ["admin", "directeur", "manager"] 
+        {
+          path: "/analytics",
+          label: "Statistiques",
+          icon: BarChart3,
+          roles: ["admin", "directeur", "manager"]
         },
-        { 
-          path: "/sales-analysis", 
-          label: "Analyse Vente", 
-          icon: TrendingUp, 
-          roles: ["admin", "directeur"] 
+        {
+          path: "/sales-analysis",
+          label: "Analyse Vente",
+          icon: TrendingUp,
+          roles: ["admin", "directeur"]
         },
       ]
     },
     {
       title: "OPÉRATIONS",
       items: [
-        { 
-          path: "/publicities", 
-          label: "Publicités", 
-          icon: Megaphone, 
-          roles: ["admin", "directeur", "manager", "employee"] 
+        {
+          path: "/publicities",
+          label: "Publicités",
+          icon: Megaphone,
+          roles: ["admin", "directeur", "manager", "employee"]
         },
-        { 
-          path: "/customer-orders", 
-          label: "Commandes Client", 
-          icon: ShoppingCart, 
-          roles: ["admin", "directeur", "manager", "employee"] 
+        {
+          path: "/customer-orders",
+          label: "Commandes Client",
+          icon: ShoppingCart,
+          roles: ["admin", "directeur", "manager", "employee"]
         },
-        { 
-          path: "/dlc", 
-          label: "Gestion DLC", 
-          icon: Clock, 
-          roles: ["admin", "directeur", "manager", "employee"] 
+        {
+          path: "/dlc",
+          label: "Gestion DLC",
+          icon: Clock,
+          roles: ["admin", "directeur", "manager", "employee"]
         },
-        { 
-          path: "/tasks", 
-          label: "Tâches", 
-          icon: ListTodo, 
-          roles: ["admin", "directeur", "manager", "employee"] 
+        {
+          path: "/tasks",
+          label: "Tâches",
+          icon: ListTodo,
+          roles: ["admin", "directeur", "manager", "employee"]
         },
-        { 
-          path: "/sav", 
-          label: "SAV", 
-          icon: Wrench, 
-          roles: ["admin", "directeur", "manager", "employee"] 
+        {
+          path: "/sav",
+          label: "SAV",
+          icon: Wrench,
+          roles: ["admin", "directeur", "manager", "employee"]
         },
       ]
     },
   ];
 
   const adminItems = [
-    { 
-      path: "/users", 
-      label: "Utilisateurs", 
-      icon: UserCog, 
-      roles: ["admin"] 
+    {
+      path: "/users",
+      label: "Utilisateurs",
+      icon: UserCog,
+      roles: ["admin"]
     },
-    { 
-      path: "/suppliers", 
-      label: "Fournisseurs", 
-      icon: Building, 
-      roles: ["admin"] 
+    {
+      path: "/suppliers",
+      label: "Fournisseurs",
+      icon: Building,
+      roles: ["admin"]
     },
-    { 
-      path: "/groups", 
-      label: "Magasins", 
-      icon: Users, 
-      roles: ["admin"] 
+    {
+      path: "/groups",
+      label: "Magasins",
+      icon: Users,
+      roles: ["admin"]
     },
-    { 
-      path: "/utilities", 
-      label: "Utilitaires", 
-      icon: Settings, 
-      roles: ["admin"] 
+    {
+      path: "/utilities",
+      label: "Utilitaires",
+      icon: Settings,
+      roles: ["admin"]
     },
-    { 
-      path: "#bap", 
-      label: "BAP", 
-      icon: FileUp, 
+    {
+      path: "#bap",
+      label: "BAP",
+      icon: FileUp,
       roles: ["admin"],
       isButton: true
     },
@@ -383,27 +383,26 @@ export default function Sidebar() {
   // Classes responsives adaptées avec support tablette
   const getSidebarClasses = () => {
     if (isMobile) {
-      return `fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 shadow-lg transform transition-transform duration-300 ease-in-out ${
-        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-      }`;
+      return `fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 shadow-lg transform transition-transform duration-300 ease-in-out ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`;
     }
-    
+
     // Mode tablette : semi-collapsed par défaut ou collapsed si forcé
     if (isTablet) {
       return `${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-tablet'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`;
     }
-    
+
     // Mode desktop standard
     return `${sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'} bg-white border-r border-gray-200 flex flex-col shadow-lg transition-all duration-300 ease-in-out`;
   };
-  
+
   const sidebarClasses = getSidebarClasses();
-  
+
   // Debug log pour vérifier l'état de la sidebar
-  console.log('🔧 Sidebar Debug:', { 
-    isMobile, 
-    sidebarCollapsed, 
-    mobileMenuOpen, 
+  console.log('🔧 Sidebar Debug:', {
+    isMobile,
+    sidebarCollapsed,
+    mobileMenuOpen,
     width: sidebarCollapsed ? 'collapsed (64px)' : 'expanded (256px)',
     classes: sidebarClasses
   });
@@ -578,7 +577,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-2 px-3 overflow-y-hidden">
+      <nav className="flex-1 py-2 px-3 overflow-y-auto">
         <div className="space-y-3">
           {menuSections.map((section, sectionIndex) => {
             // Vérifier si au moins un item de la section est accessible
@@ -593,48 +592,46 @@ export default function Sidebar() {
                     {section.title}
                   </h3>
                 )}
-                
+
                 {/* Séparateur visuel en mode collapsed */}
                 {sidebarCollapsed && sectionIndex > 0 && (
                   <div className="border-t border-gray-200 my-2"></div>
                 )}
-                
+
                 {/* Items du menu */}
                 <div className="space-y-0.5">
                   {section.items.map((item) => {
                     const hasRolePermission = hasPermission(item.roles);
-                    
+
                     if (!hasRolePermission) return null;
-                    
+
                     const Icon = item.icon;
                     const active = isActive(item.path);
-                    
+
                     return (
                       <Link key={item.path} href={item.path}>
                         <div
                           className={`flex items-center transition-colors hover:bg-gray-100 rounded-md ${
                             // Espacement adaptatif selon l'écran et l'état
-                            sidebarCollapsed && !isMobile 
-                              ? 'px-3 py-2 justify-center min-h-9' 
-                              : isMobileOrTablet 
-                                ? 'px-4 py-2.5 min-h-10' 
+                            sidebarCollapsed && !isMobile
+                              ? 'px-3 py-2 justify-center min-h-9'
+                              : isMobileOrTablet
+                                ? 'px-4 py-2.5 min-h-10'
                                 : 'px-3 py-2 min-h-9'
-                          } ${
-                            active
+                            } ${active
                               ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
                               : 'text-gray-700'
-                          }`}
+                            }`}
                           title={sidebarCollapsed && !isMobile ? item.label : undefined}
                           onClick={handleMenuClick}
                         >
                           <Icon className={`${
                             // Tailles d'icônes adaptatives
-                            isMobile ? 'h-5 w-5' : 
-                            isTablet ? 'h-6 w-6' : 
-                            'h-5 w-5'
-                          } ${
-                            active ? 'text-blue-700' : 'text-gray-600'
-                          } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
+                            isMobile ? 'h-5 w-5' :
+                              isTablet ? 'h-6 w-6' :
+                                'h-5 w-5'
+                            } ${active ? 'text-blue-700' : 'text-gray-600'
+                            } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
                           {(!sidebarCollapsed || isMobile) && (
                             <span className={`${isMobileOrTablet ? 'text-base' : 'text-[15px]'} font-medium`}>
                               {item.label}
@@ -664,32 +661,30 @@ export default function Sidebar() {
           <div className="space-y-0.5">
             {adminItems.map((item) => {
               if (!hasPermission(item.roles)) return null;
-              
+
               const Icon = item.icon;
               const active = isActive(item.path);
-              
+
               if (item.isButton && item.path === '#bap') {
                 return (
                   <div key={item.path}>
                     <div
-                      className={`flex items-center cursor-pointer transition-colors hover:bg-gray-100 rounded-md ${
-                        sidebarCollapsed && !isMobile 
-                          ? 'px-3 py-2 justify-center min-h-9' 
-                          : isMobileOrTablet 
-                            ? 'px-4 py-2.5 min-h-10' 
+                      className={`flex items-center cursor-pointer transition-colors hover:bg-gray-100 rounded-md ${sidebarCollapsed && !isMobile
+                          ? 'px-3 py-2 justify-center min-h-9'
+                          : isMobileOrTablet
+                            ? 'px-4 py-2.5 min-h-10'
                             : 'px-3 py-2 min-h-9'
-                      } text-gray-700`}
+                        } text-gray-700`}
                       title={sidebarCollapsed && !isMobile ? item.label : undefined}
                       onClick={() => {
                         setShowBapModal(true);
                         if (isMobile) setMobileMenuOpen(false);
                       }}
                     >
-                      <Icon className={`${
-                        isMobile ? 'h-5 w-5' : 
-                        isTablet ? 'h-6 w-6' : 
-                        'h-5 w-5'
-                      } text-gray-600 ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
+                      <Icon className={`${isMobile ? 'h-5 w-5' :
+                          isTablet ? 'h-6 w-6' :
+                            'h-5 w-5'
+                        } text-gray-600 ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
                       {(!sidebarCollapsed || isMobile) && (
                         <span className={`${isMobileOrTablet ? 'text-base' : 'text-[15px]'} font-medium`}>
                           {item.label}
@@ -699,31 +694,27 @@ export default function Sidebar() {
                   </div>
                 );
               }
-              
+
               return (
                 <Link key={item.path} href={item.path}>
                   <div
-                    className={`flex items-center transition-colors hover:bg-gray-100 rounded-md ${
-                      sidebarCollapsed && !isMobile 
-                        ? 'px-3 py-2 justify-center min-h-9' 
-                        : isMobileOrTablet 
-                          ? 'px-4 py-2.5 min-h-10' 
+                    className={`flex items-center transition-colors hover:bg-gray-100 rounded-md ${sidebarCollapsed && !isMobile
+                        ? 'px-3 py-2 justify-center min-h-9'
+                        : isMobileOrTablet
+                          ? 'px-4 py-2.5 min-h-10'
                           : 'px-3 py-2 min-h-9'
-                    } ${
-                      active
+                      } ${active
                         ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
                         : 'text-gray-700'
-                    }`}
+                      }`}
                     title={sidebarCollapsed && !isMobile ? item.label : undefined}
                     onClick={handleMenuClick}
                   >
-                    <Icon className={`${
-                      isMobile ? 'h-5 w-5' : 
-                      isTablet ? 'h-6 w-6' : 
-                      'h-5 w-5'
-                    } ${
-                      active ? 'text-blue-700' : 'text-gray-600'
-                    } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
+                    <Icon className={`${isMobile ? 'h-5 w-5' :
+                        isTablet ? 'h-6 w-6' :
+                          'h-5 w-5'
+                      } ${active ? 'text-blue-700' : 'text-gray-600'
+                      } ${sidebarCollapsed && !isMobile ? '' : 'mr-3'}`} />
                     {(!sidebarCollapsed || isMobile) && (
                       <span className={`${isMobileOrTablet ? 'text-base' : 'text-[15px]'} font-medium`}>
                         {item.label}
@@ -750,9 +741,9 @@ export default function Sidebar() {
             {/* NOUVELLE zone de sélection de fichier */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold text-gray-800">Fichier PDF</Label>
-              
+
               {!selectedFile ? (
-                <div 
+                <div
                   className="border-2 border-dashed border-blue-300 rounded-xl p-8 bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all cursor-pointer group"
                   onClick={() => document.getElementById('hidden-file-input')?.click()}
                 >
@@ -786,8 +777,8 @@ export default function Sidebar() {
                         {(selectedFile.size / 1024 / 1024).toFixed(2)} MB • PDF
                       </p>
                     </div>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => {
                         setSelectedFile(null);
@@ -801,7 +792,7 @@ export default function Sidebar() {
                   </div>
                 </div>
               )}
-              
+
               {/* Input caché */}
               <input
                 id="hidden-file-input"
@@ -840,14 +831,14 @@ export default function Sidebar() {
             </div>
             {/* Boutons améliorés */}
             <div className="flex gap-3 pt-4 border-t border-gray-200">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowBapModal(false)}
                 className="flex-1 h-12 border-2 border-gray-200 hover:border-gray-300"
               >
                 Annuler
               </Button>
-              <Button 
+              <Button
                 onClick={handleSendBap}
                 disabled={!selectedFile || !selectedRecipient || isUploading}
                 className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-medium"
@@ -870,7 +861,7 @@ export default function Sidebar() {
       </Dialog>
 
       {/* Modal d'attente */}
-      <Dialog open={showWaitingModal} onOpenChange={() => {}}>
+      <Dialog open={showWaitingModal} onOpenChange={() => { }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -885,7 +876,7 @@ export default function Sidebar() {
                 Envoi du fichier vers le workflow...
               </div>
               <div className="text-xs text-gray-500">
-                {processingSeconds < 60 
+                {processingSeconds < 60
                   ? `${processingSeconds}s écoulées`
                   : '60s+ écoulées'
                 }
@@ -910,13 +901,13 @@ export default function Sidebar() {
                   {user?.firstName || user?.lastName ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim() : user?.username}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  {user?.role === 'admin' ? 'Administrateur' : 
-                   user?.role === 'manager' ? 'Manager' : 
-                   user?.role === 'directeur' ? 'Directeur' : 'Employé'}
+                  {user?.role === 'admin' ? 'Administrateur' :
+                    user?.role === 'manager' ? 'Manager' :
+                      user?.role === 'directeur' ? 'Directeur' : 'Employé'}
                 </p>
               </div>
             </div>
-            <Button 
+            <Button
               onClick={handleLogout}
               variant="ghost"
               size="sm"
@@ -933,7 +924,7 @@ export default function Sidebar() {
                 {getInitials(user?.firstName, user?.lastName)}
               </span>
             </div>
-            <Button 
+            <Button
               onClick={handleLogout}
               variant="ghost"
               size="sm"
