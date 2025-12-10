@@ -56,6 +56,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const dlcFormSchema = z.object({
@@ -65,6 +66,7 @@ const dlcFormSchema = z.object({
     dateType: z.enum(["dlc", "ddm", "dluo"]).default("dlc"),
     supplierId: z.coerce.number().min(1, "Fournisseur requis"),
     status: z.string().default("en_cours"),
+    notes: z.string().optional(),
 });
 
 export default function MobileDlcPage() {
@@ -132,7 +134,8 @@ export default function MobileDlcPage() {
             dlcDate: format(new Date(), 'yyyy-MM-dd'),
             dateType: "dlc",
             supplierId: 1,
-            status: "en_cours"
+            status: "en_cours",
+            notes: ""
         }
     });
 
@@ -384,6 +387,19 @@ export default function MobileDlcPage() {
                                         <FormLabel>Gencode (Scanner si dispo)</FormLabel>
                                         <FormControl>
                                             <Input placeholder="EAN13" {...field} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="notes"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Notes internes</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Remarques..." className="h-20" {...field} />
                                         </FormControl>
                                     </FormItem>
                                 )}
