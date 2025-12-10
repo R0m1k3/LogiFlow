@@ -164,7 +164,10 @@ export default function MobileOrdersPage() {
 
                                             <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                                                 <Calendar className="h-3 w-3" />
-                                                {format(new Date(order.orderDate), 'dd/MM/yyyy', { locale: fr })}
+                                                {order.orderDate && !isNaN(new Date(order.orderDate).getTime())
+                                                    ? format(new Date(order.orderDate), 'dd/MM/yyyy', { locale: fr })
+                                                    : 'Date inconnue'
+                                                }
                                             </p>
                                         </div>
 

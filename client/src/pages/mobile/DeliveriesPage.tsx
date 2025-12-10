@@ -75,7 +75,10 @@ export default function MobileDeliveriesPage() {
     });
 
     const getDateBadge = (dateStr: string) => {
+        if (!dateStr) return null;
         const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return null;
+
         if (isToday(date)) {
             return <Badge className="bg-blue-100 text-blue-700">Aujourd'hui</Badge>;
         }
@@ -179,7 +182,10 @@ export default function MobileDeliveriesPage() {
 
                                             <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
                                                 <Calendar className="h-3 w-3" />
-                                                {format(new Date(delivery.expectedDate), 'dd/MM/yyyy', { locale: fr })}
+                                                {delivery.expectedDate && !isNaN(new Date(delivery.expectedDate).getTime())
+                                                    ? format(new Date(delivery.expectedDate), 'dd/MM/yyyy', { locale: fr })
+                                                    : 'Date inconnue'
+                                                }
                                             </p>
                                         </div>
 

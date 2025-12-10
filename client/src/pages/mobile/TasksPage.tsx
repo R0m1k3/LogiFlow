@@ -361,132 +361,127 @@ export default function MobileTasksPage() {
     // Loading
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-screen">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-            </div>
+            <MobileLayout>
+                <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                </div>
+            </MobileLayout>
         );
     }
 
     return (
-        <div
-            className="min-h-screen bg-gray-50 pb-24"
-            style={{
-                width: '100%',
-                maxWidth: '100vw',
-                overflowX: 'hidden',
-                boxSizing: 'border-box'
-            }}
-        >
-            {/* Header */}
-            <div className="bg-white border-b sticky top-0 z-40" style={{ width: '100%', boxSizing: 'border-box' }}>
-                <div className="px-3 py-3">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <ListTodo className="w-5 h-5 text-blue-600" />
-                            <h1 className="text-lg font-bold">Tâches</h1>
+        <MobileLayout>
+            <div className="p-3 space-y-3">
+                <div className="bg-white border-b sticky top-0 z-40" style={{ width: '100%', boxSizing: 'border-box' }}>
+                    <div className="px-3 py-3">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <ListTodo className="w-5 h-5 text-blue-600" />
+                                <h1 className="text-lg font-bold">Tâches</h1>
+                            </div>
+                            <Badge variant="secondary">{filteredTasks.length}</Badge>
                         </div>
-                        <Badge variant="secondary">{filteredTasks.length}</Badge>
-                    </div>
 
-                    {/* Search */}
-                    <div className="relative mb-3">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <Input
-                            placeholder="Rechercher..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 h-10 text-sm"
-                        />
-                    </div>
+                        {/* Search */}
+                        <div className="relative mb-3">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Input
+                                placeholder="Rechercher..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10 h-10 text-sm"
+                            />
+                        </div>
 
-                    {/* Tabs - Grid layout pour garantir 3 colonnes égales */}
-                    <div className="grid grid-cols-3 gap-1">
-                        <Button
-                            variant={activeTab === 'pending' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setActiveTab('pending')}
-                            className="h-9 text-xs px-1 truncate"
-                        >
-                            ⏳ Actives
-                        </Button>
-                        <Button
-                            variant={activeTab === 'completed' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setActiveTab('completed')}
-                            className="h-9 text-xs px-1 truncate"
-                        >
-                            ✅ Faites
-                        </Button>
-                        <Button
-                            variant={activeTab === 'all' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setActiveTab('all')}
-                            className="h-9 text-xs px-1 truncate"
-                        >
-                            📋 Toutes
-                        </Button>
+                        {/* Tabs - Grid layout pour garantir 3 colonnes égales */}
+                        <div className="grid grid-cols-3 gap-1">
+                            <Button
+                                variant={activeTab === 'pending' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setActiveTab('pending')}
+                                className="h-9 text-xs px-1 truncate"
+                            >
+                                ⏳ Actives
+                            </Button>
+                            <Button
+                                variant={activeTab === 'completed' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setActiveTab('completed')}
+                                className="h-9 text-xs px-1 truncate"
+                            >
+                                ✅ Faites
+                            </Button>
+                            <Button
+                                variant={activeTab === 'all' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setActiveTab('all')}
+                                className="h-9 text-xs px-1 truncate"
+                            >
+                                📋 Toutes
+                            </Button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Task List */}
-            <div className="px-3 py-2 overflow-hidden" style={{ maxWidth: '100%' }}>
-                {filteredTasks.length === 0 ? (
-                    <div className="text-center py-12 text-gray-500">
-                        <ListTodo className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>Aucune tâche trouvée</p>
+                {/* Task List */}
+                <div className="px-3 py-2 overflow-hidden" style={{ maxWidth: '100%' }}>
+                    {filteredTasks.length === 0 ? (
+                        <div className="text-center py-12 text-gray-500">
+                            <ListTodo className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                            <p>Aucune tâche trouvée</p>
+                        </div>
+                    ) : (
+                        filteredTasks.map((task: TaskWithRelations) => (
+                            <TaskCard
+                                key={task.id}
+                                task={task}
+                                onComplete={() => handleComplete(task.id)}
+                                onEdit={() => { setEditingTask(task); setShowForm(true); }}
+                                onDelete={() => setDeletingTask(task)}
+                                canEdit={canEdit}
+                            />
+                        ))
+                    )}
+                </div>
+
+                {/* FAB Button */}
+                {canEdit && (
+                    <Button
+                        onClick={() => { setEditingTask(null); setShowForm(true); }}
+                        className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-40"
+                    >
+                        <Plus className="w-6 h-6" />
+                    </Button>
+                )}
+
+                {/* Form Modal */}
+                {showForm && (
+                    <MobileTaskForm
+                        task={editingTask}
+                        onClose={() => { setShowForm(false); setEditingTask(null); }}
+                        selectedStoreId={selectedStoreId}
+                        user={user}
+                    />
+                )}
+
+                {/* Delete Confirmation */}
+                {deletingTask && (
+                    <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+                        <div className="bg-white w-full rounded-t-xl p-4 pb-8">
+                            <h3 className="font-semibold text-lg mb-2">Supprimer cette tâche ?</h3>
+                            <p className="text-gray-600 mb-4">{deletingTask.title}</p>
+                            <div className="flex gap-3">
+                                <Button variant="outline" onClick={() => setDeletingTask(null)} className="flex-1 h-12">
+                                    Annuler
+                                </Button>
+                                <Button variant="destructive" onClick={handleDelete} className="flex-1 h-12">
+                                    Supprimer
+                                </Button>
+                            </div>
+                        </div>
                     </div>
-                ) : (
-                    filteredTasks.map((task: TaskWithRelations) => (
-                        <TaskCard
-                            key={task.id}
-                            task={task}
-                            onComplete={() => handleComplete(task.id)}
-                            onEdit={() => { setEditingTask(task); setShowForm(true); }}
-                            onDelete={() => setDeletingTask(task)}
-                            canEdit={canEdit}
-                        />
-                    ))
                 )}
             </div>
-
-            {/* FAB Button */}
-            {canEdit && (
-                <Button
-                    onClick={() => { setEditingTask(null); setShowForm(true); }}
-                    className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 z-40"
-                >
-                    <Plus className="w-6 h-6" />
-                </Button>
-            )}
-
-            {/* Form Modal */}
-            {showForm && (
-                <MobileTaskForm
-                    task={editingTask}
-                    onClose={() => { setShowForm(false); setEditingTask(null); }}
-                    selectedStoreId={selectedStoreId}
-                    user={user}
-                />
-            )}
-
-            {/* Delete Confirmation */}
-            {deletingTask && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-                    <div className="bg-white w-full rounded-t-xl p-4 pb-8">
-                        <h3 className="font-semibold text-lg mb-2">Supprimer cette tâche ?</h3>
-                        <p className="text-gray-600 mb-4">{deletingTask.title}</p>
-                        <div className="flex gap-3">
-                            <Button variant="outline" onClick={() => setDeletingTask(null)} className="flex-1 h-12">
-                                Annuler
-                            </Button>
-                            <Button variant="destructive" onClick={handleDelete} className="flex-1 h-12">
-                                Supprimer
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+        </MobileLayout>
     );
 }
