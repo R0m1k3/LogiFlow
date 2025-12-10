@@ -21,6 +21,10 @@ import BackupManager from "@/pages/BackupManager";
 import Utilities from "@/pages/Utilities";
 import Tasks from "@/pages/Tasks";
 import ResponsiveTasks from "@/components/ResponsiveTasks";
+import ResponsiveDashboard from "@/components/ResponsiveDashboard";
+import ResponsiveOrders from "@/components/ResponsiveOrders";
+import ResponsiveDeliveries from "@/components/ResponsiveDeliveries";
+import ResponsiveCalendar from "@/components/ResponsiveCalendar";
 import SavTickets from "@/pages/SavTickets";
 import Avoirs from "@/pages/Avoirs";
 import WeatherSettings from "@/pages/WeatherSettings";
@@ -90,10 +94,10 @@ function RouterProduction() {
   return (
     <Layout>
       <Switch>
-        <Route path="/calendar" component={Calendar} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/orders" component={Orders} />
-        <Route path="/deliveries" component={Deliveries} />
+        <Route path="/calendar" component={ResponsiveCalendar} />
+        <Route path="/dashboard" component={ResponsiveDashboard} />
+        <Route path="/orders" component={ResponsiveOrders} />
+        <Route path="/deliveries" component={ResponsiveDeliveries} />
         <Route path="/suppliers" component={Suppliers} />
         <Route path="/groups" component={Groups} />
         <Route path="/users" component={Users} />
