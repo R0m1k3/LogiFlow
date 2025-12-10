@@ -48,11 +48,8 @@ export default function MobileCalendarPage() {
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
-    // Debug log - doit apparaître dans la console
-    console.log('🗓️ MobileCalendarPage RENDER', { user: !!user, selectedStoreId, currentMonth: currentMonth.toISOString() });
-
     // Fetch orders for current month
-    const { data: orders = [], isLoading: loadingOrders } = useQuery({
+    const { data: orders = [] } = useQuery({
         queryKey: ["/api/orders", selectedStoreId, format(currentMonth, 'yyyy-MM')],
         queryFn: async () => {
             const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
@@ -64,24 +61,20 @@ export default function MobileCalendarPage() {
             });
             if (selectedStoreId) params.append('storeId', selectedStoreId.toString());
 
-            console.log('📅 Mobile Calendar fetching orders:', { start, end, selectedStoreId });
-
             const response = await fetch(`/api/orders?${params}`, {
                 credentials: 'include'
             });
             if (!response.ok) {
-                console.error('❌ Orders fetch failed:', response.status);
                 return [];
             }
             const data = await response.json();
-            console.log('📦 Orders received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', data);
             return Array.isArray(data) ? data : [];
         },
         enabled: !!user,
     });
 
     // Fetch deliveries for current month
-    const { data: deliveries = [], isLoading: loadingDeliveries } = useQuery({
+    const { data: deliveries = [] } = useQuery({
         queryKey: ["/api/deliveries", selectedStoreId, format(currentMonth, 'yyyy-MM')],
         queryFn: async () => {
             const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
@@ -93,17 +86,13 @@ export default function MobileCalendarPage() {
             });
             if (selectedStoreId) params.append('storeId', selectedStoreId.toString());
 
-            console.log('📅 Mobile Calendar fetching deliveries:', { start, end, selectedStoreId });
-
             const response = await fetch(`/api/deliveries?${params}`, {
                 credentials: 'include'
             });
             if (!response.ok) {
-                console.error('❌ Deliveries fetch failed:', response.status);
                 return [];
             }
             const data = await response.json();
-            console.log('🚚 Deliveries received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', data);
             return Array.isArray(data) ? data : [];
         },
         enabled: !!user,
@@ -279,8 +268,8 @@ export default function MobileCalendarPage() {
                                     <CardContent className="p-3">
                                         <div className="flex items-start gap-3">
                                             <div className={`p-2 rounded-lg ${event.type === 'order'
-                                                ? 'bg-blue-100'
-                                                : 'bg-green-100'
+                                                    ? 'bg-blue-100'
+                                                    : 'bg-green-100'
                                                 }`}>
                                                 {event.type === 'order'
                                                     ? <Package className="h-4 w-4 text-blue-600" />
@@ -312,26 +301,6 @@ export default function MobileCalendarPage() {
                         )}
                     </div>
                 )}
-
-                {/* DEBUG SECTION - VISIBLE ON MOBILE */}
-                <div className="mt-8 p-4 bg-gray-100 rounded text-xs font-mono text-gray-600 break-all">
-                    <p className="font-bold">DEBUG INFO:</p>
-                    <p>Current Month: {format(currentMonth, 'yyyy-MM')}</p>
-                    <p>Store ID: {selectedStoreId ? selectedStoreId : 'None'}</p>
-                    <p>Orders: {loadingOrders ? 'Loading...' : orders?.length || 0}</p>
-                    <p>Deliveries: {loadingDeliveries ? 'Loading...' : deliveries?.length || 0}</p>
-                    <p>Total Events: {events.length}</p>
-                    <p>User: {user ? user.username : 'No user'}</p>
-
-                    {events.length > 0 && (
-                        <div className="mt-2 text-[10px]">
-                            <p className="font-bold">First Event Sample:</p>
-                            <p>Title: {events[0].title}</p>
-                            <p>Raw Date: {String(events[0].date)}</p>
-                            <p>Parsed: {new Date(events[0].date).toString()}</p>
-                        </div>
-                    )}
-                </div>
             </div>
         </MobileLayout>
     );
