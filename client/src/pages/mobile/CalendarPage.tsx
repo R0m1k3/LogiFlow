@@ -313,7 +313,43 @@ export default function MobileCalendarPage() {
                         )}
                     </div>
                 )}
+
+                {/* DEBUG SECTION - VISIBLE ON MOBILE */}
+                <div className="mt-8 p-4 bg-gray-100 rounded text-xs font-mono text-gray-600 break-all">
+                    <p className="font-bold">DEBUG INFO:</p>
+                    <p>Current Month: {format(currentMonth, 'yyyy-MM')}</p>
+                    <p>Store ID: {selectedStoreId ? selectedStoreId : 'None'}</p>
+                    <p>Orders: {loadingOrders ? 'Loading...' : orders?.length || 0}</p>
+                    <p>Deliveries: {loadingDeliveries ? 'Loading...' : deliveries?.length || 0}</p>
+                    <p>Total Events: {events.length}</p>
+                    <p>User: {user ? user.username : 'No user'}</p>
+
+                    {events.length > 0 && (
+                        <div className="mt-2 text-[10px]">
+                            <p className="font-bold">First Event Sample:</p>
+                            <p>Title: {events[0].title}</p>
+                            <p>Raw Date: {String(events[0].date)}</p>
+                            <p>Parsed: {new Date(events[0].date).toString()}</p>
+                        </div>
+                    )}
+                </div>
+                <Badge
+                    variant="secondary"
+                    className="mt-1 text-xs"
+                >
+                    {event.status}
+                </Badge>
+                                                )}
             </div>
-        </MobileLayout>
+        </div>
+                                    </CardContent >
+                                </Card >
+                            ))
+                        )
+}
+                    </div >
+                )}
+            </div >
+        </MobileLayout >
     );
 }
