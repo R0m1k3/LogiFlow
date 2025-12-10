@@ -217,8 +217,8 @@ function TaskCard({
     const isCompleted = task.status === 'completed';
 
     return (
-        <Card className={`mb-3 ${isCompleted ? 'opacity-60' : ''}`}>
-            <CardContent className="p-4">
+        <Card className={`mb-3 overflow-hidden ${isCompleted ? 'opacity-60' : ''}`}>
+            <CardContent className="p-3">
                 {/* Header: Priority + Due Date */}
                 <div className="flex items-center justify-between mb-2">
                     <Badge className={`${priority.color} border text-xs`}>
@@ -234,13 +234,13 @@ function TaskCard({
                 </div>
 
                 {/* Title */}
-                <h3 className={`font-semibold text-base mb-1 ${isCompleted ? 'line-through text-gray-500' : ''}`}>
+                <h3 className={`font-semibold text-base mb-1 break-words ${isCompleted ? 'line-through text-gray-500' : ''}`}>
                     {task.title}
                 </h3>
 
                 {/* Description */}
                 {task.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{task.description}</p>
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2 break-words">{task.description}</p>
                 )}
 
                 {/* Assigned To */}
@@ -421,7 +421,7 @@ export default function MobileTasksPage() {
             </div>
 
             {/* Task List */}
-            <div className="p-4">
+            <div className="px-3 py-2 overflow-hidden" style={{ maxWidth: '100%' }}>
                 {filteredTasks.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">
                         <ListTodo className="w-12 h-12 mx-auto mb-3 opacity-50" />
