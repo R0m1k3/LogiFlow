@@ -1,12 +1,13 @@
 /**
  * MobileLayout - Layout dédié pour l'application mobile
  * Affiche le magasin sélectionné de manière visible et une navigation bottom
+ * Inclut son propre StoreProvider
  */
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, X, Store, ChevronDown, LogOut } from "lucide-react";
+import { Menu, Store, ChevronDown, LogOut } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { useStore } from "@/contexts/StoreContext";
+import { StoreProvider } from "@/contexts/StoreContext";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,13 +17,17 @@ import type { Group } from "@shared/schema";
 interface MobileLayoutProps {
     children: ReactNode;
     title?: string;
-    showBackButton?: boolean;
-    onBack?: () => void;
 }
 
-export default function MobileLayout({ children, title }: MobileLayoutProps) {
-    const { user } = useAuthUnified();
-    const { selectedStoreId, setSelectedStoreId, stores } = useStore();
+// Inner component that uses the store context
+function MobileLayoutInner({ children, title, selectedStoreId, setSelectedStoreId, stores, user }: {
+    children: ReactNode;
+    title?: string;
+    selectedStoreId: number | null;
+    setSelectedStoreId: (id: number | null) => void;
+    stores: Group[];
+    user: any;
+}) {
     const [menuOpen, setMenuOpen] = useState(false);
 
     // Get selected store name
@@ -56,7 +61,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                 width: '100%',
                 maxWidth: '100vw',
                 overflowX: 'hidden',
-                paddingBottom: '80px' // Space for bottom nav
+                paddingBottom: '80px'
             }}
         >
             {/* Header fixe */}
@@ -178,3 +183,61 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
         </div>
     );
 }
+
+// Main MobileLayout component with StoreProvider
+export default function MobileLayout({ children, title }: MobileLayoutProps) {
+    const { user } = useAuthUnified();
+
+    // Store state management
+    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
+        const saved = localStorage.getItem('selectedStoreId');
+        return saved ? parseInt(saved) : null;
+    });
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [storeInitialized, setStoreInitialized] = useState(false);
+
+    // Fetch stores
+    const { data: stores = [] } = useQuery<Group[]>({
+        queryKey: ['/api/groups'],
+        enabled: !!user,
+    });
+
+    // Initialize store selection
+    useEffect(() => {
+        if (user && stores.length > 0) {
+            if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1) {
+                const singleStoreId = stores[0].id;
+                setSelectedStoreId(singleStoreId);
+                localStorage.setItem('selectedStoreId', singleStoreId.toString());
+            }
+            setStoreInitialized(true);
+        }
+    }, [user, stores, selectedStoreId]);
+
+    const storeContextValue = {
+        selectedStoreId,
+        setSelectedStoreId,
+        stores,
+        sidebarCollapsed,
+        setSidebarCollapsed,
+        mobileMenuOpen,
+        setMobileMenuOpen,
+        storeInitialized
+    };
+
+    return (
+        <StoreProvider value={storeContextValue}>
+            <MobileLayoutInner
+                title={title}
+                selectedStoreId={selectedStoreId}
+                setSelectedStoreId={setSelectedStoreId}
+                stores={stores}
+                user={user}
+            >
+                {children}
+            </MobileLayoutInner>
+        </StoreProvider>
+    );
+}
+
