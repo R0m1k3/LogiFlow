@@ -69,7 +69,7 @@ const customerOrderFormSchema = z.object({
     gencode: z.string().optional(),
     quantity: z.coerce.number().int().positive().default(1),
     supplierId: z.coerce.number().int().positive().default(1),
-    orderTaker: z.string().optional(),
+    orderTaker: z.string().min(1, "Prise de commande requise"),
     notes: z.string().optional(),
     deposit: z.coerce.number().optional().default(0),
 });
@@ -344,6 +344,22 @@ export default function MobileCustomerOrdersPage() {
                             </div>
 
                             <div className="bg-gray-50 p-3 rounded-lg space-y-3">
+                                <h3 className="font-medium text-sm text-gray-500 uppercase">Vendeur</h3>
+                                <FormField
+                                    control={form.control}
+                                    name="orderTaker"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Prise par</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Nom du vendeur" {...field} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="bg-gray-50 p-3 rounded-lg space-y-3">
                                 <h3 className="font-medium text-sm text-gray-500 uppercase">Produit</h3>
                                 <FormField
                                     control={form.control}
@@ -352,7 +368,19 @@ export default function MobileCustomerOrdersPage() {
                                         <FormItem>
                                             <FormLabel>Désignation</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Nom du produit" {...field} />
+                                                <Textarea placeholder="Nom du produit" {...field} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="productReference"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Référence (Optionnel)</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="REF-123..." {...field} />
                                             </FormControl>
                                         </FormItem>
                                     )}
