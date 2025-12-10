@@ -49,12 +49,17 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
 
     return (
         <div
-            className="min-h-screen bg-gray-50 flex flex-col"
+            className="bg-gray-50 flex flex-col"
             style={{
                 width: '100%',
                 maxWidth: '100vw',
-                overflowX: 'hidden',
-                paddingBottom: '80px'
+                height: '100vh',
+                overflow: 'hidden',
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0
             }}
         >
             {/* Header fixe */}
@@ -96,8 +101,15 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                 )}
             </header>
 
-            {/* Contenu principal */}
-            <main className="flex-1 overflow-y-auto overflow-x-hidden">
+            {/* Contenu principal - scrollable avec espace pour navbar */}
+            <main
+                className="flex-1 overflow-x-hidden"
+                style={{
+                    overflowY: 'auto',
+                    paddingBottom: '80px',
+                    WebkitOverflowScrolling: 'touch'
+                }}
+            >
                 {children}
             </main>
 
