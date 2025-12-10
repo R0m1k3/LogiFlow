@@ -346,45 +346,54 @@ export default function MobileAvoirsPage() {
                                 />
                             </div>
 
-                        </FormItem>
+                            <FormField
+                                control={form.control}
+                                name="comment"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Commentaire / Raison</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Erreur prix, manquant..." {...field} />
+                                        </FormControl>
+                                    </FormItem>
                                 )}
                             />
 
-                        <FormField
-                            control={form.control}
-                            name="commercialProcessed"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-2 bg-gray-50 rounded mt-2">
-                                    <FormControl>
-                                        <Checkbox
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                    <div className="space-y-1 leading-none">
-                                        <FormLabel className="font-normal text-sm text-gray-700">
-                                            Déjà traité par commercial
-                                        </FormLabel>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
+                            <FormField
+                                control={form.control}
+                                name="commercialProcessed"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-2 bg-gray-50 rounded mt-2">
+                                        <FormControl>
+                                            <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel className="font-normal text-sm text-gray-700">
+                                                Déjà traité par commercial
+                                            </FormLabel>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
 
-                        <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 text-lg font-bold shadow-lg mt-4" disabled={createMutation.isPending}>
-                            {createMutation.isPending ? "Création..." : "Créer la demande"}
-                        </Button>
-                    </form>
-                </Form>
-            </SheetContent>
-        </Sheet>
+                            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 text-lg font-bold shadow-lg mt-4" disabled={createMutation.isPending}>
+                                {createMutation.isPending ? "Création..." : "Créer la demande"}
+                            </Button>
+                        </form>
+                    </Form>
+                </SheetContent>
+            </Sheet>
 
-            {/* FAB */ }
-    <Button
-        className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg bg-indigo-600 hover:bg-indigo-700 p-0 flex items-center justify-center z-50"
-        onClick={() => setIsCreateOpen(true)}
-    >
-        <Plus className="h-6 w-6 text-white" />
-    </Button>
+            {/* FAB */}
+            <Button
+                className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg bg-indigo-600 hover:bg-indigo-700 p-0 flex items-center justify-center z-50"
+                onClick={() => setIsCreateOpen(true)}
+            >
+                <Plus className="h-6 w-6 text-white" />
+            </Button>
         </MobileLayout >
     );
 }
