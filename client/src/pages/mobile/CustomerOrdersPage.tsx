@@ -58,6 +58,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Schema for form validation
 const customerOrderFormSchema = z.object({
@@ -177,8 +178,8 @@ export default function MobileCustomerOrdersPage() {
             productDesignation: data.productName,
             status: "En attente de Commande",
             groupId,
-            isPromotionalPrice: false,
-            customerNotified: false
+            isPromotionalPrice: data.isPromotionalPrice,
+            customerNotified: data.customerNotified
         };
 
         createMutation.mutate(submitData);
@@ -421,6 +422,46 @@ export default function MobileCustomerOrdersPage() {
                                     )}
                                 />
                             </div>
+
+                            <FormField
+                                control={form.control}
+                                name="isPromotionalPrice"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>
+                                                Prix promotionnel / Pub
+                                            </FormLabel>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="customerNotified"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>
+                                                Client déjà notifié
+                                            </FormLabel>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
 
                             <FormField
                                 control={form.control}

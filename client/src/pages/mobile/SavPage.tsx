@@ -61,11 +61,15 @@ import {
 
 // Schema
 const savFormSchema = z.object({
-    customerName: z.string().min(1, "Nom client requis"),
-    customerPhone: z.string().optional(),
-    productName: z.string().min(1, "Produit requis"),
-    issueDescription: z.string().min(1, "Description requise"),
-    priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+    clientName: z.string().optional(),
+    clientPhone: z.string().optional(),
+    productGencode: z.string().min(1, "Gencode requis"),
+    productReference: z.string().optional(),
+    productDesignation: z.string().min(1, "Désignation requise"),
+    supplierId: z.coerce.number().min(1, "Fournisseur requis"),
+    problemType: z.enum(["defectueux", "pieces_manquantes", "non_conforme", "autre"]).default("defectueux"),
+    problemDescription: z.string().min(1, "Description requise"),
+    priority: z.enum(["faible", "normale", "haute", "critique"]).default("normale"),
 });
 
 export default function MobileSavPage() {
@@ -86,6 +90,11 @@ export default function MobileSavPage() {
             return res.json();
         },
         enabled: !!selectedStoreId && !!user,
+    });
+
+    const { data: suppliers = [] } = useQuery({
+        queryKey: ['/api/suppliers'],
+        queryFn: () => apiRequest('/api/suppliers')
     });
 
     const { data: groups = [] } = useQuery({
@@ -118,11 +127,15 @@ export default function MobileSavPage() {
     const form = useForm({
         resolver: zodResolver(savFormSchema),
         defaultValues: {
-            customerName: "",
-            customerPhone: "",
-            productName: "",
-            issueDescription: "",
-            priority: "medium"
+            clientName: "",
+            clientPhone: "",
+            productGencode: "",
+            productReference: "",
+            productDesignation: "",
+            supplierId: 0,
+            problemType: "defectueux",
+            problemDescription: "",
+            priority: "normale"
         }
     });
 
@@ -139,23 +152,23 @@ export default function MobileSavPage() {
         createMutation.mutate({
             ...data,
             groupId,
-            status: "open"
+            status: "nouveau"
         });
     };
 
     const filteredTickets = tickets.filter((t: any) =>
-        t.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.productDesignation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.ticketNumber?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const getStatusBadge = (status: string) => {
         switch (status) {
-            case "open": return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Ouvert</Badge>;
-            case "in_progress": return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">En cours</Badge>;
-            case "waiting_parts": return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Pièces</Badge>;
-            case "resolved": return <Badge className="bg-green-100 text-green-800 border-green-200">Résolu</Badge>;
-            case "closed": return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Fermé</Badge>;
+            case "nouveau": return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Nouveau</Badge>;
+            case "en_cours": return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">En cours</Badge>;
+            case "attente_pieces": return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Pièces</Badge>;
+            case "resolu": return <Badge className="bg-green-100 text-green-800 border-green-200">Résolu</Badge>;
+            case "ferme": return <Badge className="bg-gray-100 text-gray-800 border-gray-200">Fermé</Badge>;
             default: return <Badge variant="outline">{status}</Badge>;
         }
     };
@@ -203,8 +216,8 @@ export default function MobileSavPage() {
                                                     #{ticket.ticketNumber} • {format(new Date(ticket.createdAt), "dd/MM", { locale: fr })}
                                                 </span>
                                             </div>
-                                            <h3 className="font-bold text-gray-900">{ticket.customerName}</h3>
-                                            <p className="text-sm text-gray-600 font-medium">{ticket.productName}</p>
+                                            <h3 className="font-bold text-gray-900">{ticket.clientName || 'Client inconnu'}</h3>
+                                            <p className="text-sm text-gray-600 font-medium">{ticket.productDesignation}</p>
                                         </div>
 
                                         <DropdownMenu>
@@ -231,12 +244,12 @@ export default function MobileSavPage() {
                                     </div>
 
                                     <div className="bg-gray-50 p-2 rounded text-xs text-gray-700 line-clamp-2 mb-3">
-                                        {ticket.issueDescription}
+                                        {ticket.problemDescription}
                                     </div>
 
-                                    {ticket.customerPhone && (
+                                    {ticket.clientPhone && (
                                         <div className="flex mt-2">
-                                            <a href={`tel:${ticket.customerPhone}`} className="flex items-center gap-2 text-sm text-blue-600 font-medium bg-blue-50 px-3 py-1.5 rounded-full">
+                                            <a href={`tel:${ticket.clientPhone}`} className="flex items-center gap-2 text-sm text-blue-600 font-medium bg-blue-50 px-3 py-1.5 rounded-full">
                                                 <Phone className="h-3.5 w-3.5" />
                                                 Appeler
                                             </a>
@@ -262,41 +275,66 @@ export default function MobileSavPage() {
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-8">
                             <div className="bg-gray-50 p-3 rounded-lg space-y-3">
-                                <h3 className="font-medium text-sm text-gray-500 uppercase">Client</h3>
+                                <h3 className="font-medium text-sm text-gray-500 uppercase">Produit</h3>
                                 <FormField
                                     control={form.control}
-                                    name="customerName"
+                                    name="productGencode"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Nom</FormLabel>
-                                            <FormControl><Input {...field} /></FormControl>
+                                            <FormLabel>Gencode (EAN13)</FormLabel>
+                                            <FormControl><Input placeholder="Scanner..." {...field} /></FormControl>
                                         </FormItem>
                                     )}
                                 />
                                 <FormField
                                     control={form.control}
-                                    name="customerPhone"
+                                    name="productDesignation"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Téléphone</FormLabel>
-                                            <FormControl><Input type="tel" {...field} /></FormControl>
+                                            <FormLabel>Désignation</FormLabel>
+                                            <FormControl><Input placeholder="Nom du produit" {...field} /></FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="supplierId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Fournisseur</FormLabel>
+                                            <Select onValueChange={(val) => field.onChange(parseInt(val))} defaultValue={field.value?.toString()}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    {suppliers.map((s: any) => (
+                                                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="problemType"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Type de problème</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="defectueux">Défectueux</SelectItem>
+                                                    <SelectItem value="pieces_manquantes">Pièces manquantes</SelectItem>
+                                                    <SelectItem value="non_conforme">Non conforme</SelectItem>
+                                                    <SelectItem value="autre">Autre</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </FormItem>
                                     )}
                                 />
                             </div>
 
                             <div className="bg-gray-50 p-3 rounded-lg space-y-3">
-                                <h3 className="font-medium text-sm text-gray-500 uppercase">Problème</h3>
-                                <FormField
-                                    control={form.control}
-                                    name="productName"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Produit</FormLabel>
-                                            <FormControl><Input placeholder="Marque, Modèle..." {...field} /></FormControl>
-                                        </FormItem>
-                                    )}
-                                />
+                                <h3 className="font-medium text-sm text-gray-500 uppercase">Description & Client</h3>
                                 <FormField
                                     control={form.control}
                                     name="priority"
@@ -306,10 +344,10 @@ export default function MobileSavPage() {
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                 <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="low">Faible</SelectItem>
-                                                    <SelectItem value="medium">Moyenne</SelectItem>
-                                                    <SelectItem value="high">Haute</SelectItem>
-                                                    <SelectItem value="critical">Critique</SelectItem>
+                                                    <SelectItem value="faible">Faible</SelectItem>
+                                                    <SelectItem value="normale">Normale</SelectItem>
+                                                    <SelectItem value="haute">Haute</SelectItem>
+                                                    <SelectItem value="critique">Critique</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </FormItem>
@@ -317,11 +355,31 @@ export default function MobileSavPage() {
                                 />
                                 <FormField
                                     control={form.control}
-                                    name="issueDescription"
+                                    name="problemDescription"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Description Panne</FormLabel>
-                                            <FormControl><Textarea {...field} className="h-24" /></FormControl>
+                                            <FormControl><Textarea {...field} className="h-20" /></FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="clientName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Nom Client</FormLabel>
+                                            <FormControl><Input {...field} /></FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="clientPhone"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Téléphone</FormLabel>
+                                            <FormControl><Input type="tel" {...field} /></FormControl>
                                         </FormItem>
                                     )}
                                 />
