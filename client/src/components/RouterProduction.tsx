@@ -36,6 +36,8 @@ import MobileOrdersPage from "@/pages/mobile/OrdersPage";
 import MobileDeliveriesPage from "@/pages/mobile/DeliveriesPage";
 import MobileCalendarPage from "@/pages/mobile/CalendarPage";
 import MobileTasksPage from "@/pages/mobile/TasksPage";
+import MobilePublicitiesPage from "@/pages/mobile/PublicitiesPage";
+import MobileCustomerOrdersPage from "@/pages/mobile/CustomerOrdersPage";
 
 function RouterProduction() {
   const { isAuthenticated, isLoading, user, environment, error } = useAuthUnified();
@@ -102,8 +104,8 @@ function RouterProduction() {
           <Route path="/groups" component={Groups} />
           <Route path="/users" component={Users} />
           <Route path="/bl-reconciliation" component={BLReconciliation} />
-          <Route path="/publicities" component={Publicities} />
-          <Route path="/customer-orders" component={CustomerOrders} />
+          <Route path="/publicities" component={MobilePublicitiesPage} />
+          <Route path="/customer-orders" component={MobileCustomerOrdersPage} />
           <Route path="/dlc" component={DlcPage} />
           <Route path="/utilities" component={Utilities} />
           <Route path="/sav" component={SavTickets} />
