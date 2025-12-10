@@ -20,6 +20,7 @@ import DlcPage from "@/pages/DlcPage";
 import BackupManager from "@/pages/BackupManager";
 import Utilities from "@/pages/Utilities";
 import Tasks from "@/pages/Tasks";
+import ResponsiveTasks from "@/components/ResponsiveTasks";
 import SavTickets from "@/pages/SavTickets";
 import Avoirs from "@/pages/Avoirs";
 import WeatherSettings from "@/pages/WeatherSettings";
@@ -30,7 +31,7 @@ import Layout from "@/components/Layout";
 
 function RouterProduction() {
   const { isAuthenticated, isLoading, user, environment, error } = useAuthUnified();
-  
+
   // Debug uniquement en développement
   if (import.meta.env.DEV) {
     console.log('🔍 RouterProduction Debug:', {
@@ -43,7 +44,7 @@ function RouterProduction() {
       error: error?.message
     });
   }
-  
+
   // Debug minimal basé sur l'environnement
   if (environment === 'production' && error && import.meta.env.DEV) {
     console.error('🚨 Production Auth Error:', error);
@@ -76,7 +77,7 @@ function RouterProduction() {
         </div>
       );
     }
-    
+
     return (
       <Switch>
         <Route path="/auth" component={AuthPage} />
@@ -102,19 +103,19 @@ function RouterProduction() {
         <Route path="/customer-orders" component={CustomerOrders} />
         <Route path="/dlc" component={DlcPage} />
         <Route path="/utilities" component={Utilities} />
-        <Route path="/tasks" component={Tasks} />
+        <Route path="/tasks" component={ResponsiveTasks} />
         <Route path="/sav" component={SavTickets} />
         <Route path="/avoirs" component={Avoirs} />
         <Route path="/analytics" component={Analytics} />
         <Route path="/sales-analysis" component={SalesAnalysisPage} />
         <Route path="/payment-schedule" component={PaymentSchedulePage} />
-        
+
         {/* Routes de compatibilité - redirection vers utilities */}
         <Route path="/backup" component={Utilities} />
         <Route path="/nocodb-config" component={Utilities} />
         <Route path="/database-debug" component={Utilities} />
         <Route path="/weather-settings" component={Utilities} />
-        
+
         {/* Redirection depuis /auth vers dashboard après authentification */}
         <Route path="/auth">
           {() => {
@@ -127,7 +128,7 @@ function RouterProduction() {
             return <Dashboard />;
           }}
         </Route>
-        
+
         <Route path="/" component={Dashboard} />
         <Route component={NotFound} />
       </Switch>
