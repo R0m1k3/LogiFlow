@@ -114,7 +114,7 @@ export default function MobileCalendarPage() {
         ...orders.map((order: any) => ({
             id: order.id,
             title: `Cmd #${order.orderNumber || order.id}`,
-            date: order.orderDate,
+            date: order.plannedDate,
             type: 'order' as const,
             status: order.status,
             supplier: order.supplier
@@ -122,7 +122,7 @@ export default function MobileCalendarPage() {
         ...deliveries.map((delivery: any) => ({
             id: delivery.id,
             title: `Liv #${delivery.deliveryNumber || delivery.id}`,
-            date: delivery.expectedDate,
+            date: delivery.scheduledDate,
             type: 'delivery' as const,
             status: delivery.status,
             supplier: delivery.supplier
@@ -279,8 +279,8 @@ export default function MobileCalendarPage() {
                                     <CardContent className="p-3">
                                         <div className="flex items-start gap-3">
                                             <div className={`p-2 rounded-lg ${event.type === 'order'
-                                                    ? 'bg-blue-100'
-                                                    : 'bg-green-100'
+                                                ? 'bg-blue-100'
+                                                : 'bg-green-100'
                                                 }`}>
                                                 {event.type === 'order'
                                                     ? <Package className="h-4 w-4 text-blue-600" />
