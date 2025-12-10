@@ -367,9 +367,17 @@ export default function MobileTasksPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-24 overflow-hidden" style={{ maxWidth: '100vw' }}>
+        <div
+            className="min-h-screen bg-gray-50 pb-24"
+            style={{
+                width: '100%',
+                maxWidth: '100vw',
+                overflowX: 'hidden',
+                boxSizing: 'border-box'
+            }}
+        >
             {/* Header */}
-            <div className="bg-white border-b sticky top-0 z-40">
+            <div className="bg-white border-b sticky top-0 z-40" style={{ width: '100%', boxSizing: 'border-box' }}>
                 <div className="px-3 py-3">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">

@@ -24,7 +24,7 @@ export default function Layout({ children }: LayoutProps) {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { screenSize, isMobileOrTablet, isTablet } = useScreenSize();
-  
+
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
     // Restaurer le selectedStoreId depuis localStorage si disponible
     const saved = localStorage.getItem('selectedStoreId');
@@ -32,7 +32,7 @@ export default function Layout({ children }: LayoutProps) {
     console.log('🏪 Layout - Restoring selectedStoreId from localStorage:', { saved, restoredId });
     return restoredId;
   });
-  
+
   const [storeInitialized, setStoreInitialized] = useState(false);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
@@ -58,7 +58,7 @@ export default function Layout({ children }: LayoutProps) {
   useEffect(() => {
     if (user && stores.length > 0) {
       let needsUpdate = false;
-      
+
       // Pour tous les rôles, vérifier que selectedStoreId est cohérent avec les stores disponibles
       if (selectedStoreId) {
         const storeExists = stores.find(store => store.id === selectedStoreId);
@@ -79,7 +79,7 @@ export default function Layout({ children }: LayoutProps) {
           });
         }
       }
-      
+
       // IMPORTANT FIX: Pour les rôles directeur/manager, forcer la sélection d'un magasin spécifique
       // si aucun n'est sélectionné et qu'ils n'ont accès qu'à un seul magasin
       if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1 && !needsUpdate) {
@@ -95,7 +95,7 @@ export default function Layout({ children }: LayoutProps) {
         setSelectedStoreId(singleStoreId);
         localStorage.setItem('selectedStoreId', singleStoreId.toString());
       }
-      
+
       // VALIDATION CRITIQUE: Pour les directeurs/managers, s'assurer qu'un magasin est toujours sélectionné
       if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && !needsUpdate) {
         console.log('🚨 CRITICAL: Directeur/Manager has no store selected, this will cause empty data display:', {
@@ -104,10 +104,10 @@ export default function Layout({ children }: LayoutProps) {
           availableStores: stores.map(s => ({ id: s.id, name: s.name }))
         });
       }
-      
-      console.log('🏪 Store initialization complete:', { 
-        user: user.role, 
-        selectedStoreId, 
+
+      console.log('🏪 Store initialization complete:', {
+        user: user.role,
+        selectedStoreId,
         storesCount: stores.length,
         validatedStore: selectedStoreId ? stores.find(s => s.id === selectedStoreId)?.name : 'None',
         autoSelected: (user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1
@@ -125,25 +125,24 @@ export default function Layout({ children }: LayoutProps) {
       <div className="layout-container flex bg-gray-50">
         {/* Mobile overlay for normal mode */}
         {isMobile && mobileMenuOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setMobileMenuOpen(false)}
           />
         )}
-        
+
         {/* Sidebar for normal mode */}
         <Sidebar />
-        
+
         <main className={`flex-1 flex flex-col h-full ${
           // Ajustement des marges selon le mode
-          isMobile 
-              ? 'ml-0' 
-              : (isTablet && !sidebarCollapsed) ? 'ml-48' : 'ml-0'
-        }`}>
-          {/* Header with mobile menu and store selector */}
-          <header className={`h-16 bg-white border-b border-gray-200 flex items-center justify-between ${
-            isMobileOrTablet ? 'px-3' : 'px-6'
+          isMobile
+            ? 'ml-0'
+            : (isTablet && !sidebarCollapsed) ? 'ml-48' : 'ml-0'
           }`}>
+          {/* Header with mobile menu and store selector */}
+          <header className={`h-16 bg-white border-b border-gray-200 flex items-center justify-between ${isMobileOrTablet ? 'px-3' : 'px-6'
+            }`}>
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
               {/* Mobile menu button (only in normal mode) */}
               {isMobile && (
@@ -159,9 +158,8 @@ export default function Layout({ children }: LayoutProps) {
               )}
 
               {/* Weather and Date widgets - responsive */}
-              <div className={`flex items-center ${
-                isMobile ? 'gap-1' : 'gap-3'
-              } min-w-0`}>
+              <div className={`flex items-center ${isMobile ? 'gap-1' : 'gap-3'
+                } min-w-0`}>
                 <WeatherWidget />
                 {!isMobile && <DateWidget />}
               </div>
@@ -174,23 +172,25 @@ export default function Layout({ children }: LayoutProps) {
                 <Select
                   value={selectedStoreId?.toString() || (user.role === 'admin' ? "all" : "")}
                   onValueChange={(value) => {
-                    console.log('🏪 Store selector changed:', { 
-                      value, 
-                      userRole: user.role, 
-                      parsed: value === "all" ? null : parseInt(value) 
+                    console.log('🏪 Store selector changed:', {
+                      value,
+                      userRole: user.role,
+                      parsed: value === "all" ? null : parseInt(value)
                     });
                     const newStoreId = value === "all" ? null : parseInt(value);
-                    
+
                     // Invalider toutes les variantes de queryKey pour changement magasin
                     console.log('🧹 Invalidating data caches for store change');
-                    queryClient.invalidateQueries({ predicate: (query) => {
-                      const key = query.queryKey;
-                      return Boolean(key[0]?.toString().includes('/api/orders') || 
-                             key[0]?.toString().includes('/api/deliveries') || 
-                             key[0]?.toString().includes('/api/stats/monthly') ||
-                             key[0]?.toString().includes('/api/tasks'));
-                    }});
-                    
+                    queryClient.invalidateQueries({
+                      predicate: (query) => {
+                        const key = query.queryKey;
+                        return Boolean(key[0]?.toString().includes('/api/orders') ||
+                          key[0]?.toString().includes('/api/deliveries') ||
+                          key[0]?.toString().includes('/api/stats/monthly') ||
+                          key[0]?.toString().includes('/api/tasks'));
+                      }
+                    });
+
                     // Sauvegarder dans localStorage et mettre à jour l'état
                     if (newStoreId) {
                       localStorage.setItem('selectedStoreId', newStoreId.toString());
@@ -202,11 +202,10 @@ export default function Layout({ children }: LayoutProps) {
                     setSelectedStoreId(newStoreId);
                   }}
                 >
-                  <SelectTrigger className={`border border-gray-300 min-h-[44px] ${
-                    isMobile ? 'w-28 text-xs' : 
-                    isTablet ? 'w-40 text-sm' : 
-                    'w-64 text-sm'
-                  }`} data-testid="select-store">
+                  <SelectTrigger className={`border border-gray-300 min-h-[44px] ${isMobile ? 'w-28 text-xs' :
+                      isTablet ? 'w-40 text-sm' :
+                        'w-64 text-sm'
+                    }`} data-testid="select-store">
                     <SelectValue placeholder="Magasin" />
                   </SelectTrigger>
                   <SelectContent>
@@ -224,8 +223,8 @@ export default function Layout({ children }: LayoutProps) {
                     {stores.map((store) => (
                       <SelectItem key={store.id} value={store.id.toString()}>
                         <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3" 
+                          <div
+                            className="w-3 h-3"
                             style={{ backgroundColor: store.color || '#gray-400' }}
                           />
                           <span className={`${isMobile ? 'text-xs' : 'text-sm'} truncate max-w-[120px]`}>
@@ -257,13 +256,12 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           )}
 
-          <div className={`flex-1 bg-gray-50 h-full overflow-y-auto ${
-              isMobileOrTablet ? 'p-3' : 'p-6'
-          }`}>
+          <div className={`flex-1 bg-gray-50 h-full overflow-y-auto overflow-x-hidden ${isMobileOrTablet ? 'p-3' : 'p-6'
+            }`} style={{ maxWidth: '100%' }}>
             {children}
           </div>
         </main>
-        
+
       </div>
     </StoreProvider>
   );
