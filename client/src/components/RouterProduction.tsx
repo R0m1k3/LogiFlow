@@ -30,6 +30,7 @@ import PaymentSchedulePage from "@/pages/PaymentSchedulePage";
 import Layout from "@/components/Layout";
 
 // Mobile pages
+import MobileApp from "@/pages/mobile/MobileApp";
 import MobileDashboardPage from "@/pages/mobile/DashboardPage";
 import MobileOrdersPage from "@/pages/mobile/OrdersPage";
 import MobileDeliveriesPage from "@/pages/mobile/DeliveriesPage";
@@ -85,44 +86,46 @@ function RouterProduction() {
     );
   }
 
-  // ===== MOBILE ROUTES (sans Layout standard) =====
+  // ===== MOBILE ROUTES (avec MobileApp pour StoreProvider) =====
   if (isMobile) {
     return (
-      <Switch>
-        <Route path="/calendar" component={MobileCalendarPage} />
-        <Route path="/dashboard" component={MobileDashboardPage} />
-        <Route path="/orders" component={MobileOrdersPage} />
-        <Route path="/deliveries" component={MobileDeliveriesPage} />
-        <Route path="/tasks" component={MobileTasksPage} />
+      <MobileApp>
+        <Switch>
+          <Route path="/calendar" component={MobileCalendarPage} />
+          <Route path="/dashboard" component={MobileDashboardPage} />
+          <Route path="/orders" component={MobileOrdersPage} />
+          <Route path="/deliveries" component={MobileDeliveriesPage} />
+          <Route path="/tasks" component={MobileTasksPage} />
 
-        {/* Pages sans version mobile - utiliser version desktop dans Layout pour l'instant */}
-        <Route path="/suppliers" component={Suppliers} />
-        <Route path="/groups" component={Groups} />
-        <Route path="/users" component={Users} />
-        <Route path="/bl-reconciliation" component={BLReconciliation} />
-        <Route path="/publicities" component={Publicities} />
-        <Route path="/customer-orders" component={CustomerOrders} />
-        <Route path="/dlc" component={DlcPage} />
-        <Route path="/utilities" component={Utilities} />
-        <Route path="/sav" component={SavTickets} />
-        <Route path="/avoirs" component={Avoirs} />
-        <Route path="/analytics" component={Analytics} />
-        <Route path="/sales-analysis" component={SalesAnalysisPage} />
-        <Route path="/payment-schedule" component={PaymentSchedulePage} />
+          {/* Pages sans version mobile - utiliser version desktop pour l'instant */}
+          <Route path="/suppliers" component={Suppliers} />
+          <Route path="/groups" component={Groups} />
+          <Route path="/users" component={Users} />
+          <Route path="/bl-reconciliation" component={BLReconciliation} />
+          <Route path="/publicities" component={Publicities} />
+          <Route path="/customer-orders" component={CustomerOrders} />
+          <Route path="/dlc" component={DlcPage} />
+          <Route path="/utilities" component={Utilities} />
+          <Route path="/sav" component={SavTickets} />
+          <Route path="/avoirs" component={Avoirs} />
+          <Route path="/analytics" component={Analytics} />
+          <Route path="/sales-analysis" component={SalesAnalysisPage} />
+          <Route path="/payment-schedule" component={PaymentSchedulePage} />
 
-        {/* Redirection /auth vers dashboard */}
-        <Route path="/auth">
-          {() => {
-            if (typeof window !== 'undefined') {
-              window.location.href = '/dashboard';
-            }
-            return <MobileDashboardPage />;
-          }}
-        </Route>
+          {/* Redirection /auth vers dashboard */}
+          <Route path="/auth">
+            {() => {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/dashboard';
+              }
+              return <MobileDashboardPage />;
+            }}
+          </Route>
 
-        <Route path="/" component={MobileDashboardPage} />
-        <Route component={NotFound} />
-      </Switch>
+          <Route path="/" component={MobileDashboardPage} />
+          <Route component={NotFound} />
+        </Switch>
+      </MobileApp>
     );
   }
 

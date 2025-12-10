@@ -1,13 +1,12 @@
 /**
  * MobileLayout - Layout dédié pour l'application mobile
  * Affiche le magasin sélectionné de manière visible et une navigation bottom
- * Inclut son propre StoreProvider
+ * Note: Le StoreProvider est fourni par MobileApp au niveau supérieur
  */
-import { ReactNode, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { ReactNode, useState } from "react";
 import { Menu, Store, ChevronDown, LogOut } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { StoreProvider } from "@/contexts/StoreContext";
+import { useStore } from "@/contexts/StoreContext";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,15 +18,9 @@ interface MobileLayoutProps {
     title?: string;
 }
 
-// Inner component that uses the store context
-function MobileLayoutInner({ children, title, selectedStoreId, setSelectedStoreId, stores, user }: {
-    children: ReactNode;
-    title?: string;
-    selectedStoreId: number | null;
-    setSelectedStoreId: (id: number | null) => void;
-    stores: Group[];
-    user: any;
-}) {
+export default function MobileLayout({ children, title }: MobileLayoutProps) {
+    const { user } = useAuthUnified();
+    const { selectedStoreId, setSelectedStoreId, stores } = useStore();
     const [menuOpen, setMenuOpen] = useState(false);
 
     // Get selected store name
@@ -183,61 +176,3 @@ function MobileLayoutInner({ children, title, selectedStoreId, setSelectedStoreI
         </div>
     );
 }
-
-// Main MobileLayout component with StoreProvider
-export default function MobileLayout({ children, title }: MobileLayoutProps) {
-    const { user } = useAuthUnified();
-
-    // Store state management
-    const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
-        const saved = localStorage.getItem('selectedStoreId');
-        return saved ? parseInt(saved) : null;
-    });
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [storeInitialized, setStoreInitialized] = useState(false);
-
-    // Fetch stores
-    const { data: stores = [] } = useQuery<Group[]>({
-        queryKey: ['/api/groups'],
-        enabled: !!user,
-    });
-
-    // Initialize store selection
-    useEffect(() => {
-        if (user && stores.length > 0) {
-            if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1) {
-                const singleStoreId = stores[0].id;
-                setSelectedStoreId(singleStoreId);
-                localStorage.setItem('selectedStoreId', singleStoreId.toString());
-            }
-            setStoreInitialized(true);
-        }
-    }, [user, stores, selectedStoreId]);
-
-    const storeContextValue = {
-        selectedStoreId,
-        setSelectedStoreId,
-        stores,
-        sidebarCollapsed,
-        setSidebarCollapsed,
-        mobileMenuOpen,
-        setMobileMenuOpen,
-        storeInitialized
-    };
-
-    return (
-        <StoreProvider value={storeContextValue}>
-            <MobileLayoutInner
-                title={title}
-                selectedStoreId={selectedStoreId}
-                setSelectedStoreId={setSelectedStoreId}
-                stores={stores}
-                user={user}
-            >
-                {children}
-            </MobileLayoutInner>
-        </StoreProvider>
-    );
-}
-
