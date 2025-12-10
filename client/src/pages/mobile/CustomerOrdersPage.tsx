@@ -1,6 +1,6 @@
 /**
  * MobileCustomerOrdersPage.tsx
- * Version mobile de la page Commandes Clients
+ * Version mobile de la page Commandes Clients avec création
  */
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,7 +18,9 @@ import {
     User,
     ClipboardList,
     Plus,
-    MoreVertical
+    MoreVertical,
+    X,
+    Filter
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -30,14 +32,56 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
+// Schema for form validation
+const customerOrderFormSchema = z.object({
+    customerName: z.string().min(1, "Nom du client est requis"),
+    contactNumber: z.string().optional(),
+    productName: z.string().min(1, "Désignation est requise"),
+    productReference: z.string().optional(),
+    gencode: z.string().optional(),
+    quantity: z.coerce.number().int().positive().default(1),
+    supplierId: z.coerce.number().int().positive().default(1),
+    orderTaker: z.string().optional(),
+    notes: z.string().optional(),
+    deposit: z.coerce.number().optional().default(0),
+});
 
 export default function MobileCustomerOrdersPage() {
     const { user } = useAuthUnified();
     const { selectedStoreId } = useStore();
     const [searchTerm, setSearchTerm] = useState("");
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
     const { toast } = useToast();
     const queryClient = useQueryClient();
 
+    // Queries
     const { data: orders = [], isLoading } = useQuery({
         queryKey: ["/api/customer-orders", selectedStoreId],
         queryFn: async () => {
@@ -52,7 +96,23 @@ export default function MobileCustomerOrdersPage() {
         enabled: !!selectedStoreId && !!user,
     });
 
-    // Mutation pour changer le statut
+    const { data: suppliers = [] } = useQuery({
+        queryKey: ['/api/suppliers'],
+        queryFn: async () => {
+            const res = await fetch('/api/suppliers', { credentials: 'include' });
+            return res.json();
+        }
+    });
+
+    const { data: groups = [] } = useQuery({
+        queryKey: ['/api/groups'],
+        queryFn: async () => {
+            const res = await fetch('/api/groups', { credentials: 'include' });
+            return res.json();
+        }
+    });
+
+    // Mutations
     const statusMutation = useMutation({
         mutationFn: ({ id, status }: { id: number; status: string }) =>
             apiRequest(`/api/customer-orders/${id}`, 'PUT', { status }),
@@ -62,21 +122,73 @@ export default function MobileCustomerOrdersPage() {
         },
     });
 
+    const createMutation = useMutation({
+        mutationFn: (data: any) => apiRequest('/api/customer-orders', 'POST', data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/customer-orders"] });
+            toast({ title: "Commande créée avec succès" });
+            setIsCreateOpen(false);
+            form.reset();
+        },
+        onError: (err: any) => {
+            toast({
+                title: "Erreur lors de la création",
+                description: err.message,
+                variant: "destructive"
+            });
+        }
+    });
+
+    // Form setup
+    const form = useForm({
+        resolver: zodResolver(customerOrderFormSchema),
+        defaultValues: {
+            customerName: "",
+            contactNumber: "",
+            productName: "",
+            productReference: "",
+            gencode: "",
+            quantity: 1,
+            supplierId: 1,
+            orderTaker: user?.username || "",
+            notes: "",
+            deposit: 0
+        }
+    });
+
+    const onSubmit = (data: any) => {
+        // Validation basique groupe
+        let groupId = selectedStoreId;
+        if (!groupId && user?.userGroups?.[0]?.groupId) {
+            groupId = user.userGroups[0].groupId;
+        }
+        if (!groupId && groups.length > 0 && user?.role === 'admin') {
+            groupId = groups[0].id;
+        }
+
+        if (!groupId) {
+            toast({ title: "Erreur", description: "Impossible de déterminer le magasin", variant: "destructive" });
+            return;
+        }
+
+        const submitData = {
+            ...data,
+            customerPhone: data.contactNumber,
+            productDesignation: data.productName,
+            status: "En attente de Commande",
+            groupId,
+            isPromotionalPrice: false,
+            customerNotified: false
+        };
+
+        createMutation.mutate(submitData);
+    };
+
     const filteredOrders = orders.filter((order: any) =>
         order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.productDesignation.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.productReference && order.productReference.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-
-    const getStatusVariant = (status: string) => {
-        switch (status) {
-            case "Disponible": return "success"; // vert
-            case "Commande en Cours": return "default"; // bleu
-            case "Retiré": return "secondary"; // gris
-            case "Annulé": return "destructive"; // rouge
-            default: return "outline";
-        }
-    };
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -189,12 +301,152 @@ export default function MobileCustomerOrdersPage() {
                 </div>
             </div>
 
+            {/* Create Order Sheet */}
+            <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <SheetContent side="bottom" className="h-[90vh] overflow-y-auto rounded-t-xl px-4 py-6">
+                    <SheetHeader className="mb-6">
+                        <SheetTitle className="text-left flex items-center gap-2">
+                            <Plus className="h-5 w-5 bg-blue-100 text-blue-600 rounded p-0.5" />
+                            Nouvelle Commande
+                        </SheetTitle>
+                    </SheetHeader>
+
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pb-8">
+
+                            <div className="bg-gray-50 p-3 rounded-lg space-y-3">
+                                <h3 className="font-medium text-sm text-gray-500 uppercase">Client</h3>
+                                <FormField
+                                    control={form.control}
+                                    name="customerName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Nom</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Nom du client" {...field} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="contactNumber"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Téléphone</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="06..." type="tel" {...field} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <div className="bg-gray-50 p-3 rounded-lg space-y-3">
+                                <h3 className="font-medium text-sm text-gray-500 uppercase">Produit</h3>
+                                <FormField
+                                    control={form.control}
+                                    name="productName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Désignation</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Nom du produit" {...field} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <div className="flex gap-3">
+                                    <FormField
+                                        control={form.control}
+                                        name="quantity"
+                                        render={({ field }) => (
+                                            <FormItem className="flex-1">
+                                                <FormLabel>Qté</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" {...field} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="deposit"
+                                        render={({ field }) => (
+                                            <FormItem className="flex-1">
+                                                <FormLabel>Acompte (€)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" step="0.01" {...field} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <FormField
+                                    control={form.control}
+                                    name="supplierId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Fournisseur</FormLabel>
+                                            <Select
+                                                onValueChange={(val) => field.onChange(parseInt(val))}
+                                                defaultValue={field.value.toString()}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Choisir..." />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {suppliers.map((s: any) => (
+                                                        <SelectItem key={s.id} value={s.id.toString()}>
+                                                            {s.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="gencode"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Gencode (Scanner si dispo)</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="EAN13" {...field} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                            <FormField
+                                control={form.control}
+                                name="notes"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Notes internes</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="..." className="h-20" {...field} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+
+                            <Button type="submit" className="w-full bg-blue-600 h-12 text-lg font-bold shadow-lg mt-4" disabled={createMutation.isPending}>
+                                {createMutation.isPending ? "Création..." : "Valider la commande"}
+                            </Button>
+                        </form>
+                    </Form>
+                </SheetContent>
+            </Sheet>
+
             {/* FAB */}
             <Button
-                className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 p-0 flex items-center justify-center z-50"
-                onClick={() => {
-                    // TODO: Create modal logic
-                }}
+                className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700 p-0 flex items-center justify-center z-50 transition-transform active:scale-95"
+                onClick={() => setIsCreateOpen(true)}
             >
                 <Plus className="h-6 w-6 text-white" />
             </Button>

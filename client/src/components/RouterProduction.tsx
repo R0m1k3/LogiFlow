@@ -38,6 +38,9 @@ import MobileCalendarPage from "@/pages/mobile/CalendarPage";
 import MobileTasksPage from "@/pages/mobile/TasksPage";
 import MobilePublicitiesPage from "@/pages/mobile/PublicitiesPage";
 import MobileCustomerOrdersPage from "@/pages/mobile/CustomerOrdersPage";
+import MobileDlcPage from "@/pages/mobile/DlcPage";
+import MobileSavPage from "@/pages/mobile/SavPage";
+import MobileAvoirsPage from "@/pages/mobile/AvoirsPage";
 
 function RouterProduction() {
   const { isAuthenticated, isLoading, user, environment, error } = useAuthUnified();
@@ -106,10 +109,10 @@ function RouterProduction() {
           <Route path="/bl-reconciliation" component={BLReconciliation} />
           <Route path="/publicities" component={MobilePublicitiesPage} />
           <Route path="/customer-orders" component={MobileCustomerOrdersPage} />
-          <Route path="/dlc" component={DlcPage} />
+          <Route path="/dlc" component={MobileDlcPage} />
           <Route path="/utilities" component={Utilities} />
-          <Route path="/sav" component={SavTickets} />
-          <Route path="/avoirs" component={Avoirs} />
+          <Route path="/sav" component={MobileSavPage} />
+          <Route path="/avoirs" component={MobileAvoirsPage} />
           <Route path="/analytics" component={Analytics} />
           <Route path="/sales-analysis" component={SalesAnalysisPage} />
           <Route path="/payment-schedule" component={PaymentSchedulePage} />
