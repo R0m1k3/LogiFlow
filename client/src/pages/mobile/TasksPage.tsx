@@ -367,14 +367,14 @@ export default function MobileTasksPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-24 overflow-x-hidden max-w-full">
+        <div className="min-h-screen bg-gray-50 pb-24 overflow-hidden" style={{ maxWidth: '100vw' }}>
             {/* Header */}
             <div className="bg-white border-b sticky top-0 z-40">
-                <div className="p-4">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="px-3 py-3">
+                    <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                            <ListTodo className="w-6 h-6 text-blue-600" />
-                            <h1 className="text-xl font-bold">Tâches</h1>
+                            <ListTodo className="w-5 h-5 text-blue-600" />
+                            <h1 className="text-lg font-bold">Tâches</h1>
                         </div>
                         <Badge variant="secondary">{filteredTasks.length}</Badge>
                     </div>
@@ -386,25 +386,36 @@ export default function MobileTasksPage() {
                             placeholder="Rechercher..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 h-11"
+                            className="pl-10 h-10 text-sm"
                         />
                     </div>
 
-                    {/* Tabs */}
-                    <div className="flex gap-1 w-full">
-                        {(['pending', 'completed', 'all'] as const).map((tab) => (
-                            <Button
-                                key={tab}
-                                variant={activeTab === tab ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setActiveTab(tab)}
-                                className="flex-1 h-10 text-xs px-2 min-w-0"
-                            >
-                                {tab === 'pending' && 'En cours'}
-                                {tab === 'completed' && 'Faites'}
-                                {tab === 'all' && 'Toutes'}
-                            </Button>
-                        ))}
+                    {/* Tabs - Grid layout pour garantir 3 colonnes égales */}
+                    <div className="grid grid-cols-3 gap-1">
+                        <Button
+                            variant={activeTab === 'pending' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setActiveTab('pending')}
+                            className="h-9 text-xs px-1 truncate"
+                        >
+                            ⏳ Actives
+                        </Button>
+                        <Button
+                            variant={activeTab === 'completed' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setActiveTab('completed')}
+                            className="h-9 text-xs px-1 truncate"
+                        >
+                            ✅ Faites
+                        </Button>
+                        <Button
+                            variant={activeTab === 'all' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setActiveTab('all')}
+                            className="h-9 text-xs px-1 truncate"
+                        >
+                            📋 Toutes
+                        </Button>
                     </div>
                 </div>
             </div>
