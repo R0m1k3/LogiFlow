@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Calendar, Edit, Trash2, Eye, Filter, Grid, List } from "lucide-react";
+import { Plus, Calendar, Edit, Trash2, Eye, Filter, Grid, List, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +25,12 @@ export default function Publicities() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedPublicity, setSelectedPublicity] = useState<PublicityWithRelations | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  
+
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   // Seuls les admins peuvent modifier/supprimer
   const canModify = user?.role === 'admin';
 
@@ -52,36 +52,36 @@ export default function Publicities() {
       }
       const data = await response.json();
       console.log('📢 Publicities received:', data.length, 'items', data.slice(0, 2));
-      
+
       // CRITICAL FIX: Force frontend sorting by pubNumber to ensure correct order
-      const sortedData = Array.isArray(data) 
+      const sortedData = Array.isArray(data)
         ? data.sort((a, b) => {
-            const numA = parseInt(a.pubNumber) || 0;
-            const numB = parseInt(b.pubNumber) || 0;
-            return numA - numB;
-          })
+          const numA = parseInt(a.pubNumber) || 0;
+          const numB = parseInt(b.pubNumber) || 0;
+          return numA - numB;
+        })
         : [];
-        
+
       console.log('📢 Publicities after frontend sort:', {
         first5: sortedData.slice(0, 5).map(p => `N°${p.pubNumber}`),
         total: sortedData.length
       });
-      
+
       return sortedData;
     },
   });
 
-  console.log('📢 Publicities Debug:', { 
-    isLoading, 
-    publicitiesCount: publicities?.length, 
+  console.log('📢 Publicities Debug:', {
+    isLoading,
+    publicitiesCount: publicities?.length,
     selectedYear,
     selectedStoreId,
     publicities: publicities?.slice(0, 2)
   });
 
-  console.log('📢 Publicities Debug:', { 
-    isLoading, 
-    publicitiesCount: publicities?.length, 
+  console.log('📢 Publicities Debug:', {
+    isLoading,
+    publicitiesCount: publicities?.length,
     selectedYear,
     selectedStoreId,
     publicities: publicities?.slice(0, 2)
@@ -96,14 +96,14 @@ export default function Publicities() {
     mutationFn: async (id: number) => {
       // Try POST first (for production environments that block DELETE)
       console.log(`🗑️ [Frontend] Attempting to delete publicity ${id} using POST method`);
-      
+
       try {
-        const response = await fetch(`/api/publicities/${id}/delete`, { 
+        const response = await fetch(`/api/publicities/${id}/delete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({})
         });
-        
+
         if (response.ok) {
           console.log(`✅ [Frontend] Successfully deleted publicity ${id} using POST`);
           return response.json();
@@ -111,12 +111,12 @@ export default function Publicities() {
           // Route not found, try DELETE method as fallback (for dev environment)
           console.log(`⚠️ [Frontend] POST route not found, trying DELETE method`);
           const deleteResponse = await fetch(`/api/publicities/${id}`, { method: 'DELETE' });
-          
+
           if (!deleteResponse.ok) {
             const error = await deleteResponse.json();
             throw new Error(error.message || 'Erreur lors de la suppression');
           }
-          
+
           // Handle empty response (204 No Content)
           if (deleteResponse.status === 204) {
             return { message: "Publicity deleted successfully" };
@@ -138,9 +138,9 @@ export default function Publicities() {
       setSelectedPublicity(null);
     },
     onError: (error: Error) => {
-      toast({ 
+      toast({
         variant: "destructive",
-        description: error.message || "Erreur lors de la suppression" 
+        description: error.message || "Erreur lors de la suppression"
       });
     }
   });
@@ -165,7 +165,7 @@ export default function Publicities() {
     const weekPublicities = publicities.filter(pub => {
       const pubStart = safeDate(pub.startDate);
       const pubEnd = safeDate(pub.endDate);
-      
+
       // More robust overlap detection: check if any part of the publicity period overlaps with the week
       return pubStart && pubEnd && (pubStart <= weekEnd && pubEnd >= weekStart);
     });
@@ -194,7 +194,7 @@ export default function Publicities() {
   const getYearWeeks = () => {
     const yearStart = startOfYear(new Date(selectedYear, 0, 1));
     const yearEnd = endOfYear(new Date(selectedYear, 11, 31));
-    
+
     const weeks = eachWeekOfInterval(
       { start: yearStart, end: yearEnd },
       { weekStartsOn: 1 }
@@ -203,18 +203,18 @@ export default function Publicities() {
     return weeks.map((weekStart, index) => {
       const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
       const weekNumber = index + 1;
-      
-      const weekMidpoint = new Date(weekStart.getTime() + (3.5 * 24 * 60 * 60 * 1000)); 
+
+      const weekMidpoint = new Date(weekStart.getTime() + (3.5 * 24 * 60 * 60 * 1000));
       let month = getMonth(weekMidpoint);
-      
+
       if (weekStart.getFullYear() < selectedYear && weekEnd.getFullYear() === selectedYear) {
         month = 0; // Janvier
       } else if (weekStart.getFullYear() === selectedYear && weekEnd.getFullYear() > selectedYear) {
         month = 11; // Décembre
       }
-      
+
       const participation = getWeekParticipation(weekStart, weekEnd);
-      
+
       return {
         weekStart,
         weekEnd,
@@ -256,6 +256,49 @@ export default function Publicities() {
     setSelectedPublicity(null);
   };
 
+  // Export CSV function for current year data
+  const exportToCSV = () => {
+    if (!publicities || publicities.length === 0) {
+      toast({ variant: "destructive", description: "Aucune donnée à exporter" });
+      return;
+    }
+
+    const headers = ["N° PUB", "Désignation", "Date Début", "Date Fin", "Année", "Statut", "Magasins", "Créé le"];
+
+    const rows = publicities.map(pub => {
+      const now = new Date();
+      const start = safeDate(pub.startDate);
+      const end = safeDate(pub.endDate);
+      const status = start && end && now >= start && now <= end ? "En cours"
+        : start && start > now ? "À venir"
+          : "Terminée";
+      const stores = pub.participations.map(p => p.group?.name || "").filter(Boolean).join(", ");
+
+      return [
+        pub.pubNumber,
+        `"${(pub.designation || "").replace(/"/g, '""')}"`,
+        safeFormat(pub.startDate, "dd/MM/yyyy"),
+        safeFormat(pub.endDate, "dd/MM/yyyy"),
+        pub.year,
+        status,
+        `"${stores}"`,
+        safeFormat(pub.createdAt, "dd/MM/yyyy HH:mm")
+      ].join(";");
+    });
+
+    // UTF-8 BOM for Excel compatibility with French accents
+    const csvContent = "\uFEFF" + headers.join(";") + "\n" + rows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `publicites_${selectedYear}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({ description: `Export CSV de ${publicities.length} publicités réussi` });
+  };
+
   const canCreateOrEdit = user?.role === 'admin' || user?.role === 'manager';
   const canDelete = user?.role === 'admin';
 
@@ -275,82 +318,88 @@ export default function Publicities() {
           </div>
 
           <div className="flex items-center gap-3">
-          {/* View Mode Toggle */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
-            <Button 
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="h-8"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('calendar')}
+                className="h-8"
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Year Overview Toggle */}
+            <Button
+              variant={showYearOverview ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setViewMode('list')}
+              onClick={() => setShowYearOverview(!showYearOverview)}
               className="h-8"
             >
-              <List className="h-4 w-4" />
+              <Calendar className="h-4 w-4 mr-2" />
+              Vue d'ensemble
             </Button>
-            <Button 
-              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('calendar')}
-              className="h-8"
-            >
-              <Grid className="h-4 w-4" />
+
+            {/* Year Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <Select
+                value={selectedYear.toString()}
+                onValueChange={(value) => setSelectedYear(parseInt(value))}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Month Filter (only for calendar view) */}
+            {viewMode === 'calendar' && (
+              <Select
+                value={selectedMonth.toString()}
+                onValueChange={(value) => setSelectedMonth(parseInt(value))}
+              >
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((month) => (
+                    <SelectItem key={month.value} value={month.value.toString()}>
+                      {month.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Export CSV Button */}
+            <Button variant="outline" onClick={exportToCSV} className="h-9">
+              <Download className="h-4 w-4 mr-2" />
+              Exporter CSV
             </Button>
-          </div>
 
-          {/* Year Overview Toggle */}
-          <Button
-            variant={showYearOverview ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setShowYearOverview(!showYearOverview)}
-            className="h-8"
-          >
-            <Calendar className="h-4 w-4 mr-2" />
-            Vue d'ensemble
-          </Button>
-
-          {/* Year Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-500" />
-            <Select
-              value={selectedYear.toString()}
-              onValueChange={(value) => setSelectedYear(parseInt(value))}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Month Filter (only for calendar view) */}
-          {viewMode === 'calendar' && (
-            <Select
-              value={selectedMonth.toString()}
-              onValueChange={(value) => setSelectedMonth(parseInt(value))}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {monthOptions.map((month) => (
-                  <SelectItem key={month.value} value={month.value.toString()}>
-                    {month.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {canModify && (
-            <Button onClick={() => setIsCreateModalOpen(true)} className="bg-green-600 hover:bg-green-700 text-white shadow-md">
-              <Plus className="mr-2 h-4 w-4" />
-              Nouvelle publicité
-            </Button>
-          )}
+            {canModify && (
+              <Button onClick={() => setIsCreateModalOpen(true)} className="bg-green-600 hover:bg-green-700 text-white shadow-md">
+                <Plus className="mr-2 h-4 w-4" />
+                Nouvelle publicité
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -422,100 +471,100 @@ export default function Publicities() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-          <div className="space-y-4">
-            {/* Months Grid */}
-            <div className="grid grid-cols-12 gap-2">
-              {Array.from({ length: 12 }, (_, monthIndex) => {
-                const monthName = format(new Date(selectedYear, monthIndex, 1), 'MMM', { locale: fr });
-                const monthWeeks = yearWeeks.filter(week => week.month === monthIndex);
-                
-                return (
-                  <div key={monthIndex} className="space-y-2">
-                    <div className="text-xs font-medium text-gray-600 text-center">
-                      {monthName}
-                    </div>
-                    <div className="space-y-1">
-                      {monthWeeks.map((week, weekIndex) => {
-                        const hasPublicity = week.publicities.length > 0;
-                        const storeColors = week.storeColors;
-                        
-                        return (
-                          <div
-                            key={`${monthIndex}-${weekIndex}-${week.weekNumber}`}
-                            className={`
+            <div className="space-y-4">
+              {/* Months Grid */}
+              <div className="grid grid-cols-12 gap-2">
+                {Array.from({ length: 12 }, (_, monthIndex) => {
+                  const monthName = format(new Date(selectedYear, monthIndex, 1), 'MMM', { locale: fr });
+                  const monthWeeks = yearWeeks.filter(week => week.month === monthIndex);
+
+                  return (
+                    <div key={monthIndex} className="space-y-2">
+                      <div className="text-xs font-medium text-gray-600 text-center">
+                        {monthName}
+                      </div>
+                      <div className="space-y-1">
+                        {monthWeeks.map((week, weekIndex) => {
+                          const hasPublicity = week.publicities.length > 0;
+                          const storeColors = week.storeColors;
+
+                          return (
+                            <div
+                              key={`${monthIndex}-${weekIndex}-${week.weekNumber}`}
+                              className={`
                               h-8 rounded border text-xs flex flex-col items-center justify-center cursor-pointer relative
-                              ${hasPublicity 
-                                ? 'bg-blue-50 border-blue-200 text-blue-800' 
-                                : 'bg-gray-50 border-gray-200 text-gray-500'
-                              }
+                              ${hasPublicity
+                                  ? 'bg-blue-50 border-blue-200 text-blue-800'
+                                  : 'bg-gray-50 border-gray-200 text-gray-500'
+                                }
                               hover:shadow-sm transition-shadow
                             `}
-                            title={`Semaine ${week.weekNumber} (${format(week.weekStart, 'dd/MM', { locale: fr })} - ${format(week.weekEnd, 'dd/MM', { locale: fr })}) - ${hasPublicity ? `${week.publicities.map(p => p.pubNumber).join(', ')}` : 'Aucune publicité'}`}
-                          >
-                            <span className="text-xs font-medium">{week.weekNumber}</span>
-                            {/* Store participation indicators */}
-                            {storeColors.length > 0 && (
-                              <div className="absolute top-0.5 right-0.5 flex flex-wrap gap-0.5 max-w-[16px]">
-                                {storeColors.slice(0, 4).map((color, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="w-1.5 h-1.5 rounded-full"
-                                    style={{ backgroundColor: color }}
-                                    title={`Magasin ${idx + 1}`}
-                                  />
-                                ))}
-                                {storeColors.length > 4 && (
-                                  <div 
-                                    className="w-1.5 h-1.5 rounded-full bg-gray-400 text-white text-xs flex items-center justify-center"
-                                    title={`+${storeColors.length - 4} autres magasins`}
-                                  >
-                                    +
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                              title={`Semaine ${week.weekNumber} (${format(week.weekStart, 'dd/MM', { locale: fr })} - ${format(week.weekEnd, 'dd/MM', { locale: fr })}) - ${hasPublicity ? `${week.publicities.map(p => p.pubNumber).join(', ')}` : 'Aucune publicité'}`}
+                            >
+                              <span className="text-xs font-medium">{week.weekNumber}</span>
+                              {/* Store participation indicators */}
+                              {storeColors.length > 0 && (
+                                <div className="absolute top-0.5 right-0.5 flex flex-wrap gap-0.5 max-w-[16px]">
+                                  {storeColors.slice(0, 4).map((color, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="w-1.5 h-1.5 rounded-full"
+                                      style={{ backgroundColor: color }}
+                                      title={`Magasin ${idx + 1}`}
+                                    />
+                                  ))}
+                                  {storeColors.length > 4 && (
+                                    <div
+                                      className="w-1.5 h-1.5 rounded-full bg-gray-400 text-white text-xs flex items-center justify-center"
+                                      title={`+${storeColors.length - 4} autres magasins`}
+                                    >
+                                      +
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Legend */}
+              <div className="space-y-2 pt-2 border-t">
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded"></div>
+                      <span>Semaine avec publicité</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-gray-50 border border-gray-200 rounded"></div>
+                      <span>Semaine sans publicité</span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-            
-            {/* Legend */}
-            <div className="space-y-2 pt-2 border-t">
-              <div className="flex items-center justify-between text-sm text-gray-600">
-                <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-blue-50 border border-blue-200 rounded"></div>
-                    <span>Semaine avec publicité</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-gray-50 border border-gray-200 rounded"></div>
-                    <span>Semaine sans publicité</span>
+                    <div className="flex gap-1">
+                      {groups.slice(0, 3).map(group => (
+                        <div
+                          key={group.id}
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: group?.color || '#666666' }}
+                        />
+                      ))}
+                    </div>
+                    <span>Indicateurs magasins (coin supérieur droit)</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    {groups.slice(0, 3).map(group => (
-                      <div 
-                        key={group.id}
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: group?.color || '#666666' }}
-                      />
-                    ))}
-                  </div>
-                  <span>Indicateurs magasins (coin supérieur droit)</span>
+                <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <span>• Survolez les semaines pour voir les détails des publicités</span>
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-xs text-gray-500">
-                <span>• Survolez les semaines pour voir les détails des publicités</span>
-              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
       )}
 
       {/* Content */}
@@ -559,16 +608,16 @@ export default function Publicities() {
                     {day}
                   </div>
                 ))}
-                
+
                 {/* Calendar days */}
                 {(() => {
                   const monthStart = startOfMonth(new Date(selectedYear, selectedMonth, 1));
                   const monthEnd = endOfMonth(monthStart);
                   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
                   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-                  
+
                   const days = eachDayOfInterval({ start: startDate, end: endDate });
-                  
+
                   return days.map(day => {
                     const isCurrentMonth = isSameMonth(day, monthStart);
                     const dayPublicities = publicities.filter(pub => {
@@ -576,17 +625,17 @@ export default function Publicities() {
                       const pubEnd = safeDate(pub.endDate);
                       return pubStart && pubEnd && day >= pubStart && day <= pubEnd;
                     });
-                    
+
                     const participatingStores = new Set<number>();
                     dayPublicities.forEach(pub => {
                       pub.participations.forEach(participation => {
                         participatingStores.add(participation.groupId);
                       });
                     });
-                    
+
                     return (
-                      <div 
-                        key={day.toISOString()} 
+                      <div
+                        key={day.toISOString()}
                         className={`
                           p-2 min-h-[60px] border border-gray-200 rounded-lg
                           ${isCurrentMonth ? 'bg-white' : 'bg-gray-50'}
@@ -599,8 +648,8 @@ export default function Publicities() {
                         {dayPublicities.length > 0 && (
                           <div className="space-y-1">
                             {dayPublicities.slice(0, 2).map(pub => (
-                              <div 
-                                key={pub.id} 
+                              <div
+                                key={pub.id}
                                 className="text-xs bg-blue-100 text-blue-800 rounded px-1 py-0.5 truncate"
                                 title={pub.designation}
                               >
@@ -620,7 +669,7 @@ export default function Publicities() {
                             {Array.from(participatingStores).slice(0, 3).map(storeId => {
                               const group = groups.find(g => g.id === storeId);
                               return (
-                                <div 
+                                <div
                                   key={storeId}
                                   className="w-2 h-2 rounded-full"
                                   style={{ backgroundColor: group?.color || '#666666' }}
@@ -638,7 +687,7 @@ export default function Publicities() {
                   });
                 })()}
               </div>
-              
+
               {/* Legend */}
               <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-900 mb-2">Légende</h4>
@@ -650,7 +699,7 @@ export default function Publicities() {
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
                       {groups.slice(0, 3).map(group => (
-                        <div 
+                        <div
                           key={group.id}
                           className="w-2 h-2 rounded-full"
                           style={{ backgroundColor: group?.color || '#666666' }}
@@ -736,8 +785,8 @@ export default function Publicities() {
                                 <>
                                   {publicity.participations.slice(0, 2).map((participation) => (
                                     <Badge key={participation.groupId} variant="outline" className="text-xs">
-                                      <div 
-                                        className="w-2 h-2 rounded-full mr-1" 
+                                      <div
+                                        className="w-2 h-2 rounded-full mr-1"
                                         style={{ backgroundColor: participation.group?.color || '#666666' }}
                                       />
                                       {participation.group?.name || 'Magasin'}
@@ -767,7 +816,7 @@ export default function Publicities() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              
+
                               {canModify && (
                                 <>
                                   <Button
@@ -778,7 +827,7 @@ export default function Publicities() {
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                  
+
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -846,7 +895,7 @@ export default function Publicities() {
               Informations complètes de la campagne publicitaire.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedPublicity && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
@@ -884,8 +933,8 @@ export default function Publicities() {
                   ) : (
                     selectedPublicity.participations.map((participation) => (
                       <Badge key={participation.groupId} variant="outline">
-                        <div 
-                          className="w-3 h-3 rounded-full mr-2" 
+                        <div
+                          className="w-3 h-3 rounded-full mr-2"
                           style={{ backgroundColor: participation.group?.color || '#666666' }}
                         />
                         {participation.group?.name || 'Magasin'}
@@ -919,20 +968,20 @@ export default function Publicities() {
               Êtes-vous sûr de vouloir supprimer cette publicité ? Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedPublicity && (
             <div className="space-y-4">
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="font-medium">{selectedPublicity.pubNumber}</p>
                 <p className="text-sm text-gray-600">{selectedPublicity.designation}</p>
               </div>
-              
+
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
                   Annuler
                 </Button>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   onClick={confirmDelete}
                   disabled={deleteMutation.isPending}
                 >
