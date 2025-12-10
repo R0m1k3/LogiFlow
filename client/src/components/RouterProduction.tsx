@@ -1,5 +1,6 @@
 import { Switch, Route } from "wouter";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
+import { useScreenSize } from "@/hooks/use-screen-size";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/AuthPage";
 import Dashboard from "@/pages/Dashboard";
@@ -20,11 +21,6 @@ import DlcPage from "@/pages/DlcPage";
 import BackupManager from "@/pages/BackupManager";
 import Utilities from "@/pages/Utilities";
 import Tasks from "@/pages/Tasks";
-import ResponsiveTasks from "@/components/ResponsiveTasks";
-import ResponsiveDashboard from "@/components/ResponsiveDashboard";
-import ResponsiveOrders from "@/components/ResponsiveOrders";
-import ResponsiveDeliveries from "@/components/ResponsiveDeliveries";
-import ResponsiveCalendar from "@/components/ResponsiveCalendar";
 import SavTickets from "@/pages/SavTickets";
 import Avoirs from "@/pages/Avoirs";
 import WeatherSettings from "@/pages/WeatherSettings";
@@ -33,8 +29,16 @@ import SalesAnalysisPage from "@/pages/SalesAnalysisPage";
 import PaymentSchedulePage from "@/pages/PaymentSchedulePage";
 import Layout from "@/components/Layout";
 
+// Mobile pages
+import MobileDashboardPage from "@/pages/mobile/DashboardPage";
+import MobileOrdersPage from "@/pages/mobile/OrdersPage";
+import MobileDeliveriesPage from "@/pages/mobile/DeliveriesPage";
+import MobileCalendarPage from "@/pages/mobile/CalendarPage";
+import MobileTasksPage from "@/pages/mobile/TasksPage";
+
 function RouterProduction() {
   const { isAuthenticated, isLoading, user, environment, error } = useAuthUnified();
+  const { isMobile } = useScreenSize();
 
   // Debug uniquement en développement
   if (import.meta.env.DEV) {
@@ -45,6 +49,7 @@ function RouterProduction() {
       hasUser: !!user,
       userId: user?.id,
       username: user?.username,
+      isMobile,
       error: error?.message
     });
   }
@@ -54,34 +59,23 @@ function RouterProduction() {
     console.error('🚨 Production Auth Error:', error);
   }
 
+  // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-surface">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Chargement...</p>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    // Redirection automatique vers la page d'authentification
-    if (typeof window !== 'undefined' && window.location.pathname !== '/auth') {
-      if (import.meta.env.DEV) {
-        console.log('🔄 User not authenticated, redirecting to auth page');
-      }
-      window.location.href = '/auth';
-      return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-surface">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-gray-600">Redirection...</p>
-          </div>
-        </div>
-      );
+  // Not authenticated
+  if (!isAuthenticated || !user) {
+    if (import.meta.env.DEV) {
+      console.log('🔐 Not authenticated, showing auth routes');
     }
-
     return (
       <Switch>
         <Route path="/auth" component={AuthPage} />
@@ -91,13 +85,55 @@ function RouterProduction() {
     );
   }
 
+  // ===== MOBILE ROUTES (sans Layout standard) =====
+  if (isMobile) {
+    return (
+      <Switch>
+        <Route path="/calendar" component={MobileCalendarPage} />
+        <Route path="/dashboard" component={MobileDashboardPage} />
+        <Route path="/orders" component={MobileOrdersPage} />
+        <Route path="/deliveries" component={MobileDeliveriesPage} />
+        <Route path="/tasks" component={MobileTasksPage} />
+
+        {/* Pages sans version mobile - utiliser version desktop dans Layout pour l'instant */}
+        <Route path="/suppliers" component={Suppliers} />
+        <Route path="/groups" component={Groups} />
+        <Route path="/users" component={Users} />
+        <Route path="/bl-reconciliation" component={BLReconciliation} />
+        <Route path="/publicities" component={Publicities} />
+        <Route path="/customer-orders" component={CustomerOrders} />
+        <Route path="/dlc" component={DlcPage} />
+        <Route path="/utilities" component={Utilities} />
+        <Route path="/sav" component={SavTickets} />
+        <Route path="/avoirs" component={Avoirs} />
+        <Route path="/analytics" component={Analytics} />
+        <Route path="/sales-analysis" component={SalesAnalysisPage} />
+        <Route path="/payment-schedule" component={PaymentSchedulePage} />
+
+        {/* Redirection /auth vers dashboard */}
+        <Route path="/auth">
+          {() => {
+            if (typeof window !== 'undefined') {
+              window.location.href = '/dashboard';
+            }
+            return <MobileDashboardPage />;
+          }}
+        </Route>
+
+        <Route path="/" component={MobileDashboardPage} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+
+  // ===== DESKTOP ROUTES (avec Layout standard) =====
   return (
     <Layout>
       <Switch>
-        <Route path="/calendar" component={ResponsiveCalendar} />
-        <Route path="/dashboard" component={ResponsiveDashboard} />
-        <Route path="/orders" component={ResponsiveOrders} />
-        <Route path="/deliveries" component={ResponsiveDeliveries} />
+        <Route path="/calendar" component={Calendar} />
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/orders" component={Orders} />
+        <Route path="/deliveries" component={Deliveries} />
         <Route path="/suppliers" component={Suppliers} />
         <Route path="/groups" component={Groups} />
         <Route path="/users" component={Users} />
@@ -107,7 +143,7 @@ function RouterProduction() {
         <Route path="/customer-orders" component={CustomerOrders} />
         <Route path="/dlc" component={DlcPage} />
         <Route path="/utilities" component={Utilities} />
-        <Route path="/tasks" component={ResponsiveTasks} />
+        <Route path="/tasks" component={Tasks} />
         <Route path="/sav" component={SavTickets} />
         <Route path="/avoirs" component={Avoirs} />
         <Route path="/analytics" component={Analytics} />
