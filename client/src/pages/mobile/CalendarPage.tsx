@@ -51,9 +51,6 @@ export default function MobileCalendarPage() {
     // Debug log - doit apparaître dans la console
     console.log('🗓️ MobileCalendarPage RENDER', { user: !!user, selectedStoreId, currentMonth: currentMonth.toISOString() });
 
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
-
     // Fetch orders for current month
     const { data: orders = [], isLoading: loadingOrders } = useQuery({
         queryKey: ["/api/orders", selectedStoreId, format(currentMonth, 'yyyy-MM')],
@@ -82,7 +79,6 @@ export default function MobileCalendarPage() {
         },
         enabled: !!user,
     });
-
 
     // Fetch deliveries for current month
     const { data: deliveries = [], isLoading: loadingDeliveries } = useQuery({
@@ -132,6 +128,9 @@ export default function MobileCalendarPage() {
             supplier: delivery.supplier
         }))
     ];
+
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
 
     // Get days for the calendar grid
     const calendarStart = startOfWeek(monthStart, { locale: fr });
@@ -280,8 +279,8 @@ export default function MobileCalendarPage() {
                                     <CardContent className="p-3">
                                         <div className="flex items-start gap-3">
                                             <div className={`p-2 rounded-lg ${event.type === 'order'
-                                                ? 'bg-blue-100'
-                                                : 'bg-green-100'
+                                                    ? 'bg-blue-100'
+                                                    : 'bg-green-100'
                                                 }`}>
                                                 {event.type === 'order'
                                                     ? <Package className="h-4 w-4 text-blue-600" />
@@ -333,23 +332,7 @@ export default function MobileCalendarPage() {
                         </div>
                     )}
                 </div>
-                <Badge
-                    variant="secondary"
-                    className="mt-1 text-xs"
-                >
-                    {event.status}
-                </Badge>
-                                                )}
             </div>
-        </div>
-                                    </CardContent >
-                                </Card >
-                            ))
-                        )
-}
-                    </div >
-                )}
-            </div >
-        </MobileLayout >
+        </MobileLayout>
     );
 }
