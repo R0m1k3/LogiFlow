@@ -367,7 +367,7 @@ export default function MobileTasksPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-24">
+        <div className="min-h-screen bg-gray-50 pb-24 overflow-x-hidden max-w-full">
             {/* Header */}
             <div className="bg-white border-b sticky top-0 z-40">
                 <div className="p-4">
@@ -391,17 +391,17 @@ export default function MobileTasksPage() {
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 w-full">
                         {(['pending', 'completed', 'all'] as const).map((tab) => (
                             <Button
                                 key={tab}
                                 variant={activeTab === tab ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => setActiveTab(tab)}
-                                className="flex-1 h-10"
+                                className="flex-1 h-10 text-xs px-2 min-w-0"
                             >
                                 {tab === 'pending' && 'En cours'}
-                                {tab === 'completed' && 'Terminées'}
+                                {tab === 'completed' && 'Faites'}
                                 {tab === 'all' && 'Toutes'}
                             </Button>
                         ))}
