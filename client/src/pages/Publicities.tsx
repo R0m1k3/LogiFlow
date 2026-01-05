@@ -34,9 +34,10 @@ export default function Publicities() {
   // Seuls les admins peuvent modifier/supprimer
   const canModify = user?.role === 'admin';
 
-  // Generate year options (2025 to 2035)
+  // Generate year options (current year - 2 to current year + 10)
   const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
+  const startYear = currentYear - 2;
+  const yearOptions = Array.from({ length: 13 }, (_, i) => startYear + i);
 
   const { data: publicities = [], isLoading } = useQuery({
     queryKey: ['/api/publicities', selectedYear, selectedStoreId],
