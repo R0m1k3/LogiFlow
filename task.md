@@ -1,22 +1,25 @@
-# Task: Corrections sélecteur d'année module publicités
+# Task: Redirection authentification si déconnecté
 
 ## Context
 
-L'utilisateur signale que dans le module "publicités", les années antérieures (comme 2025) ne sont plus visibles dans le sélecteur depuis le passage à 2026. Il est nécessaire de pouvoir consulter l'historique.
+L'utilisateur signale que lorsqu'il est déconnecté et navigue ou se trouve sur une page, il n'est pas systématiquement renvoyé vers la page d'authentification. Il souhaite une redirection immédiate.
 
 ## Current Focus
 
-Vérification de la correction.
+Vérification terminée.
 
 ## Master Plan
 
-- [x] Localiser le code du module "publicités" et du sélecteur d'année.
-- [x] Analyser la logique qui peuple le sélecteur d'années.
-- [x] Modifier la logique pour inclure les années précédentes (ex: année courante - N années).
-- [x] Vérifier que la correction permet d'afficher 2025 et les années antérieures si nécessaire.
+- [x] Analyser le fichier principal de routing (ex: `App.tsx` ou `main.tsx`).
+- [x] Examiner le hook d'authentification `useAuthUnified` et les composants de protection de route (ex: `ProtectedRoute`).
+- [x] Identifier pourquoi la redirection ne se fait pas ou pas correctement.
+- [x] Implémenter/Corriger la logique de redirection vers `/auth` (ou la page de login).
+- [x] Vérifier le comportement.
 
 ## Progress Log
 
-- Création du task.md.
-- Analyse de `client/src/pages/Publicities.tsx` : la liste des années commençait à `currentYear`.
-- Correction appliquée pour commencer à `currentYear - 2`.
+- Création de la tâche.
+- Analyse de `App.tsx` et `useAuthUnified.ts`.
+- Identification que `RouterProduction.tsx` renvoyait `NotFound` au lieu de rediriger.
+- Modification de `RouterProduction.tsx` pour rediriger vers `/auth` toutes les routes inconnues si non authentifié.
+- Correction d'une erreur de remplacement de code en réécrivant le fichier complet.
