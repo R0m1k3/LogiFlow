@@ -1,4 +1,5 @@
-import { Switch, Route } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useScreenSize } from "@/hooks/use-screen-size";
 import NotFound from "@/pages/not-found";
@@ -41,6 +42,15 @@ import MobileCustomerOrdersPage from "@/pages/mobile/CustomerOrdersPage";
 import MobileDlcPage from "@/pages/mobile/DlcPage";
 import MobileSavPage from "@/pages/mobile/SavPage";
 import MobileAvoirsPage from "@/pages/mobile/AvoirsPage";
+
+// Helper component to handle redirection
+const RedirectToAuth = () => {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    setLocation("/auth");
+  }, [setLocation]);
+  return <AuthPage />;
+};
 
 function RouterProduction() {
   const { isAuthenticated, isLoading, user, environment, error } = useAuthUnified();
@@ -86,7 +96,8 @@ function RouterProduction() {
       <Switch>
         <Route path="/auth" component={AuthPage} />
         <Route path="/" component={AuthPage} />
-        <Route component={NotFound} />
+        {/* Redirect all other routes to auth */}
+        <Route component={RedirectToAuth} />
       </Switch>
     );
   }
