@@ -35,9 +35,9 @@ export default function Calendar() {
 
   // Fetch orders and deliveries for the current month with store filtering
   const { data: orders = [], isLoading: loadingOrders } = useQuery({
-    queryKey: ['/api/orders', selectedStoreId, { 
-      startDate: format(monthStart, 'yyyy-MM-dd'), 
-      endDate: format(monthEnd, 'yyyy-MM-dd') 
+    queryKey: ['/api/orders', selectedStoreId, {
+      startDate: format(monthStart, 'yyyy-MM-dd'),
+      endDate: format(monthEnd, 'yyyy-MM-dd')
     }],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -48,7 +48,7 @@ export default function Calendar() {
       if (selectedStoreId) {
         params.append('storeId', selectedStoreId.toString());
       }
-      
+
       const url = `/api/orders?${params.toString()}`;
       if (import.meta.env.DEV) {
         console.log('📅 Calendar fetching orders:', {
@@ -58,20 +58,20 @@ export default function Calendar() {
           params: params.toString()
         });
       }
-      
+
       const response = await fetch(url, {
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch orders');
       }
-      
+
       const data = await response.json();
       if (import.meta.env.DEV) {
         console.log('📅 Calendar orders received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
       }
-      
+
       // Protection contre les données invalides en production
       if (!Array.isArray(data)) {
         console.warn('⚠️ Orders data is not an array, returning empty array');
@@ -84,9 +84,9 @@ export default function Calendar() {
   });
 
   const { data: deliveries = [], isLoading: loadingDeliveries } = useQuery({
-    queryKey: ['/api/deliveries', selectedStoreId, { 
-      startDate: format(monthStart, 'yyyy-MM-dd'), 
-      endDate: format(monthEnd, 'yyyy-MM-dd') 
+    queryKey: ['/api/deliveries', selectedStoreId, {
+      startDate: format(monthStart, 'yyyy-MM-dd'),
+      endDate: format(monthEnd, 'yyyy-MM-dd')
     }],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -97,7 +97,7 @@ export default function Calendar() {
       if (selectedStoreId) {
         params.append('storeId', selectedStoreId.toString());
       }
-      
+
       const url = `/api/deliveries?${params.toString()}`;
       if (import.meta.env.DEV) {
         console.log('📅 Calendar fetching deliveries:', {
@@ -107,20 +107,20 @@ export default function Calendar() {
           params: params.toString()
         });
       }
-      
+
       const response = await fetch(url, {
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch deliveries');
       }
-      
+
       const data = await response.json();
       if (import.meta.env.DEV) {
         console.log('📅 Calendar deliveries received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
       }
-      
+
       // Protection contre les données invalides en production
       if (!Array.isArray(data)) {
         console.warn('⚠️ Deliveries data is not an array, returning empty array');
@@ -134,15 +134,15 @@ export default function Calendar() {
 
   // Fetch publicities for the current year
   const { data: publicities = [], isLoading: loadingPublicities } = useQuery({
-    queryKey: ['/api/publicities', currentDate.getFullYear(), selectedStoreId],
+    queryKey: ['/api/ad-campaigns', currentDate.getFullYear(), selectedStoreId],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append('year', currentDate.getFullYear().toString());
       if (selectedStoreId && user?.role === 'admin') {
         params.append('storeId', selectedStoreId.toString());
       }
-      
-      const url = `/api/publicities?${params.toString()}`;
+
+      const url = `/api/ad-campaigns?${params.toString()}`;
       if (import.meta.env.DEV) {
         console.log('📅 Calendar fetching publicities:', {
           url,
@@ -151,15 +151,15 @@ export default function Calendar() {
           year: currentDate.getFullYear()
         });
       }
-      
+
       const response = await fetch(url, {
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch publicities');
       }
-      
+
       const data = await response.json();
       if (import.meta.env.DEV) {
         console.log('📅 Calendar publicities received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
