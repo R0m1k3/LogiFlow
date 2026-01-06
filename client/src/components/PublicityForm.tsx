@@ -51,8 +51,8 @@ export default function PublicityForm({ publicity, groups, onSuccess, selectedYe
     defaultValues: {
       pubNumber: publicity?.pubNumber || "",
       designation: publicity?.designation || "",
-      startDate: publicity?.startDate ? safeDate(publicity.startDate) : undefined,
-      endDate: publicity?.endDate ? safeDate(publicity.endDate) : undefined,
+      startDate: (publicity?.startDate ? safeDate(publicity.startDate) : undefined) as Date,
+      endDate: (publicity?.endDate ? safeDate(publicity.endDate) : undefined) as Date,
       year: publicity?.year || selectedYear || 2025, // Utilise l'année sélectionnée ou 2025 par défaut
       participatingGroups: publicity?.participations?.map(p => p.groupId) || [],
     },
@@ -62,7 +62,7 @@ export default function PublicityForm({ publicity, groups, onSuccess, selectedYe
 
   const createMutation = useMutation({
     mutationFn: async (data: PublicityFormData) => {
-      const response = await fetch('/api/publicities', {
+      const response = await fetch('/api/ad-campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -81,21 +81,21 @@ export default function PublicityForm({ publicity, groups, onSuccess, selectedYe
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/publicities'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ad-campaigns'] });
       toast({ description: "Publicité créée avec succès" });
       onSuccess();
     },
     onError: (error: Error) => {
-      toast({ 
+      toast({
         variant: "destructive",
-        description: error.message || "Erreur lors de la création" 
+        description: error.message || "Erreur lors de la création"
       });
     }
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: PublicityFormData) => {
-      const response = await fetch(`/api/publicities/${publicity!.id}`, {
+      const response = await fetch(`/api/ad-campaigns/${publicity!.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -114,23 +114,31 @@ export default function PublicityForm({ publicity, groups, onSuccess, selectedYe
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/publicities'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ad-campaigns'] });
       toast({ description: "Publicité modifiée avec succès" });
       onSuccess();
     },
     onError: (error: Error) => {
-      toast({ 
+      toast({
         variant: "destructive",
-        description: error.message || "Erreur lors de la modification" 
+        description: error.message || "Erreur lors de la modification"
       });
     }
   });
 
-  const onSubmit = (data: PublicityFormData) => {
+  const onSubmit = (data: any) => {
+    // Transformer l'année en nombre si c'est une string
+    const formattedData = {
+      ...data,
+      year: parseInt(data.year.toString()),
+      // s'assurer que les dates sont bien des objets Date ou null
+      startDate: data.startDate ? new Date(data.startDate) : undefined,
+      endDate: data.endDate ? new Date(data.endDate) : undefined,
+    };
     if (publicity) {
-      updateMutation.mutate(data);
+      updateMutation.mutate(formattedData);
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(formattedData);
     }
   };
 
@@ -284,9 +292,9 @@ export default function PublicityForm({ publicity, groups, onSuccess, selectedYe
                     htmlFor={`group-${group.id}`}
                     className="flex items-center space-x-2 cursor-pointer"
                   >
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: group.color }}
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: group.color || '#cccccc' }}
                     />
                     <span>{group.name}</span>
                   </Label>
