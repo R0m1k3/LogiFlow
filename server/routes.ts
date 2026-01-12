@@ -886,8 +886,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         size: parts.file.buffer.length
       });
 
-      // Importer form-data dynamiquement avec eval pour ESM
-      const FormDataModule = await eval('import("form-data")');
+      // Import dynamique standard pour ESM (sans eval)
+      const FormDataModule = await import('form-data');
       const FormData = FormDataModule.default;
 
       const formData = new FormData();

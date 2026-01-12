@@ -1,6 +1,14 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic } from "./vite.js";
+import {
+  setupSecurityHeaders,
+  setupRateLimiting,
+  setupInputSanitization,
+  setupCsrfProtection,
+  setupCsrfTokenEndpoint
+} from "./security.js";
 
 // Forcer la création de la table webhook_bap_config au démarrage de l'application
 if (process.env.NODE_ENV === 'production') {
@@ -16,8 +24,27 @@ console.log('✅ [STARTUP] Weather system initialized');
 
 const app = express();
 
+// Parse cookies (required for CSRF)
+app.use(cookieParser());
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Setup security middlewares
+console.log('🔐 [STARTUP] Setting up security middlewares...');
+setupSecurityHeaders(app);
+setupRateLimiting(app);
+setupInputSanitization(app);
+
+// CSRF Protection (only in production to avoid dev friction)
+if (process.env.NODE_ENV === 'production') {
+  setupCsrfProtection(app);
+  console.log('✅ [STARTUP] CSRF protection enabled');
+}
+
+// CSRF token endpoint (always available for frontend to fetch token)
+setupCsrfTokenEndpoint(app);
+console.log('✅ [STARTUP] Security middlewares configured');
 
 app.use((req, res, next) => {
   const start = Date.now();
