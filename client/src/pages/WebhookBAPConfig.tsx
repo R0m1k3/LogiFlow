@@ -39,7 +39,7 @@ export default function WebhookBAPConfig() {
       if (!formData.webhookUrl) {
         throw new Error("URL webhook requise pour le test");
       }
-      
+
       const response = await fetch('/api/webhook-bap-config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -163,7 +163,7 @@ export default function WebhookBAPConfig() {
             Configuration Webhook BAP
           </CardTitle>
           <CardDescription>
-            Configurez l'URL du webhook n8n pour l'envoi des fichiers BAP vers Prissela et Célia
+            Configurez l'URL du webhook n8n pour l'envoi des fichiers BAP vers Prissela et Jeremy
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -230,7 +230,7 @@ export default function WebhookBAPConfig() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
-            <Button 
+            <Button
               onClick={handleTest}
               disabled={testMutation.isPending || !formData.webhookUrl}
               className="flex items-center gap-2"
@@ -247,14 +247,14 @@ export default function WebhookBAPConfig() {
                 </>
               )}
             </Button>
-            
+
             {testMutation.isSuccess && (
               <div className="flex items-center gap-2 text-green-600">
                 <CheckCircle2 className="w-4 h-4" />
                 <span className="text-sm">Connexion réussie</span>
               </div>
             )}
-            
+
             {testMutation.isError && (
               <div className="flex items-center gap-2 text-red-600">
                 <AlertCircle className="w-4 h-4" />
@@ -266,7 +266,7 @@ export default function WebhookBAPConfig() {
       </Card>
 
       <div className="flex justify-end gap-4">
-        <Button 
+        <Button
           onClick={handleSave}
           disabled={saveMutation.isPending}
           className="flex items-center gap-2"

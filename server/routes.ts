@@ -10,32 +10,32 @@ console.log('🔍 Using development storage and authentication');
 // Fonction de normalisation des dates pour gérer différents formats de NocoDB
 function normalizeDateString(dateString: string | null | undefined): string | null {
   if (!dateString || typeof dateString !== 'string') return null;
-  
+
   const trimmed = dateString.trim();
   if (!trimmed) return null;
-  
+
   try {
     // Si déjà au format ISO (YYYY-MM-DD), le retourner tel quel
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
       return trimmed;
     }
-    
+
     // Format slash ou tiret : DD/MM/YYYY, MM/DD/YYYY, DD-MM-YYYY, MM-DD-YYYY
     const slashMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
     if (slashMatch) {
       const [, first, second, year] = slashMatch;
       const firstNum = parseInt(first);
       const secondNum = parseInt(second);
-      
+
       // Validation basique des valeurs
       if (firstNum > 31 || secondNum > 31 || firstNum === 0 || secondNum === 0) {
         console.warn(`⚠️ Date invalide (valeurs hors limites): ${trimmed}`);
         return null;
       }
-      
+
       // Déterminer le format en fonction des valeurs
       let day: string, month: string;
-      
+
       if (firstNum > 12) {
         // first > 12 → forcément DD/MM (format français/européen)
         day = first.padStart(2, '0');
@@ -50,7 +50,7 @@ function normalizeDateString(dateString: string | null | undefined): string | nu
         day = first.padStart(2, '0');
         month = second.padStart(2, '0');
       }
-      
+
       // Validation finale : mois entre 1-12, jour entre 1-31
       const monthNum = parseInt(month);
       const dayNum = parseInt(day);
@@ -58,10 +58,10 @@ function normalizeDateString(dateString: string | null | undefined): string | nu
         console.warn(`⚠️ Date invalide après parsing: ${trimmed} → month=${month}, day=${day}`);
         return null;
       }
-      
+
       return `${year}-${month}-${day}`;
     }
-    
+
     // Essayer de parser avec Date (format ISO complet avec heures)
     const date = new Date(trimmed);
     if (!isNaN(date.getTime())) {
@@ -70,7 +70,7 @@ function normalizeDateString(dateString: string | null | undefined): string | nu
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
-    
+
     // Si aucun format reconnu, retourner null (ne pas persister une date invalide)
     console.warn(`⚠️ Format de date non reconnu: ${trimmed}`);
     return null;
@@ -85,7 +85,7 @@ async function hashPasswordSimple(password: string) {
   const crypto = await import('crypto');
   const { promisify } = await import('util');
   const scryptAsync = promisify(crypto.scrypt);
-  
+
   const salt = crypto.randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
@@ -95,10 +95,10 @@ async function hashPasswordSimple(password: string) {
 // Alias pour compatibilité
 const isAuthenticated = requireAuth;
 const setupAuth = setupLocalAuth;
-import { 
-  insertGroupSchema, 
-  insertSupplierSchema, 
-  insertOrderSchema, 
+import {
+  insertGroupSchema,
+  insertSupplierSchema,
+  insertOrderSchema,
   insertDeliverySchema,
   insertUserGroupSchema,
   insertPublicitySchema,
@@ -162,10 +162,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const config = await storage.getWebhookBapConfig();
       res.json(config || null);
-      
+
     } catch (error: any) {
       console.error('❌ Erreur récupération config webhook BAP:', error);
-      
+
       // Si la table n'existe pas, retourner une configuration par défaut
       if (error.code === '42P01') { // Relation does not exist
         console.log('⚠️ Table webhook_bap_config n\'existe pas, retour config par défaut');
@@ -178,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           needsTableCreation: true
         });
       }
-      
+
       res.status(500).json({ error: 'Erreur serveur', details: error.message });
     }
   });
@@ -201,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Vérifier si une configuration existe déjà
       const existingConfig = await storage.getWebhookBapConfig();
-      
+
       let config: any;
       if (existingConfig) {
         // Mettre à jour la configuration existante
@@ -211,14 +211,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         config = await storage.createWebhookBapConfig(validatedData);
       }
 
-      console.log('✅ Configuration webhook BAP sauvegardée:', { 
-        id: config.id, 
+      console.log('✅ Configuration webhook BAP sauvegardée:', {
+        id: config.id,
         name: config.name,
-        isActive: config.isActive 
+        isActive: config.isActive
       });
-      
+
       res.json(config);
-      
+
     } catch (error: any) {
       console.error('❌ Erreur sauvegarde config webhook BAP:', error);
       res.status(500).json({ error: 'Erreur serveur', details: error.message });
@@ -271,24 +271,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const result = await testResponse.text();
-      
+
       res.json({
         success: true,
         status: testResponse.status,
         message: 'Webhook accessible',
         response: result.substring(0, 200) // Limiter la réponse
       });
-      
+
     } catch (error: any) {
       console.error('❌ Erreur test webhook BAP:', error);
-      
+
       let errorMessage = 'Échec du test de connectivité';
       if (error.name === 'AbortError') {
         errorMessage = 'Timeout - Le webhook ne répond pas';
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       res.status(500).json({ error: errorMessage, details: error.message });
     }
   });
@@ -308,7 +308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const config = await storage.getUtilities();
       res.json(config || null);
-      
+
     } catch (error: any) {
       console.error('❌ Erreur récupération utilities:', error);
       res.status(500).json({ error: 'Erreur serveur', details: error.message });
@@ -330,7 +330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertUtilitiesSchema.parse(req.body);
 
       const existingConfig = await storage.getUtilities();
-      
+
       let config: any;
       if (existingConfig) {
         config = await storage.updateUtilities(existingConfig.id, validatedData);
@@ -338,12 +338,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         config = await storage.createUtilities(validatedData);
       }
 
-      console.log('✅ Configuration utilities sauvegardée:', { 
-        id: config.id, 
+      console.log('✅ Configuration utilities sauvegardée:', {
+        id: config.id,
         salesAnalysisUrl: config.salesAnalysisUrl
       });
       res.json(config);
-      
+
     } catch (error: any) {
       console.error('❌ Erreur sauvegarde utilities:', error);
       res.status(500).json({ error: 'Erreur serveur', details: error.message });
@@ -366,11 +366,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validation du groupId avec Zod
       const groupIdSchema = z.coerce.number().int().positive();
       const validation = groupIdSchema.safeParse(req.query.groupId);
-      
+
       if (!validation.success) {
         return res.status(400).json({ error: 'groupId invalide - doit être un entier positif' });
       }
-      
+
       const groupId = validation.data;
 
       // Vérifier l'autorisation : directeur ne peut voir que ses groupes
@@ -402,7 +402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // FALLBACK : Pour les livraisons sans dueDate ou sans TTC, interroger NocoDB
       const { InvoiceVerificationService } = await import('./invoiceVerification.js');
       const verificationService = new InvoiceVerificationService();
-      
+
       // Traiter les livraisons sans dueDate
       for (const delivery of deliveriesWithoutDueDate) {
         try {
@@ -412,9 +412,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             false, // Ne pas forcer le refresh, utiliser cache si disponible
             delivery.reconciled || false
           );
-          
+
           const updateData: any = {};
-          
+
           if (result.exists && result.dueDate) {
             // Normaliser la date avant de la stocker
             const normalizedDateString = normalizeDateString(result.dueDate);
@@ -424,13 +424,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               delivery.dueDate = normalizedDate;
             }
           }
-          
+
           // Récupérer aussi le TTC si manquant
           if (result.exists && result.invoiceAmountTTC && !delivery.invoiceAmountTTC) {
             updateData.invoiceAmountTTC = result.invoiceAmountTTC.toString();
             delivery.invoiceAmountTTC = result.invoiceAmountTTC.toString();
           }
-          
+
           // Mettre à jour si nécessaire
           if (Object.keys(updateData).length > 0) {
             await storage.updateDelivery(delivery.id, updateData);
@@ -443,12 +443,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Combiner toutes les livraisons qui ont maintenant une dueDate
       const allDeliveriesWithDueDate = [...deliveriesWithDueDate, ...deliveriesWithoutDueDate.filter((d: any) => d.dueDate)];
-      
+
       // FALLBACK TTC : Pour les livraisons qui ont une dueDate mais pas de TTC
       const deliveriesNeedingTTC = allDeliveriesWithDueDate.filter((d: any) => !d.invoiceAmountTTC || parseFloat(d.invoiceAmountTTC) === 0);
-      
+
       console.log(`💰 Livraisons nécessitant récupération TTC: ${deliveriesNeedingTTC.length}`);
-      
+
       for (const delivery of deliveriesNeedingTTC) {
         try {
           const result = await verificationService.verifyInvoice(
@@ -457,10 +457,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             false,
             delivery.reconciled || false
           );
-          
+
           if (result.exists && result.invoiceAmountTTC) {
-            await storage.updateDelivery(delivery.id, { 
-              invoiceAmountTTC: result.invoiceAmountTTC.toString() 
+            await storage.updateDelivery(delivery.id, {
+              invoiceAmountTTC: result.invoiceAmountTTC.toString()
             });
             delivery.invoiceAmountTTC = result.invoiceAmountTTC.toString();
             console.log(`💰 TTC récupéré pour livraison #${delivery.id}: ${result.invoiceAmountTTC}€`);
@@ -477,7 +477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Formatter les échéances
       const schedules = allDeliveriesWithDueDate.map((delivery: any) => {
         const supplier = supplierMap.get(delivery.supplierId);
-        
+
         return {
           id: delivery.id,
           invoiceReference: delivery.invoiceReference,
@@ -493,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`📅 Total échéances retournées: ${schedules.length}`);
       res.json({ schedules });
-      
+
     } catch (error: any) {
       console.error('❌ Erreur récupération échéances:', error);
       res.status(500).json({ error: 'Erreur serveur', details: error.message });
@@ -504,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/payment-schedule/export', isAuthenticated, async (req: any, res) => {
     try {
       console.log('📊 [EXPORT] Début de l\'export Excel');
-      
+
       const userId = req.user?.claims?.sub || req.user?.id;
       if (!userId) {
         console.error('❌ [EXPORT] Utilisateur non authentifié');
@@ -513,7 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUser(userId);
       console.log(`🔍 [EXPORT] Utilisateur: ${user?.username} (${user?.role})`);
-      
+
       if (!user || (user.role !== 'admin' && user.role !== 'directeur')) {
         console.error('❌ [EXPORT] Accès refusé');
         return res.status(403).json({ error: 'Accès refusé - Admin ou Directeur uniquement' });
@@ -548,9 +548,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Récupérer toutes les livraisons du groupe avec échéance
       const allDeliveries = await storage.getDeliveries();
-      const groupDeliveries = allDeliveries.filter((d: any) => 
-        d.groupId === validatedGroupId && 
-        d.invoiceReference && 
+      const groupDeliveries = allDeliveries.filter((d: any) =>
+        d.groupId === validatedGroupId &&
+        d.invoiceReference &&
         d.dueDate
       );
 
@@ -599,7 +599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Créer les lignes de données
       const csvLines: string[] = [];
-      
+
       // Ajouter la ligne d'en-tête
       csvLines.push(headers.join(';'));
 
@@ -641,8 +641,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ [EXPORT] Erreur export Excel:', error);
       console.error('❌ [EXPORT] Message:', error.message);
       console.error('❌ [EXPORT] Stack:', error.stack);
-      res.status(500).json({ 
-        error: 'Erreur lors de l\'export', 
+      res.status(500).json({
+        error: 'Erreur lors de l\'export',
         details: error.message,
         stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
@@ -652,8 +652,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route BAP pour envoi webhook n8n
   app.post('/api/bap/send-webhook', isAuthenticated, async (req: any, res) => {
     try {
-      console.log('🔍 BAP: Requête reçue', { 
-        hasUser: !!req.user, 
+      console.log('🔍 BAP: Requête reçue', {
+        hasUser: !!req.user,
         userType: typeof req.user,
         hasClaims: !!(req.user?.claims),
         hasId: !!(req.user?.id),
@@ -663,7 +663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Vérifier que l'utilisateur est admin
       const userId = req.user?.claims?.sub || req.user?.id;
       console.log('🔍 BAP: User ID extracted:', userId);
-      
+
       if (!userId) {
         console.error('❌ BAP: No user ID found');
         return res.status(401).json({ error: 'Utilisateur non authentifié' });
@@ -671,7 +671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUser(userId);
       console.log('🔍 BAP: User found:', { id: user?.id, role: user?.role });
-      
+
       if (!user || user.role !== 'admin') {
         console.error('❌ BAP: Access denied', { user: user?.role });
         return res.status(403).json({ error: 'Accès refusé - Admin uniquement' });
@@ -685,7 +685,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Données manquantes: pdfBase64, fileName ou recipient' });
       }
 
-      if (!['Prissela', 'Célia'].includes(recipient)) {
+      if (!['Prissela', 'Jeremy'].includes(recipient)) {
         return res.status(400).json({ error: 'Destinataire invalide' });
       }
 
@@ -702,9 +702,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Format base64 invalide' });
       }
 
-      console.log('📤 BAP: Envoi webhook n8n', { 
-        recipient, 
-        fileName, 
+      console.log('📤 BAP: Envoi webhook n8n', {
+        recipient,
+        fileName,
         fileSize: fileBuffer.length,
         userId: user.id
       });
@@ -718,10 +718,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contentType: 'application/pdf'
       };
 
-      console.log('✅ BAP: Payload JSON préparé', { 
-        recipient, 
-        fileName, 
-        fileSize: fileBuffer.length 
+      console.log('✅ BAP: Payload JSON préparé', {
+        recipient,
+        fileName,
+        fileSize: fileBuffer.length
       });
 
       // Récupérer l'URL du webhook depuis la configuration
@@ -732,12 +732,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const webhookUrl = webhookConfig.webhookUrl;
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
 
       console.log('🌐 BAP: Envoi vers webhook n8n (POST avec body JSON)...');
-      
+
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
@@ -748,7 +748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       clearTimeout(timeoutId);
-      
+
       console.log('🌐 BAP: Réponse webhook reçue', { status: response.status, ok: response.ok });
 
       if (!response.ok) {
@@ -758,9 +758,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const result = await response.text();
-      
+
       console.log('✅ BAP: Webhook n8n réussi', { recipient, result: result.substring(0, 100) });
-      
+
       res.json({
         success: true,
         message: 'Fichier envoyé avec succès',
@@ -773,17 +773,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: error.message,
         stack: error.stack?.substring(0, 500)
       });
-      
+
       let errorMessage = 'Erreur lors de l\'envoi du fichier';
       if (error.name === 'AbortError') {
         errorMessage = 'Timeout - Le traitement a pris trop de temps';
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
-      res.status(500).json({ 
+
+      res.status(500).json({
         error: errorMessage,
-        details: error.message 
+        details: error.message
       });
     }
   });
@@ -793,32 +793,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const parts: any = {};
     const boundaryBuffer = Buffer.from(`--${boundary}`);
     const sections = [];
-    
+
     let start = 0;
     while (true) {
       const boundaryIndex = buffer.indexOf(boundaryBuffer, start);
       if (boundaryIndex === -1) break;
-      
+
       if (start > 0) {
         sections.push(buffer.slice(start, boundaryIndex));
       }
       start = boundaryIndex + boundaryBuffer.length;
     }
-    
+
     for (const section of sections) {
       const headerEnd = section.indexOf('\r\n\r\n');
       if (headerEnd === -1) continue;
-      
+
       const headers = section.slice(0, headerEnd).toString();
       const content = section.slice(headerEnd + 4, section.length - 2);
-      
+
       const nameMatch = headers.match(/name="([^"]+)"/);
       const filenameMatch = headers.match(/filename="([^"]+)"/);
       const contentTypeMatch = headers.match(/Content-Type: ([^\r\n]+)/);
-      
+
       if (!nameMatch) continue;
       const name = nameMatch[1];
-      
+
       if (filenameMatch) {
         parts[name] = {
           filename: filenameMatch[1],
@@ -829,7 +829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         parts[name] = content.toString('utf-8');
       }
     }
-    
+
     return parts;
   }
 
@@ -852,16 +852,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!boundaryMatch) {
         return res.status(400).json({ error: 'Format multipart invalide' });
       }
-      
+
       const boundary = boundaryMatch[1];
       const chunks: Buffer[] = [];
-      
+
       await new Promise<void>((resolve, reject) => {
         req.on('data', (chunk: Buffer) => chunks.push(chunk));
         req.on('end', () => resolve());
         req.on('error', reject);
       });
-      
+
       const buffer = Buffer.concat(chunks);
       const parts = parseMultipart(buffer, boundary);
 
@@ -879,11 +879,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Importer form-data dynamiquement avec eval pour ESM
       const FormDataModule = await eval('import("form-data")');
       const FormData = FormDataModule.default;
-      
+
       const formData = new FormData();
-      formData.append('file', parts.file.buffer, { 
-        filename: parts.file.filename, 
-        contentType: parts.file.contentType 
+      formData.append('file', parts.file.buffer, {
+        filename: parts.file.filename,
+        contentType: parts.file.contentType
       });
       formData.append('supplier', parts.supplier || '');
       formData.append('blNumber', parts.blNumber || '');
@@ -942,9 +942,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'content-length': req.headers['content-length'],
         'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
       });
-      
+
       console.log('📋 POST /api/groups - Request body:', JSON.stringify(req.body, null, 2));
-      
+
       // Déterminer l'ID utilisateur selon l'environnement
       let userId;
       if (req.user.claims && req.user.claims.sub) {
@@ -957,36 +957,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('❌ No user ID found in request:', { user: req.user });
         return res.status(401).json({ message: "User authentication failed" });
       }
-      
+
       console.log('🔐 User requesting group creation:', userId);
-      
+
       // Vérifier l'utilisateur
       const user = await storage.getUser(userId);
       if (!user) {
         console.error('❌ User not found:', userId);
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       console.log('✅ User found:', { username: user.username, role: user.role });
-      
+
       // Vérifier les permissions
       if (user.role !== 'admin' && user.role !== 'manager') {
         console.error('❌ Insufficient permissions:', { userRole: user.role, required: ['admin', 'manager'] });
         return res.status(403).json({ message: "Insufficient permissions" });
       }
-      
+
       console.log('✅ User has permission to create group');
-      
+
       // Valider les données
       console.log('🔍 Validating group data with schema...');
       const data = insertGroupSchema.parse(req.body);
       console.log('✅ Group data validation passed:', data);
-      
+
       // Créer le groupe
       console.log('🏪 Creating group in database...');
       const group = await storage.createGroup(data);
       console.log('✅ Group creation successful:', { id: group.id, name: group.name });
-      
+
       res.json(group);
     } catch (error: any) {
       console.error('❌ Failed to create group:', {
@@ -995,16 +995,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: req.body,
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
       });
-      
+
       // Erreur de validation Zod
       if (error?.name === 'ZodError') {
         console.error('❌ Validation error details:', error.errors);
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: error.errors
         });
       }
-      
+
       res.status(500).json({ message: "Failed to create group" });
     }
   });
@@ -1053,7 +1053,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if DLC filter is requested
       const dlcFilter = req.query.dlc === 'true';
       const suppliers = await storage.getSuppliers();
-      
+
       // Filter suppliers for DLC enabled only if requested
       if (dlcFilter) {
         const dlcSuppliers = suppliers.filter(supplier => supplier.hasDlc === true);
@@ -1074,9 +1074,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'content-type': req.headers['content-type'],
         'content-length': req.headers['content-length']
       });
-      
+
       console.log('📋 POST /api/suppliers - Request body:', JSON.stringify(req.body, null, 2));
-      
+
       // Déterminer l'ID utilisateur selon l'environnement
       let userId;
       if (req.user.claims && req.user.claims.sub) {
@@ -1089,36 +1089,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('❌ No user ID found in request:', { user: req.user });
         return res.status(401).json({ message: "User authentication failed" });
       }
-      
+
       console.log('🔐 User requesting supplier creation:', userId);
-      
+
       // Vérifier l'utilisateur
       const user = await storage.getUser(userId);
       if (!user) {
         console.error('❌ User not found:', userId);
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       console.log('✅ User found:', { username: user.username, role: user.role });
-      
+
       // Vérifier les permissions
       if (user.role !== 'admin' && user.role !== 'manager' && user.role !== 'directeur') {
         console.error('❌ Insufficient permissions:', { userRole: user.role, required: ['admin', 'manager', 'directeur'] });
         return res.status(403).json({ message: "Insufficient permissions" });
       }
-      
+
       console.log('✅ User has permission to create supplier');
-      
+
       // Valider les données
       console.log('🔍 Validating supplier data with schema...');
       const data = insertSupplierSchema.parse(req.body);
       console.log('✅ Supplier data validation passed:', data);
-      
+
       // Créer le fournisseur
       console.log('🚚 Creating supplier in database...');
       const supplier = await storage.createSupplier(data);
       console.log('✅ Supplier creation successful:', { id: supplier.id, name: supplier.name });
-      
+
       res.json(supplier);
     } catch (error: any) {
       console.error('❌ Failed to create supplier:', {
@@ -1127,16 +1127,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: req.body,
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
       });
-      
+
       // Erreur de validation Zod
       if (error.name === 'ZodError') {
         console.error('❌ Validation error details:', error.errors);
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: error.errors
         });
       }
-      
+
       res.status(500).json({ message: "Failed to create supplier" });
     }
   });
@@ -1189,7 +1189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (user.role === 'admin') {
         let groupIds: number[] | undefined;
-        
+
         // If admin selected a specific store, filter by it
         if (storeId) {
           groupIds = [parseInt(storeId as string)];
@@ -1197,7 +1197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.log('🔍 Admin orders - showing all stores', { role: user.role });
         }
-        
+
         // Only filter by date if both startDate and endDate are provided
         if (startDate && endDate) {
           console.log('Fetching orders by date range:', startDate, 'to', endDate);
@@ -1210,16 +1210,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For manager and employee roles, filter by their assigned groups
         const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         let groupIds: number[] | undefined;
-        
+
         if (storeId) {
           // If a specific store is requested, verify user has access to it
           const requestedStoreId = parseInt(storeId as string);
           if (userGroupIds.includes(requestedStoreId)) {
             groupIds = [requestedStoreId];
-            console.log('🔍 Non-admin orders - filtering by accessible store:', { 
-              userId: user.id, 
-              role: user.role, 
-              requestedStoreId 
+            console.log('🔍 Non-admin orders - filtering by accessible store:', {
+              userId: user.id,
+              role: user.role,
+              requestedStoreId
             });
           } else {
             // User doesn't have access to this store, return empty array
@@ -1277,7 +1277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.json([]);
           }
         }
-        
+
         // Only filter by date if both startDate and endDate are provided
         if (startDate && endDate) {
           orders = await storage.getOrdersByDateRange(startDate as string, endDate as string, groupIds);
@@ -1304,7 +1304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const order = await storage.getOrder(id);
-      
+
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -1363,8 +1363,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('🚀 Creating order in storage...');
       const order = await storage.createOrder(data);
-      console.log('✅ Order created successfully:', { 
-        id: order.id, 
+      console.log('✅ Order created successfully:', {
+        id: order.id,
         groupId: order.groupId,
         plannedDate: order.plannedDate,
         supplierId: order.supplierId
@@ -1378,16 +1378,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: req.body,
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
       });
-      
+
       // Erreur de validation Zod
       if (error.name === 'ZodError') {
         console.error('❌ Order validation error details:', error.errors);
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: error.errors 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: error.errors
         });
       }
-      
+
       res.status(500).json({ message: "Failed to create order" });
     }
   });
@@ -1401,7 +1401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const order = await storage.getOrder(id);
-      
+
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -1436,7 +1436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const order = await storage.getOrder(id);
-      
+
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -1480,10 +1480,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get deliveries for this order separately since OrderWithRelations doesn't include deliveries
         const deliveries = await storage.getDeliveries();
         const orderDeliveries = deliveries.filter(d => d.orderId === order.id);
-        
+
         if (orderDeliveries && orderDeliveries.length > 0) {
           const hasDeliveredDeliveries = orderDeliveries.some((d: any) => d.status === 'delivered');
-          
+
           if (hasDeliveredDeliveries && order.status !== 'delivered') {
             console.log(`🔍 Found problematic order: #CMD-${order.id} (status: ${order.status}) with delivered deliveries`);
             problematicOrders.push({
@@ -1506,7 +1506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log('🔄 Synchronization completed');
-      
+
       res.json({
         message: "Synchronization completed",
         diagnostics: {
@@ -1538,7 +1538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (user.role === 'admin') {
         let groupIds: number[] | undefined;
-        
+
         // If admin selected a specific store, filter by it
         if (storeId) {
           groupIds = [parseInt(storeId as string)];
@@ -1546,7 +1546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.log('🔍 Admin deliveries - showing all stores', { role: user.role });
         }
-        
+
         // Only filter by date if both startDate and endDate are provided
         if (startDate && endDate) {
           console.log('Fetching deliveries by date range:', startDate, 'to', endDate);
@@ -1559,16 +1559,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // For manager and employee roles, filter by their assigned groups
         const userGroupIds = (user as any).userGroups?.map((ug: any) => ug.groupId) || [];
         let groupIds: number[] | undefined;
-        
+
         if (storeId) {
           // If a specific store is requested, verify user has access to it
           const requestedStoreId = parseInt(storeId as string);
           if (userGroupIds.includes(requestedStoreId)) {
             groupIds = [requestedStoreId];
-            console.log('🔍 Non-admin deliveries - filtering by accessible store:', { 
-              userId: user.id, 
-              role: user.role, 
-              requestedStoreId 
+            console.log('🔍 Non-admin deliveries - filtering by accessible store:', {
+              userId: user.id,
+              role: user.role,
+              requestedStoreId
             });
           } else {
             // User doesn't have access to this store, return empty array
@@ -1626,7 +1626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.json([]);
           }
         }
-        
+
         // Only filter by date if both startDate and endDate are provided
         if (startDate && endDate) {
           deliveries = await storage.getDeliveriesByDateRange(startDate as string, endDate as string, groupIds);
@@ -1658,7 +1658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const delivery = await storage.getDelivery(id);
-      
+
       if (!delivery) {
         return res.status(404).json({ message: "Delivery not found" });
       }
@@ -1687,7 +1687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const delivery = await storage.getDelivery(id);
-      
+
       if (!delivery) {
         return res.status(404).json({ message: "Delivery not found" });
       }
@@ -1705,48 +1705,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log('🔄 Updating delivery:', { id, data: req.body, user: user.id });
-      
+
       // Transform data types before validation
       const transformedData = { ...req.body };
-      
+
       // Convert decimal amounts to strings or null (schema expects string for decimal fields)
       if (transformedData.blAmount !== undefined) {
-        transformedData.blAmount = (transformedData.blAmount === null || transformedData.blAmount === '') 
-          ? null 
+        transformedData.blAmount = (transformedData.blAmount === null || transformedData.blAmount === '')
+          ? null
           : transformedData.blAmount.toString();
       }
       if (transformedData.invoiceAmount !== undefined) {
-        transformedData.invoiceAmount = (transformedData.invoiceAmount === null || transformedData.invoiceAmount === '') 
-          ? null 
+        transformedData.invoiceAmount = (transformedData.invoiceAmount === null || transformedData.invoiceAmount === '')
+          ? null
           : transformedData.invoiceAmount.toString();
       }
-      
+
       // Convert text fields - allow null for clearing
       if (transformedData.invoiceReference !== undefined) {
-        transformedData.invoiceReference = (transformedData.invoiceReference === '') 
-          ? null 
+        transformedData.invoiceReference = (transformedData.invoiceReference === '')
+          ? null
           : transformedData.invoiceReference;
       }
       if (transformedData.blNumber !== undefined) {
-        transformedData.blNumber = (transformedData.blNumber === '') 
-          ? null 
+        transformedData.blNumber = (transformedData.blNumber === '')
+          ? null
           : transformedData.blNumber;
       }
-      
+
       // Convert timestamp fields to Date objects or null (schema expects Date for timestamp fields)
       if (transformedData.validatedAt !== undefined) {
-        transformedData.validatedAt = (transformedData.validatedAt === null || transformedData.validatedAt === '') 
-          ? null 
+        transformedData.validatedAt = (transformedData.validatedAt === null || transformedData.validatedAt === '')
+          ? null
           : new Date(transformedData.validatedAt);
       }
       if (transformedData.dueDate !== undefined) {
-        transformedData.dueDate = (transformedData.dueDate === null || transformedData.dueDate === '') 
-          ? null 
+        transformedData.dueDate = (transformedData.dueDate === null || transformedData.dueDate === '')
+          ? null
           : new Date(transformedData.dueDate);
       }
-      
+
       const data = insertDeliverySchema.partial().parse(transformedData);
-      
+
       // CRITICAL FIX: Si une commande est liée lors de la modification, vérifier qu'elle appartient au même magasin
       if (data.orderId !== undefined) {
         if (data.orderId !== null) {
@@ -1755,14 +1755,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(400).json({ message: "La commande liée n'existe pas" });
           }
           if (linkedOrder.groupId !== delivery.groupId) {
-            return res.status(400).json({ 
-              message: `Impossible de lier une livraison du magasin ${delivery.groupId} avec une commande du magasin ${linkedOrder.groupId}` 
+            return res.status(400).json({
+              message: `Impossible de lier une livraison du magasin ${delivery.groupId} avec une commande du magasin ${linkedOrder.groupId}`
             });
           }
           console.log(`✅ Validation OK: Livraison #${id} et commande #${data.orderId} appartiennent au même magasin ${delivery.groupId}`);
         }
       }
-      
+
       // GESTION ÉCHÉANCE : Si la référence facture change, mettre à jour la date d'échéance
       if (data.invoiceReference !== undefined && data.invoiceReference !== delivery.invoiceReference) {
         if (data.invoiceReference && data.invoiceReference.trim()) {
@@ -1776,7 +1776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               true, // forceRefresh
               delivery.reconciled || false
             );
-            
+
             if (result.exists && result.dueDate) {
               // Normaliser la date avant de la stocker
               const normalizedDateString = normalizeDateString(result.dueDate);
@@ -1803,10 +1803,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`📅 Référence facture vidée, échéance également vidée`);
         }
       }
-      
+
       const updatedDelivery = await storage.updateDelivery(id, data);
       console.log('✅ Delivery updated successfully:', { id, updatedDelivery });
-      
+
       // SYNCHRONISATION AUTOMATIQUE : Si livraison devient "delivered", marquer la commande associée comme "delivered"
       // MAIS seulement après validation explicite (pas juste mise à jour status)
       // Cette sync sera gérée dans validateDelivery endpoint uniquement
@@ -1817,26 +1817,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Récupérer le fournisseur pour vérifier le mode automatique  
           const suppliers = await storage.getSuppliers();
           const supplier = suppliers.find((s: any) => s.id === updatedDelivery.supplierId);
-          
-          if (supplier?.automaticReconciliation && 
-              updatedDelivery.status === 'delivered' && 
-              updatedDelivery.blNumber) {
-            
+
+          if (supplier?.automaticReconciliation &&
+            updatedDelivery.status === 'delivered' &&
+            updatedDelivery.blNumber) {
+
             console.log(`🤖 Auto-reconciliation: Delivery #${id} from automatic supplier ${supplier.name}, auto-validating...`);
-            
+
             // Auto-valider le rapprochement
             await storage.updateDelivery(id, {
               reconciled: true,
               validatedAt: new Date()
             });
-            
+
             console.log(`✅ Auto-reconciliation: Delivery #${id} automatically validated for supplier ${supplier.name}`);
           }
         } catch (error) {
           console.error(`❌ Auto-reconciliation failed for delivery #${id}:`, error);
         }
       }
-      
+
       res.json(updatedDelivery);
     } catch (error) {
       console.error("Error updating delivery:", error);
@@ -1883,22 +1883,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "La commande liée n'existe pas" });
         }
         if (linkedOrder.groupId !== data.groupId) {
-          return res.status(400).json({ 
-            message: `Impossible de lier une livraison du magasin ${data.groupId} avec une commande du magasin ${linkedOrder.groupId}` 
+          return res.status(400).json({
+            message: `Impossible de lier une livraison du magasin ${data.groupId} avec une commande du magasin ${linkedOrder.groupId}`
           });
         }
         console.log(`✅ Validation OK: Livraison et commande #${data.orderId} appartiennent au même magasin ${data.groupId}`);
       }
 
       const delivery = await storage.createDelivery(data);
-      
+
       // Log de liaison avec commande
       if (data.orderId) {
         console.log(`🔗 Delivery #${delivery.id} linked to order #${data.orderId}`);
       } else {
         console.log(`🚛 Delivery #${delivery.id} created without order link`);
       }
-      
+
       res.json(delivery);
     } catch (error) {
       console.error("Error creating delivery:", error);
@@ -1917,7 +1917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const delivery = await storage.getDelivery(id);
-      
+
       if (!delivery) {
         return res.status(404).json({ message: "Delivery not found" });
       }
@@ -1956,7 +1956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const deliveryId = parseInt(req.params.id);
       const delivery = await storage.getDelivery(deliveryId);
-      
+
       if (!delivery) {
         return res.status(404).json({ message: "Delivery not found" });
       }
@@ -1992,7 +1992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const deliveryId = parseInt(req.params.id);
       const delivery = await storage.getDelivery(deliveryId);
-      
+
       if (!delivery) {
         return res.status(404).json({ message: "Delivery not found" });
       }
@@ -2035,7 +2035,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const commentId = parseInt(req.params.id);
       const comment = await storage.getReconciliationCommentById(commentId);
-      
+
       if (!comment) {
         return res.status(404).json({ message: "Comment not found" });
       }
@@ -2055,7 +2055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updateData = insertReconciliationCommentSchema.partial().parse(req.body);
       const updatedComment = await storage.updateReconciliationComment(commentId, updateData);
-      
+
       res.json(updatedComment);
     } catch (error) {
       console.error("Error updating reconciliation comment:", error);
@@ -2073,7 +2073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const commentId = parseInt(req.params.id);
       const comment = await storage.getReconciliationCommentById(commentId);
-      
+
       if (!comment) {
         return res.status(404).json({ message: "Comment not found" });
       }
@@ -2109,7 +2109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const deliveryId = parseInt(req.params.id);
       const delivery = await storage.getDelivery(deliveryId);
-      
+
       if (!delivery) {
         return res.status(404).json({ message: "Delivery not found" });
       }
@@ -2135,7 +2135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { invoiceReference, blNumber, forceRefresh } = req.body;
-      
+
       if (!delivery.supplier || !delivery.group) {
         console.log('❌ Livraison manque informations:', {
           deliveryId,
@@ -2160,7 +2160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       let result;
-      
+
       if (invoiceReference && invoiceReference.trim()) {
         // Vérifier par référence de facture
         result = await invoiceVerificationService.verifyInvoice(
@@ -2187,27 +2187,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log('✅ Résultat vérification:', result);
-      
+
       // CRITICAL FIX: Sauvegarder les données dans la table deliveries après vérification réussie
       if (result.exists && (result.invoiceAmount !== undefined || result.invoiceAmountTTC !== undefined || result.dueDate !== undefined || result.invoiceReference !== undefined)) {
         try {
           const updateData: any = {};
-          
+
           // Ajouter la référence facture si trouvée
           if (result.invoiceReference) {
             updateData.invoiceReference = result.invoiceReference;
           }
-          
+
           // Ajouter le montant facture HT si trouvé
           if (result.invoiceAmount !== undefined && result.invoiceAmount !== null) {
             updateData.invoiceAmount = result.invoiceAmount.toString();
           }
-          
+
           // Ajouter le montant facture TTC si trouvé
           if (result.invoiceAmountTTC !== undefined && result.invoiceAmountTTC !== null) {
             updateData.invoiceAmountTTC = result.invoiceAmountTTC.toString();
           }
-          
+
           // Ajouter l'échéance si trouvée
           if (result.dueDate) {
             const normalizedDateString = normalizeDateString(result.dueDate);
@@ -2216,7 +2216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`✅ Sauvegarde échéance dans deliveries: ${normalizedDateString}`);
             }
           }
-          
+
           // Mettre à jour la livraison si on a des données
           if (Object.keys(updateData).length > 0) {
             await storage.updateDelivery(deliveryId, updateData);
@@ -2227,11 +2227,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Ne pas bloquer la réponse, juste logger l'erreur
         }
       }
-      
+
       res.json(result);
     } catch (error) {
       console.error("Error verifying invoice:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to verify invoice",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -2252,7 +2252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const delivery = await storage.getDelivery(id);
-      
+
       if (!delivery) {
         return res.status(404).json({ message: "Delivery not found" });
       }
@@ -2266,19 +2266,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { blNumber, blAmount } = req.body;
-      
+
       // Le numéro de BL est maintenant obligatoire pour valider une livraison
       if (!blNumber || !blNumber.trim()) {
         return res.status(400).json({ message: "Le numéro de bon de livraison est obligatoire pour valider une livraison" });
       }
-      
+
       let blData: any = { blNumber: blNumber.trim() };
       if (blAmount !== undefined && blAmount !== null && blAmount !== '') {
         blData.blAmount = blAmount;
       }
-      
+
       await storage.validateDelivery(id, blData);
-      
+
       // MISE À JOUR DU CACHE : Marquer le cache comme permanent pour cette livraison validée
       try {
         if (delivery.invoiceReference && delivery.invoiceReference.trim()) {
@@ -2292,7 +2292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('❌ Erreur mise à jour cache après validation:', error);
       }
-      
+
       // SYNCHRONISATION AUTOMATIQUE : Quand validation, marquer la commande associée comme "delivered"
       if (delivery.orderId) {
         try {
@@ -2303,7 +2303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`❌ Auto-sync failed for order #${delivery.orderId}:`, error);
         }
       }
-      
+
       res.json({ message: "Delivery validated successfully" });
     } catch (error) {
       console.error("Error validating delivery:", error);
@@ -2337,7 +2337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Mettre à jour le contrôle
       await storage.markDeliveryControlValidated(id, user.id);
-      
+
       res.json({ message: "Delivery control validated successfully" });
     } catch (error) {
       console.error("Error validating delivery control:", error);
@@ -2362,11 +2362,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deliveries = await storage.getDeliveries();
       const reconciledCount = deliveries.filter(d => d.reconciled).length;
       const totalCount = deliveries.length;
-      
+
       // Vérifier quelques caches
       const sampleCaches = [];
       const reconciledDeliveries = deliveries.filter(d => d.reconciled).slice(0, 5); // Prendre 5 exemples
-      
+
       for (const delivery of reconciledDeliveries) {
         if (delivery.invoiceReference) {
           const cacheKey = `${delivery.invoiceReference.toLowerCase()}_${delivery.groupId}`;
@@ -2382,7 +2382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       res.json({
         statistics: {
           totalDeliveries: totalCount,
@@ -2394,7 +2394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Erreur diagnostic cache:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Erreur lors du diagnostic",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -2416,14 +2416,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('🔧 [ADMIN] Exécution mise à jour des caches permanents...');
       await invoiceVerificationService.updateExistingReconciledCaches();
-      
-      res.json({ 
+
+      res.json({
         message: "Mise à jour des caches permanents terminée avec succès",
-        success: true 
+        success: true
       });
     } catch (error) {
       console.error("Erreur mise à jour caches:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Erreur lors de la mise à jour des caches",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -2440,7 +2440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { storeId, status, supplierId, search } = req.query;
       let groupIds: number[] | undefined;
-      
+
       if (user.role === 'admin') {
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
       } else {
@@ -2474,7 +2474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { storeId } = req.query;
       let groupIds: number[] | undefined;
-      
+
       if (user.role === 'admin') {
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
       } else {
@@ -2503,7 +2503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
-      
+
       if (!dlcProduct) {
         return res.status(404).json({ message: "DLC Product not found" });
       }
@@ -2560,7 +2560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
-      
+
       if (!dlcProduct) {
         return res.status(404).json({ message: "DLC Product not found" });
       }
@@ -2590,7 +2590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
-      
+
       if (!dlcProduct) {
         return res.status(404).json({ message: "DLC Product not found" });
       }
@@ -2625,7 +2625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
-      
+
       if (!dlcProduct) {
         return res.status(404).json({ message: "DLC Product not found" });
       }
@@ -2638,9 +2638,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('🔍 DLC Validation attempt:', { 
+      console.log('🔍 DLC Validation attempt:', {
         userId: user.id,
-        userRole: user.role, 
+        userRole: user.role,
         dlcProductId: id,
         dlcGroupId: dlcProduct.groupId,
         userGroups: user.role !== 'admin' ? user.userGroups.map(ug => ug.groupId) : 'all'
@@ -2648,7 +2648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedProduct = await storage.validateDlcProduct(id, user.id);
       console.log('✅ DLC Product validated successfully by:', user.role, user.id);
-      
+
       res.json(validatedProduct);
     } catch (error) {
       console.error("Error validating DLC product:", error);
@@ -2666,7 +2666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
-      
+
       if (!dlcProduct) {
         return res.status(404).json({ message: "DLC Product not found" });
       }
@@ -2679,16 +2679,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('🔍 DLC Stock épuisé attempt:', { 
+      console.log('🔍 DLC Stock épuisé attempt:', {
         userId: user.id,
-        userRole: user.role, 
+        userRole: user.role,
         dlcProductId: id,
         dlcGroupId: dlcProduct.groupId
       });
 
       const markedProduct = await storage.markDlcProductStockEpuise(id, user.id);
       console.log('✅ DLC Product marked as stock épuisé by:', user.role, user.id);
-      
+
       res.json(markedProduct);
     } catch (error) {
       console.error("Error marking DLC product as stock épuisé:", error);
@@ -2711,7 +2711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
-      
+
       if (!dlcProduct) {
         return res.status(404).json({ message: "DLC Product not found" });
       }
@@ -2724,16 +2724,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('🔍 DLC Stock restore attempt:', { 
+      console.log('🔍 DLC Stock restore attempt:', {
         userId: user.id,
-        userRole: user.role, 
+        userRole: user.role,
         dlcProductId: id,
         dlcGroupId: dlcProduct.groupId
       });
 
       const restoredProduct = await storage.restoreDlcProductStock(id);
       console.log('✅ DLC Product stock restored by:', user.role, user.id);
-      
+
       res.json(restoredProduct);
     } catch (error) {
       console.error("Error restoring DLC product stock:", error);
@@ -2751,7 +2751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
-      
+
       if (!dlcProduct) {
         return res.status(404).json({ message: "DLC Product not found" });
       }
@@ -2764,16 +2764,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('🔍 DLC Product mark as processed attempt:', { 
+      console.log('🔍 DLC Product mark as processed attempt:', {
         userId: user.id,
-        userRole: user.role, 
+        userRole: user.role,
         dlcProductId: id,
         dlcGroupId: dlcProduct.groupId
       });
 
       const processedProduct = await storage.markDlcProductAsProcessed(id, user.id);
       console.log('✅ DLC Product marked as processed by:', user.role, user.id);
-      
+
       res.json(processedProduct);
     } catch (error) {
       console.error("Error marking DLC product as processed:", error);
@@ -2796,7 +2796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const dlcProduct = await storage.getDlcProduct(id);
-      
+
       if (!dlcProduct) {
         return res.status(404).json({ message: "DLC Product not found" });
       }
@@ -2809,16 +2809,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('🔍 DLC Product unmark processed attempt:', { 
+      console.log('🔍 DLC Product unmark processed attempt:', {
         userId: user.id,
-        userRole: user.role, 
+        userRole: user.role,
         dlcProductId: id,
         dlcGroupId: dlcProduct.groupId
       });
 
       const unprocessedProduct = await storage.unmarkDlcProductAsProcessed(id);
       console.log('✅ DLC Product unmarked as processed by:', user.role, user.id);
-      
+
       res.json(unprocessedProduct);
     } catch (error) {
       console.error("Error unmarking DLC product as processed:", error);
@@ -2836,25 +2836,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { storeId } = req.query;
       let groupIds: number[] | undefined;
-      
+
       if (user.role === 'admin') {
         // Admin can see all tasks or filter by specific store
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
-        console.log('🔍 Admin tasks filtering:', { 
-          storeId, 
+        console.log('🔍 Admin tasks filtering:', {
+          storeId,
           groupIds,
-          message: storeId ? `Filtering by store ${storeId}` : 'Showing all stores' 
+          message: storeId ? `Filtering by store ${storeId}` : 'Showing all stores'
         });
       } else {
         // For directeur and other non-admin users: always restrict to their assigned groups
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
-        
+
         if (storeId) {
           // If a specific store is requested, verify user has access to it
           const requestedStoreId = parseInt(storeId as string);
           if (userGroupIds.includes(requestedStoreId)) {
             groupIds = [requestedStoreId];
-            console.log('🔍 Non-admin user requesting specific accessible store:', { 
+            console.log('🔍 Non-admin user requesting specific accessible store:', {
               userId: user.id,
               role: user.role,
               requestedStoreId,
@@ -2886,15 +2886,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('🔍 Tasks API called with:', { 
-        groupIds, 
-        userRole: user.role, 
+      console.log('🔍 Tasks API called with:', {
+        groupIds,
+        userRole: user.role,
         userId: user.id,
         requestedStoreId: storeId,
         userGroups: user.role !== 'admin' ? user.userGroups.map(ug => ug.groupId) : 'all',
         timestamp: new Date().toISOString()
       });
-      
+
       const tasks = await storage.getTasks(groupIds, user.role);
       console.log('📋 Tasks returned:', {
         count: tasks.length,
@@ -2983,7 +2983,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const task = await storage.getTask(id);
-      
+
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
@@ -3011,7 +3011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Nettoyer les données reçues pour éviter les problèmes de types
       const cleanData: any = {};
-      
+
       // Ne pas utiliser de conditions qui ignorent les valeurs falsy légitimes
       if (req.body.title !== undefined) cleanData.title = req.body.title;
       if (req.body.description !== undefined) cleanData.description = req.body.description;
@@ -3052,7 +3052,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dueDate: req.body.dueDate,
         } : null
       });
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to update task",
         details: error instanceof Error ? error.message : String(error)
       });
@@ -3068,7 +3068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const task = await storage.getTask(id);
-      
+
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
@@ -3098,7 +3098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const task = await storage.getTask(id);
-      
+
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
@@ -3129,7 +3129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { storeId } = req.query;
       let groupIds: number[] | undefined;
-      
+
       if (user.role === 'admin') {
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
       } else {
@@ -3181,17 +3181,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userGroupIds = user.userGroups ? user.userGroups.map(ug => ug.groupId) : [];
         console.log('🔍 CUSTOMER ORDER - User group IDs:', userGroupIds);
         console.log('🔍 CUSTOMER ORDER - Requested group ID:', data.groupId);
-        
+
         // Convert data.groupId to number if it's a string
         const requestedGroupId = typeof data.groupId === 'string' ? parseInt(data.groupId) : data.groupId;
         console.log('🔍 CUSTOMER ORDER - Converted group ID:', requestedGroupId);
-        
+
         // Allow managers, directeurs, and employees to create orders in their assigned groups
         if (!['manager', 'directeur', 'employee'].includes(user.role)) {
           console.log('❌ CUSTOMER ORDER - Access denied: Invalid role for customer orders');
           return res.status(403).json({ message: "Insufficient permissions to create customer orders" });
         }
-        
+
         if (!userGroupIds.includes(requestedGroupId)) {
           console.log('❌ CUSTOMER ORDER - Access denied: User not in requested group');
           console.log('🔍 Available groups:', userGroupIds, 'Requested:', requestedGroupId);
@@ -3199,7 +3199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('🔍 Type check - requestedGroupId type:', typeof requestedGroupId);
           return res.status(403).json({ message: "Access denied to this group" });
         }
-        
+
         console.log('✅ CUSTOMER ORDER - Permission granted for user role:', user.role);
       }
 
@@ -3220,7 +3220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const customerOrder = await storage.getCustomerOrder(id);
-      
+
       if (!customerOrder) {
         return res.status(404).json({ message: "Customer order not found" });
       }
@@ -3250,7 +3250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const customerOrder = await storage.getCustomerOrder(id);
-      
+
       if (!customerOrder) {
         return res.status(404).json({ message: "Customer order not found" });
       }
@@ -3299,7 +3299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const pendingCalls = await storage.getPendingClientCalls(groupIds);
-      
+
       console.log(`📞 Pending client calls fetched: ${pendingCalls.length} calls for user ${user.role}`);
       res.json(pendingCalls);
     } catch (error) {
@@ -3336,7 +3336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedOrder = await storage.markClientCalled(id, user.id);
-      
+
       console.log(`📞 Client marked as called: order ${id} by user ${user.id} (${user.role})`);
       res.json(updatedOrder);
     } catch (error) {
@@ -3355,7 +3355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { storeId } = req.query;
       let groupIds: number[] | undefined;
-      
+
       if (user.role === 'admin' || user.role === 'directeur') {
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
       } else {
@@ -3389,7 +3389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const avoir = await storage.getAvoir(id);
-      
+
       if (!avoir) {
         return res.status(404).json({ message: "Avoir not found" });
       }
@@ -3438,7 +3438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const avoir = await storage.createAvoir(validatedData);
       console.log('✅ Avoir created:', avoir.id, 'by user:', user.id);
-      
+
       // Send webhook after avoir creation
       try {
         const group = await storage.getGroup(avoir.groupId);
@@ -3455,7 +3455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             createdBy: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username,
             createdAt: avoir.createdAt
           };
-          
+
           const webhookResponse = await fetch(group.webhookUrl, {
             method: 'POST',
             headers: {
@@ -3463,7 +3463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             body: JSON.stringify(webhookData)
           });
-          
+
           if (webhookResponse.ok) {
             await storage.updateAvoirWebhookStatus(avoir.id, true);
             console.log('✅ Avoir webhook sent successfully:', avoir.id);
@@ -3474,7 +3474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (webhookError) {
         console.error('❌ Error sending avoir webhook:', webhookError);
       }
-      
+
       res.json(avoir);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -3495,7 +3495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const existingAvoir = await storage.getAvoir(id);
-      
+
       if (!existingAvoir) {
         return res.status(404).json({ message: "Avoir not found" });
       }
@@ -3524,14 +3524,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedAvoir = await storage.updateAvoir(id, dataForDb);
       console.log('✅ Avoir updated:', id, 'by user:', user.id);
-      
+
       // 🎯 WEBHOOK QUAND STATUT PASSE À "Reçu"
       if (validatedData.status === 'Reçu' && existingAvoir.status !== 'Reçu') {
         try {
           // Utiliser groupe par défaut (1) pour admin si pas de groupe sélectionné
           const groupId = updatedAvoir.groupId || (user.role === 'admin' ? 1 : updatedAvoir.groupId);
           const group = await storage.getGroup(groupId);
-          
+
           if (group && group.webhookUrl) {
             const webhookData = {
               type: "Avoir",
@@ -3546,9 +3546,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               createdBy: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username,
               processedAt: new Date().toISOString()
             };
-            
+
             console.log('🌐 Envoi webhook avoir reçu:', { groupId, webhookUrl: group.webhookUrl });
-            
+
             const webhookResponse = await fetch(group.webhookUrl, {
               method: 'POST',
               headers: {
@@ -3556,7 +3556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               },
               body: JSON.stringify(webhookData)
             });
-            
+
             if (webhookResponse.ok) {
               await storage.updateAvoirWebhookStatus(updatedAvoir.id, true);
               console.log('✅ Webhook avoir reçu envoyé:', updatedAvoir.id);
@@ -3568,7 +3568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('❌ Erreur webhook avoir reçu:', webhookError);
         }
       }
-      
+
       res.json(updatedAvoir);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -3589,7 +3589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const avoir = await storage.getAvoir(id);
-      
+
       if (!avoir) {
         return res.status(404).json({ message: "Avoir not found" });
       }
@@ -3626,7 +3626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const avoirId = parseInt(req.params.id);
       const avoir = await storage.getAvoir(avoirId);
-      
+
       if (!avoir) {
         return res.status(404).json({ message: "Avoir not found" });
       }
@@ -3652,7 +3652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { invoiceReference, forceRefresh } = req.body;
-      
+
       if (!avoir.supplier || !avoir.group) {
         console.log('❌ Avoir manque informations:', {
           avoirId,
@@ -3687,7 +3687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       console.error("Error verifying avoir invoice:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to verify avoir invoice",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -3704,7 +3704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const { webhookSent } = req.body;
-      
+
       // Only allow admin and directeur to update webhook status
       if (user.role !== 'admin' && user.role !== 'directeur') {
         return res.status(403).json({ message: "Insufficient permissions" });
@@ -3727,7 +3727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const { verified } = req.body;
-      
+
       // Only allow admin and directeur to update verification status
       if (user.role !== 'admin' && user.role !== 'directeur') {
         return res.status(403).json({ message: "Insufficient permissions" });
@@ -3741,7 +3741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const avoir = await storage.getAvoir(id);
           if (avoir?.invoiceReference?.trim()) {
             await invoiceVerificationService.updateCacheAsReconciled(
-              avoir.invoiceReference, 
+              avoir.invoiceReference,
               avoir.groupId
             );
             console.log('✅ Cache marqué comme réconcilié pour avoir:', id);
@@ -3769,7 +3769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { invoiceReference, groupId } = req.body;
-      
+
       if (!invoiceReference || !groupId) {
         return res.status(400).json({ message: "Invoice reference and group ID required" });
       }
@@ -3781,7 +3781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await invoiceVerificationService.updateCacheAsReconciled(invoiceReference, groupId);
       console.log('✅ Cache marqué comme réconcilié:', { invoiceReference, groupId, user: user.id });
-      
+
       res.json({ message: "Cache marked as reconciled successfully" });
     } catch (error) {
       console.error("Error marking cache as reconciled:", error);
@@ -3802,14 +3802,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentMonth = month ? parseInt(month as string) : new Date().getMonth() + 1;
 
       let groupIds: number[] | undefined;
-      
+
       if (user.role === 'admin') {
         // Admin can view all stores or filter by selected store
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
       } else {
         // Non-admin users: filter by their assigned groups
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
-        
+
         // If a specific store is selected and user has access, filter by it
         if (storeId && userGroupIds.includes(parseInt(storeId as string))) {
           groupIds = [parseInt(storeId as string)];
@@ -3838,14 +3838,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentYear = year ? parseInt(year as string) : new Date().getFullYear();
 
       let groupIds: number[] | undefined;
-      
+
       if (user.role === 'admin') {
         // Admin can view all stores or filter by selected store
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
       } else {
         // Non-admin users: filter by their assigned groups
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
-        
+
         // If a specific store is selected and user has access, filter by it
         if (storeId && userGroupIds.includes(parseInt(storeId as string))) {
           groupIds = [parseInt(storeId as string)];
@@ -3912,7 +3912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all basic users first
       const baseUsers = await storage.getUsers();
-      
+
       // Add userGroups and userRoles to each user individually with error handling
       const usersWithData = await Promise.all(
         baseUsers.map(async (baseUser) => {
@@ -3934,7 +3934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         })
       );
-      
+
       res.json(usersWithData);
     } catch (error) {
       console.error("❌ Critical error fetching users:", error);
@@ -3964,7 +3964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const userData = createUserSchema.parse(req.body);
-      
+
       // Hash password with improved error handling
       let hashedPassword = userData.password;
       if (userData.password) {
@@ -3975,10 +3975,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ message: "Failed to secure password" });
         }
       }
-      
+
       // Generate unique ID
       const newUserId = userData.id || `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       const userToCreate = {
         id: newUserId,
         username: userData.username,
@@ -3988,7 +3988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
         role: userData.role || 'employee',
       };
-      
+
       const newUser = await storage.createUser(userToCreate);
 
       res.json(newUser);
@@ -3998,31 +3998,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("❌ Error code:", (error as any).code);
       console.error("❌ Error constraint:", (error as any).constraint);
       console.error("❌ Error stack:", (error as any).stack);
-      
+
       if (error instanceof z.ZodError) {
         console.log('❌ Validation error:', error.errors);
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });
       }
-      
+
       // Handle specific database constraint errors
       if ((error as any).code === '23505') {
         if ((error as any).constraint === 'users_username_key') {
-          return res.status(409).json({ 
-            message: "Un utilisateur avec ce nom d'utilisateur existe déjà. Veuillez choisir un autre nom d'utilisateur." 
+          return res.status(409).json({
+            message: "Un utilisateur avec ce nom d'utilisateur existe déjà. Veuillez choisir un autre nom d'utilisateur."
           });
         }
         if ((error as any).constraint === 'users_email_key') {
-          return res.status(409).json({ 
-            message: "Un utilisateur avec cette adresse email existe déjà." 
+          return res.status(409).json({
+            message: "Un utilisateur avec cette adresse email existe déjà."
           });
         }
       }
-      
+
       // Handle connection errors
       if ((error as any).code === 'ECONNREFUSED' || (error as any).code === 'ENOTFOUND') {
         return res.status(503).json({ message: "Database connection error" });
       }
-      
+
       res.status(500).json({ message: "Failed to create user" });
     }
   });
@@ -4045,15 +4045,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const userData = updateUserSchema.parse(req.body);
-      
+
       // Clean up the data - handle empty emails properly
       const cleanUserData: any = { ...userData };
-      
+
       // Handle email field - convert empty string to undefined
       if (cleanUserData.email !== undefined) {
         cleanUserData.email = cleanUserData.email && cleanUserData.email.trim() !== '' ? cleanUserData.email : undefined;
       }
-      
+
       // Hash password if provided
       if (cleanUserData.password) {
         try {
@@ -4064,7 +4064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ message: "Failed to secure password" });
         }
       }
-      
+
       const updatedUser = await storage.updateUser(req.params.id, cleanUserData);
       res.json(updatedUser);
     } catch (error: any) {
@@ -4073,25 +4073,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("❌ Error code:", (error as any).code);
       console.error("❌ Error constraint:", (error as any).constraint);
       console.error("❌ Error stack:", (error as any).stack);
-      
+
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid user data", errors: error.errors });
       }
-      
+
       // Handle specific database constraint errors
       if ((error as any).code === '23505') {
         if ((error as any).constraint === 'users_username_key') {
-          return res.status(409).json({ 
-            message: "Un utilisateur avec ce nom d'utilisateur existe déjà. Veuillez choisir un autre nom d'utilisateur." 
+          return res.status(409).json({
+            message: "Un utilisateur avec ce nom d'utilisateur existe déjà. Veuillez choisir un autre nom d'utilisateur."
           });
         }
         if ((error as any).constraint === 'users_email_key') {
-          return res.status(409).json({ 
-            message: "Un utilisateur avec cette adresse email existe déjà. Veuillez utiliser une autre adresse email ou laisser le champ vide." 
+          return res.status(409).json({
+            message: "Un utilisateur avec cette adresse email existe déjà. Veuillez utiliser une autre adresse email ou laisser le champ vide."
           });
         }
       }
-      
+
       res.status(500).json({ message: "Failed to update user" });
     }
   });
@@ -4140,7 +4140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userToDelete = req.params.id;
-      
+
       // Prevent admin from deleting themselves
       if (userToDelete === user.id) {
         return res.status(400).json({ message: "Vous ne pouvez pas supprimer votre propre compte" });
@@ -4178,7 +4178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📋 API PUBLICITIES REQUEST:`, { year, filterYear, storeId, userRole: user.role });
 
       let groupIds: number[] | undefined;
-      
+
       if (user.role === 'admin') {
         // Admin can view all publicities or filter by selected store
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
@@ -4190,7 +4190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📋 CALLING storage.getPublicities:`, { filterYear, groupIds });
       const publicities = await storage.getPublicities(filterYear, groupIds);
       console.log(`📋 PUBLICITIES RETURNED:`, { count: publicities.length });
-      
+
       res.json(publicities);
     } catch (error) {
       console.error("❌ ERROR fetching publicities:", error);
@@ -4207,7 +4207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const publicity = await storage.getPublicity(id);
-      
+
       if (!publicity) {
         return res.status(404).json({ message: "Publicity not found" });
       }
@@ -4216,7 +4216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role !== 'admin') {
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
         const hasAccess = publicity.participations.some((p: any) => userGroupIds.includes(p.groupId));
-        
+
         if (!hasAccess) {
           return res.status(403).json({ message: "Access denied" });
         }
@@ -4239,7 +4239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { year, storeId } = req.query;
       let groupIds: number[] | undefined;
-      
+
       // Determine which groups to filter by
       if (user.role === 'admin') {
         // Admins can filter by specific store or see all
@@ -4256,7 +4256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const yearNum = year ? parseInt(year as string) : undefined;
       const publicities = await storage.getPublicities(yearNum, groupIds);
-      
+
       res.json(publicities);
     } catch (error) {
       console.error("Error fetching publicities:", error);
@@ -4335,8 +4335,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/publicities/:id', isAuthenticated, async (req: any, res) => {
     const publicityId = req.params.id;
     console.log(`🗑️ [API] DELETE request received for publicity ID: ${publicityId}`);
-    console.log(`🗑️ [API] User info:`, { 
-      hasUser: !!req.user, 
+    console.log(`🗑️ [API] User info:`, {
+      hasUser: !!req.user,
       userId: req.user?.id || req.user?.claims?.sub,
       method: req.method,
       url: req.url,
@@ -4360,9 +4360,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(publicityId);
       console.log(`🗑️ [API] Admin ${user.name} (${user.id}) attempting to delete publicity ${id}`);
-      
+
       await storage.deletePublicity(id);
-      
+
       console.log(`✅ [API] Successfully deleted publicity ${id} by admin ${user.name}`);
       res.json({ message: "Publicity deleted successfully" });
     } catch (error) {
@@ -4375,8 +4375,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/publicities/:id/delete', isAuthenticated, async (req: any, res) => {
     const publicityId = req.params.id;
     console.log(`🗑️ [API-POST] DELETE via POST request received for publicity ID: ${publicityId}`);
-    console.log(`🗑️ [API-POST] User info:`, { 
-      hasUser: !!req.user, 
+    console.log(`🗑️ [API-POST] User info:`, {
+      hasUser: !!req.user,
       userId: req.user?.id || req.user?.claims?.sub,
       method: req.method,
       url: req.url
@@ -4399,9 +4399,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(publicityId);
       console.log(`🗑️ [API-POST] Admin ${user.name} (${user.id}) attempting to delete publicity ${id} via POST`);
-      
+
       await storage.deletePublicity(id);
-      
+
       console.log(`✅ [API-POST] Successfully deleted publicity ${id} by admin ${user.name} via POST`);
       res.json({ message: "Publicity deleted successfully" });
     } catch (error) {
@@ -4419,7 +4419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const isProduction = process.env.NODE_ENV === 'production';
-      
+
       if (!isProduction) {
         return res.status(400).json({ error: 'Cette route fonctionne uniquement en production sur votre serveur privé' });
       }
@@ -4439,19 +4439,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         WHERE table_schema = 'public' 
         ORDER BY table_name
       `;
-      
+
       const tablesResult = await pool.query(tablesQuery);
-      
+
       console.log(`\n📊 TOTAL DES TABLES TROUVÉES: ${tablesResult.rows.length}`);
       console.log('==========================================');
-      
+
       // Pour chaque table, récupérer les colonnes
       for (const tableRow of tablesResult.rows) {
         const tableName = tableRow.table_name;
-        
+
         console.log(`\n🔸 TABLE: ${tableName.toUpperCase()}`);
         console.log(`${'='.repeat(tableName.length + 8)}`);
-        
+
         const columnsQuery = `
           SELECT 
             column_name,
@@ -4465,18 +4465,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             AND table_name = $1
           ORDER BY ordinal_position
         `;
-        
+
         const columnsResult = await pool.query(columnsQuery, [tableName]);
-        
+
         if (columnsResult.rows.length > 0) {
           columnsResult.rows.forEach((col: any, index: number) => {
             const nullable = col.is_nullable === 'YES' ? 'NULL' : 'NOT NULL';
             const maxLength = col.character_maximum_length ? `(${col.character_maximum_length})` : '';
             const defaultVal = col.column_default ? ` DEFAULT ${col.column_default}` : '';
-            
+
             console.log(`   ${(index + 1).toString().padStart(2, '0')}. ${col.column_name.padEnd(25)} : ${col.data_type}${maxLength} ${nullable}${defaultVal}`);
           });
-          
+
           // Compter les enregistrements dans la table
           try {
             const countQuery = `SELECT COUNT(*) as total FROM "${tableName}"`;
@@ -4487,11 +4487,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       // Récupérer les contraintes de clés étrangères
       console.log('\n🔗 CONTRAINTES DE CLÉS ÉTRANGÈRES:');
       console.log('===================================');
-      
+
       const fkQuery = `
         SELECT
           tc.table_name,
@@ -4510,9 +4510,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           AND tc.table_schema = 'public'
         ORDER BY tc.table_name, kcu.column_name
       `;
-      
+
       const fkResult = await pool.query(fkQuery);
-      
+
       if (fkResult.rows.length > 0) {
         fkResult.rows.forEach((fk: any) => {
           console.log(`   ${fk.table_name}.${fk.column_name} → ${fk.foreign_table_name}.${fk.foreign_column_name}`);
@@ -4522,16 +4522,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log('\n🏁 ===== FIN SCAN SCHÉMA BASE DE DONNÉES =====\n');
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: 'Schéma loggé avec succès dans les logs du serveur',
         totalTables: tablesResult.rows.length,
         totalForeignKeys: fkResult.rows.length,
         timestamp: new Date().toISOString(),
         downloadUrl: '/api/debug/download-schema'
       });
-      
+
     } catch (error) {
       console.error('❌ ERREUR lors du scan du schéma:', error);
       res.status(500).json({ error: (error as Error).message });
@@ -4547,7 +4547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const isProduction = process.env.NODE_ENV === 'production';
-      
+
       if (!isProduction) {
         return res.status(400).json({ error: 'Cette route fonctionne uniquement en production sur votre serveur privé' });
       }
@@ -4579,19 +4579,19 @@ RÉSUMÉ DU SCAN
         WHERE table_schema = 'public' 
         ORDER BY table_name
       `;
-      
+
       const tablesResult = await pool.query(tablesQuery);
-      
+
       reportContent += `TOTAL DES TABLES TROUVÉES: ${tablesResult.rows.length}\n`;
       reportContent += `==========================================\n\n`;
-      
+
       // Pour chaque table, récupérer les colonnes
       for (const tableRow of tablesResult.rows) {
         const tableName = tableRow.table_name;
-        
+
         reportContent += `TABLE: ${tableName.toUpperCase()}\n`;
         reportContent += `${'='.repeat(tableName.length + 6)}\n\n`;
-        
+
         const columnsQuery = `
           SELECT 
             column_name,
@@ -4605,18 +4605,18 @@ RÉSUMÉ DU SCAN
             AND table_name = $1
           ORDER BY ordinal_position
         `;
-        
+
         const columnsResult = await pool.query(columnsQuery, [tableName]);
-        
+
         if (columnsResult.rows.length > 0) {
           columnsResult.rows.forEach((col: any, index: number) => {
             const nullable = col.is_nullable === 'YES' ? 'NULL' : 'NOT NULL';
             const maxLength = col.character_maximum_length ? `(${col.character_maximum_length})` : '';
             const defaultVal = col.column_default ? ` DEFAULT ${col.column_default}` : '';
-            
+
             reportContent += `   ${(index + 1).toString().padStart(2, '0')}. ${col.column_name.padEnd(25)} : ${col.data_type}${maxLength} ${nullable}${defaultVal}\n`;
           });
-          
+
           // Compter les enregistrements dans la table
           try {
             const countQuery = `SELECT COUNT(*) as total FROM "${tableName}"`;
@@ -4627,11 +4627,11 @@ RÉSUMÉ DU SCAN
           }
         }
       }
-      
+
       // Récupérer les contraintes de clés étrangères
       reportContent += `CONTRAINTES DE CLÉS ÉTRANGÈRES:\n`;
       reportContent += `===================================\n\n`;
-      
+
       const fkQuery = `
         SELECT
           tc.table_name,
@@ -4650,9 +4650,9 @@ RÉSUMÉ DU SCAN
           AND tc.table_schema = 'public'
         ORDER BY tc.table_name, kcu.column_name
       `;
-      
+
       const fkResult = await pool.query(fkQuery);
-      
+
       if (fkResult.rows.length > 0) {
         fkResult.rows.forEach((fk: any) => {
           reportContent += `   ${fk.table_name}.${fk.column_name} → ${fk.foreign_table_name}.${fk.foreign_column_name}\n`;
@@ -4670,7 +4670,7 @@ RÉSUMÉ DU SCAN
       res.setHeader('Content-Type', 'text/plain; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(reportContent);
-      
+
     } catch (error) {
       console.error('❌ ERREUR lors de la génération du rapport de schéma:', error);
       res.status(500).json({ error: (error as Error).message });
@@ -4681,7 +4681,7 @@ RÉSUMÉ DU SCAN
   app.post('/api/verify-invoice', isAuthenticated, async (req: any, res) => {
     try {
       const { groupId, invoiceReference } = req.body;
-      
+
       if (!groupId || !invoiceReference) {
         return res.status(400).json({ message: "groupId and invoiceReference are required" });
       }
@@ -4691,7 +4691,7 @@ RÉSUMÉ DU SCAN
       const { InvoiceVerificationService } = await import('./invoiceVerification.js');
       const verificationService = new InvoiceVerificationService();
       const result = await verificationService.verifyInvoice(invoiceReference, groupId);
-      
+
       console.log('✅ Résultat vérification:', result);
       res.json(result);
     } catch (error) {
@@ -4703,7 +4703,7 @@ RÉSUMÉ DU SCAN
   app.post('/api/verify-invoices', isAuthenticated, async (req: any, res) => {
     try {
       const { invoiceReferences } = req.body;
-      
+
       if (!Array.isArray(invoiceReferences)) {
         return res.status(400).json({ message: "invoiceReferences must be an array" });
       }
@@ -4716,7 +4716,7 @@ RÉSUMÉ DU SCAN
 
       const { verifyMultipleInvoiceReferences } = await import('./nocodbService.js');
       const results = await verifyMultipleInvoiceReferences(enrichedReferences);
-      
+
       res.json(results);
     } catch (error) {
       console.error("Error verifying invoices:", error);
@@ -4847,7 +4847,7 @@ RÉSUMÉ DU SCAN
 
       const { filename } = req.params;
       const filepath = await backupService.downloadBackup(filename);
-      
+
       res.download(filepath, filename, (err: any) => {
         if (err) {
           console.error("Error downloading backup:", err);
@@ -4933,7 +4933,7 @@ RÉSUMÉ DU SCAN
 
       const ticketId = parseInt(req.params.id);
       const ticket = await storage.getSavTicket(ticketId);
-      
+
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
@@ -4990,7 +4990,7 @@ RÉSUMÉ DU SCAN
       // Parse and validate request body
       const assignedGroupId = req.body.groupId || availableGroupIds[0];
       console.log(`🎫 [SAV] Creating ticket for user ${user.username} with groupId: ${assignedGroupId} (requested: ${req.body.groupId}, available: ${availableGroupIds})`);
-      
+
       const ticketData = insertSavTicketSchema.parse({
         ...req.body,
         groupId: assignedGroupId, // Use first available group if not specified
@@ -5040,7 +5040,7 @@ RÉSUMÉ DU SCAN
 
       const ticketId = parseInt(req.params.id);
       const existingTicket = await storage.getSavTicket(ticketId);
-      
+
       if (!existingTicket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
@@ -5093,7 +5093,7 @@ RÉSUMÉ DU SCAN
 
       const ticketId = parseInt(req.params.id);
       const existingTicket = await storage.getSavTicket(ticketId);
-      
+
       if (!existingTicket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
@@ -5121,7 +5121,7 @@ RÉSUMÉ DU SCAN
 
       const ticketId = parseInt(req.params.id);
       const ticket = await storage.getSavTicket(ticketId);
-      
+
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
@@ -5199,25 +5199,25 @@ RÉSUMÉ DU SCAN
   app.post('/api/admin/emergency-migration', async (req, res) => {
     try {
       console.log('🚨 EMERGENCY: Forcing SAV migration execution...');
-      
+
       // Import migration function
       const { runProductionMigrations } = await import('./migrations.production.js');
-      
+
       // Force run the migration
       await runProductionMigrations();
-      
+
       console.log('✅ EMERGENCY: Migration executed successfully');
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: 'Emergency migration executed successfully',
         timestamp: new Date().toISOString()
       });
-      
+
     } catch (error) {
       console.error('❌ EMERGENCY: Migration failed:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
-        error: 'Emergency migration failed', 
+        error: 'Emergency migration failed',
         details: (error as Error).message,
         timestamp: new Date().toISOString()
       });
@@ -5287,7 +5287,7 @@ RÉSUMÉ DU SCAN
       }
 
       const { apiKey, location } = req.body;
-      
+
       if (!apiKey || !location) {
         return res.status(400).json({ message: "API key and location are required" });
       }
@@ -5303,14 +5303,14 @@ RÉSUMÉ DU SCAN
   app.get('/api/weather/current', isAuthenticated, async (req: any, res) => {
     try {
       const settings = await storage.getWeatherSettings();
-      
+
       if (!settings || !settings.isActive) {
         return res.status(404).json({ message: "Weather service not configured or disabled" });
       }
 
       const today = new Date().toISOString().split('T')[0];
       const previousYearDate = weatherService.getPreviousYearDate();
-      
+
       // Check if we already have today's data
       let currentYearData = await storage.getWeatherData(today, true);
       let previousYearData = await storage.getWeatherData(previousYearDate, false);
@@ -5393,7 +5393,7 @@ RÉSUMÉ DU SCAN
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       console.log('📢 [SERVER] Fetching announcements for user:', userId, 'environment:', environment);
-      
+
       const user = await storage.getUserWithGroups(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -5404,7 +5404,7 @@ RÉSUMÉ DU SCAN
       if (environment === 'production') {
         // PRODUCTION: Utiliser PostgreSQL avec DASHBOARD_MESSAGES
         console.log('🎯 [PRODUCTION] Using PostgreSQL DASHBOARD_MESSAGES table');
-        
+
         try {
           let query = db.select({
             id: dashboardMessages.id,
@@ -5415,7 +5415,7 @@ RÉSUMÉ DU SCAN
             createdBy: dashboardMessages.createdBy,
             createdAt: dashboardMessages.createdAt,
           }).from(dashboardMessages);
-          
+
           // Filtrage par magasin pour admin : inclure les annonces globales + annonces du magasin
           if (user.role === 'admin' && req.query.storeId) {
             const storeId = parseInt(req.query.storeId as string);
@@ -5427,11 +5427,11 @@ RÉSUMÉ DU SCAN
               )
             );
           }
-          
+
           const messages = await query.orderBy(desc(dashboardMessages.createdAt)).limit(5);
-          
+
           console.log('🔍 [PRODUCTION] Raw messages from DB:', messages.length, 'items:', messages);
-          
+
           // Ajouter les relations manuellement
           const announcements = await Promise.all(
             messages.map(async (message: any) => {
@@ -5450,10 +5450,10 @@ RÉSUMÉ DU SCAN
                 console.log('🔍 [PRODUCTION] User search result:', userResult ? 'Found' : 'Not found');
                 if (userResult) {
                   // Utiliser name s'il existe, sinon firstName + lastName, sinon username
-                  const displayName = userResult.name || 
+                  const displayName = userResult.name ||
                     (userResult.firstName && userResult.lastName ? `${userResult.firstName} ${userResult.lastName}` : '') ||
                     userResult.username;
-                  
+
                   author = {
                     id: userResult.id,
                     firstName: userResult.firstName || displayName.split(' ')[0] || userResult.username,
@@ -5466,7 +5466,7 @@ RÉSUMÉ DU SCAN
               } catch (e) {
                 console.warn('❌ [PRODUCTION] Could not fetch author for message:', message.id, e);
               }
-              
+
               // Récupérer le groupe si storeId est défini
               let group = null;
               if (message.storeId) {
@@ -5479,7 +5479,7 @@ RÉSUMÉ DU SCAN
                   console.warn('Could not fetch group for message:', message.id);
                 }
               }
-              
+
               return {
                 ...message,
                 author,
@@ -5487,10 +5487,10 @@ RÉSUMÉ DU SCAN
               };
             })
           );
-          
+
           console.log('🎯 [PRODUCTION] Found announcements:', announcements.length);
           res.json(announcements);
-          
+
         } catch (dbError) {
           console.error('🎯 [PRODUCTION] Database error:', dbError);
           // Fallback au stockage mémoire en cas d'erreur DB
@@ -5501,10 +5501,10 @@ RÉSUMÉ DU SCAN
       } else {
         // DÉVELOPPEMENT: Utiliser stockage mémoire
         console.log('🧠 [DEV] Using memory storage for announcements');
-        const groupIds = user.role === 'admin' && req.query.storeId 
+        const groupIds = user.role === 'admin' && req.query.storeId
           ? [parseInt(req.query.storeId as string)]
           : undefined;
-        
+
         const announcements = await storage.getAnnouncements(groupIds);
         res.json(announcements);
       }
@@ -5522,11 +5522,11 @@ RÉSUMÉ DU SCAN
       hasId: !!req.user.id,
       userId: req.user.claims ? req.user.claims.sub : req.user.id
     });
-    
+
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       console.log('🎯 [SERVER] Extracted userId:', userId);
-      
+
       const user = await storage.getUserWithGroups(userId);
       if (!user) {
         console.error('🎯 [SERVER] User not found for ID:', userId);
@@ -5564,13 +5564,13 @@ RÉSUMÉ DU SCAN
             storeId: announcementData.storeId,
             createdBy: user.username, // Utiliser username plutôt que ID pour PostgreSQL
           }).returning();
-          
+
           const announcement = {
             ...newMessage,
             author: { id: user.id, firstName: user.firstName, lastName: user.lastName },
             group: null
           };
-          
+
           console.log('🎯 [PRODUCTION] Announcement created successfully in DB:', announcement);
           res.status(201).json(announcement);
         } catch (dbError) {
@@ -5598,11 +5598,11 @@ RÉSUMÉ DU SCAN
   app.put('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
     console.log('📝 [SERVER] PUT /api/announcements/:id endpoint hit');
     console.log('📝 [SERVER] Request body:', JSON.stringify(req.body, null, 2));
-    
+
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       console.log('📝 [SERVER] Extracted userId:', userId);
-      
+
       const user = await storage.getUserWithGroups(userId);
       if (!user) {
         console.error('📝 [SERVER] User not found for ID:', userId);
@@ -5634,7 +5634,7 @@ RÉSUMÉ DU SCAN
 
       const updatedAnnouncement = await storage.updateAnnouncement(id, announcementData);
       console.log('📝 [SERVER] Announcement updated successfully:', updatedAnnouncement);
-      
+
       res.json(updatedAnnouncement);
     } catch (error) {
       console.error('📝 [SERVER] Error updating announcement:', error);
@@ -5649,11 +5649,11 @@ RÉSUMÉ DU SCAN
   app.delete('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
     console.log('🗑️ [SERVER] DELETE /api/announcements/:id endpoint hit');
     console.log('🗑️ [SERVER] Announcement ID:', req.params.id);
-    
+
     try {
       const userId = req.user.claims ? req.user.claims.sub : req.user.id;
       console.log('🗑️ [SERVER] Extracted userId:', userId);
-      
+
       const user = await storage.getUserWithGroups(userId);
       if (!user) {
         console.error('🗑️ [SERVER] User not found for ID:', userId);
@@ -5676,34 +5676,34 @@ RÉSUMÉ DU SCAN
         console.log('🗑️ [PRODUCTION] Deleting from PostgreSQL DASHBOARD_MESSAGES table');
         try {
           const deletedRows = await db.delete(dashboardMessages).where(eq(dashboardMessages.id, id)).returning();
-          
+
           if (deletedRows.length === 0) {
             console.error('🗑️ [PRODUCTION] Announcement not found:', id);
             return res.status(404).json({ message: "Announcement not found" });
           }
-          
+
           console.log('🗑️ [PRODUCTION] Announcement deleted successfully from DB:', deletedRows[0]);
           res.json({ message: "Announcement deleted successfully" });
         } catch (dbError) {
           console.error('🗑️ [PRODUCTION] DB error, fallback to memory:', dbError);
           const success = await storage.deleteAnnouncement(id);
-          
+
           if (!success) {
             return res.status(404).json({ message: "Announcement not found" });
           }
-          
+
           res.json({ message: "Announcement deleted successfully" });
         }
       } else {
         // DÉVELOPPEMENT: Supprimer en mémoire
         console.log('🗑️ [DEV] Deleting from memory storage');
         const success = await storage.deleteAnnouncement(id);
-        
+
         if (!success) {
           console.error('🗑️ [DEV] Announcement not found:', id);
           return res.status(404).json({ message: "Announcement not found" });
         }
-        
+
         console.log('🗑️ [DEV] Announcement deleted from memory');
         res.json({ message: "Announcement deleted successfully" });
       }
@@ -5784,7 +5784,7 @@ RÉSUMÉ DU SCAN
       }
 
       const { sql: sqlQuery } = req.body;
-      
+
       if (!sqlQuery || typeof sqlQuery !== 'string') {
         return res.status(400).json({ error: 'SQL query requis' });
       }
@@ -5793,15 +5793,15 @@ RÉSUMÉ DU SCAN
       console.log('🔧 [SQL-EXECUTOR] Query:', sqlQuery.substring(0, 200) + '...');
 
       const logs = [`🔄 Exécution SQL démarrée...`];
-      
+
       try {
         // Utilisation de drizzle-orm pour l'exécution
         const { sql } = await import('drizzle-orm');
         const result = await db.execute(sql.raw(sqlQuery));
-        
+
         logs.push(`✅ SQL exécuté avec succès`);
         logs.push(`📊 Nombre de lignes affectées: ${result.rowCount || 0}`);
-        
+
         if (result.rows && result.rows.length > 0) {
           logs.push(`📋 Nombre de lignes retournées: ${result.rows.length}`);
           if (result.rows.length <= 10) {
@@ -5810,11 +5810,11 @@ RÉSUMÉ DU SCAN
             logs.push(`📋 Échantillon (10 premières lignes): ${JSON.stringify(result.rows.slice(0, 10), null, 2)}`);
           }
         }
-        
+
         console.log('✅ [SQL-EXECUTOR] Exécution réussie');
-        
-        res.json({ 
-          success: true, 
+
+        res.json({
+          success: true,
           logs,
           results: result.rows,
           rowCount: result.rowCount
@@ -5823,10 +5823,10 @@ RÉSUMÉ DU SCAN
       } catch (sqlError: any) {
         console.error('❌ [SQL-EXECUTOR] Erreur SQL:', sqlError);
         logs.push(`❌ Erreur SQL: ${sqlError.message}`);
-        
-        return res.status(500).json({ 
+
+        return res.status(500).json({
           error: `Erreur SQL: ${sqlError.message}`,
-          logs 
+          logs
         });
       }
 
@@ -5856,7 +5856,7 @@ RÉSUMÉ DU SCAN
       // Apply role-based filtering
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
-        filters.groupIds = filters.groupIds 
+        filters.groupIds = filters.groupIds
           ? filters.groupIds.filter(id => userGroupIds.includes(id))
           : userGroupIds;
       }
@@ -5887,7 +5887,7 @@ RÉSUMÉ DU SCAN
       // Apply role-based filtering
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
-        filters.groupIds = filters.groupIds 
+        filters.groupIds = filters.groupIds
           ? filters.groupIds.filter(id => userGroupIds.includes(id))
           : userGroupIds;
       }
@@ -5916,7 +5916,7 @@ RÉSUMÉ DU SCAN
       // Apply role-based filtering
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
-        filters.groupIds = filters.groupIds 
+        filters.groupIds = filters.groupIds
           ? filters.groupIds.filter(id => userGroupIds.includes(id))
           : userGroupIds;
       }
@@ -5969,15 +5969,15 @@ RÉSUMÉ DU SCAN
       // Apply role-based filtering
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
-        filters.groupIds = filters.groupIds 
+        filters.groupIds = filters.groupIds
           ? filters.groupIds.filter(id => userGroupIds.includes(id))
           : userGroupIds;
       }
 
       let data: any;
       let filename = `analytics_${type}_${new Date().toISOString().split('T')[0]}.csv`;
-      
-      switch(type) {
+
+      switch (type) {
         case 'timeseries':
           data = await storage.getAnalyticsTimeseries({ ...filters, granularity: 'day' });
           break;
@@ -5994,14 +5994,14 @@ RÉSUMÉ DU SCAN
       // Convert to CSV
       if (data && data.length > 0) {
         const headers = Object.keys(data[0]).join(',');
-        const rows = data.map((item: any) => 
-          Object.values(item).map((val: any) => 
+        const rows = data.map((item: any) =>
+          Object.values(item).map((val: any) =>
             typeof val === 'object' ? JSON.stringify(val) : val
           ).join(',')
         ).join('\n');
-        
+
         const csv = `${headers}\n${rows}`;
-        
+
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.send(csv);
