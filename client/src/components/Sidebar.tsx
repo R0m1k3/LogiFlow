@@ -818,12 +818,12 @@ export default function Sidebar() {
                       <span className="font-medium">Prissela</span>
                     </div>
                   </SelectItem>
-                  <SelectItem value="Célia" className="py-3">
+                  <SelectItem value="Jeremy" className="py-3">
                     <div className="flex items-center space-x-3">
-                      <div className="h-8 w-8 bg-pink-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-pink-600">C</span>
+                      <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-blue-600">J</span>
                       </div>
-                      <span className="font-medium">Célia</span>
+                      <span className="font-medium">Jeremy</span>
                     </div>
                   </SelectItem>
                 </SelectContent>

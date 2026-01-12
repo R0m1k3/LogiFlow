@@ -695,7 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Données manquantes: pdfBase64, fileName ou recipient' });
       }
 
-      if (!['Prissela', 'Célia'].includes(recipient)) {
+      if (!['Prissela', 'Jeremy'].includes(recipient)) {
         return res.status(400).json({ error: 'Destinataire invalide' });
       }
 
