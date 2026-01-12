@@ -34,19 +34,20 @@ export default function Publicities() {
   // Seuls les admins peuvent modifier/supprimer
   const canModify = user?.role === 'admin';
 
-  // Generate year options (2025 to 2035)
+  // Generate year options (current year - 2 to current year + 10)
   const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear + i);
+  const startYear = currentYear - 2;
+  const yearOptions = Array.from({ length: 13 }, (_, i) => startYear + i);
 
-  const { data: publicities = [], isLoading } = useQuery({
-    queryKey: ['/api/publicities', selectedYear, selectedStoreId],
+  const { data: publicities = [], isLoading } = useQuery<PublicityWithRelations[]>({
+    queryKey: ['/api/ad-campaigns', selectedYear, selectedStoreId],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append('year', selectedYear.toString());
       if (selectedStoreId) {
         params.append('storeId', selectedStoreId.toString());
       }
-      const response = await fetch(`/api/publicities?${params}`);
+      const response = await fetch(`/api/ad-campaigns?${params}`);
       if (!response.ok) {
         throw new Error('Failed to fetch publicities');
       }
@@ -98,7 +99,7 @@ export default function Publicities() {
       console.log(`🗑️ [Frontend] Attempting to delete publicity ${id} using POST method`);
 
       try {
-        const response = await fetch(`/api/publicities/${id}/delete`, {
+        const response = await fetch(`/api/ad-campaigns/${id}/delete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({})
@@ -110,7 +111,7 @@ export default function Publicities() {
         } else if (response.status === 404) {
           // Route not found, try DELETE method as fallback (for dev environment)
           console.log(`⚠️ [Frontend] POST route not found, trying DELETE method`);
-          const deleteResponse = await fetch(`/api/publicities/${id}`, { method: 'DELETE' });
+          const deleteResponse = await fetch(`/api/ad-campaigns/${id}`, { method: 'DELETE' });
 
           if (!deleteResponse.ok) {
             const error = await deleteResponse.json();
@@ -132,7 +133,7 @@ export default function Publicities() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/publicities'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ad-campaigns'] });
       toast({ description: "Publicité supprimée avec succès" });
       setIsDeleteModalOpen(false);
       setSelectedPublicity(null);

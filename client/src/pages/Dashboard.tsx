@@ -33,19 +33,19 @@ export default function Dashboard() {
         year: currentDate.getFullYear().toString(),
         month: (currentDate.getMonth() + 1).toString(),
       });
-      
+
       if (selectedStoreId && user?.role === 'admin') {
         params.append('storeId', selectedStoreId.toString());
       }
-      
+
       const response = await fetch(`/api/stats/monthly?${params.toString()}`, {
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch stats');
       }
-      
+
       return response.json();
     },
   });
@@ -58,19 +58,19 @@ export default function Dashboard() {
       const params = new URLSearchParams({
         year: currentDate.getFullYear().toString(),
       });
-      
+
       if (selectedStoreId && user?.role === 'admin') {
         params.append('storeId', selectedStoreId.toString());
       }
-      
+
       const response = await fetch(`/api/stats/yearly?${params.toString()}`, {
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch yearly stats');
       }
-      
+
       return response.json();
     },
   });
@@ -102,34 +102,34 @@ export default function Dashboard() {
         params.append('storeId', selectedStoreId.toString());
       }
       params.append('recent', 'true');
-      
+
       const response = await fetch(`/api/announcements?${params.toString()}`, {
         credentials: 'include'
       });
-      
+
       if (!response.ok) {
         return null;
       }
-      
+
       const announcements: DashboardMessage[] = await response.json();
-      
+
       // Filtrer les annonces créées il y a moins de 2 jours côté client
       const twoDaysAgo = new Date();
       twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-      
+
       const recentAnnouncements = announcements.filter(announcement => {
         if (!announcement.createdAt) return false;
         const createdAt = safeDate(announcement.createdAt);
         return createdAt && createdAt >= twoDaysAgo;
       });
-      
+
       // Retourner la plus récente
-      return recentAnnouncements.length > 0 
+      return recentAnnouncements.length > 0
         ? recentAnnouncements.sort((a, b) => {
-            const dateA = safeDate(a.createdAt);
-            const dateB = safeDate(b.createdAt);
-            return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
-          })[0]
+          const dateA = safeDate(a.createdAt);
+          const dateB = safeDate(b.createdAt);
+          return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
+        })[0]
         : null;
     },
     enabled: !!user,
@@ -139,30 +139,30 @@ export default function Dashboard() {
   const getAnnouncementPriorityConfig = (type: string) => {
     switch (type) {
       case 'error':
-        return { 
-          label: 'Nouveauté', 
+        return {
+          label: 'Nouveauté',
           color: 'bg-purple-100 text-purple-800',
           icon: Sparkles,
           iconColor: 'text-purple-600'
         };
       case 'warning':
-        return { 
-          label: 'Attention', 
+        return {
+          label: 'Attention',
           color: 'bg-orange-100 text-orange-800',
           icon: AlertTriangle,
           iconColor: 'text-orange-600'
         };
       case 'success':
-        return { 
-          label: 'Important', 
+        return {
+          label: 'Important',
           color: 'bg-red-100 text-red-800',
           icon: Star,
           iconColor: 'text-red-600'
         };
       case 'info':
       default:
-        return { 
-          label: 'Information', 
+        return {
+          label: 'Information',
           color: 'bg-blue-100 text-blue-800',
           icon: Info,
           iconColor: 'text-blue-600'
@@ -195,19 +195,19 @@ export default function Dashboard() {
 
   // Récupérer les publicités à venir (chercher dans 2024 ET 2025) - TOUTES les publicités
   const { data: upcomingPublicities = [] } = useQuery<PublicityWithRelations[]>({
-    queryKey: ['/api/publicities', 'upcoming'],
+    queryKey: ['/api/ad-campaigns', 'upcoming'],
     queryFn: async () => {
       // Essayer d'abord 2024, puis 2025 pour avoir toutes les publicités
       const years = [2024, 2025];
       let allPublicities: PublicityWithRelations[] = [];
-      
+
       for (const year of years) {
         const params = new URLSearchParams();
         params.append('year', year.toString());
         // NE PAS filtrer par magasin - on veut toutes les publicités
-        
+
         try {
-          const response = await fetch(`/api/publicities?${params}`, { credentials: 'include' });
+          const response = await fetch(`/api/ad-campaigns?${params}`, { credentials: 'include' });
           if (response.ok) {
             const yearPublicities = await response.json();
             allPublicities = [...allPublicities, ...yearPublicities];
@@ -216,12 +216,12 @@ export default function Dashboard() {
           console.log(`Erreur lors de la récupération des publicités ${year}:`, error);
         }
       }
-      
+
       // Filtrer les publicités à venir et les trier par date
       const futurePublicities = allPublicities
         .filter((publicity: any) => new Date(publicity.startDate) > new Date())
         .sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-      
+
       return futurePublicities;
     },
   });
@@ -249,10 +249,10 @@ export default function Dashboard() {
       }
       return;
     }
-    
+
     // Vérifier s'il y a des problèmes DLC
     const shouldShowDlcModal = dlcStats.expired > 0 || dlcStats.expiringSoon > 0;
-    
+
     if (shouldShowDlcModal && !showDlcAlertModal) {
       // Vérifier s'il n'y a pas de snooze actif
       const snoozedUntil = localStorage.getItem('dlcAlertSnooze');
@@ -305,7 +305,7 @@ export default function Dashboard() {
       const dateB = safeDate(b.createdAt);
       return (dateB ? dateB.getTime() : 0) - (dateA ? dateA.getTime() : 0);
     }) : []; // Afficher toutes les commandes en attente
-  
+
   const upcomingDeliveries = Array.isArray(allDeliveries) ? allDeliveries
     .filter((d: any) => {
       const isPlanned = d.status === 'planned';
@@ -314,7 +314,7 @@ export default function Dashboard() {
     })
     .sort((a: any, b: any) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
     .slice(0, 4) : []; // Afficher les 4 prochaines livraisons
-    
+
   console.log('🚚 Dashboard - Upcoming deliveries result:', upcomingDeliveries.length, upcomingDeliveries);
 
   // Calculs pour les statistiques
@@ -324,9 +324,9 @@ export default function Dashboard() {
     const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
     if (!deliveryDate) return false;
     const now = new Date();
-    return deliveryDate.getMonth() === now.getMonth() && 
-           deliveryDate.getFullYear() === now.getFullYear() && 
-           delivery.status === 'delivered';
+    return deliveryDate.getMonth() === now.getMonth() &&
+      deliveryDate.getFullYear() === now.getFullYear() &&
+      delivery.status === 'delivered';
   }).length : 0;
 
   // Calculer le total des palettes pour les livraisons 'delivered' du mois en cours
@@ -346,35 +346,35 @@ export default function Dashboard() {
   const getPriorityConfig = (priority: string) => {
     switch (priority) {
       case 'high':
-        return { 
-          color: 'destructive' as const, 
-          icon: AlertTriangle, 
-          label: 'Élevée' 
+        return {
+          color: 'destructive' as const,
+          icon: AlertTriangle,
+          label: 'Élevée'
         };
       case 'medium':
-        return { 
-          color: 'default' as const, 
-          icon: Clock, 
-          label: 'Moyenne' 
+        return {
+          color: 'default' as const,
+          icon: Clock,
+          label: 'Moyenne'
         };
       case 'low':
-        return { 
-          color: 'secondary' as const, 
-          icon: Circle, 
-          label: 'Faible' 
+        return {
+          color: 'secondary' as const,
+          icon: Circle,
+          label: 'Faible'
         };
       default:
-        return { 
-          color: 'secondary' as const, 
-          icon: Circle, 
-          label: 'Moyenne' 
+        return {
+          color: 'secondary' as const,
+          icon: Circle,
+          label: 'Moyenne'
         };
     }
   };
 
   console.log('📊 Dashboard Debug - Raw Data:', {
     allOrders: Array.isArray(allOrders) ? allOrders.length : 'NOT_ARRAY',
-    allDeliveries: Array.isArray(allDeliveries) ? allDeliveries.length : 'NOT_ARRAY', 
+    allDeliveries: Array.isArray(allDeliveries) ? allDeliveries.length : 'NOT_ARRAY',
     customerOrders: Array.isArray(customerOrders) ? customerOrders.length : 'NOT_ARRAY',
     upcomingPublicities: Array.isArray(upcomingPublicities) ? upcomingPublicities.length : 'NOT_ARRAY',
     stats: stats,
@@ -423,7 +423,7 @@ export default function Dashboard() {
 
       {/* Alerts */}
       <div className="space-y-3">
-        
+
         {dlcStats.expiringSoon > 0 && (
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 flex items-center space-x-3 shadow-sm">
             <Clock className="h-5 w-5 text-yellow-600" />
@@ -432,7 +432,7 @@ export default function Dashboard() {
             </span>
           </div>
         )}
-        
+
         {dlcStats.expired > 0 && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 flex items-center space-x-3 shadow-sm">
             <XCircle className="h-5 w-5 text-red-600" />
@@ -523,11 +523,10 @@ export default function Dashboard() {
               const orderDate = safeDate(order.plannedDate);
               const daysPending = orderDate ? Math.floor((new Date().getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
               const isOverdue = daysPending > 10;
-              
+
               return (
-                <div key={order.id} className={`flex items-center justify-between p-4 transition-colors border-l-3 ${
-                  isOverdue ? 'bg-red-50 hover:bg-red-100 border-red-500' : 'bg-orange-50 hover:bg-orange-100 border-orange-500'
-                }`}>
+                <div key={order.id} className={`flex items-center justify-between p-4 transition-colors border-l-3 ${isOverdue ? 'bg-red-50 hover:bg-red-100 border-red-500' : 'bg-orange-50 hover:bg-orange-100 border-orange-500'
+                  }`}>
                   <div className="flex items-center space-x-3">
                     <div className={`h-2 w-2 ${isOverdue ? 'bg-red-500' : 'bg-orange-500'}`}></div>
                     <div>
@@ -536,7 +535,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <Badge 
+                    <Badge
                       variant={isOverdue ? 'destructive' : 'secondary'}
                       className="text-xs"
                     >
@@ -604,7 +603,7 @@ export default function Dashboard() {
               .map((publicity: any) => {
                 const participatingStores = publicity.participations || [];
                 const isCurrentStoreParticipating = selectedStoreId && participatingStores.some((p: any) => p.groupId === parseInt(selectedStoreId.toString()));
-                
+
                 return (
                   <div key={publicity.id} className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-purple-500 space-y-2">
                     <div className="flex items-center justify-between">
@@ -624,7 +623,7 @@ export default function Dashboard() {
                         </p>
                       </div>
                     </div>
-                    
+
                     {/* Magasins participants */}
                     <div className="flex items-center space-x-2 text-xs">
                       <span className="text-gray-500">Magasins:</span>
@@ -635,12 +634,12 @@ export default function Dashboard() {
                           {participatingStores.map((participation: any) => {
                             const isCurrentStore = selectedStoreId && participation.groupId === parseInt(selectedStoreId.toString());
                             const groupColor = participation.group?.color || '#1976D2';
-                            
+
                             return (
-                              <Badge 
-                                key={participation.groupId} 
+                              <Badge
+                                key={participation.groupId}
                                 className={`text-xs text-white border ${isCurrentStore ? 'ring-2 ring-white ring-offset-1' : ''}`}
-                                style={{ 
+                                style={{
                                   backgroundColor: groupColor,
                                   borderColor: groupColor
                                 }}
@@ -690,7 +689,7 @@ export default function Dashboard() {
               .map((task: any) => {
                 const priorityConfig = getPriorityConfig(task.priority);
                 const PriorityIcon = priorityConfig.icon;
-                
+
                 return (
                   <div key={task.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors border-l-3 border-blue-500">
                     <div className="flex items-center space-x-3">
@@ -702,7 +701,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right space-y-1">
                       <div className="flex items-center justify-end space-x-2">
-                        <Badge 
+                        <Badge
                           className={`text-xs flex items-center gap-1 ${priorityConfig.color}`}
                         >
                           <PriorityIcon className="h-3 w-3" />
@@ -716,11 +715,11 @@ export default function Dashboard() {
                   </div>
                 );
               }) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-600">Aucune tâche en cours</p>
-                  <p className="text-xs text-gray-400 mt-1">Toutes les tâches sont terminées</p>
-                </div>
-              )}
+              <div className="text-center py-8">
+                <p className="text-gray-600">Aucune tâche en cours</p>
+                <p className="text-xs text-gray-400 mt-1">Toutes les tâches sont terminées</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -734,7 +733,7 @@ export default function Dashboard() {
               Nouvelle Annonce
             </DialogTitle>
           </DialogHeader>
-          
+
           {recentAnnouncement && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -756,7 +755,7 @@ export default function Dashboard() {
                   {safeFormat(recentAnnouncement.createdAt, "d MMMM yyyy 'à' HH:mm")}
                 </p>
               </div>
-              
+
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {recentAnnouncement.title}
@@ -767,7 +766,7 @@ export default function Dashboard() {
                   </p>
                 </div>
               </div>
-              
+
               {recentAnnouncement.createdBy && (
                 <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
                   <User className="h-4 w-4 text-gray-400" />
@@ -778,7 +777,7 @@ export default function Dashboard() {
               )}
             </div>
           )}
-          
+
           <div className="flex justify-end pt-4">
             <Button onClick={handleCloseAnnouncementModal} className="flex items-center gap-2">
               <X className="h-4 w-4" />
@@ -793,7 +792,7 @@ export default function Dashboard() {
         isOpen={showDlcAlertModal}
         onClose={handleCloseDlcAlertModal}
         dlcStats={dlcStats}
-        selectedStoreId={selectedStoreId}
+        selectedStoreId={selectedStoreId ?? undefined}
       />
     </div>
   );

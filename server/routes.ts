@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupLocalAuth, requireAuth } from "./localAuth";
@@ -375,7 +375,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Vérifier l'autorisation : directeur ne peut voir que ses groupes
       if (user.role === 'directeur') {
-        const userGroupIds = await storage.getUserGroups(user.id);
+        const userGroups = await storage.getUserGroups(user.id);
+        const userGroupIds = userGroups.map(ug => ug.groupId);
         if (!userGroupIds.includes(groupId)) {
           return res.status(403).json({ error: 'Accès refusé - Vous ne pouvez accéder qu\'aux données de votre groupe' });
         }
@@ -425,10 +426,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          // Récupérer aussi le TTC si manquant
-          if (result.exists && result.invoiceAmountTTC && !delivery.invoiceAmountTTC) {
-            updateData.invoiceAmountTTC = result.invoiceAmountTTC.toString();
-            delivery.invoiceAmountTTC = result.invoiceAmountTTC.toString();
+          // Récupérer aussi le montant si manquant
+          if (result.exists && result.invoiceAmount && !delivery.invoiceAmount) {
+            // @ts-ignore
+            updateData.invoiceAmount = result.invoiceAmount.toString();
+            // @ts-ignore
+            delivery.invoiceAmount = result.invoiceAmount.toString();
           }
 
           // Mettre à jour si nécessaire
@@ -458,12 +461,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             delivery.reconciled || false
           );
 
-          if (result.exists && result.invoiceAmountTTC) {
-            await storage.updateDelivery(delivery.id, {
-              invoiceAmountTTC: result.invoiceAmountTTC.toString()
-            });
-            delivery.invoiceAmountTTC = result.invoiceAmountTTC.toString();
-            console.log(`💰 TTC récupéré pour livraison #${delivery.id}: ${result.invoiceAmountTTC}€`);
+          if (result.exists && result.invoiceAmount) {
+            const updates: any = {
+              invoiceAmount: result.invoiceAmount.toString(),
+              supplierName: result.supplierName
+            };
+            if (result.dueDate) {
+              updates.dueDate = new Date(result.dueDate);
+            }
+            await storage.updateDelivery(delivery.id, updates);
+            // @ts-ignore
+            delivery.invoiceAmount = result.invoiceAmount.toString();
+            console.log(`💰 Montant récupéré pour livraison #${delivery.id}: ${result.invoiceAmount}€`);
           }
         } catch (error) {
           console.error(`❌ Fallback TTC échoué pour livraison #${delivery.id}:`, error);
@@ -534,7 +543,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Vérifier l'autorisation pour les directeurs
       if (user.role === 'directeur') {
-        const userGroupIds = await storage.getUserGroups(user.id);
+        const userGroups = await storage.getUserGroups(user.id);
+        const userGroupIds = userGroups.map(ug => ug.groupId);
         if (!userGroupIds.includes(validatedGroupId)) {
           return res.status(403).json({ error: 'Accès refusé - Vous ne pouvez accéder qu\'aux données de votre groupe' });
         }
@@ -4163,8 +4173,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Publicity routes (renamed to campaigns to avoid adblocker issues)
-  app.get('/api/campaigns', isAuthenticated, async (req: any, res) => {
+  // Publicity routes (renamed to ad-campaigns to avoid adblocker issues)
+  app.get('/api/ad-campaigns/debug', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -4175,7 +4185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filterYear = year ? parseInt(year as string) : undefined;
 
       // DEBUG: Log pour identifier le problème avec 2025
-      console.log(`📋 API PUBLICITIES REQUEST:`, { year, filterYear, storeId, userRole: user.role });
+      console.log(`📋 API AD-CAMPAIGNS DEBUG REQUEST:`, { year, filterYear, storeId, userRole: user.role });
 
       let groupIds: number[] | undefined;
 
@@ -4198,7 +4208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/campaigns/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/ad-campaigns/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -4230,7 +4240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all publicities (with optional year and store filtering)
-  app.get('/api/publicities', isAuthenticated, async (req: any, res) => {
+  app.get('/api/ad-campaigns', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -4264,7 +4274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/publicities', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ad-campaigns', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -4300,7 +4310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/publicities/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/ad-campaigns/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
       if (!user) {
@@ -4332,9 +4342,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/publicities/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/ad-campaigns/:id', isAuthenticated, async (req: any, res) => {
     const publicityId = req.params.id;
-    console.log(`🗑️ [API] DELETE request received for publicity ID: ${publicityId}`);
+    console.log(`🗑️ [API] DELETE request received for publicity ID: ${publicityId} (ad-campaigns)`);
     console.log(`🗑️ [API] User info:`, {
       hasUser: !!req.user,
       userId: req.user?.id || req.user?.claims?.sub,
@@ -4372,9 +4382,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Alternative DELETE route using POST (for production environments that block DELETE)
-  app.post('/api/publicities/:id/delete', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ad-campaigns/:id/delete', isAuthenticated, async (req: any, res) => {
     const publicityId = req.params.id;
-    console.log(`🗑️ [API-POST] DELETE via POST request received for publicity ID: ${publicityId}`);
+    console.log(`🗑️ [API-POST] DELETE via POST request received for publicity ID: ${publicityId} (ad-campaigns)`);
     console.log(`🗑️ [API-POST] User info:`, {
       hasUser: !!req.user,
       userId: req.user?.id || req.user?.claims?.sub,

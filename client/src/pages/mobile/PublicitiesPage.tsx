@@ -34,16 +34,17 @@ export default function MobilePublicitiesPage() {
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [searchTerm, setSearchTerm] = useState("");
 
-    // Générer les années pour le select (année courante +/- 2 ans)
+    // Générer les années pour le select (année courante - 2 ans à + 10 ans)
     const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
+    const startYear = currentYear - 2;
+    const years = Array.from({ length: 13 }, (_, i) => startYear + i);
 
     const { data: publicities = [], isLoading } = useQuery({
-        queryKey: ["/api/publicities", selectedStoreId, selectedYear],
+        queryKey: ["/api/ad-campaigns", selectedStoreId, selectedYear],
         queryFn: async () => {
             if (!selectedStoreId) return [];
             const response = await fetch(
-                `/api/publicities?storeId=${selectedStoreId}&year=${selectedYear}`,
+                `/api/ad-campaigns?storeId=${selectedStoreId}&year=${selectedYear}`,
                 { credentials: 'include' }
             );
             if (!response.ok) throw new Error("Failed to fetch publicities");
