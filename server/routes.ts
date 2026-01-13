@@ -4,6 +4,9 @@ import { storage } from "./storage";
 import { setupLocalAuth, requireAuth } from "./localAuth";
 import { requireModulePermission, requireAdmin, requirePermission } from "./permissions";
 import { db, pool } from "./db";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const FormData = require('form-data');
 
 console.log('🔍 Using development storage and authentication');
 
@@ -887,20 +890,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Import dynamique standard pour ESM (sans eval)
-      // Import dynamique standard pour ESM (sans eval)
-      const FormDataModule = await import('form-data');
-      // Gestion robuste de l'import CJS/ESM : certains environnements retournent le constructeur directement, d'autres via .default
-      const FormData = (FormDataModule.default || FormDataModule) as any;
-
-      console.log('🔍 INVOICE PROXY: FormData loaded', { 
+      console.log('🔍 INVOICE PROXY: FormData loaded', {
         type: typeof FormData,
-        isConstructor: typeof FormData === 'function',
-        hasDefault: !!FormDataModule.default
+        isConstructor: typeof FormData === 'function'
       });
-
-      if (typeof FormData !== 'function') {
-        throw new Error(`Impossible de charger FormData (type reçu: ${typeof FormData})`);
-      }
 
       const formData = new FormData();
       formData.append('file', parts.file.buffer, {
