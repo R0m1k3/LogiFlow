@@ -887,8 +887,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Import dynamique standard pour ESM (sans eval)
+      // Import dynamique standard pour ESM (sans eval)
       const FormDataModule = await import('form-data');
-      const FormData = FormDataModule.default;
+      // Gestion robuste de l'import CJS/ESM : certains environnements retournent le constructeur directement, d'autres via .default
+      const FormData = (FormDataModule.default || FormDataModule) as any;
+
+      console.log('🔍 INVOICE PROXY: FormData loaded', { 
+        type: typeof FormData,
+        isConstructor: typeof FormData === 'function',
+        hasDefault: !!FormDataModule.default
+      });
+
+      if (typeof FormData !== 'function') {
+        throw new Error(`Impossible de charger FormData (type reçu: ${typeof FormData})`);
+      }
 
       const formData = new FormData();
       formData.append('file', parts.file.buffer, {
