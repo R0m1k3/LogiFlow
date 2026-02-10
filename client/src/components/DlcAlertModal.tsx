@@ -1,21 +1,21 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
   DialogTitle,
-  DialogDescription 
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  AlertTriangle, 
-  XCircle, 
-  Clock, 
-  PackageX, 
-  Eye, 
-  ArrowRight 
+import {
+  AlertTriangle,
+  XCircle,
+  Clock,
+  PackageX,
+  Eye,
+  ArrowRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -73,7 +73,7 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
 
   // Mutation to mark product as stock depleted
   const markStockEpuiseMutation = useMutation({
-    mutationFn: (productId: number) => 
+    mutationFn: (productId: number) =>
       apiRequest(`/api/dlc-products/${productId}/stock-epuise`, "PUT"),
     onSuccess: () => {
       toast({
@@ -82,6 +82,7 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
       });
       // Refresh DLC stats and products
       queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"] });
     },
     onError: () => {
       toast({
@@ -164,11 +165,11 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
                   Produits Expirés ({dlcStats.expired})
                 </h3>
               </div>
-              
+
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {expiredProducts.slice(0, 8).map((product) => (
-                  <div 
-                    key={product.id} 
+                  <div
+                    key={product.id}
                     className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg"
                   >
                     <div className="flex-1">
@@ -177,7 +178,7 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
                         {product.supplier.name} • Expiré depuis {Math.abs(getDaysUntilExpiry(product.expiryDate))} jour(s)
                       </div>
                     </div>
-                    
+
                     {!product.stockEpuise && (
                       <Button
                         size="sm"
@@ -191,7 +192,7 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
                         Stock épuisé
                       </Button>
                     )}
-                    
+
                     {product.stockEpuise && (
                       <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
                         Stock épuisé
@@ -199,7 +200,7 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
                     )}
                   </div>
                 ))}
-                
+
                 {expiredProducts.length > 8 && (
                   <div className="text-sm text-gray-600 text-center py-2">
                     et {expiredProducts.length - 8} autre(s) produit(s) expiré(s)...
@@ -218,13 +219,13 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
                   Expirent Bientôt ({dlcStats.expiringSoon})
                 </h3>
               </div>
-              
+
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {expiringSoonProducts.slice(0, 8).map((product) => {
                   const daysLeft = getDaysUntilExpiry(product.expiryDate);
                   return (
-                    <div 
-                      key={product.id} 
+                    <div
+                      key={product.id}
                       className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg"
                     >
                       <div className="flex-1">
@@ -233,9 +234,9 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
                           {product.supplier.name} • Expire dans {daysLeft} jour(s)
                         </div>
                       </div>
-                      
-                      <Badge 
-                        variant="outline" 
+
+                      <Badge
+                        variant="outline"
                         className={`
                           ${daysLeft <= 3 ? 'border-red-300 text-red-700 bg-red-50' : 'border-orange-300 text-orange-700 bg-orange-50'}
                         `}
@@ -245,7 +246,7 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
                     </div>
                   );
                 })}
-                
+
                 {expiringSoonProducts.length > 8 && (
                   <div className="text-sm text-gray-600 text-center py-2">
                     et {expiringSoonProducts.length - 8} autre(s) produit(s) expirant bientôt...
@@ -258,7 +259,7 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-          <Button 
+          <Button
             onClick={handleViewDlcModule}
             className="flex-1 bg-blue-600 hover:bg-blue-700"
             data-testid="button-view-dlc-module"
@@ -267,9 +268,9 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
             Voir tous les produits DLC
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
-          
-          <Button 
-            variant="outline" 
+
+          <Button
+            variant="outline"
             onClick={handleSnooze}
             className="flex-1"
             data-testid="button-snooze-alert"
@@ -281,7 +282,7 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
 
         {/* Help Text */}
         <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded">
-          💡 <strong>Conseil :</strong> Ce modal réapparaîtra tant que les produits ne sont pas traités. 
+          💡 <strong>Conseil :</strong> Ce modal réapparaîtra tant que les produits ne sont pas traités.
           Marquez les produits comme "stock épuisé" ou traitez-les dans le module DLC pour faire disparaître l'alerte.
         </div>
       </DialogContent>
