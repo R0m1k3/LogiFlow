@@ -5,7 +5,7 @@ import path from 'path';
 import { nanoid } from 'nanoid';
 import { eq, desc } from "drizzle-orm";
 import { db } from "./db";
-import { databaseBackups, utilities } from "@shared/schema";
+import { databaseBackups, utilities, users } from "@shared/schema";
 import type { DatabaseBackup, InsertDatabaseBackup } from "@shared/schema";
 
 const execAsync = promisify(exec);
@@ -18,10 +18,10 @@ export class BackupService {
   constructor() {
     // Use /app/backups in production (with proper permissions), or use env variable
     const isProduction = process.env.NODE_ENV === 'production';
-    this.backupDir = isProduction 
+    this.backupDir = isProduction
       ? process.env.BACKUP_DIR || '/app/backups'
       : path.join(process.cwd(), 'backups');
-    
+
     this.ensureBackupDirectory();
     this.scheduleAutomaticBackup();
   }
@@ -70,6 +70,31 @@ export class BackupService {
     };
   }
 
+  /**
+   * Resolve a valid user ID for system-initiated backups.
+   * Returns the first admin user ID, or the first user if no admin exists.
+   * This avoids FK violations on database_backups.created_by -> users.id.
+   */
+  private async resolveSystemUserId(): Promise<string | null> {
+    try {
+      // Try to find an admin user first
+      const [adminUser] = await db.select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, 'admin'))
+        .limit(1);
+      if (adminUser) return adminUser.id;
+
+      // Fallback: any existing user
+      const [anyUser] = await db.select({ id: users.id })
+        .from(users)
+        .limit(1);
+      return anyUser?.id ?? null;
+    } catch (error) {
+      console.error('❌ Failed to resolve system user ID for backup:', error);
+      return null;
+    }
+  }
+
   async createBackup(type: 'manual' | 'automatic' = 'manual', createdBy: string = 'system'): Promise<DatabaseBackup> {
     try {
       const id = nanoid();
@@ -90,7 +115,7 @@ export class BackupService {
       }).returning();
 
       const dbConfig = this.getDatabaseConfig();
-      
+
       // Set environment variable for password to avoid prompt
       const env = {
         ...process.env,
@@ -101,14 +126,14 @@ export class BackupService {
       const command = `pg_dump -h ${dbConfig.host} -p ${dbConfig.port} -U ${dbConfig.username} -d ${dbConfig.database} --no-password --verbose --clean --if-exists --create > "${filepath}"`;
 
       console.log(`🔄 Starting ${type} backup...`);
-      
+
       await execAsync(command, { env });
 
       // Get file stats and count tables
       const stats = fs.statSync(filepath);
       const sqlContent = fs.readFileSync(filepath, 'utf8');
       const tablesCount = (sqlContent.match(/CREATE TABLE/g) || []).length;
-      
+
       // Update database record with completion details
       const [updatedBackup] = await db.update(databaseBackups)
         .set({
@@ -176,7 +201,7 @@ export class BackupService {
 
   async downloadBackup(filename: string): Promise<string> {
     const filepath = path.join(this.backupDir, filename);
-    
+
     if (!fs.existsSync(filepath)) {
       throw new Error('Backup file not found');
     }
@@ -189,14 +214,14 @@ export class BackupService {
       const allBackups = await db.select()
         .from(databaseBackups)
         .orderBy(desc(databaseBackups.createdAt));
-      
+
       if (allBackups.length > this.maxBackups) {
         const toDelete = allBackups.slice(this.maxBackups);
-        
+
         for (const backup of toDelete) {
           await this.deleteBackup(backup.filename);
         }
-        
+
         console.log(`🧹 Cleaned ${toDelete.length} old backup(s)`);
       }
     } catch (error) {
@@ -218,7 +243,7 @@ export class BackupService {
       const [config] = await db.select()
         .from(utilities)
         .limit(1);
-      
+
       // Si les backups automatiques sont désactivés, ne rien faire
       if (config && config.automaticBackupsEnabled === false) {
         console.log('ℹ️ Sauvegardes automatiques désactivées - Aucune action effectuée');
@@ -227,9 +252,9 @@ export class BackupService {
           message: 'Sauvegardes automatiques désactivées'
         };
       }
-      
+
       const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
-      
+
       // Vérifier s'il y a déjà une sauvegarde automatique aujourd'hui
       const existingBackupToday = await db.select()
         .from(databaseBackups)
@@ -239,11 +264,21 @@ export class BackupService {
 
       const lastBackup = existingBackupToday[0];
       const lastBackupDate = lastBackup ? lastBackup.createdAt.toISOString().split('T')[0] : null;
-      
-      // Si aucune sauvegarde automatique aujourd'hui, en créer une
+
+      // Only perform backup if no automatic backup exists for today
       if (lastBackupDate !== today) {
+        // Resolve a real user ID if called with default 'system'
+        let resolvedUserId = userId;
+        if (userId === 'system') {
+          const systemId = await this.resolveSystemUserId();
+          if (!systemId) {
+            console.warn('⚠️ No user found in database — skipping daily backup');
+            return { backupPerformed: false, message: 'Aucun utilisateur trouvé pour la sauvegarde' };
+          }
+          resolvedUserId = systemId;
+        }
         console.log('🔄 Première connexion du jour - Création de la sauvegarde automatique...');
-        await this.createBackup('automatic', userId);
+        await this.createBackup('automatic', resolvedUserId);
         console.log('✅ Sauvegarde quotidienne effectuée avec succès');
         return {
           backupPerformed: true,
@@ -273,15 +308,15 @@ export class BackupService {
         const [config] = await db.select()
           .from(utilities)
           .limit(1);
-        
+
         // Si les backups automatiques sont désactivés, ne rien faire
         if (config && config.automaticBackupsEnabled === false) {
           return;
         }
-        
+
         const now = new Date();
         const today = now.toISOString().split('T')[0]; // YYYY-MM-DD format
-        
+
         // Only run automatic backup if:
         // 1. It's after 2:00 AM
         // 2. We haven't done an automatic backup today yet
@@ -295,11 +330,17 @@ export class BackupService {
 
           const lastBackup = existingBackupToday[0];
           const lastBackupDate = lastBackup ? lastBackup.createdAt.toISOString().split('T')[0] : null;
-          
+
           // Only proceed if no automatic backup exists for today
           if (lastBackupDate !== today) {
+            // Resolve a real user ID to satisfy FK constraint
+            const systemUserId = await this.resolveSystemUserId();
+            if (!systemUserId) {
+              console.warn('⚠️ No user found in database — skipping automatic backup');
+              return;
+            }
             console.log('🔄 Starting automatic backup...');
-            await this.createBackup('automatic', 'system');
+            await this.createBackup('automatic', systemUserId);
             this.lastAutomaticBackupDate = today;
             console.log('✅ Automatic backup completed');
           }
@@ -311,10 +352,10 @@ export class BackupService {
 
     // Initial check
     checkBackupNeeded();
-    
+
     // Check every hour (3600000 ms)
     setInterval(checkBackupNeeded, 3600000);
-    
+
     console.log('⏰ Automatic backup scheduled for daily 2:00 AM+ (native timer)');
   }
 }
