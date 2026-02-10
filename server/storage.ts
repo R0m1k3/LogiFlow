@@ -95,20 +95,20 @@ export interface IStorage {
   createUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, user: Partial<UpsertUser>): Promise<User>;
   deleteUser(id: string): Promise<void>;
-  
+
   // Group operations
   getGroups(): Promise<Group[]>;
   getGroup(id: number): Promise<Group | undefined>;
   createGroup(group: InsertGroup): Promise<Group>;
   updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group>;
   deleteGroup(id: number): Promise<void>;
-  
+
   // Supplier operations
   getSuppliers(): Promise<Supplier[]>;
   createSupplier(supplier: InsertSupplier): Promise<Supplier>;
   updateSupplier(id: number, supplier: Partial<InsertSupplier>): Promise<Supplier>;
   deleteSupplier(id: number): Promise<void>;
-  
+
   // Order operations
   getOrders(groupIds?: number[]): Promise<OrderWithRelations[]>;
   getOrdersByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<OrderWithRelations[]>;
@@ -116,7 +116,7 @@ export interface IStorage {
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrder(id: number, order: Partial<InsertOrder>): Promise<Order>;
   deleteOrder(id: number): Promise<void>;
-  
+
   // Delivery operations
   getDeliveries(groupIds?: number[]): Promise<DeliveryWithRelations[]>;
   getDeliveriesByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<DeliveryWithRelations[]>;
@@ -126,12 +126,12 @@ export interface IStorage {
   deleteDelivery(id: number): Promise<void>;
   validateDelivery(id: number, blData?: { blNumber: string; blAmount: number }): Promise<void>;
   markDeliveryControlValidated(id: number, userId: string): Promise<void>;
-  
+
   // User-Group operations
   getUserGroups(userId: string): Promise<UserGroup[]>;
   assignUserToGroup(userGroup: InsertUserGroup): Promise<UserGroup>;
   removeUserFromGroup(userId: string, groupId: number): Promise<void>;
-  
+
   // Statistics
   getMonthlyStats(year: number, month: number, groupIds?: number[]): Promise<{
     ordersCount: number;
@@ -156,11 +156,11 @@ export interface IStorage {
   createPublicity(publicity: InsertPublicity): Promise<Publicity>;
   updatePublicity(id: number, publicity: Partial<InsertPublicity>): Promise<Publicity>;
   deletePublicity(id: number): Promise<void>;
-  
+
   // Publicity participation operations
   getPublicityParticipations(publicityId: number): Promise<PublicityParticipation[]>;
   setPublicityParticipations(publicityId: number, groupIds: number[]): Promise<void>;
-  
+
   // NocoDB Configuration operations
   getNocodbConfigs(): Promise<NocodbConfig[]>;
   getNocodbConfig(id: number): Promise<NocodbConfig | undefined>;
@@ -168,20 +168,20 @@ export interface IStorage {
   createNocodbConfig(config: InsertNocodbConfig): Promise<NocodbConfig>;
   updateNocodbConfig(id: number, config: Partial<InsertNocodbConfig>): Promise<NocodbConfig>;
   deleteNocodbConfig(id: number): Promise<void>;
-  
+
   // Invoice Verification Cache operations
   getInvoiceVerificationCache(cacheKey: string): Promise<InvoiceVerificationCache | undefined>;
   saveInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache>;
   createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache>;
   clearExpiredCache(): Promise<void>;
-  
+
   // Customer Order operations
   getCustomerOrders(groupIds?: number[]): Promise<CustomerOrderWithRelations[]>;
   getCustomerOrder(id: number): Promise<CustomerOrderWithRelations | undefined>;
   createCustomerOrder(customerOrder: InsertCustomerOrder): Promise<CustomerOrder>;
   updateCustomerOrder(id: number, customerOrder: Partial<InsertCustomerOrder>): Promise<CustomerOrder>;
   deleteCustomerOrder(id: number): Promise<void>;
-  
+
   // Client call tracking
   getPendingClientCalls(groupIds?: number[]): Promise<CustomerOrderWithRelations[]>;
   markClientCalled(customerOrderId: number, calledBy: string): Promise<CustomerOrder>;
@@ -222,12 +222,12 @@ export interface IStorage {
   deleteAvoir(id: number): Promise<void>;
   updateAvoirWebhookStatus(id: number, webhookSent: boolean): Promise<void>;
   updateAvoirNocodbVerification(id: number, verified: boolean): Promise<void>;
-  
+
   // SAV operations
-  getSavTickets(filters?: { 
-    groupIds?: number[]; 
-    status?: string; 
-    supplierId?: number; 
+  getSavTickets(filters?: {
+    groupIds?: number[];
+    status?: string;
+    supplierId?: number;
     priority?: string;
     startDate?: string;
     endDate?: string;
@@ -272,7 +272,7 @@ export interface IStorage {
   createReconciliationComment(comment: InsertReconciliationComment): Promise<ReconciliationComment>;
   updateReconciliationComment(id: number, comment: Partial<InsertReconciliationComment>): Promise<ReconciliationComment>;
   deleteReconciliationComment(id: number): Promise<void>;
-  
+
   // Analytics operations
   getAnalyticsSummary(filters: {
     startDate?: Date;
@@ -289,7 +289,7 @@ export interface IStorage {
     topSuppliers: Array<{ id: number; name: string; count: number; amount: number }>;
     topStores: Array<{ id: number; name: string; orders: number; deliveries: number }>;
   }>;
-  
+
   getAnalyticsTimeseries(filters: {
     startDate?: Date;
     endDate?: Date;
@@ -297,13 +297,13 @@ export interface IStorage {
     groupIds?: number[];
     granularity?: 'day' | 'week' | 'month';
   }): Promise<Array<{ date: string; orders: number; deliveries: number }>>;
-  
+
   getAnalyticsBySupplier(filters: {
     startDate?: Date;
     endDate?: Date;
     groupIds?: number[];
   }): Promise<Array<{ supplierId: number; supplierName: string; deliveries: number; amount: number }>>;
-  
+
   getAnalyticsByStore(filters: {
     startDate?: Date;
     endDate?: Date;
@@ -792,7 +792,7 @@ export class DatabaseStorage implements IStorage {
     const deliveriesWithOrders = await Promise.all(
       baseDeliveries.map(async (delivery) => {
         let associatedOrder = undefined;
-        
+
         if (delivery.orderId) {
           try {
             const [orderData] = await db
@@ -845,7 +845,7 @@ export class DatabaseStorage implements IStorage {
             .select({ count: sql<number>`count(*)` })
             .from(reconciliationComments)
             .where(eq(reconciliationComments.deliveryId, delivery.id));
-          
+
           commentsCount = Number(countResult?.count || 0);
         } catch (error) {
           console.error(`Failed to count reconciliation comments for delivery #${delivery.id}:`, error);
@@ -927,7 +927,7 @@ export class DatabaseStorage implements IStorage {
     const deliveriesWithOrders = await Promise.all(
       baseDeliveries.map(async (delivery) => {
         let associatedOrder = undefined;
-        
+
         if (delivery.orderId) {
           try {
             const [orderData] = await db
@@ -980,7 +980,7 @@ export class DatabaseStorage implements IStorage {
             .select({ count: sql<number>`count(*)` })
             .from(reconciliationComments)
             .where(eq(reconciliationComments.deliveryId, delivery.id));
-          
+
           commentsCount = Number(countResult?.count || 0);
         } catch (error) {
           console.error(`Failed to count reconciliation comments for delivery #${delivery.id}:`, error);
@@ -1076,7 +1076,7 @@ export class DatabaseStorage implements IStorage {
         .select({ count: sql<number>`count(*)` })
         .from(reconciliationComments)
         .where(eq(reconciliationComments.deliveryId, id));
-      
+
       commentsCount = Number(countResult?.count || 0);
     } catch (error) {
       console.error(`Failed to count reconciliation comments for delivery #${id}:`, error);
@@ -1096,36 +1096,36 @@ export class DatabaseStorage implements IStorage {
       ...deliveryData,
       status: deliveryData.status || 'planned' // Force planned status by default
     };
-    
+
     const [delivery] = await db.insert(deliveries).values(deliveryDataWithStatus).returning();
-    
+
     // Si une commande est liée, la marquer comme "planned" (pas delivered!)
     if (deliveryData.orderId) {
       try {
         console.log(`🔗 PRODUCTION: Delivery #${delivery.id} linked to order #${deliveryData.orderId}, updating order status to 'planned'`);
-        
+
         // Récupérer la commande actuelle
         const [currentOrder] = await db
           .select()
           .from(orders)
           .where(eq(orders.id, deliveryData.orderId));
-        
+
         if (currentOrder && currentOrder.status === 'pending') {
           await db
             .update(orders)
-            .set({ 
+            .set({
               status: 'planned',
-              updatedAt: new Date() 
+              updatedAt: new Date()
             })
             .where(eq(orders.id, deliveryData.orderId));
-          
+
           console.log(`✅ PRODUCTION: Order #${deliveryData.orderId} status updated to 'planned'`);
         }
       } catch (error) {
         console.error(`❌ PRODUCTION: Failed to update order #${deliveryData.orderId} status to planned:`, error);
       }
     }
-    
+
     return delivery;
   }
 
@@ -1135,27 +1135,27 @@ export class DatabaseStorage implements IStorage {
       .set({ ...deliveryData, updatedAt: new Date() })
       .where(eq(deliveries.id, id))
       .returning();
-    
+
     // CRITICAL FIX: Si une commande est liée lors de l'édition, la marquer comme "planned"
     if (deliveryData.orderId) {
       try {
         console.log(`🔗 CALENDAR EDIT: Delivery #${delivery.id} linked to order #${deliveryData.orderId}, updating order status to 'planned'`);
-        
+
         // Récupérer la commande actuelle
         const [currentOrder] = await db
           .select()
           .from(orders)
           .where(eq(orders.id, deliveryData.orderId));
-        
+
         if (currentOrder && currentOrder.status === 'pending') {
           await db
             .update(orders)
-            .set({ 
+            .set({
               status: 'planned',
-              updatedAt: new Date() 
+              updatedAt: new Date()
             })
             .where(eq(orders.id, deliveryData.orderId));
-          
+
           console.log(`✅ CALENDAR EDIT: Order #${deliveryData.orderId} status updated to 'planned'`);
         } else if (currentOrder) {
           console.log(`ℹ️ CALENDAR EDIT: Order #${deliveryData.orderId} status is '${currentOrder.status}', no update needed`);
@@ -1164,7 +1164,7 @@ export class DatabaseStorage implements IStorage {
         console.error(`❌ CALENDAR EDIT: Failed to update order #${deliveryData.orderId} status to planned:`, error);
       }
     }
-    
+
     return delivery;
   }
 
@@ -1238,8 +1238,8 @@ export class DatabaseStorage implements IStorage {
 
     // En production, calculer les vraies statistiques
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
-    const endDate = month === 12 
-      ? `${year + 1}-01-01` 
+    const endDate = month === 12
+      ? `${year + 1}-01-01`
       : `${year}-${(month + 1).toString().padStart(2, '0')}-01`;
 
     try {
@@ -1252,7 +1252,7 @@ export class DatabaseStorage implements IStorage {
       );
       // Pour les livraisons, utiliser deliveredDate pour celles livrées, sinon scheduledDate
       let deliveriesWhereCondition = and(
-        gte(deliveries.scheduledDate, startDate), 
+        gte(deliveries.scheduledDate, startDate),
         lt(deliveries.scheduledDate, endDate)
       );
 
@@ -1516,24 +1516,24 @@ export class DatabaseStorage implements IStorage {
 
     // SAFE: Use simple column ordering instead of SQL CAST which fails in production
     const results = await query.orderBy(publicities.pubNumber);
-    
+
     // LOG: Debug des publicités récupérées
     console.log(`📋 PUBLICITES FETCHED: ${results.length} résultats pour année ${year || 'toutes'}`);
     if (results.length > 0) {
-      console.log('🔍 PREMIERS RESULTATS:', results.slice(0, 3).map((p, i) => `${i+1}. N°${p.pubNumber} - ${p.designation}`));
+      console.log('🔍 PREMIERS RESULTATS:', results.slice(0, 3).map((p, i) => `${i + 1}. N°${p.pubNumber} - ${p.designation}`));
     }
 
     const publicityIds = results.map((p: any) => p.id);
-    const participations = publicityIds.length > 0 
+    const participations = publicityIds.length > 0
       ? await db
-          .select({
-            publicityId: publicityParticipations.publicityId,
-            groupId: publicityParticipations.groupId,
-            group: groups,
-          })
-          .from(publicityParticipations)
-          .leftJoin(groups, eq(publicityParticipations.groupId, groups.id))
-          .where(inArray(publicityParticipations.publicityId, publicityIds))
+        .select({
+          publicityId: publicityParticipations.publicityId,
+          groupId: publicityParticipations.groupId,
+          group: groups,
+        })
+        .from(publicityParticipations)
+        .leftJoin(groups, eq(publicityParticipations.groupId, groups.id))
+        .where(inArray(publicityParticipations.publicityId, publicityIds))
       : [];
 
     // Sort by pubNumber as integer on the server side for consistency
@@ -1595,20 +1595,20 @@ export class DatabaseStorage implements IStorage {
 
   async deletePublicity(id: number): Promise<void> {
     console.log(`🗑️ [DELETION] Starting deletion of publicity ID: ${id}`);
-    
+
     try {
       // First, delete all participations (defensive approach for production DB constraints)
       const deletedParticipations = await db.delete(publicityParticipations).where(eq(publicityParticipations.publicityId, id)).returning();
       console.log(`🗑️ [DELETION] Deleted ${deletedParticipations.length} participations for publicity ${id}`);
-      
+
       // Then delete the publicity itself
       const deletedPublicity = await db.delete(publicities).where(eq(publicities.id, id)).returning();
       console.log(`🗑️ [DELETION] Deleted publicity ${id}, found: ${deletedPublicity.length > 0 ? 'YES' : 'NO'}`);
-      
+
       if (deletedPublicity.length === 0) {
         throw new Error(`Publicity with ID ${id} not found`);
       }
-      
+
       console.log(`✅ [DELETION] Successfully deleted publicity ID: ${id}`);
     } catch (error) {
       console.error(`❌ [DELETION] Failed to delete publicity ID: ${id}`, error);
@@ -1652,7 +1652,7 @@ export class DatabaseStorage implements IStorage {
         .from(nocodbConfig)
         .where(eq(nocodbConfig.isActive, true))
         .limit(1);
-      
+
       console.log('🔧 Configuration NocoDB active récupérée:', config);
       return config;
     } catch (error) {
@@ -1685,23 +1685,23 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(invoiceVerificationCache)
       .where(eq(invoiceVerificationCache.cacheKey, cacheKey));
-    
+
     // ✅ Vérification d'expiration ajoutée pour production
     if (cache) {
       const now = new Date();
       const expiresAt = new Date(cache.expiresAt);
-      
+
       if (now < expiresAt) {
-        console.log('✅ [DATABASE-CACHE] Cache hit pour:', { 
-          cacheKey, 
+        console.log('✅ [DATABASE-CACHE] Cache hit pour:', {
+          cacheKey,
           expires: cache.expiresAt,
           hoursRemaining: Math.round((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60))
         });
         return cache; // Cache valide
       } else {
-        console.log('⏰ [DATABASE-CACHE] Cache expiré, suppression:', { 
-          cacheKey, 
-          expiredAt: cache.expiresAt 
+        console.log('⏰ [DATABASE-CACHE] Cache expiré, suppression:', {
+          cacheKey,
+          expiredAt: cache.expiresAt
         });
         // Supprimer le cache expiré
         await db.delete(invoiceVerificationCache)
@@ -1709,7 +1709,7 @@ export class DatabaseStorage implements IStorage {
         return undefined; // Cache expiré
       }
     }
-    
+
     console.log('❌ [DATABASE-CACHE] Cache miss pour:', { cacheKey });
     return undefined; // Pas de cache
   }
@@ -1839,7 +1839,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(groups, eq(customerOrders.groupId, groups.id))
       .where(and(...conditions))
       .orderBy(desc(customerOrders.createdAt));
-    
+
     return results.map(result => ({
       ...result.customerOrder,
       supplier: result.supplier!,
@@ -1851,13 +1851,13 @@ export class DatabaseStorage implements IStorage {
   async markClientCalled(customerOrderId: number, calledBy: string): Promise<CustomerOrder> {
     const [updated] = await db
       .update(customerOrders)
-      .set({ 
+      .set({
         customerNotified: true,
         updatedAt: new Date()
       })
       .where(eq(customerOrders.id, customerOrderId))
       .returning();
-    
+
     return updated;
   }
 
@@ -1883,7 +1883,7 @@ export class DatabaseStorage implements IStorage {
       if (filters.status && filters.status !== 'all') {
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
-        
+
         if (filters.status === 'expires_soon') {
           // Products expiring within 15 days but not expired yet
           // Ne pas afficher les produits déjà traités (processedUntilExpiry = true)
@@ -1930,7 +1930,7 @@ export class DatabaseStorage implements IStorage {
           conditions.push(eq(dlcProducts.status, 'valides'));
         }
       }
-      
+
       if (filters.supplierId) {
         conditions.push(eq(dlcProducts.supplierId, filters.supplierId));
       }
@@ -1963,7 +1963,7 @@ export class DatabaseStorage implements IStorage {
       // Priorité 2 : Date d'expiration (croissante)
       asc(dlcProducts.expiryDate)
     );
-    
+
     return results.map((row: any) => ({
       ...row.dlcProduct,
       dlcDate: row.dlcProduct.expiryDate, // ✅ Mapping expiryDate vers dlcDate pour frontend
@@ -2016,7 +2016,7 @@ export class DatabaseStorage implements IStorage {
   async validateDlcProduct(id: number, validatedBy: string): Promise<DlcProductFrontend> {
     const [dlcProduct] = await db
       .update(dlcProducts)
-      .set({ 
+      .set({
         validatedBy,
         validatedAt: new Date(),
         status: "valides",
@@ -2030,7 +2030,7 @@ export class DatabaseStorage implements IStorage {
   async markDlcProductStockEpuise(id: number, markedBy: string): Promise<DlcProductFrontend> {
     const [dlcProduct] = await db
       .update(dlcProducts)
-      .set({ 
+      .set({
         stockEpuise: true,
         stockEpuiseBy: markedBy,
         stockEpuiseAt: new Date(),
@@ -2044,7 +2044,7 @@ export class DatabaseStorage implements IStorage {
   async restoreDlcProductStock(id: number): Promise<DlcProductFrontend> {
     const [dlcProduct] = await db
       .update(dlcProducts)
-      .set({ 
+      .set({
         stockEpuise: false,
         stockEpuiseBy: null,
         stockEpuiseAt: null,
@@ -2060,7 +2060,7 @@ export class DatabaseStorage implements IStorage {
       // Essayer avec les nouveaux champs si ils existent
       const [dlcProduct] = await db
         .update(dlcProducts)
-        .set({ 
+        .set({
           processedAt: new Date(),
           processedBy: processedBy,
           processedUntilExpiry: true,
@@ -2073,7 +2073,7 @@ export class DatabaseStorage implements IStorage {
       // Fallback : juste mettre à jour la date de modification
       const [dlcProduct] = await db
         .update(dlcProducts)
-        .set({ 
+        .set({
           updatedAt: new Date()
         })
         .where(eq(dlcProducts.id, id))
@@ -2087,7 +2087,7 @@ export class DatabaseStorage implements IStorage {
       // Essayer avec les nouveaux champs si ils existent
       const [dlcProduct] = await db
         .update(dlcProducts)
-        .set({ 
+        .set({
           processedAt: null,
           processedBy: null,
           processedUntilExpiry: false,
@@ -2100,7 +2100,7 @@ export class DatabaseStorage implements IStorage {
       // Fallback : juste mettre à jour la date de modification
       const [dlcProduct] = await db
         .update(dlcProducts)
-        .set({ 
+        .set({
           updatedAt: new Date()
         })
         .where(eq(dlcProducts.id, id))
@@ -2127,16 +2127,19 @@ export class DatabaseStorage implements IStorage {
           WHEN ${dlcProducts.expiryDate} > ${today.toISOString().split('T')[0]} 
           AND ${dlcProducts.status} != 'valides' 
           AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
+          AND (${dlcProducts.stockEpuise} IS NULL OR ${dlcProducts.stockEpuise} = false)
           THEN 1 END)`,
         expiringSoon: sql<number>`COUNT(CASE 
           WHEN ${dlcProducts.expiryDate} BETWEEN ${today.toISOString().split('T')[0]} AND ${alertDate.toISOString().split('T')[0]} 
           AND ${dlcProducts.status} != 'valides'
           AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
+          AND (${dlcProducts.stockEpuise} IS NULL OR ${dlcProducts.stockEpuise} = false)
           THEN 1 END)`,
         expired: sql<number>`COUNT(CASE 
           WHEN ${dlcProducts.expiryDate} <= ${today.toISOString().split('T')[0]} 
           AND ${dlcProducts.status} != 'valides'
           AND (${dlcProducts.processedUntilExpiry} IS NULL OR ${dlcProducts.processedUntilExpiry} = false)
+          AND (${dlcProducts.stockEpuise} IS NULL OR ${dlcProducts.stockEpuise} = false)
           THEN 1 END)`
       })
       .from(dlcProducts)
@@ -2184,7 +2187,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     const results = await query.orderBy(desc(tasks.createdAt));
-    
+
     console.log('📋 DatabaseStorage.getTasks - Raw results:', {
       resultCount: results.length,
       userRole,
@@ -2203,7 +2206,7 @@ export class DatabaseStorage implements IStorage {
         try {
           const task = row.task;
           const group = row.group || null;
-          
+
           // Calculer si la tâche est future de manière sécurisée
           let isFutureTask = false;
           if (task.startDate) {
@@ -2254,23 +2257,23 @@ export class DatabaseStorage implements IStorage {
       dueDateType: typeof taskData.dueDate,
       dueDateISO: taskData.dueDate instanceof Date ? taskData.dueDate.toISOString() : taskData.dueDate
     });
-    
+
     // Convert string dates to Date objects for Drizzle PostgreSQL
     const processedTaskData = {
       ...taskData,
       startDate: taskData.startDate ? new Date(taskData.startDate) : null,
       dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null,
     };
-    
+
     const [task] = await db.insert(tasks).values(processedTaskData).returning();
-    
+
     console.log('💾 DatabaseStorage.createTask - Result:', {
       taskId: task.id,
       title: task.title,
       dueDate: task.dueDate,
       dueDateType: typeof task.dueDate
     });
-    
+
     return task;
   }
 
@@ -2290,13 +2293,13 @@ export class DatabaseStorage implements IStorage {
 
     // Nettoyer les données pour éviter les problèmes de type
     const cleanData: any = {};
-    
+
     if (taskData.title !== undefined) cleanData.title = taskData.title;
     if (taskData.description !== undefined) cleanData.description = taskData.description;
     if (taskData.priority !== undefined) cleanData.priority = taskData.priority;
     if (taskData.status !== undefined) cleanData.status = taskData.status;
     if (taskData.assignedTo !== undefined) cleanData.assignedTo = taskData.assignedTo;
-    
+
     // Gestion spéciale des dates selon les types PostgreSQL
     if (taskData.startDate !== undefined) {
       if (taskData.startDate === '' || taskData.startDate === null) {
@@ -2306,7 +2309,7 @@ export class DatabaseStorage implements IStorage {
         cleanData.startDate = new Date(taskData.startDate);
       }
     }
-    
+
     if (taskData.dueDate !== undefined) {
       if (taskData.dueDate === '' || taskData.dueDate === null) {
         cleanData.dueDate = null;
@@ -2315,30 +2318,30 @@ export class DatabaseStorage implements IStorage {
         cleanData.dueDate = new Date(taskData.dueDate);
       }
     }
-    
+
     cleanData.updatedAt = new Date();
-    
+
     console.log('🧹 Cleaned data for database update:', {
       ...cleanData,
       startDateType: cleanData.startDate ? typeof cleanData.startDate : 'null',
       dueDateType: cleanData.dueDate ? typeof cleanData.dueDate : 'null',
       startDateIsDate: cleanData.startDate instanceof Date,
     });
-    
+
     try {
       const [task] = await db
         .update(tasks)
         .set(cleanData)
         .where(eq(tasks.id, id))
         .returning();
-        
+
       console.log('✅ DatabaseStorage.updateTask - Success:', {
         taskId: task.id,
         title: task.title,
         dueDate: task.dueDate,
         dueDateType: typeof task.dueDate
       });
-      
+
       return task;
     } catch (error) {
       console.error('❌ DatabaseStorage.updateTask - Database Error:', {
@@ -2359,7 +2362,7 @@ export class DatabaseStorage implements IStorage {
   async completeTask(id: number, completedBy: string): Promise<void> {
     await db
       .update(tasks)
-      .set({ 
+      .set({
         status: 'completed',
         completedAt: new Date(),
         completedBy,
@@ -2529,19 +2532,19 @@ export class DatabaseStorage implements IStorage {
   async updateAvoirNocodbVerification(id: number, verified: boolean): Promise<void> {
     await db
       .update(avoirs)
-      .set({ 
-        nocodbVerified: verified, 
+      .set({
+        nocodbVerified: verified,
         nocodbVerifiedAt: verified ? new Date() : null,
-        updatedAt: new Date() 
+        updatedAt: new Date()
       })
       .where(eq(avoirs.id, id));
   }
 
   // SAV operations
-  async getSavTickets(filters?: { 
-    groupIds?: number[]; 
-    status?: string; 
-    supplierId?: number; 
+  async getSavTickets(filters?: {
+    groupIds?: number[];
+    status?: string;
+    supplierId?: number;
     priority?: string;
     startDate?: string;
     endDate?: string;
@@ -2559,7 +2562,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(savTickets.createdBy, users.id));
 
     const conditions = [];
-    
+
     if (filters?.groupIds?.length) {
       conditions.push(inArray(savTickets.groupId, filters.groupIds));
     }
@@ -2636,7 +2639,7 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`count(*)` })
       .from(savTickets)
       .where(sql`EXTRACT(year from created_at) = ${currentYear}`);
-      
+
     const ticketNumber = `SAV-${currentYear}-${String((count[0]?.count || 0) + 1).padStart(4, '0')}`;
 
     const [ticket] = await db
@@ -2661,7 +2664,7 @@ export class DatabaseStorage implements IStorage {
       .set({ ...ticketData, updatedAt: new Date() })
       .where(eq(savTickets.id, id))
       .returning();
-    
+
     return ticket;
   }
 
@@ -2695,7 +2698,7 @@ export class DatabaseStorage implements IStorage {
     //   .insert(savTicketHistory)
     //   .values(historyData)
     //   .returning();
-    
+
     // return history;
     return null;
   }
@@ -2715,9 +2718,9 @@ export class DatabaseStorage implements IStorage {
 
     // Get status counts
     const statusResults = await db
-      .select({ 
-        count: sql<number>`count(*)`, 
-        status: savTickets.status 
+      .select({
+        count: sql<number>`count(*)`,
+        status: savTickets.status
       })
       .from(savTickets)
       .where(groupIds?.length ? inArray(savTickets.groupId, groupIds) : undefined)
@@ -2725,9 +2728,9 @@ export class DatabaseStorage implements IStorage {
 
     // Get priority counts  
     const priorityResults = await db
-      .select({ 
-        count: sql<number>`count(*)`, 
-        priority: savTickets.priority 
+      .select({
+        count: sql<number>`count(*)`,
+        priority: savTickets.priority
       })
       .from(savTickets)
       .where(groupIds?.length ? inArray(savTickets.groupId, groupIds) : undefined)
@@ -2750,7 +2753,7 @@ export class DatabaseStorage implements IStorage {
     // Process status results
     statusResults.forEach(result => {
       const count = Number(result.count || 0);
-      
+
       if (result.status === 'nouveau') {
         stats.newTickets = count;
       } else if (['en_cours', 'attente_pieces', 'attente_echange'].includes(result.status)) {
@@ -2763,7 +2766,7 @@ export class DatabaseStorage implements IStorage {
     // Process priority results for critical tickets
     priorityResults.forEach(result => {
       const count = Number(result.count || 0);
-      
+
       if (result.priority === 'critique') {
         stats.criticalTickets = count;
       }
@@ -2821,11 +2824,11 @@ export class DatabaseStorage implements IStorage {
   async deleteOldWeatherData(daysToKeep: number): Promise<void> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-    
+
     await db
       .delete(weatherData)
       .where(lt(weatherData.createdAt, cutoffDate));
-    
+
     console.log(`🧹 Deleted weather data older than ${daysToKeep} days`);
   }
 
@@ -3075,9 +3078,9 @@ export class DatabaseStorage implements IStorage {
         count: sql<number>`COUNT(${deliveries.id})`,
         amount: sql<number>`COALESCE(SUM(CAST(${deliveries.blAmount} AS NUMERIC)), 0)`
       })
-      .from(deliveries)
-      .innerJoin(suppliers, eq(deliveries.supplierId, suppliers.id));
-      
+        .from(deliveries)
+        .innerJoin(suppliers, eq(deliveries.supplierId, suppliers.id));
+
       if (deliveryConditions.length) supplierQuery.where(and(...deliveryConditions));
       const topSuppliers = await supplierQuery
         .groupBy(suppliers.id, suppliers.name)
@@ -3091,10 +3094,10 @@ export class DatabaseStorage implements IStorage {
         orders: sql<number>`COUNT(DISTINCT ${orders.id})`,
         deliveries: sql<number>`COUNT(DISTINCT ${deliveries.id})`
       })
-      .from(groups)
-      .leftJoin(orders, eq(groups.id, orders.groupId))
-      .leftJoin(deliveries, eq(groups.id, deliveries.groupId));
-      
+        .from(groups)
+        .leftJoin(orders, eq(groups.id, orders.groupId))
+        .leftJoin(deliveries, eq(groups.id, deliveries.groupId));
+
       if (filters.groupIds?.length) {
         storeQuery.where(inArray(groups.id, filters.groupIds));
       }
@@ -3109,17 +3112,17 @@ export class DatabaseStorage implements IStorage {
         reconciliationRate: deliveryStats.count ? (Number(deliveryStats.reconciled) / Number(deliveryStats.count)) * 100 : 0,
         totalAmount: Number(deliveryStats.totalAmount) || 0,
         avgDeliveryDelay: Number(deliveryStats.avgDelay) || 0,
-        topSuppliers: topSuppliers.map(s => ({ 
-          id: s.id, 
-          name: s.name, 
-          count: Number(s.count), 
-          amount: Number(s.amount) 
+        topSuppliers: topSuppliers.map(s => ({
+          id: s.id,
+          name: s.name,
+          count: Number(s.count),
+          amount: Number(s.amount)
         })),
-        topStores: topStores.map(s => ({ 
-          id: s.id, 
-          name: s.name, 
-          orders: Number(s.orders), 
-          deliveries: Number(s.deliveries) 
+        topStores: topStores.map(s => ({
+          id: s.id,
+          name: s.name,
+          orders: Number(s.orders),
+          deliveries: Number(s.deliveries)
         }))
       };
     } catch (error) {
@@ -3137,12 +3140,12 @@ export class DatabaseStorage implements IStorage {
   }): Promise<Array<{ date: string; orders: number; deliveries: number }>> {
     const granularity = filters.granularity || 'day';
     const dateFormat = granularity === 'day' ? 'YYYY-MM-DD' :
-                       granularity === 'week' ? 'YYYY-IW' : 'YYYY-MM';
-    
+      granularity === 'week' ? 'YYYY-IW' : 'YYYY-MM';
+
     // Build WHERE clauses with direct value substitution
     const orderConditions: string[] = [];
     const deliveryConditions: string[] = [];
-    
+
     if (filters.startDate) {
       const startDate = filters.startDate.toISOString().split('T')[0];
       orderConditions.push(`planned_date >= '${startDate}'`);
@@ -3163,10 +3166,10 @@ export class DatabaseStorage implements IStorage {
       orderConditions.push(`group_id IN (${groupIds})`);
       deliveryConditions.push(`group_id IN (${groupIds})`);
     }
-    
+
     const orderWhere = orderConditions.length > 0 ? `WHERE ${orderConditions.join(' AND ')}` : '';
     const deliveryWhere = deliveryConditions.length > 0 ? `WHERE ${deliveryConditions.join(' AND ')}` : '';
-    
+
     // Get orders by date using raw SQL
     const ordersSql = `
       SELECT TO_CHAR(planned_date, '${dateFormat}') as date, COUNT(*) as count
@@ -3175,9 +3178,9 @@ export class DatabaseStorage implements IStorage {
       GROUP BY TO_CHAR(planned_date, '${dateFormat}')
       ORDER BY TO_CHAR(planned_date, '${dateFormat}')
     `;
-    
+
     const ordersData = await db.execute(sql.raw(ordersSql));
-    
+
     // Get deliveries by date using raw SQL
     const deliveriesSql = `
       SELECT TO_CHAR(scheduled_date, '${dateFormat}') as date, COUNT(*) as count
@@ -3186,9 +3189,9 @@ export class DatabaseStorage implements IStorage {
       GROUP BY TO_CHAR(scheduled_date, '${dateFormat}')
       ORDER BY TO_CHAR(scheduled_date, '${dateFormat}')
     `;
-    
+
     const deliveriesData = await db.execute(sql.raw(deliveriesSql));
-    
+
     // Merge data
     const dataMap = new Map<string, { orders: number; deliveries: number }>();
     (ordersData.rows as any[]).forEach(row => {
@@ -3198,7 +3201,7 @@ export class DatabaseStorage implements IStorage {
       const existing = dataMap.get(row.date) || { orders: 0, deliveries: 0 };
       dataMap.set(row.date, { ...existing, deliveries: Number(row.count) });
     });
-    
+
     return Array.from(dataMap.entries())
       .map(([date, data]) => ({ date, ...data }))
       .sort((a, b) => a.date.localeCompare(b.date));
@@ -3226,11 +3229,11 @@ export class DatabaseStorage implements IStorage {
       deliveries: sql<number>`COUNT(${deliveries.id})`,
       amount: sql<number>`COALESCE(SUM(CAST(${deliveries.blAmount} AS NUMERIC)), 0)`
     })
-    .from(deliveries)
-    .innerJoin(suppliers, eq(deliveries.supplierId, suppliers.id));
-    
+      .from(deliveries)
+      .innerJoin(suppliers, eq(deliveries.supplierId, suppliers.id));
+
     if (conditions.length) query.where(and(...conditions));
-    
+
     const result = await query
       .groupBy(suppliers.id, suppliers.name)
       .orderBy(desc(sql<number>`COUNT(${deliveries.id})`));
@@ -3248,13 +3251,13 @@ export class DatabaseStorage implements IStorage {
     endDate?: Date;
     supplierIds?: number[];
   }): Promise<Array<{ groupId: number; storeName: string; orders: number; deliveries: number }>> {
-    
+
     try {
       // Build date filter conditions as strings for raw SQL
       let orderDateFilter = '1=1';
       let deliveryDateFilter = '1=1';
       let supplierFilter = '1=1';
-      
+
       if (filters.startDate) {
         const startDate = filters.startDate.toISOString().split('T')[0];
         orderDateFilter += ` AND planned_date >= '${startDate}'`;
@@ -3299,8 +3302,8 @@ export class DatabaseStorage implements IStorage {
         orders: Number(row.orders),
         deliveries: Number(row.deliveries)
       }));
-      
-      
+
+
       return mappedResult;
     } catch (error) {
       console.error('Error in getAnalyticsByStore:', error);
@@ -3368,7 +3371,7 @@ export class MemStorage implements IStorage {
 
     // Initialize group counter
     this.idCounters.group = 2;
-    
+
     // Initialize supplier counter  
     this.idCounters.supplier = 2;
 
@@ -3471,7 +3474,7 @@ export class MemStorage implements IStorage {
   async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {
     const existingUser = this.users.get(id);
     if (!existingUser) throw new Error('User not found');
-    
+
     const updatedUser = { ...existingUser, ...userData, updatedAt: new Date() };
     this.users.set(id, updatedUser);
     return updatedUser;
@@ -3515,7 +3518,7 @@ export class MemStorage implements IStorage {
   async updateGroup(id: number, groupData: Partial<InsertGroup>): Promise<Group> {
     const existingGroup = this.groups.get(id);
     if (!existingGroup) throw new Error('Group not found');
-    
+
     const updatedGroup = { ...existingGroup, ...groupData, updatedAt: new Date() };
     this.groups.set(id, updatedGroup);
     return updatedGroup;
@@ -3549,7 +3552,7 @@ export class MemStorage implements IStorage {
   async updateSupplier(id: number, supplierData: Partial<InsertSupplier>): Promise<Supplier> {
     const existingSupplier = this.suppliers.get(id);
     if (!existingSupplier) throw new Error('Supplier not found');
-    
+
     const updatedSupplier = { ...existingSupplier, ...supplierData, updatedAt: new Date() };
     this.suppliers.set(id, updatedSupplier);
     return updatedSupplier;
@@ -3582,7 +3585,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     console.log('🔧 Configuration NocoDB active:', {
       name: testConfig.name,
       baseUrl: testConfig.baseUrl,
@@ -3668,7 +3671,7 @@ export class MemStorage implements IStorage {
   async saveInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache> {
     const newCache = await this.createInvoiceVerificationCache(cache);
     // Sauver en mémoire pour le cache temporaire
-    console.log('💾 [MEMSTORAGE-CACHE] Sauvegarde en cache:', { 
+    console.log('💾 [MEMSTORAGE-CACHE] Sauvegarde en cache:', {
       cacheKey: cache.cacheKey,
       exists: cache.exists,
       expiresAt: cache.expiresAt
@@ -3715,11 +3718,11 @@ export class MemStorage implements IStorage {
       const orderDate = new Date(order.plannedDate);
       return orderDate >= start && orderDate <= end;
     });
-    
+
     if (groupIds && groupIds.length > 0) {
       orders = orders.filter(order => groupIds.includes(order.groupId));
     }
-    
+
     return orders.map(order => {
       // Récupérer les livraisons associées à cette commande (DEV RELATIONS)
       const associatedDeliveries = Array.from(this.deliveries.values())
@@ -3744,7 +3747,7 @@ export class MemStorage implements IStorage {
   async getOrder(id: number): Promise<OrderWithRelations | undefined> {
     const order = this.orders.get(id);
     if (!order) return undefined;
-    
+
     // Récupérer les livraisons associées à cette commande
     const associatedDeliveries = Array.from(this.deliveries.values())
       .filter(delivery => delivery.orderId === id)
@@ -3754,7 +3757,7 @@ export class MemStorage implements IStorage {
         group: this.groups.get(delivery.groupId),
         creator: this.users.get(delivery.createdBy || '')
       }));
-    
+
     return {
       ...order,
       supplier: this.suppliers.get(order.supplierId),
@@ -3779,7 +3782,7 @@ export class MemStorage implements IStorage {
   async updateOrder(id: number, orderData: Partial<InsertOrder>): Promise<Order> {
     const existingOrder = this.orders.get(id);
     if (!existingOrder) throw new Error('Order not found');
-    
+
     const updatedOrder = {
       ...existingOrder,
       ...orderData,
@@ -3835,11 +3838,11 @@ export class MemStorage implements IStorage {
       const deliveryDate = new Date(delivery.scheduledDate);
       return deliveryDate >= start && deliveryDate <= end;
     });
-    
+
     if (groupIds && groupIds.length > 0) {
       deliveries = deliveries.filter(delivery => groupIds.includes(delivery.groupId));
     }
-    
+
     return deliveries.map(delivery => {
       // Récupérer la commande associée à cette livraison si elle existe (DEV RELATIONS)
       let associatedOrder = undefined;
@@ -3873,7 +3876,7 @@ export class MemStorage implements IStorage {
   async getDelivery(id: number): Promise<DeliveryWithRelations | undefined> {
     const delivery = this.deliveries.get(id);
     if (!delivery) return undefined;
-    
+
     // Récupérer la commande associée si elle existe
     let associatedOrder = undefined;
     if (delivery.orderId) {
@@ -3887,7 +3890,7 @@ export class MemStorage implements IStorage {
         };
       }
     }
-    
+
     // Compter les commentaires de rapprochement pour cette livraison
     const commentsCount = Array.from(this.reconciliationComments.values())
       .filter(comment => comment.deliveryId === delivery.id).length;
@@ -3912,7 +3915,7 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
     };
     this.deliveries.set(id, delivery);
-    
+
     // Si une commande est liée, la marquer comme "planned" (pas delivered!)
     if (deliveryData.orderId) {
       try {
@@ -3925,21 +3928,21 @@ export class MemStorage implements IStorage {
         console.error(`❌ Failed to update order #${deliveryData.orderId} status to planned:`, error);
       }
     }
-    
+
     return delivery;
   }
 
   async updateDelivery(id: number, deliveryData: Partial<InsertDelivery>): Promise<Delivery> {
     const existingDelivery = this.deliveries.get(id);
     if (!existingDelivery) throw new Error('Delivery not found');
-    
+
     const updatedDelivery = {
       ...existingDelivery,
       ...deliveryData,
       updatedAt: new Date(),
     };
     this.deliveries.set(id, updatedDelivery);
-    
+
     // CRITICAL FIX: Si une commande est liée lors de l'édition, la marquer comme "planned"
     if (deliveryData.orderId) {
       try {
@@ -3955,7 +3958,7 @@ export class MemStorage implements IStorage {
         console.error(`❌ CALENDAR EDIT (DEV): Failed to update order #${deliveryData.orderId} status to planned:`, error);
       }
     }
-    
+
     return updatedDelivery;
   }
 
@@ -3966,7 +3969,7 @@ export class MemStorage implements IStorage {
   async validateDelivery(id: number, blData?: { blNumber: string; blAmount: number }): Promise<void> {
     const delivery = this.deliveries.get(id);
     if (!delivery) throw new Error('Delivery not found');
-    
+
     const updatedDelivery = {
       ...delivery,
       status: 'delivered' as const,
@@ -3980,9 +3983,9 @@ export class MemStorage implements IStorage {
 
   async getUserGroups(): Promise<UserGroup[]> { return []; }
   async assignUserToGroup(): Promise<UserGroup> { return {} as UserGroup; }
-  async removeUserFromGroup(): Promise<void> {}
+  async removeUserFromGroup(): Promise<void> { }
 
-  async getMonthlyStats(): Promise<any> { 
+  async getMonthlyStats(): Promise<any> {
     return {
       ordersCount: 12,
       deliveriesCount: 8,
@@ -3993,7 +3996,7 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async getYearlyStats(): Promise<any> { 
+  async getYearlyStats(): Promise<any> {
     return {
       ordersCount: 144, // 12 mois * 12
       deliveriesCount: 96, // 12 mois * 8  
@@ -4006,21 +4009,21 @@ export class MemStorage implements IStorage {
 
   async getPublicities(year?: number, groupIds?: number[]): Promise<PublicityWithRelations[]> {
     let publicities = Array.from(this.publicities.values());
-    
+
     // Filter by year if provided
     if (year) {
       publicities = publicities.filter(pub => pub.year === year);
     }
-    
+
     // Sort by pubNumber in ASCENDING order (smallest first)
     publicities.sort((a, b) => a.pubNumber - b.pubNumber);
-    
+
     // LOG: Debug du tri des publicités
-    console.log(`📋 PUBLICITES (DEV): Tri par pubNumber croissant - ${publicities.length} résultats:`, 
-      publicities.slice(0, 3).map(p => `N°${p.pubNumber}(${p.designation})`).join(', ') + 
+    console.log(`📋 PUBLICITES (DEV): Tri par pubNumber croissant - ${publicities.length} résultats:`,
+      publicities.slice(0, 3).map(p => `N°${p.pubNumber}(${p.designation})`).join(', ') +
       (publicities.length > 3 ? '...' : '')
     );
-    
+
     // Return with empty participations for now (since we're using MemStorage)
     return publicities.map(pub => ({
       ...pub,
@@ -4030,17 +4033,17 @@ export class MemStorage implements IStorage {
   async getPublicity(): Promise<PublicityWithRelations | undefined> { return undefined; }
   async createPublicity(): Promise<Publicity> { return {} as Publicity; }
   async updatePublicity(): Promise<Publicity> { return {} as Publicity; }
-  async deletePublicity(): Promise<void> {}
+  async deletePublicity(): Promise<void> { }
   async getPublicityParticipations(): Promise<PublicityParticipation[]> { return []; }
-  async setPublicityParticipations(): Promise<void> {}
+  async setPublicityParticipations(): Promise<void> { }
 
   async getCustomerOrders(groupIds?: number[]): Promise<CustomerOrderWithRelations[]> {
     let orders = Array.from(this.customerOrders.values());
-    
+
     if (groupIds && groupIds.length > 0) {
       orders = orders.filter(order => groupIds.includes(order.groupId));
     }
-    
+
     return orders.map(order => ({
       ...order,
       supplier: this.suppliers.get(order.supplierId)!,
@@ -4052,7 +4055,7 @@ export class MemStorage implements IStorage {
   async getCustomerOrder(id: number): Promise<CustomerOrderWithRelations | undefined> {
     const order = this.customerOrders.get(id);
     if (!order) return undefined;
-    
+
     return {
       ...order,
       supplier: this.suppliers.get(order.supplierId)!,
@@ -4082,7 +4085,7 @@ export class MemStorage implements IStorage {
   async updateCustomerOrder(id: number, orderData: Partial<InsertCustomerOrder>): Promise<CustomerOrder> {
     const existingOrder = this.customerOrders.get(id);
     if (!existingOrder) throw new Error('Customer order not found');
-    
+
     const updatedOrder = { ...existingOrder, ...orderData, updatedAt: new Date() };
     this.customerOrders.set(id, updatedOrder);
     return updatedOrder;
@@ -4094,20 +4097,20 @@ export class MemStorage implements IStorage {
 
   async getPendingClientCalls(groupIds?: number[]): Promise<CustomerOrderWithRelations[]> {
     let orders = Array.from(this.customerOrders.values());
-    
+
     // Filter by groupIds if provided
     if (groupIds && groupIds.length > 0) {
       orders = orders.filter(order => groupIds.includes(order.groupId));
     }
-    
+
     // Find orders where client not notified and status is 'Disponible'
     const pendingOrders = orders.filter(order => {
-      return !order.customerNotified && 
-             (order.status === 'Disponible' || order.status === 'disponible' || 
-              order.status === 'Arrivé' || order.status === 'arrivé' ||
-              order.status === 'Prêt' || order.status === 'prêt');
+      return !order.customerNotified &&
+        (order.status === 'Disponible' || order.status === 'disponible' ||
+          order.status === 'Arrivé' || order.status === 'arrivé' ||
+          order.status === 'Prêt' || order.status === 'prêt');
     });
-    
+
     return pendingOrders.map(order => ({
       ...order,
       supplier: this.suppliers.get(order.supplierId)!,
@@ -4121,24 +4124,24 @@ export class MemStorage implements IStorage {
     if (!order) {
       throw new Error(`CustomerOrder with id ${customerOrderId} not found`);
     }
-    
+
     const updatedOrder = {
       ...order,
       customerNotified: true,
       updatedAt: new Date()
     };
-    
+
     this.customerOrders.set(customerOrderId, updatedOrder);
     return updatedOrder;
   }
 
   async getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]> {
     let products = Array.from(this.dlcProducts.values());
-    
+
     if (groupIds && groupIds.length > 0) {
       products = products.filter(product => groupIds.includes(product.groupId));
     }
-    
+
     if (filters) {
       if (filters.status) {
         products = products.filter(product => product.status === filters.status);
@@ -4151,11 +4154,11 @@ export class MemStorage implements IStorage {
         products = products.filter(product => {
           const supplier = this.suppliers.get(product.supplierId);
           return product.productName.toLowerCase().includes(searchTerm) ||
-                 (supplier && supplier.name.toLowerCase().includes(searchTerm));
+            (supplier && supplier.name.toLowerCase().includes(searchTerm));
         });
       }
     }
-    
+
     return products.map(product => ({
       ...product,
       supplier: this.suppliers.get(product.supplierId)!,
@@ -4167,7 +4170,7 @@ export class MemStorage implements IStorage {
   async getDlcProduct(id: number): Promise<DlcProductWithRelations | undefined> {
     const product = this.dlcProducts.get(id);
     if (!product) return undefined;
-    
+
     return {
       ...product,
       supplier: this.suppliers.get(product.supplierId)!,
@@ -4197,7 +4200,7 @@ export class MemStorage implements IStorage {
   async updateDlcProduct(id: number, productData: Partial<InsertDlcProduct>): Promise<DlcProductFrontend> {
     const existingProduct = this.dlcProducts.get(id);
     if (!existingProduct) throw new Error('DLC Product not found');
-    
+
     const updatedProduct = { ...existingProduct, ...productData, updatedAt: new Date() };
     this.dlcProducts.set(id, updatedProduct);
     return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
@@ -4210,13 +4213,13 @@ export class MemStorage implements IStorage {
   async validateDlcProduct(id: number, validatedBy: string): Promise<DlcProductFrontend> {
     const existingProduct = this.dlcProducts.get(id);
     if (!existingProduct) throw new Error('DLC Product not found');
-    
-    const updatedProduct = { 
-      ...existingProduct, 
+
+    const updatedProduct = {
+      ...existingProduct,
       validatedBy,
       validatedAt: new Date(),
       status: "valides",
-      updatedAt: new Date() 
+      updatedAt: new Date()
     };
     this.dlcProducts.set(id, updatedProduct);
     return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
@@ -4225,13 +4228,13 @@ export class MemStorage implements IStorage {
   async markDlcProductStockEpuise(id: number, markedBy: string): Promise<DlcProductFrontend> {
     const existingProduct = this.dlcProducts.get(id);
     if (!existingProduct) throw new Error('DLC Product not found');
-    
-    const updatedProduct = { 
-      ...existingProduct, 
+
+    const updatedProduct = {
+      ...existingProduct,
       stockEpuise: true,
       stockEpuiseBy: markedBy,
       stockEpuiseAt: new Date(),
-      updatedAt: new Date() 
+      updatedAt: new Date()
     };
     this.dlcProducts.set(id, updatedProduct);
     return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
@@ -4240,13 +4243,13 @@ export class MemStorage implements IStorage {
   async restoreDlcProductStock(id: number): Promise<DlcProductFrontend> {
     const existingProduct = this.dlcProducts.get(id);
     if (!existingProduct) throw new Error('DLC Product not found');
-    
-    const updatedProduct = { 
-      ...existingProduct, 
+
+    const updatedProduct = {
+      ...existingProduct,
       stockEpuise: false,
       stockEpuiseBy: null,
       stockEpuiseAt: null,
-      updatedAt: new Date() 
+      updatedAt: new Date()
     };
     this.dlcProducts.set(id, updatedProduct);
     return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
@@ -4255,13 +4258,13 @@ export class MemStorage implements IStorage {
   async markDlcProductAsProcessed(id: number, processedBy: string): Promise<DlcProductFrontend> {
     const existingProduct = this.dlcProducts.get(id);
     if (!existingProduct) throw new Error('DLC Product not found');
-    
-    const updatedProduct = { 
-      ...existingProduct, 
+
+    const updatedProduct = {
+      ...existingProduct,
       processedAt: new Date(),
       processedBy: processedBy,
       processedUntilExpiry: true,
-      updatedAt: new Date() 
+      updatedAt: new Date()
     };
     this.dlcProducts.set(id, updatedProduct);
     return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
@@ -4270,13 +4273,13 @@ export class MemStorage implements IStorage {
   async unmarkDlcProductAsProcessed(id: number): Promise<DlcProductFrontend> {
     const existingProduct = this.dlcProducts.get(id);
     if (!existingProduct) throw new Error('DLC Product not found');
-    
-    const updatedProduct = { 
-      ...existingProduct, 
+
+    const updatedProduct = {
+      ...existingProduct,
       processedAt: null,
       processedBy: null,
       processedUntilExpiry: false,
-      updatedAt: new Date() 
+      updatedAt: new Date()
     };
     this.dlcProducts.set(id, updatedProduct);
     return { ...updatedProduct, dlcDate: new Date(updatedProduct.expiryDate) } as DlcProductFrontend;
@@ -4288,28 +4291,29 @@ export class MemStorage implements IStorage {
     alertDate.setDate(today.getDate() + 15);
 
     let products = Array.from(this.dlcProducts.values());
-    
+
     if (groupIds && groupIds.length > 0) {
       products = products.filter(product => groupIds.includes(product.groupId));
     }
-    
+
     // IMPORTANT: Filtrer sur processedUntilExpiry pour ne pas réafficher les produits déjà traités
     // Les produits "traités" (processedUntilExpiry=true) ne doivent pas apparaître dans les alertes quotidiennes
     return {
-      active: products.filter(p => 
-        new Date(p.expiryDate) > today && 
-        p.status !== 'valides' && 
-        !p.processedUntilExpiry
+      active: products.filter(p =>
+        new Date(p.expiryDate) > today &&
+        p.status !== 'valides' &&
+        !p.processedUntilExpiry &&
+        !p.stockEpuise
       ).length,
       expiringSoon: products.filter(p => {
         const expiry = new Date(p.expiryDate);
         const isExpiringSoon = expiry >= today && expiry <= alertDate;
-        return isExpiringSoon && p.status !== 'valides' && !p.processedUntilExpiry;
+        return isExpiringSoon && p.status !== 'valides' && !p.processedUntilExpiry && !p.stockEpuise;
       }).length,
       expired: products.filter(p => {
         const expiry = new Date(p.expiryDate);
         const isExpired = expiry <= today;
-        return isExpired && p.status !== 'valides' && !p.processedUntilExpiry;
+        return isExpired && p.status !== 'valides' && !p.processedUntilExpiry && !p.stockEpuise;
       }).length
     };
   }
@@ -4317,13 +4321,13 @@ export class MemStorage implements IStorage {
   async getTasks(groupIds?: number[], userRole?: string): Promise<TaskWithRelations[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     let tasks = Array.from(this.tasks.values());
-    
+
     if (groupIds && groupIds.length > 0) {
       tasks = tasks.filter(task => groupIds.includes(task.groupId));
     }
-    
+
     // Filtrage par rôle pour la date de départ
     if (userRole === 'manager' || userRole === 'employee') {
       // Managers et employés : seulement les tâches dont la date de départ est atteinte ou passée
@@ -4334,7 +4338,7 @@ export class MemStorage implements IStorage {
       });
     }
     // Admin et directeur voient toutes les tâches, y compris les tâches programmées
-    
+
     return tasks.map(task => ({
       ...task,
       group: this.groups.get(task.groupId)!,
@@ -4346,7 +4350,7 @@ export class MemStorage implements IStorage {
   async getTask(id: number): Promise<TaskWithRelations | undefined> {
     const task = this.tasks.get(id);
     if (!task) return undefined;
-    
+
     return {
       ...task,
       group: this.groups.get(task.groupId)!,
@@ -4394,7 +4398,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date('2025-01-15'),
       updatedAt: new Date('2025-01-15'),
     };
-    
+
     const testOrder2: CustomerOrder = {
       id: 2,
       supplierId: 1,
@@ -4625,7 +4629,7 @@ export class MemStorage implements IStorage {
   async updateTask(id: number, taskData: Partial<InsertTask>): Promise<Task> {
     const existingTask = this.tasks.get(id);
     if (!existingTask) throw new Error('Task not found');
-    
+
     const updatedTask = { ...existingTask, ...taskData, updatedAt: new Date() };
     this.tasks.set(id, updatedTask);
     return updatedTask;
@@ -4638,30 +4642,30 @@ export class MemStorage implements IStorage {
   async completeTask(id: number, completedBy: string): Promise<void> {
     const existingTask = this.tasks.get(id);
     if (!existingTask) throw new Error('Task not found');
-    
-    const updatedTask = { 
-      ...existingTask, 
+
+    const updatedTask = {
+      ...existingTask,
       status: 'completed' as const,
       completedAt: new Date(),
       completedBy,
-      updatedAt: new Date() 
+      updatedAt: new Date()
     };
     this.tasks.set(id, updatedTask);
   }
 
   // SAV operations
-  async getSavTickets(filters?: { 
-    groupIds?: number[]; 
-    status?: string; 
-    supplierId?: number; 
+  async getSavTickets(filters?: {
+    groupIds?: number[];
+    status?: string;
+    supplierId?: number;
     priority?: string;
     startDate?: string;
     endDate?: string;
   }): Promise<SavTicketWithRelations[]> {
     const tickets = Array.from(this.savTickets.values());
-    
+
     let filteredTickets = tickets;
-    
+
     if (filters?.groupIds?.length) {
       filteredTickets = filteredTickets.filter(ticket => filters.groupIds!.includes(ticket.groupId));
     }
@@ -4676,13 +4680,13 @@ export class MemStorage implements IStorage {
     }
     if (filters?.startDate) {
       const startDate = new Date(filters.startDate);
-      filteredTickets = filteredTickets.filter(ticket => 
+      filteredTickets = filteredTickets.filter(ticket =>
         ticket.createdAt && ticket.createdAt >= startDate
       );
     }
     if (filters?.endDate) {
       const endDate = new Date(filters.endDate);
-      filteredTickets = filteredTickets.filter(ticket => 
+      filteredTickets = filteredTickets.filter(ticket =>
         ticket.createdAt && ticket.createdAt <= endDate
       );
     }
@@ -4701,7 +4705,7 @@ export class MemStorage implements IStorage {
         const group = this.groups.get(ticket.groupId);
         const creator = this.users.get(ticket.createdBy);
         const history = await this.getSavTicketHistory(ticket.id);
-        
+
         return {
           ...ticket,
           supplier: supplier!,
@@ -4735,7 +4739,7 @@ export class MemStorage implements IStorage {
 
   async createSavTicket(ticketData: InsertSavTicket): Promise<SavTicket> {
     const id = this.idCounters.savTicket++;
-    
+
     // Generate ticket number
     const currentYear = new Date().getFullYear();
     const ticketNumber = `SAV-${currentYear}-${String(id).padStart(4, '0')}`;
@@ -4766,13 +4770,13 @@ export class MemStorage implements IStorage {
   async updateSavTicket(id: number, ticketData: Partial<InsertSavTicket>): Promise<SavTicket> {
     const existingTicket = this.savTickets.get(id);
     if (!existingTicket) throw new Error('SAV ticket not found');
-    
-    const updatedTicket = { 
-      ...existingTicket, 
-      ...ticketData, 
-      updatedAt: new Date() 
+
+    const updatedTicket = {
+      ...existingTicket,
+      ...ticketData,
+      updatedAt: new Date()
     };
-    
+
     // Set resolved/closed dates based on status
     if (ticketData.status === 'resolu' && !updatedTicket.resolvedAt) {
       updatedTicket.resolvedAt = new Date();
@@ -4808,7 +4812,7 @@ export class MemStorage implements IStorage {
     criticalTickets: number;
   }> {
     let tickets = Array.from(this.savTickets.values());
-    
+
     if (groupIds?.length) {
       tickets = tickets.filter(ticket => groupIds.includes(ticket.groupId));
     }
@@ -4816,10 +4820,10 @@ export class MemStorage implements IStorage {
     const stats = {
       totalTickets: tickets.length,
       newTickets: tickets.filter(t => t.status === 'nouveau').length,
-      inProgressTickets: tickets.filter(t => 
+      inProgressTickets: tickets.filter(t =>
         ['en_cours', 'attente_pieces', 'attente_echange'].includes(t.status)
       ).length,
-      resolvedTickets: tickets.filter(t => 
+      resolvedTickets: tickets.filter(t =>
         ['resolu', 'ferme'].includes(t.status)
       ).length,
       criticalTickets: tickets.filter(t => t.priority === 'critique').length,
@@ -4941,25 +4945,25 @@ export class MemStorage implements IStorage {
     const histories = [
       // Ticket 1 history
       { ticketId: 1, action: 'created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-10T08:30:00') },
-      
+
       // Ticket 2 history
       { ticketId: 2, action: 'created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-09T14:15:00') },
       { ticketId: 2, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-12T10:20:00') },
       { ticketId: 2, action: 'comment', description: 'Contact avec le client pour confirmer les pièces manquantes. Commande des accessoires en cours.', createdBy: 'admin', createdAt: new Date('2025-08-12T10:25:00') },
-      
+
       // Ticket 3 history
       { ticketId: 3, action: 'created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-08T09:45:00') },
       { ticketId: 3, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-10T14:00:00') },
       { ticketId: 3, action: 'status_change', description: 'Statut changé de "en_cours" vers "attente_pieces"', createdBy: 'admin', createdAt: new Date('2025-08-13T16:30:00') },
       { ticketId: 3, action: 'comment', description: 'Écran de remplacement commandé. Délai annoncé de 5-7 jours ouvrables.', createdBy: 'admin', createdAt: new Date('2025-08-13T16:35:00') },
-      
+
       // Ticket 4 history  
       { ticketId: 4, action: 'created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-05T11:20:00') },
       { ticketId: 4, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-06T09:00:00') },
       { ticketId: 4, action: 'comment', description: 'Diagnostic effectué : problème de connectivité Bluetooth. Réparation en cours.', createdBy: 'admin', createdAt: new Date('2025-08-07T15:30:00') },
       { ticketId: 4, action: 'status_change', description: 'Statut changé de "en_cours" vers "resolu"', createdBy: 'admin', createdAt: new Date('2025-08-14T08:00:00') },
       { ticketId: 4, action: 'comment', description: 'Casque réparé avec succès. Module Bluetooth remplacé. Tests complets effectués.', createdBy: 'admin', createdAt: new Date('2025-08-14T08:05:00') },
-      
+
       // Ticket 5 history
       { ticketId: 5, action: 'created', description: 'Ticket créé avec le statut "nouveau"', createdBy: 'admin', createdAt: new Date('2025-08-14T07:30:00') },
       { ticketId: 5, action: 'status_change', description: 'Statut changé de "nouveau" vers "en_cours"', createdBy: 'admin', createdAt: new Date('2025-08-14T07:30:00') },
@@ -4973,7 +4977,7 @@ export class MemStorage implements IStorage {
     //     id,
     //     ...historyEntry,
     //   };
-      
+
     //   const existingHistories = this.savTicketHistories.get(historyEntry.ticketId) || [];
     //   existingHistories.push(history);
     //   this.savTicketHistories.set(historyEntry.ticketId, existingHistories);
@@ -5150,7 +5154,7 @@ export class MemStorage implements IStorage {
   // Avoir operations
   async getAvoirs(groupIds?: number[]): Promise<AvoirWithRelations[]> {
     let avoirs = Array.from(this.avoirs.values());
-    
+
     // Filter by groups if provided
     if (groupIds && groupIds.length > 0) {
       avoirs = avoirs.filter(avoir => groupIds.includes(avoir.groupId));
@@ -5169,7 +5173,7 @@ export class MemStorage implements IStorage {
   async getAvoir(id: number): Promise<AvoirWithRelations | undefined> {
     const avoir = this.avoirs.get(id);
     if (!avoir) return undefined;
-    
+
     return {
       ...avoir,
       supplier: this.suppliers.get(avoir.supplierId)!,
@@ -5198,7 +5202,7 @@ export class MemStorage implements IStorage {
   async updateAvoir(id: number, avoirData: Partial<InsertAvoir>): Promise<Avoir> {
     const existingAvoir = this.avoirs.get(id);
     if (!existingAvoir) throw new Error('Avoir not found');
-    
+
     const updatedAvoir = {
       ...existingAvoir,
       ...avoirData,
@@ -5241,14 +5245,14 @@ export class MemStorage implements IStorage {
       const delivery = this.deliveries.get(comment.deliveryId);
       const author = this.users.get(comment.authorId);
       const group = this.groups.get(comment.groupId);
-      
+
       if (!delivery || !author || !group) {
         throw new Error('Missing related data for reconciliation comment');
       }
 
       const supplier = this.suppliers.get(delivery.supplierId);
       const creator = this.users.get(delivery.createdBy);
-      
+
       if (!supplier || !creator) {
         throw new Error('Missing delivery related data for reconciliation comment');
       }
@@ -5274,14 +5278,14 @@ export class MemStorage implements IStorage {
     const delivery = this.deliveries.get(comment.deliveryId);
     const author = this.users.get(comment.authorId);
     const group = this.groups.get(comment.groupId);
-    
+
     if (!delivery || !author || !group) {
       throw new Error('Missing related data for reconciliation comment');
     }
 
     const supplier = this.suppliers.get(delivery.supplierId);
     const creator = this.users.get(delivery.createdBy);
-    
+
     if (!supplier || !creator) {
       throw new Error('Missing delivery related data for reconciliation comment');
     }
@@ -5314,7 +5318,7 @@ export class MemStorage implements IStorage {
   async updateReconciliationComment(id: number, commentData: Partial<InsertReconciliationComment>): Promise<ReconciliationComment> {
     const existingComment = this.reconciliationComments.get(id);
     if (!existingComment) throw new Error('Reconciliation comment not found');
-    
+
     const updatedComment = {
       ...existingComment,
       ...commentData,
@@ -5347,7 +5351,7 @@ export class MemStorage implements IStorage {
     // Simple implementation for development
     const orders = Array.from(this.orders.values());
     const deliveries = Array.from(this.deliveries.values());
-    
+
     // Apply filters
     const filteredOrders = orders.filter(order => {
       if (filters.startDate) {
@@ -5382,11 +5386,11 @@ export class MemStorage implements IStorage {
     // Calculate metrics
     const totalOrders = filteredOrders.length;
     const totalDeliveries = filteredDeliveries.length;
-    const reconciledDeliveries = filteredDeliveries.filter(d => 
+    const reconciledDeliveries = filteredDeliveries.filter(d =>
       d.reconciled === true || d.reconciled === 1
     ).length;
     const reconciliationRate = totalDeliveries > 0 ? (reconciledDeliveries / totalDeliveries) * 100 : 0;
-    
+
     const totalAmount = filteredDeliveries.reduce((sum, d) => {
       return sum + (parseFloat(d.blAmount as any) || 0) + (parseFloat(d.invoiceAmount as any) || 0);
     }, 0);
@@ -5449,14 +5453,14 @@ export class MemStorage implements IStorage {
     granularity?: 'day' | 'week' | 'month';
   }): Promise<Array<{ date: string; orders: number; deliveries: number }>> {
     const dataMap = new Map<string, { orders: number; deliveries: number }>();
-    
+
     // Process orders
     Array.from(this.orders.values()).forEach(order => {
       if (filters.startDate && order.plannedDate < filters.startDate) return;
       if (filters.endDate && order.plannedDate > filters.endDate) return;
       if (filters.supplierIds?.length && !filters.supplierIds.includes(order.supplierId)) return;
       if (filters.groupIds?.length && !filters.groupIds.includes(order.groupId)) return;
-      
+
       const dateKey = order.plannedDate.toISOString().split('T')[0];
       const existing = dataMap.get(dateKey) || { orders: 0, deliveries: 0 };
       existing.orders++;
@@ -5469,7 +5473,7 @@ export class MemStorage implements IStorage {
       if (filters.endDate && delivery.scheduledDate > filters.endDate) return;
       if (filters.supplierIds?.length && !filters.supplierIds.includes(delivery.supplierId)) return;
       if (filters.groupIds?.length && !filters.groupIds.includes(delivery.groupId)) return;
-      
+
       const dateKey = delivery.scheduledDate.toISOString().split('T')[0];
       const existing = dataMap.get(dateKey) || { orders: 0, deliveries: 0 };
       existing.deliveries++;
@@ -5487,12 +5491,12 @@ export class MemStorage implements IStorage {
     groupIds?: number[];
   }): Promise<Array<{ supplierId: number; supplierName: string; deliveries: number; amount: number }>> {
     const supplierStats = new Map<number, { name: string; deliveries: number; amount: number }>();
-    
+
     Array.from(this.deliveries.values()).forEach(delivery => {
       if (filters.startDate && delivery.scheduledDate < filters.startDate) return;
       if (filters.endDate && delivery.scheduledDate > filters.endDate) return;
       if (filters.groupIds?.length && !filters.groupIds.includes(delivery.groupId)) return;
-      
+
       const supplier = this.suppliers.get(delivery.supplierId);
       if (supplier) {
         const stats = supplierStats.get(delivery.supplierId) || { name: supplier.name, deliveries: 0, amount: 0 };
@@ -5513,13 +5517,13 @@ export class MemStorage implements IStorage {
     supplierIds?: number[];
   }): Promise<Array<{ groupId: number; storeName: string; orders: number; deliveries: number }>> {
     const storeStats = new Map<number, { name: string; orders: number; deliveries: number }>();
-    
+
     // Count orders
     Array.from(this.orders.values()).forEach(order => {
       if (filters.startDate && order.plannedDate < filters.startDate) return;
       if (filters.endDate && order.plannedDate > filters.endDate) return;
       if (filters.supplierIds?.length && !filters.supplierIds.includes(order.supplierId)) return;
-      
+
       const group = this.groups.get(order.groupId);
       if (group) {
         const stats = storeStats.get(order.groupId) || { name: group.name, orders: 0, deliveries: 0 };
@@ -5533,7 +5537,7 @@ export class MemStorage implements IStorage {
       if (filters.startDate && delivery.scheduledDate < filters.startDate) return;
       if (filters.endDate && delivery.scheduledDate > filters.endDate) return;
       if (filters.supplierIds?.length && !filters.supplierIds.includes(delivery.supplierId)) return;
-      
+
       const group = this.groups.get(delivery.groupId);
       if (group) {
         const stats = storeStats.get(delivery.groupId) || { name: group.name, orders: 0, deliveries: 0 };
