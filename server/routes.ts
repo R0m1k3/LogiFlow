@@ -6040,12 +6040,24 @@ RÉSUMÉ DU SCAN
         if (req.query[key]) params.append(key, req.query[key] as string);
       }
       const response = await fetch(`https://api.ffnancy.fr/api/articles?${params}`);
-      if (!response.ok) {
-        return res.status(response.status).json({ error: 'API ffnancy error' });
+      if (!response.ok) return res.status(response.status).json({ error: 'API ffnancy error' });
+      res.json(await response.json());
+    } catch {
+      res.status(500).json({ error: 'Failed to reach API ffnancy' });
+    }
+  });
+
+  app.get('/api/ffnancy/mouvements/entrees', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const params = new URLSearchParams();
+      const allowed = ['artNoId', 'dateDebut', 'dateFin', 'site', 'page', 'limit'];
+      for (const key of allowed) {
+        if (req.query[key]) params.append(key, req.query[key] as string);
       }
-      const data = await response.json();
-      res.json(data);
-    } catch (error) {
+      const response = await fetch(`https://api.ffnancy.fr/api/mouvements/entrees?${params}`);
+      if (!response.ok) return res.status(response.status).json({ error: 'API ffnancy error' });
+      res.json(await response.json());
+    } catch {
       res.status(500).json({ error: 'Failed to reach API ffnancy' });
     }
   });

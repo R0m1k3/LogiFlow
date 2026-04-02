@@ -128,19 +128,33 @@ export default function DlcPage() {
     eanDebounceRef.current = setTimeout(async () => {
       setEanLookupLoading(true);
       try {
+        // Étape 1 : récupérer l'article par EAN
         const res = await fetch(`/api/ffnancy/articles?ean=${encodeURIComponent(gencodeValue)}&limit=1`, { credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
         const article = data.articles?.[0];
         if (!article) return;
 
-        // Toujours mettre à jour le nom du produit
         form.setValue("productName", article.libelle1, { shouldValidate: true });
 
-        // Matcher le fournisseur par codefou en priorité, sinon par nom
-        if (article.codefou_principal) {
+        // Étape 2 : chercher le fournisseur de la dernière entrée en stock
+        let codefouToMatch = article.codefou_principal;
+        try {
+          const mvtRes = await fetch(
+            `/api/ffnancy/mouvements/entrees?artNoId=${article.no_id}&limit=1&dateDebut=2000-01-01`,
+            { credentials: 'include' }
+          );
+          if (mvtRes.ok) {
+            const mvtData = await mvtRes.json();
+            const lastEntree = mvtData.entrees?.[0];
+            if (lastEntree?.codefou) codefouToMatch = lastEntree.codefou;
+          }
+        } catch { /* fallback sur codefou_principal */ }
+
+        // Matching : codefou exact en priorité, fallback par nom
+        if (codefouToMatch) {
           const matched = (suppliers as any[]).find((s: any) =>
-            s.codefou && s.codefou.trim().toLowerCase() === article.codefou_principal.trim().toLowerCase()
+            s.codefou && s.codefou.trim().toLowerCase() === codefouToMatch.trim().toLowerCase()
           ) || (suppliers as any[]).find((s: any) =>
             s.name.toLowerCase().trim().includes(article.nom_fou_principal?.toLowerCase().trim() || '') ||
             (article.nom_fou_principal?.toLowerCase().trim() || '').includes(s.name.toLowerCase().trim())
