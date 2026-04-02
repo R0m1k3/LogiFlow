@@ -80,6 +80,7 @@ export const suppliers = pgTable("suppliers", {
   name: varchar("name").notNull(),
   contact: varchar("contact"),
   phone: varchar("phone"),
+  codefou: varchar("codefou"), // Code fournisseur dans l'API ffnancy
   hasDlc: boolean("has_dlc").default(false), // Coche DLC pour la gestion DLC
   paymentMethod: varchar("payment_method"), // Mode de paiement: Virement, Traite, Traite Magnétique, Chèque
   createdAt: timestamp("created_at").defaultNow(),

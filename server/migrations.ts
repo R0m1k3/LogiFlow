@@ -37,6 +37,10 @@ export async function runMigrations() {
     // Ajouter les migrations hardcodées directement dans le code pour éviter les problèmes de chemins
     const hardcodedMigrations = [
       {
+        filename: '20260402000000_add_codefou_to_suppliers.sql',
+        content: `ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS codefou VARCHAR;`
+      },
+      {
         filename: '20250903141000_create_webhook_bap_config.sql',
         content: `CREATE TABLE IF NOT EXISTS webhook_bap_config (
   id SERIAL PRIMARY KEY,

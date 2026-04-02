@@ -161,11 +161,12 @@ export default function MobileDlcPage() {
 
                 form.setValue("productName", article.libelle1, { shouldValidate: true });
 
-                if (article.nom_fou_principal) {
-                    const apiName = article.nom_fou_principal.toLowerCase().trim();
+                if (article.codefou_principal) {
                     const matched = (suppliers as any[]).find((s: any) =>
-                        s.name.toLowerCase().trim().includes(apiName) ||
-                        apiName.includes(s.name.toLowerCase().trim())
+                        s.codefou && s.codefou.trim().toLowerCase() === article.codefou_principal.trim().toLowerCase()
+                    ) || (suppliers as any[]).find((s: any) =>
+                        s.name.toLowerCase().trim().includes(article.nom_fou_principal?.toLowerCase().trim() || '') ||
+                        (article.nom_fou_principal?.toLowerCase().trim() || '').includes(s.name.toLowerCase().trim())
                     );
                     if (matched) {
                         form.setValue("supplierId", matched.id, { shouldValidate: true });

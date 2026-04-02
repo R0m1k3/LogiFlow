@@ -43,6 +43,7 @@ export default function Suppliers() {
     name: "",
     contact: "",
     phone: "",
+    codefou: "",
     hasDlc: false,
     automaticReconciliation: false,
     requiresControl: false,
@@ -198,6 +199,7 @@ export default function Suppliers() {
       name: "",
       contact: "",
       phone: "",
+      codefou: "",
       hasDlc: false,
       automaticReconciliation: false,
       requiresControl: false,
@@ -236,6 +238,7 @@ export default function Suppliers() {
       name: supplier.name || "",
       contact: supplier.contact || "",
       phone: supplier.phone || "",
+      codefou: (supplier as any).codefou || "",
       hasDlc: supplier.hasDlc || false,
       automaticReconciliation: supplier.automaticReconciliation || false,
       requiresControl: supplier.requiresControl || false,
@@ -525,6 +528,16 @@ export default function Suppliers() {
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
                 placeholder="Numéro de téléphone"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="codefou">Code fournisseur API <span className="text-xs text-gray-400 font-normal">(liaison ffnancy)</span></Label>
+              <Input
+                id="codefou"
+                value={formData.codefou}
+                onChange={(e) => handleChange('codefou', e.target.value)}
+                placeholder="ex: FOU01"
               />
             </div>
 
