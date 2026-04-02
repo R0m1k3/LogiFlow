@@ -2,7 +2,7 @@
  * MobileDlcPage.tsx
  * Version mobile de la page Gestion des DLC
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
@@ -20,7 +20,8 @@ import {
     CheckCircle,
     X,
     Calendar,
-    MoreVertical
+    MoreVertical,
+    Loader2
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -138,6 +139,49 @@ export default function MobileDlcPage() {
             notes: ""
         }
     });
+
+    // EAN lookup from external API
+    const [eanLookupLoading, setEanLookupLoading] = useState(false);
+    const eanDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const gencodeValue = form.watch("gencode");
+
+    useEffect(() => {
+        if (!gencodeValue || gencodeValue.length < 8) return;
+
+        if (eanDebounceRef.current) clearTimeout(eanDebounceRef.current);
+
+        eanDebounceRef.current = setTimeout(async () => {
+            setEanLookupLoading(true);
+            try {
+                const res = await fetch(`https://api.ffnancy.fr/api/articles?ean=${encodeURIComponent(gencodeValue)}&limit=1`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const article = data.articles?.[0];
+                if (!article) return;
+
+                form.setValue("productName", article.libelle1, { shouldValidate: true });
+
+                if (article.nom_fou_principal) {
+                    const apiName = article.nom_fou_principal.toLowerCase().trim();
+                    const matched = (suppliers as any[]).find((s: any) =>
+                        s.name.toLowerCase().trim().includes(apiName) ||
+                        apiName.includes(s.name.toLowerCase().trim())
+                    );
+                    if (matched) {
+                        form.setValue("supplierId", matched.id, { shouldValidate: true });
+                    }
+                }
+            } catch {
+                // Lookup best-effort, on ignore les erreurs
+            } finally {
+                setEanLookupLoading(false);
+            }
+        }, 600);
+
+        return () => {
+            if (eanDebounceRef.current) clearTimeout(eanDebounceRef.current);
+        };
+    }, [gencodeValue, suppliers]);
 
     const onSubmit = (data: any) => {
         let groupId = selectedStoreId;
@@ -386,7 +430,16 @@ export default function MobileDlcPage() {
                                     <FormItem>
                                         <FormLabel>Gencode (Scanner si dispo)</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="EAN13" {...field} />
+                                            <div className="relative">
+                                                <Input
+                                                    placeholder="EAN13"
+                                                    {...field}
+                                                    className={eanLookupLoading ? "pr-8" : ""}
+                                                />
+                                                {eanLookupLoading && (
+                                                    <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />
+                                                )}
+                                            </div>
                                         </FormControl>
                                     </FormItem>
                                 )}
