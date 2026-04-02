@@ -28,9 +28,7 @@ export default function Layout({ children }: LayoutProps) {
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(() => {
     // Restaurer le selectedStoreId depuis localStorage si disponible
     const saved = localStorage.getItem('selectedStoreId');
-    const restoredId = saved ? parseInt(saved) : null;
-    console.log('🏪 Layout - Restoring selectedStoreId from localStorage:', { saved, restoredId });
-    return restoredId;
+    return saved ? parseInt(saved) : null;
   });
 
   const [storeInitialized, setStoreInitialized] = useState(false);
@@ -39,10 +37,8 @@ export default function Layout({ children }: LayoutProps) {
     // Restaurer l'état de la sidebar depuis localStorage, mais forcer collapsed sur mobile
     try {
       const saved = localStorage.getItem('sidebarCollapsed');
-      console.log('🔧 Layout - Restoring sidebar state:', { saved, isMobile });
       return isMobile ? true : (saved ? JSON.parse(saved) : false);
-    } catch (error) {
-      console.error('Error reading sidebar state from localStorage:', error);
+    } catch {
       return isMobile ? true : false;
     }
   });
@@ -63,55 +59,21 @@ export default function Layout({ children }: LayoutProps) {
       if (selectedStoreId) {
         const storeExists = stores.find(store => store.id === selectedStoreId);
         if (!storeExists) {
-          console.log('🏪 Selected store not found in available stores, clearing selection:', {
-            selectedStoreId,
-            userRole: user.role,
-            availableStores: stores.map(s => s.id)
-          });
           setSelectedStoreId(null);
           localStorage.removeItem('selectedStoreId');
           needsUpdate = true;
-        } else {
-          console.log('🏪 Selected store validated successfully:', {
-            selectedStoreId,
-            userRole: user.role,
-            storeName: storeExists.name
-          });
         }
       }
 
       // IMPORTANT FIX: Pour les rôles directeur/manager, forcer la sélection d'un magasin spécifique
       // si aucun n'est sélectionné et qu'ils n'ont accès qu'à un seul magasin
       if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1 && !needsUpdate) {
-        console.log('🏪 Auto-selecting single available store for directeur/manager:', {
-          storeId: stores[0].id,
-          storeName: stores[0].name,
-          userRole: user.role,
-          userId: user.id,
-          previousSelectedStoreId: selectedStoreId,
-          timestamp: new Date().toISOString()
-        });
         const singleStoreId = stores[0].id;
         setSelectedStoreId(singleStoreId);
         localStorage.setItem('selectedStoreId', singleStoreId.toString());
       }
 
       // VALIDATION CRITIQUE: Pour les directeurs/managers, s'assurer qu'un magasin est toujours sélectionné
-      if ((user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && !needsUpdate) {
-        console.log('🚨 CRITICAL: Directeur/Manager has no store selected, this will cause empty data display:', {
-          userId: user.id,
-          userRole: user.role,
-          availableStores: stores.map(s => ({ id: s.id, name: s.name }))
-        });
-      }
-
-      console.log('🏪 Store initialization complete:', {
-        user: user.role,
-        selectedStoreId,
-        storesCount: stores.length,
-        validatedStore: selectedStoreId ? stores.find(s => s.id === selectedStoreId)?.name : 'None',
-        autoSelected: (user.role === 'directeur' || user.role === 'manager') && !selectedStoreId && stores.length === 1
-      });
       setStoreInitialized(true);
     }
   }, [user, stores, selectedStoreId]);
@@ -172,15 +134,7 @@ export default function Layout({ children }: LayoutProps) {
                 <Select
                   value={selectedStoreId?.toString() || (user.role === 'admin' ? "all" : "")}
                   onValueChange={(value) => {
-                    console.log('🏪 Store selector changed:', {
-                      value,
-                      userRole: user.role,
-                      parsed: value === "all" ? null : parseInt(value)
-                    });
                     const newStoreId = value === "all" ? null : parseInt(value);
-
-                    // Invalider toutes les variantes de queryKey pour changement magasin
-                    console.log('🧹 Invalidating data caches for store change');
                     queryClient.invalidateQueries({
                       predicate: (query) => {
                         const key = query.queryKey;
@@ -194,10 +148,8 @@ export default function Layout({ children }: LayoutProps) {
                     // Sauvegarder dans localStorage et mettre à jour l'état
                     if (newStoreId) {
                       localStorage.setItem('selectedStoreId', newStoreId.toString());
-                      console.log('💾 Store saved to localStorage:', newStoreId);
                     } else {
                       localStorage.removeItem('selectedStoreId');
-                      console.log('🗑️ Store removed from localStorage');
                     }
                     setSelectedStoreId(newStoreId);
                   }}

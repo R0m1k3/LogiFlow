@@ -308,15 +308,9 @@ export default function Dashboard() {
     }) : []; // Afficher toutes les commandes en attente
 
   const upcomingDeliveries = Array.isArray(allDeliveries) ? allDeliveries
-    .filter((d: any) => {
-      const isPlanned = d.status === 'planned';
-      console.log('🚚 Dashboard - Delivery filter:', { id: d.id, status: d.status, isPlanned, scheduledDate: d.scheduledDate });
-      return isPlanned;
-    })
+    .filter((d: any) => d.status === 'planned')
     .sort((a: any, b: any) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
-    .slice(0, 4) : []; // Afficher les 4 prochaines livraisons
-
-  console.log('🚚 Dashboard - Upcoming deliveries result:', upcomingDeliveries.length, upcomingDeliveries);
+    .slice(0, 4) : [];
 
   // Calculs pour les statistiques
   const pendingOrdersCount = Array.isArray(allOrders) ? allOrders.filter((order: any) => order.status === 'pending').length : 0;
@@ -373,19 +367,6 @@ export default function Dashboard() {
     }
   };
 
-  console.log('📊 Dashboard Debug - Raw Data:', {
-    allOrders: Array.isArray(allOrders) ? allOrders.length : 'NOT_ARRAY',
-    allDeliveries: Array.isArray(allDeliveries) ? allDeliveries.length : 'NOT_ARRAY',
-    customerOrders: Array.isArray(customerOrders) ? customerOrders.length : 'NOT_ARRAY',
-    upcomingPublicities: Array.isArray(upcomingPublicities) ? upcomingPublicities.length : 'NOT_ARRAY',
-    stats: stats,
-    samples: {
-      order: Array.isArray(allOrders) && allOrders.length > 0 ? allOrders[0] : null,
-      delivery: Array.isArray(allDeliveries) && allDeliveries.length > 0 ? allDeliveries[0] : null,
-      customerOrder: Array.isArray(customerOrders) && customerOrders.length > 0 ? customerOrders[0] : null,
-      publicity: Array.isArray(upcomingPublicities) && upcomingPublicities.length > 0 ? upcomingPublicities[0] : null
-    }
-  });
 
   // Statistiques pour les commandes clients
   const ordersByStatus = {

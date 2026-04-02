@@ -184,11 +184,6 @@ export default function Sidebar() {
     }
   };
 
-  // Debug logging pour production
-  console.log('Sidebar - User:', user);
-  console.log('Sidebar - isLoading:', isLoading);
-  console.log('Sidebar - error:', error);
-
   const handleLogout = async () => {
     try {
       // Force logout via fetch to ensure session is destroyed
@@ -206,13 +201,11 @@ export default function Sidebar() {
 
   const toggleSidebar = () => {
     const newCollapsed = !sidebarCollapsed;
-    console.log('🔧 Sidebar - Toggling sidebar:', { from: sidebarCollapsed, to: newCollapsed });
     setSidebarCollapsed(newCollapsed);
     try {
       localStorage.setItem('sidebarCollapsed', JSON.stringify(newCollapsed));
-      console.log('💾 Sidebar state saved to localStorage:', newCollapsed);
-    } catch (error) {
-      console.error('Error saving sidebar state:', error);
+    } catch {
+      // ignore
     }
   };
 
@@ -363,12 +356,7 @@ export default function Sidebar() {
   ];
 
   const hasPermission = (roles: string[]) => {
-    const hasRole = user?.role && roles.includes(user.role);
-    // Debug uniquement en développement pour éviter spam console
-    if (import.meta.env.MODE === 'development') {
-      console.log('hasPermission check:', { userRole: user?.role, roles, hasRole });
-    }
-    return hasRole;
+    return user?.role && roles.includes(user.role);
   };
 
 
@@ -391,14 +379,6 @@ export default function Sidebar() {
 
   const sidebarClasses = getSidebarClasses();
 
-  // Debug log pour vérifier l'état de la sidebar
-  console.log('🔧 Sidebar Debug:', {
-    isMobile,
-    sidebarCollapsed,
-    mobileMenuOpen,
-    width: sidebarCollapsed ? 'collapsed (64px)' : 'expanded (256px)',
-    classes: sidebarClasses
-  });
 
   // Si l'utilisateur n'est pas encore chargé, afficher un état de chargement
   if (isLoading) {
