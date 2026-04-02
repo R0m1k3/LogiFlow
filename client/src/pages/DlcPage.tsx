@@ -128,7 +128,7 @@ export default function DlcPage() {
     eanDebounceRef.current = setTimeout(async () => {
       setEanLookupLoading(true);
       try {
-        const res = await fetch(`https://api.ffnancy.fr/api/articles?ean=${encodeURIComponent(gencodeValue)}&limit=1`);
+        const res = await fetch(`/api/ffnancy/articles?ean=${encodeURIComponent(gencodeValue)}&limit=1`, { credentials: 'include' });
         if (!res.ok) return;
         const data = await res.json();
         const article = data.articles?.[0];

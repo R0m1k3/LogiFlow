@@ -6031,6 +6031,25 @@ RÉSUMÉ DU SCAN
     }
   });
 
+  // Proxy API ffnancy - évite les problèmes CORS côté navigateur
+  app.get('/api/ffnancy/articles', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const params = new URLSearchParams();
+      const allowed = ['search', 'codein', 'ean', 'codefou', 'actif', 'page', 'limit'];
+      for (const key of allowed) {
+        if (req.query[key]) params.append(key, req.query[key] as string);
+      }
+      const response = await fetch(`https://api.ffnancy.fr/api/articles?${params}`);
+      if (!response.ok) {
+        return res.status(response.status).json({ error: 'API ffnancy error' });
+      }
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to reach API ffnancy' });
+    }
+  });
+
   // Create server instance
   const httpServer = createServer(app);
 
