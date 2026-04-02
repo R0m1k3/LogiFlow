@@ -906,32 +906,30 @@ export default function CustomerOrders() {
                           <Edit className="h-4 w-4" />
                         </Button>
                         {canShowButtons(order.status) && (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePrintLabel(order)}
-                            >
-                              <Printer className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleNotificationToggle(order)}
-                              className={order.customerNotified ? "bg-green-100 border-green-300" : ""}
-                              title={order.customerNotified && (order as any).notifiedAt
-                                ? `Contacté le ${format(new Date((order as any).notifiedAt), "dd/MM/yyyy 'à' HH:mm", { locale: fr })}${(order as any).notifiedComment ? ` — ${(order as any).notifiedComment}` : ''}`
-                                : "Marquer client comme contacté"
-                              }
-                            >
-                              {order.customerNotified ? (
-                                <PhoneCall className="h-4 w-4 text-green-700" />
-                              ) : (
-                                <Phone className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePrintLabel(order)}
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
                         )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleNotificationToggle(order)}
+                          className={order.customerNotified ? "bg-green-100 border-green-300" : ""}
+                          title={order.customerNotified && (order as any).notifiedAt
+                            ? `Contacté le ${format(new Date((order as any).notifiedAt), "dd/MM/yyyy 'à' HH:mm", { locale: fr })}${(order as any).notifiedComment ? ` — ${(order as any).notifiedComment}` : ''}`
+                            : "Marquer client comme contacté"
+                          }
+                        >
+                          {order.customerNotified ? (
+                            <PhoneCall className="h-4 w-4 text-green-700" />
+                          ) : (
+                            <Phone className="h-4 w-4" />
+                          )}
+                        </Button>
                         {permissions.canDelete('customer-orders') && (
                           <Button
                             variant="outline"
