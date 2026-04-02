@@ -3,8 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
-import { useState, useEffect, useRef } from "react";
-import { Loader2 } from "lucide-react";
+import { useState, useRef } from "react";
+import { Loader2, Search } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -156,17 +156,9 @@ export function CustomerOrderForm({
     form.setValue('groupId', userGroupId);
   }
 
-  // Lookup API ffnancy par gencode ou référence
+  // Lookup API ffnancy par gencode ou référence (déclenché manuellement)
   const [articleLookupLoading, setArticleLookupLoading] = useState(false);
   const [articleNotFound, setArticleNotFound] = useState(false);
-  // Flag pour éviter que le remplissage auto de productReference ne redéclenche une recherche
-  const autoFilledRef = useRef(false);
-  // En mode édition, ignorer les watchers au premier rendu (valeurs déjà remplies)
-  const initialGencodeSkipRef = useRef(!!order);
-  const initialRefSkipRef = useRef(!!order);
-  const lookupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const gencodeValue = form.watch("gencode");
-  const referenceValue = form.watch("productReference");
 
   const fetchAndFillArticle = async (params: URLSearchParams) => {
     setArticleLookupLoading(true);
@@ -179,7 +171,6 @@ export function CustomerOrderForm({
       if (!article) { setArticleNotFound(true); return; }
 
       setArticleNotFound(false);
-      autoFilledRef.current = true; // bloquer le watcher référence
       form.setValue("productName", article.libelle1, { shouldValidate: true });
       if (article.gtin) form.setValue("gencode", article.gtin, { shouldValidate: true });
       if (article.ref_fou_principale) form.setValue("productReference", article.ref_fou_principale, { shouldValidate: true });
@@ -212,27 +203,15 @@ export function CustomerOrderForm({
     }
   };
 
-  useEffect(() => {
-    if (initialGencodeSkipRef.current) { initialGencodeSkipRef.current = false; return; }
-    if (!gencodeValue || gencodeValue.length < 8) { setArticleNotFound(false); return; }
-    if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
-    lookupDebounceRef.current = setTimeout(() => {
-      fetchAndFillArticle(new URLSearchParams({ ean: gencodeValue }));
-    }, 600);
-    return () => { if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current); };
-  }, [gencodeValue]);
+  const handleSearchByGencode = () => {
+    const val = form.getValues("gencode");
+    if (val) fetchAndFillArticle(new URLSearchParams({ ean: val }));
+  };
 
-  useEffect(() => {
-    // Si la valeur a été remplie automatiquement, on ignore ce cycle
-    if (autoFilledRef.current) { autoFilledRef.current = false; return; }
-    if (initialRefSkipRef.current) { initialRefSkipRef.current = false; return; }
-    if (!referenceValue || referenceValue.length < 3) { setArticleNotFound(false); return; }
-    if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
-    lookupDebounceRef.current = setTimeout(() => {
-      fetchAndFillArticle(new URLSearchParams({ codein: referenceValue }));
-    }, 600);
-    return () => { if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current); };
-  }, [referenceValue]);
+  const handleSearchByReference = () => {
+    const val = form.getValues("productReference");
+    if (val) fetchAndFillArticle(new URLSearchParams({ codein: val }));
+  };
 
   return (
     <Form {...form}>
@@ -337,9 +316,18 @@ export function CustomerOrderForm({
                 <FormItem>
                   <FormLabel>Référence (optionnel)</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <Input placeholder="REF-123456" {...field} className={articleLookupLoading ? "pr-8" : ""} />
-                      {articleLookupLoading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />}
+                    <div className="flex gap-2">
+                      <Input placeholder="REF-123456" {...field} />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSearchByReference}
+                        disabled={articleLookupLoading}
+                        className="shrink-0"
+                      >
+                        {articleLookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      </Button>
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -354,9 +342,18 @@ export function CustomerOrderForm({
                 <FormItem>
                   <FormLabel>Gencode (obligatoire)</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <Input placeholder="Code à barres" {...field} className={articleLookupLoading ? "pr-8" : ""} />
-                      {articleLookupLoading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />}
+                    <div className="flex gap-2">
+                      <Input placeholder="Code à barres" {...field} />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSearchByGencode}
+                        disabled={articleLookupLoading}
+                        className="shrink-0"
+                      >
+                        {articleLookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      </Button>
                     </div>
                   </FormControl>
                   <FormMessage />

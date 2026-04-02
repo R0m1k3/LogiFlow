@@ -23,7 +23,8 @@ import {
     X,
     Filter,
     Loader2,
-    MessageSquare
+    MessageSquare,
+    Search
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -183,13 +184,9 @@ export default function MobileCustomerOrdersPage() {
         }
     });
 
-    // Lookup API ffnancy par gencode ou référence
+    // Lookup API ffnancy par gencode ou référence (déclenché manuellement)
     const [articleLookupLoading, setArticleLookupLoading] = useState(false);
     const [articleNotFound, setArticleNotFound] = useState(false);
-    const autoFilledRef = useRef(false);
-    const lookupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const gencodeValue = form.watch("gencode");
-    const referenceValue = form.watch("productReference");
 
     const fetchAndFillArticle = async (params: URLSearchParams) => {
         setArticleLookupLoading(true);
@@ -202,7 +199,6 @@ export default function MobileCustomerOrdersPage() {
             if (!article) { setArticleNotFound(true); return; }
 
             setArticleNotFound(false);
-            autoFilledRef.current = true;
             form.setValue("productName", article.libelle1, { shouldValidate: true });
             if (article.gtin) form.setValue("gencode", article.gtin, { shouldValidate: true });
             if (article.ref_fou_principale) form.setValue("productReference", article.ref_fou_principale, { shouldValidate: true });
@@ -234,24 +230,15 @@ export default function MobileCustomerOrdersPage() {
         }
     };
 
-    useEffect(() => {
-        if (!gencodeValue || gencodeValue.length < 8) { setArticleNotFound(false); return; }
-        if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
-        lookupDebounceRef.current = setTimeout(() => {
-            fetchAndFillArticle(new URLSearchParams({ ean: gencodeValue }));
-        }, 600);
-        return () => { if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current); };
-    }, [gencodeValue]);
+    const handleSearchByGencode = () => {
+        const val = form.getValues("gencode");
+        if (val) fetchAndFillArticle(new URLSearchParams({ ean: val }));
+    };
 
-    useEffect(() => {
-        if (autoFilledRef.current) { autoFilledRef.current = false; return; }
-        if (!referenceValue || referenceValue.length < 3) { setArticleNotFound(false); return; }
-        if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
-        lookupDebounceRef.current = setTimeout(() => {
-            fetchAndFillArticle(new URLSearchParams({ codein: referenceValue }));
-        }, 600);
-        return () => { if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current); };
-    }, [referenceValue]);
+    const handleSearchByReference = () => {
+        const val = form.getValues("productReference");
+        if (val) fetchAndFillArticle(new URLSearchParams({ codein: val }));
+    };
 
     const onSubmit = (data: any) => {
         // Validation basique groupe
@@ -483,9 +470,11 @@ export default function MobileCustomerOrdersPage() {
                                         <FormItem>
                                             <FormLabel>Référence (Optionnel)</FormLabel>
                                             <FormControl>
-                                                <div className="relative">
-                                                    <Input placeholder="REF-123..." {...field} className={articleLookupLoading ? "pr-8" : ""} />
-                                                    {articleLookupLoading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />}
+                                                <div className="flex gap-2">
+                                                    <Input placeholder="REF-123..." {...field} />
+                                                    <Button type="button" variant="outline" size="sm" onClick={handleSearchByReference} disabled={articleLookupLoading} className="shrink-0">
+                                                        {articleLookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                                                    </Button>
                                                 </div>
                                             </FormControl>
                                         </FormItem>
@@ -550,9 +539,11 @@ export default function MobileCustomerOrdersPage() {
                                         <FormItem>
                                             <FormLabel>Gencode (Scanner si dispo)</FormLabel>
                                             <FormControl>
-                                                <div className="relative">
-                                                    <Input placeholder="EAN13" {...field} className={articleLookupLoading ? "pr-8" : ""} />
-                                                    {articleLookupLoading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />}
+                                                <div className="flex gap-2">
+                                                    <Input placeholder="EAN13" {...field} />
+                                                    <Button type="button" variant="outline" size="sm" onClick={handleSearchByGencode} disabled={articleLookupLoading} className="shrink-0">
+                                                        {articleLookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                                                    </Button>
                                                 </div>
                                             </FormControl>
                                         </FormItem>
