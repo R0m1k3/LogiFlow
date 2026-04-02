@@ -164,7 +164,6 @@ function RouterProduction() {
         <Route path="/sav" component={SavTickets} />
         <Route path="/avoirs" component={Avoirs} />
         <Route path="/analytics" component={Analytics} />
-        <Route path="/sales-analysis" component={SalesAnalysisPage} />
         <Route path="/payment-schedule" component={PaymentSchedulePage} />
 
         {/* Routes de compatibilité - redirection vers utilities */}
