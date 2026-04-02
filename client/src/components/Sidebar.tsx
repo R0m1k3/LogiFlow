@@ -35,7 +35,6 @@ import {
   FileUp,
   Send,
   Receipt,
-  TrendingUp,
   CreditCard
 } from "lucide-react";
 
@@ -289,12 +288,6 @@ export default function Sidebar() {
           label: "Statistiques",
           icon: BarChart3,
           roles: ["admin", "directeur", "manager"]
-        },
-        {
-          path: "/sales-analysis",
-          label: "Analyse Vente",
-          icon: TrendingUp,
-          roles: ["admin", "directeur"]
         },
       ]
     },

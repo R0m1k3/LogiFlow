@@ -198,7 +198,8 @@ export default function Dashboard() {
     queryKey: ['/api/ad-campaigns', 'upcoming'],
     queryFn: async () => {
       // Essayer d'abord 2024, puis 2025 pour avoir toutes les publicités
-      const years = [2024, 2025];
+      const currentYear = new Date().getFullYear();
+      const years = [currentYear - 1, currentYear, currentYear + 1];
       let allPublicities: PublicityWithRelations[] = [];
 
       for (const year of years) {
