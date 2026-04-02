@@ -161,6 +161,8 @@ export function CustomerOrderForm({
   const [articleNotFound, setArticleNotFound] = useState(false);
   // Flag pour éviter que le remplissage auto de productReference ne redéclenche une recherche
   const autoFilledRef = useRef(false);
+  // En mode édition, ignorer les watchers au premier rendu (valeurs déjà remplies)
+  const initialEditSkipRef = useRef(!!order);
   const lookupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gencodeValue = form.watch("gencode");
   const referenceValue = form.watch("productReference");
@@ -210,6 +212,7 @@ export function CustomerOrderForm({
   };
 
   useEffect(() => {
+    if (initialEditSkipRef.current) { initialEditSkipRef.current = false; return; }
     if (!gencodeValue || gencodeValue.length < 8) { setArticleNotFound(false); return; }
     if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
     lookupDebounceRef.current = setTimeout(() => {
