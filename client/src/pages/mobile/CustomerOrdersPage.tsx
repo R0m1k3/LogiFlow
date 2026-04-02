@@ -2,7 +2,7 @@
  * MobileCustomerOrdersPage.tsx
  * Version mobile de la page Commandes Clients avec création
  */
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
@@ -20,7 +20,8 @@ import {
     Plus,
     MoreVertical,
     X,
-    Filter
+    Filter,
+    Loader2
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -156,6 +157,70 @@ export default function MobileCustomerOrdersPage() {
             deposit: 0
         }
     });
+
+    // Lookup API ffnancy par gencode ou référence
+    const [articleLookupLoading, setArticleLookupLoading] = useState(false);
+    const lookupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const gencodeValue = form.watch("gencode");
+    const referenceValue = form.watch("productReference");
+
+    const fetchAndFillArticle = async (params: URLSearchParams) => {
+        setArticleLookupLoading(true);
+        try {
+            const res = await fetch(`/api/ffnancy/articles?${params}&limit=1`, { credentials: 'include' });
+            if (!res.ok) return;
+            const data = await res.json();
+            const article = data.articles?.[0];
+            if (!article) return;
+
+            form.setValue("productName", article.libelle1, { shouldValidate: true });
+            if (article.gtin) form.setValue("gencode", article.gtin, { shouldValidate: true });
+            if (article.codein) form.setValue("productReference", article.codein, { shouldValidate: true });
+
+            let codefouToMatch = article.codefou_principal;
+            try {
+                const mvtRes = await fetch(
+                    `/api/ffnancy/mouvements/entrees?artNoId=${article.no_id}&limit=1&dateDebut=2000-01-01`,
+                    { credentials: 'include' }
+                );
+                if (mvtRes.ok) {
+                    const mvtData = await mvtRes.json();
+                    const lastEntree = mvtData.entrees?.[0];
+                    if (lastEntree?.codefou) codefouToMatch = lastEntree.codefou;
+                }
+            } catch { /* fallback codefou_principal */ }
+
+            if (codefouToMatch) {
+                const matched = (suppliers as any[]).find((s: any) =>
+                    s.codefou && s.codefou.trim().toLowerCase() === codefouToMatch.trim().toLowerCase()
+                ) || (suppliers as any[]).find((s: any) =>
+                    s.name.toLowerCase().trim().includes(article.nom_fou_principal?.toLowerCase().trim() || '') ||
+                    (article.nom_fou_principal?.toLowerCase().trim() || '').includes(s.name.toLowerCase().trim())
+                );
+                if (matched) form.setValue("supplierId", matched.id, { shouldValidate: true });
+            }
+        } catch { /* best-effort */ } finally {
+            setArticleLookupLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!gencodeValue || gencodeValue.length < 8) return;
+        if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
+        lookupDebounceRef.current = setTimeout(() => {
+            fetchAndFillArticle(new URLSearchParams({ ean: gencodeValue }));
+        }, 600);
+        return () => { if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current); };
+    }, [gencodeValue]);
+
+    useEffect(() => {
+        if (!referenceValue || referenceValue.length < 3) return;
+        if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
+        lookupDebounceRef.current = setTimeout(() => {
+            fetchAndFillArticle(new URLSearchParams({ codein: referenceValue }));
+        }, 600);
+        return () => { if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current); };
+    }, [referenceValue]);
 
     const onSubmit = (data: any) => {
         // Validation basique groupe
@@ -380,7 +445,10 @@ export default function MobileCustomerOrdersPage() {
                                         <FormItem>
                                             <FormLabel>Référence (Optionnel)</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="REF-123..." {...field} />
+                                                <div className="relative">
+                                                    <Input placeholder="REF-123..." {...field} className={articleLookupLoading ? "pr-8" : ""} />
+                                                    {articleLookupLoading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />}
+                                                </div>
                                             </FormControl>
                                         </FormItem>
                                     )}
@@ -444,7 +512,10 @@ export default function MobileCustomerOrdersPage() {
                                         <FormItem>
                                             <FormLabel>Gencode (Scanner si dispo)</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="EAN13" {...field} />
+                                                <div className="relative">
+                                                    <Input placeholder="EAN13" {...field} className={articleLookupLoading ? "pr-8" : ""} />
+                                                    {articleLookupLoading && <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />}
+                                                </div>
                                             </FormControl>
                                         </FormItem>
                                     )}
