@@ -159,6 +159,8 @@ export function CustomerOrderForm({
   // Lookup API ffnancy par gencode ou référence
   const [articleLookupLoading, setArticleLookupLoading] = useState(false);
   const [articleNotFound, setArticleNotFound] = useState(false);
+  // Flag pour éviter que le remplissage auto de productReference ne redéclenche une recherche
+  const autoFilledRef = useRef(false);
   const lookupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gencodeValue = form.watch("gencode");
   const referenceValue = form.watch("productReference");
@@ -174,6 +176,7 @@ export function CustomerOrderForm({
       if (!article) { setArticleNotFound(true); return; }
 
       setArticleNotFound(false);
+      autoFilledRef.current = true; // bloquer le watcher référence
       form.setValue("productName", article.libelle1, { shouldValidate: true });
       if (article.gtin) form.setValue("gencode", article.gtin, { shouldValidate: true });
       if (article.ref_fou_principale) form.setValue("productReference", article.ref_fou_principale, { shouldValidate: true });
@@ -216,6 +219,8 @@ export function CustomerOrderForm({
   }, [gencodeValue]);
 
   useEffect(() => {
+    // Si la valeur a été remplie automatiquement, on ignore ce cycle
+    if (autoFilledRef.current) { autoFilledRef.current = false; return; }
     if (!referenceValue || referenceValue.length < 3) { setArticleNotFound(false); return; }
     if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
     lookupDebounceRef.current = setTimeout(() => {

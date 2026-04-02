@@ -186,6 +186,7 @@ export default function MobileCustomerOrdersPage() {
     // Lookup API ffnancy par gencode ou référence
     const [articleLookupLoading, setArticleLookupLoading] = useState(false);
     const [articleNotFound, setArticleNotFound] = useState(false);
+    const autoFilledRef = useRef(false);
     const lookupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const gencodeValue = form.watch("gencode");
     const referenceValue = form.watch("productReference");
@@ -201,6 +202,7 @@ export default function MobileCustomerOrdersPage() {
             if (!article) { setArticleNotFound(true); return; }
 
             setArticleNotFound(false);
+            autoFilledRef.current = true;
             form.setValue("productName", article.libelle1, { shouldValidate: true });
             if (article.gtin) form.setValue("gencode", article.gtin, { shouldValidate: true });
             if (article.ref_fou_principale) form.setValue("productReference", article.ref_fou_principale, { shouldValidate: true });
@@ -242,6 +244,7 @@ export default function MobileCustomerOrdersPage() {
     }, [gencodeValue]);
 
     useEffect(() => {
+        if (autoFilledRef.current) { autoFilledRef.current = false; return; }
         if (!referenceValue || referenceValue.length < 3) { setArticleNotFound(false); return; }
         if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
         lookupDebounceRef.current = setTimeout(() => {
