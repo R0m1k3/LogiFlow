@@ -178,7 +178,7 @@ export default function MobileCustomerOrdersPage() {
             setArticleNotFound(false);
             form.setValue("productName", article.libelle1, { shouldValidate: true });
             if (article.gtin) form.setValue("gencode", article.gtin, { shouldValidate: true });
-            if (article.codein) form.setValue("productReference", article.codein, { shouldValidate: true });
+            if (article.ref_fou_principale) form.setValue("productReference", article.ref_fou_principale, { shouldValidate: true });
 
             let codefouToMatch = article.codefou_principal;
             try {
