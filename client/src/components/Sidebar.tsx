@@ -783,12 +783,12 @@ export default function Sidebar() {
                   <SelectValue placeholder="🎯 Choisir le destinataire" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Prissela" className="py-3">
+                  <SelectItem value="Laurie" className="py-3">
                     <div className="flex items-center space-x-3">
                       <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-purple-600">P</span>
+                        <span className="text-sm font-medium text-purple-600">L</span>
                       </div>
-                      <span className="font-medium">Prissela</span>
+                      <span className="font-medium">Laurie</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="Jeremy" className="py-3">
