@@ -162,7 +162,8 @@ export function CustomerOrderForm({
   // Flag pour éviter que le remplissage auto de productReference ne redéclenche une recherche
   const autoFilledRef = useRef(false);
   // En mode édition, ignorer les watchers au premier rendu (valeurs déjà remplies)
-  const initialEditSkipRef = useRef(!!order);
+  const initialGencodeSkipRef = useRef(!!order);
+  const initialRefSkipRef = useRef(!!order);
   const lookupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gencodeValue = form.watch("gencode");
   const referenceValue = form.watch("productReference");
@@ -212,7 +213,7 @@ export function CustomerOrderForm({
   };
 
   useEffect(() => {
-    if (initialEditSkipRef.current) { initialEditSkipRef.current = false; return; }
+    if (initialGencodeSkipRef.current) { initialGencodeSkipRef.current = false; return; }
     if (!gencodeValue || gencodeValue.length < 8) { setArticleNotFound(false); return; }
     if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
     lookupDebounceRef.current = setTimeout(() => {
@@ -224,6 +225,7 @@ export function CustomerOrderForm({
   useEffect(() => {
     // Si la valeur a été remplie automatiquement, on ignore ce cycle
     if (autoFilledRef.current) { autoFilledRef.current = false; return; }
+    if (initialRefSkipRef.current) { initialRefSkipRef.current = false; return; }
     if (!referenceValue || referenceValue.length < 3) { setArticleNotFound(false); return; }
     if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
     lookupDebounceRef.current = setTimeout(() => {
@@ -434,8 +436,8 @@ export function CustomerOrderForm({
             {/* Case "Client appelé" cachée pour nouvelles commandes */}
         </div>
 
-        {/* Produit non référencé */}
-        {articleNotFound && (
+        {/* Produit non référencé — uniquement en création */}
+        {articleNotFound && !order && (
           <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             <span className="font-medium">Produit non référencé</span> — ce produit n'existe pas dans la base. La commande ne peut pas être créée.
           </div>
@@ -453,7 +455,7 @@ export function CustomerOrderForm({
           </Button>
           <Button
             type="submit"
-            disabled={isLoading || articleNotFound || articleLookupLoading}
+            disabled={isLoading || (articleNotFound && !order) || articleLookupLoading}
           >
             {isLoading ? "Enregistrement..." : order ? "Modifier" : "Créer"}
           </Button>
