@@ -15,13 +15,15 @@ import {
     Package,
     Search,
     Phone,
+    PhoneCall,
     User,
     ClipboardList,
     Plus,
     MoreVertical,
     X,
     Filter,
-    Loader2
+    Loader2,
+    MessageSquare
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -80,6 +82,8 @@ export default function MobileCustomerOrdersPage() {
     const { selectedStoreId } = useStore();
     const [searchTerm, setSearchTerm] = useState("");
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [contactOrder, setContactOrder] = useState<any | null>(null);
+    const [contactComment, setContactComment] = useState("");
     const { toast } = useToast();
     const queryClient = useQueryClient();
 
@@ -121,6 +125,27 @@ export default function MobileCustomerOrdersPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["/api/customer-orders"] });
             toast({ title: "Statut mis à jour" });
+        },
+    });
+
+    const markCalledMutation = useMutation({
+        mutationFn: ({ id, comment }: { id: number; comment?: string }) =>
+            apiRequest(`/api/customer-orders/${id}/mark-called`, 'PATCH', { comment }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/customer-orders"] });
+            toast({ title: "Client marqué comme contacté" });
+            setContactOrder(null);
+            setContactComment("");
+        },
+    });
+
+    const unmarkCalledMutation = useMutation({
+        mutationFn: (id: number) =>
+            apiRequest(`/api/customer-orders/${id}`, 'PUT', { customerNotified: false, notifiedAt: null, notifiedComment: null }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/customer-orders"] });
+            toast({ title: "Contact annulé" });
+            setContactOrder(null);
         },
     });
 
@@ -342,7 +367,7 @@ export default function MobileCustomerOrdersPage() {
                                         </DropdownMenu>
                                     </div>
 
-                                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600">
+                                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600 flex-wrap">
                                         {order.customerPhone && (
                                             <a
                                                 href={`tel:${order.customerPhone}`}
@@ -352,6 +377,13 @@ export default function MobileCustomerOrdersPage() {
                                                 <span className="font-medium">Appeler</span>
                                             </a>
                                         )}
+                                        <button
+                                            onClick={() => { setContactOrder(order); setContactComment(""); }}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors text-xs font-medium ${order.customerNotified ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                        >
+                                            <PhoneCall className="h-3.5 w-3.5" />
+                                            {order.customerNotified ? 'Contacté' : 'Marquer contacté'}
+                                        </button>
                                         <div className="flex items-center gap-1.5 ml-auto">
                                             <div className="bg-gray-100 px-2 py-1 rounded text-xs">
                                                 Qty: {order.quantity || 1}
@@ -598,6 +630,68 @@ export default function MobileCustomerOrdersPage() {
             >
                 <Plus className="h-6 w-6 text-white" />
             </Button>
+
+            {/* Modal contact client */}
+            {contactOrder && (
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={() => { setContactOrder(null); setContactComment(""); }}>
+                    <div className="w-full max-w-lg bg-white rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-2">
+                            {contactOrder.customerNotified
+                                ? <PhoneCall className="h-5 w-5 text-green-600" />
+                                : <Phone className="h-5 w-5 text-blue-600" />}
+                            <h3 className="font-semibold text-gray-900">
+                                {contactOrder.customerNotified ? "Client déjà contacté" : "Marquer comme contacté"}
+                            </h3>
+                        </div>
+                        <p className="text-sm text-gray-500">{contactOrder.customerName} — {contactOrder.productDesignation}</p>
+
+                        {contactOrder.customerNotified ? (
+                            <div className="rounded-md bg-green-50 border border-green-200 p-3 space-y-1 text-sm">
+                                <p className="font-medium text-green-800">
+                                    Contacté le {contactOrder.notifiedAt ? format(new Date(contactOrder.notifiedAt), "dd/MM/yyyy 'à' HH:mm") : "—"}
+                                </p>
+                                {contactOrder.notifiedComment && (
+                                    <p className="text-green-700 flex items-start gap-1.5">
+                                        <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
+                                        {contactOrder.notifiedComment}
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <textarea
+                                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                rows={3}
+                                placeholder="Commentaire optionnel (ex: laissé un message...)"
+                                value={contactComment}
+                                onChange={(e) => setContactComment(e.target.value)}
+                            />
+                        )}
+
+                        <div className="flex gap-2 pt-1">
+                            <button onClick={() => { setContactOrder(null); setContactComment(""); }} className="flex-1 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-700">
+                                {contactOrder.customerNotified ? "Fermer" : "Annuler"}
+                            </button>
+                            {contactOrder.customerNotified ? (
+                                <button
+                                    onClick={() => unmarkCalledMutation.mutate(contactOrder.id)}
+                                    disabled={unmarkCalledMutation.isPending}
+                                    className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium"
+                                >
+                                    Annuler le contact
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => markCalledMutation.mutate({ id: contactOrder.id, comment: contactComment || undefined })}
+                                    disabled={markCalledMutation.isPending}
+                                    className="flex-1 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium flex items-center justify-center gap-2"
+                                >
+                                    <PhoneCall className="h-4 w-4" /> Confirmer
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </MobileLayout>
     );
 }

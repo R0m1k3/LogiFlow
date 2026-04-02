@@ -37,6 +37,13 @@ export async function runMigrations() {
     // Ajouter les migrations hardcodées directement dans le code pour éviter les problèmes de chemins
     const hardcodedMigrations = [
       {
+        filename: '20260402000002_add_notified_fields_to_customer_orders.sql',
+        content: `
+          ALTER TABLE customer_orders ADD COLUMN IF NOT EXISTS notified_at TIMESTAMP;
+          ALTER TABLE customer_orders ADD COLUMN IF NOT EXISTS notified_comment TEXT;
+        `
+      },
+      {
         filename: '20260402000000_add_codefou_to_suppliers.sql',
         content: `ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS codefou VARCHAR;`
       },

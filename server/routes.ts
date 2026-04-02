@@ -3352,9 +3352,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const updatedOrder = await storage.markClientCalled(id, user.id);
-
-      console.log(`📞 Client marked as called: order ${id} by user ${user.id} (${user.role})`);
+      const { comment } = req.body;
+      const updatedOrder = await storage.markClientCalled(id, user.id, comment);
       res.json(updatedOrder);
     } catch (error) {
       console.error("Error marking client as called:", error);

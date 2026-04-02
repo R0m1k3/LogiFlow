@@ -231,6 +231,8 @@ export const customerOrders = pgTable("customer_orders", {
   
   // Communication client
   customerNotified: boolean("customer_notified").default(false), // Client appelé
+  notifiedAt: timestamp("notified_at"), // Date/heure du contact
+  notifiedComment: text("notified_comment"), // Commentaire lors de l'appel
   
   // Notes additionnelles
   notes: text("notes"), // Notes sur la commande

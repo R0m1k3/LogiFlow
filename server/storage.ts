@@ -1848,11 +1848,13 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async markClientCalled(customerOrderId: number, calledBy: string): Promise<CustomerOrder> {
+  async markClientCalled(customerOrderId: number, calledBy: string, comment?: string): Promise<CustomerOrder> {
     const [updated] = await db
       .update(customerOrders)
       .set({
         customerNotified: true,
+        notifiedAt: new Date(),
+        notifiedComment: comment || null,
         updatedAt: new Date()
       })
       .where(eq(customerOrders.id, customerOrderId))

@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { Plus, Edit, Trash2, Phone, PhoneCall, Printer, Eye, Package, AlertCircle } from "lucide-react";
+import { Plus, Edit, Trash2, Phone, PhoneCall, Printer, Eye, Package, AlertCircle, MessageSquare } from "lucide-react";
 import JsBarcode from 'jsbarcode';
 import { safeFormat, safeDate } from "@/lib/dateUtils";
 import { format } from "date-fns";
@@ -56,6 +56,9 @@ export default function CustomerOrders() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showClientCallsModal, setShowClientCallsModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<CustomerOrderWithRelations | null>(null);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactOrder, setContactOrder] = useState<CustomerOrderWithRelations | null>(null);
+  const [contactComment, setContactComment] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "status" | "supplier">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -177,16 +180,28 @@ export default function CustomerOrders() {
     },
   });
 
-  // Notification mutation
-  const notificationMutation = useMutation({
-    mutationFn: ({ id, customerNotified }: { id: number; customerNotified: boolean }) =>
-      apiRequest(`/api/customer-orders/${id}`, 'PUT', { customerNotified }),
+  // Mutation marquer client contacté (avec date + commentaire)
+  const markCalledMutation = useMutation({
+    mutationFn: ({ id, comment }: { id: number; comment?: string }) =>
+      apiRequest(`/api/customer-orders/${id}/mark-called`, 'PATCH', { comment }),
     onSuccess: () => {
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
-      toast({
-        title: "Succès",
-        description: "Statut de notification mis à jour",
-      });
+      toast({ title: "Client marqué comme contacté" });
+      setShowContactModal(false);
+      setContactComment("");
+      setContactOrder(null);
+    },
+  });
+
+  // Mutation annuler contact
+  const unmarkCalledMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest(`/api/customer-orders/${id}`, 'PUT', { customerNotified: false, notifiedAt: null, notifiedComment: null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
+      toast({ title: "Contact annulé" });
+      setShowContactModal(false);
+      setContactOrder(null);
     },
   });
 
@@ -266,10 +281,9 @@ export default function CustomerOrders() {
   };
 
   const handleNotificationToggle = (order: CustomerOrderWithRelations) => {
-    notificationMutation.mutate({
-      id: order.id,
-      customerNotified: !order.customerNotified
-    });
+    setContactOrder(order);
+    setContactComment("");
+    setShowContactModal(true);
   };
 
   // Fonction pour calculer le checksum EAN13
@@ -904,10 +918,14 @@ export default function CustomerOrders() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleNotificationToggle(order)}
-                              className={order.customerNotified ? "bg-green-100" : ""}
+                              className={order.customerNotified ? "bg-green-100 border-green-300" : ""}
+                              title={order.customerNotified && (order as any).notifiedAt
+                                ? `Contacté le ${format(new Date((order as any).notifiedAt), "dd/MM/yyyy 'à' HH:mm", { locale: fr })}${(order as any).notifiedComment ? ` — ${(order as any).notifiedComment}` : ''}`
+                                : "Marquer client comme contacté"
+                              }
                             >
                               {order.customerNotified ? (
-                                <PhoneCall className="h-4 w-4" />
+                                <PhoneCall className="h-4 w-4 text-green-700" />
                               ) : (
                                 <Phone className="h-4 w-4" />
                               )}
@@ -1053,6 +1071,71 @@ export default function CustomerOrders() {
         onClose={() => setShowClientCallsModal(false)}
         pendingCalls={pendingCalls}
       />
+
+      {/* Modal contact client */}
+      <Dialog open={showContactModal} onOpenChange={(open) => { setShowContactModal(open); if (!open) { setContactOrder(null); setContactComment(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {contactOrder?.customerNotified ? (
+                <><PhoneCall className="h-5 w-5 text-green-600" /> Client déjà contacté</>
+              ) : (
+                <><Phone className="h-5 w-5 text-blue-600" /> Marquer client comme contacté</>
+              )}
+            </DialogTitle>
+            {contactOrder && (
+              <DialogDescription>
+                {contactOrder.customerName} — {contactOrder.productDesignation}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          {contactOrder?.customerNotified ? (
+            <div className="space-y-4">
+              <div className="rounded-md bg-green-50 border border-green-200 p-3 space-y-1 text-sm">
+                <p className="font-medium text-green-800">
+                  Contacté le {contactOrder.notifiedAt ? format(new Date((contactOrder as any).notifiedAt), "dd/MM/yyyy 'à' HH:mm", { locale: fr }) : "—"}
+                </p>
+                {(contactOrder as any).notifiedComment && (
+                  <p className="text-green-700 flex items-start gap-1.5">
+                    <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
+                    {(contactOrder as any).notifiedComment}
+                  </p>
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => { setShowContactModal(false); setContactOrder(null); }}>Fermer</Button>
+                <Button variant="destructive" onClick={() => unmarkCalledMutation.mutate(contactOrder.id)} disabled={unmarkCalledMutation.isPending}>
+                  Annuler le contact
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700">Commentaire (optionnel)</label>
+                <textarea
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Ex : Laissé un message, Rappeler demain matin..."
+                  value={contactComment}
+                  onChange={(e) => setContactComment(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => { setShowContactModal(false); setContactOrder(null); setContactComment(""); }}>Annuler</Button>
+                <Button
+                  onClick={() => markCalledMutation.mutate({ id: contactOrder!.id, comment: contactComment || undefined })}
+                  disabled={markCalledMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <PhoneCall className="h-4 w-4 mr-2" /> Confirmer
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
