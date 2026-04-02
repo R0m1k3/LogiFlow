@@ -160,19 +160,22 @@ export default function MobileCustomerOrdersPage() {
 
     // Lookup API ffnancy par gencode ou référence
     const [articleLookupLoading, setArticleLookupLoading] = useState(false);
+    const [articleNotFound, setArticleNotFound] = useState(false);
     const lookupDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const gencodeValue = form.watch("gencode");
     const referenceValue = form.watch("productReference");
 
     const fetchAndFillArticle = async (params: URLSearchParams) => {
         setArticleLookupLoading(true);
+        setArticleNotFound(false);
         try {
             const res = await fetch(`/api/ffnancy/articles?${params}&limit=1`, { credentials: 'include' });
-            if (!res.ok) return;
+            if (!res.ok) { setArticleNotFound(true); return; }
             const data = await res.json();
             const article = data.articles?.[0];
-            if (!article) return;
+            if (!article) { setArticleNotFound(true); return; }
 
+            setArticleNotFound(false);
             form.setValue("productName", article.libelle1, { shouldValidate: true });
             if (article.gtin) form.setValue("gencode", article.gtin, { shouldValidate: true });
             if (article.codein) form.setValue("productReference", article.codein, { shouldValidate: true });
@@ -199,13 +202,13 @@ export default function MobileCustomerOrdersPage() {
                 );
                 if (matched) form.setValue("supplierId", matched.id, { shouldValidate: true });
             }
-        } catch { /* best-effort */ } finally {
+        } catch { setArticleNotFound(true); } finally {
             setArticleLookupLoading(false);
         }
     };
 
     useEffect(() => {
-        if (!gencodeValue || gencodeValue.length < 8) return;
+        if (!gencodeValue || gencodeValue.length < 8) { setArticleNotFound(false); return; }
         if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
         lookupDebounceRef.current = setTimeout(() => {
             fetchAndFillArticle(new URLSearchParams({ ean: gencodeValue }));
@@ -214,7 +217,7 @@ export default function MobileCustomerOrdersPage() {
     }, [gencodeValue]);
 
     useEffect(() => {
-        if (!referenceValue || referenceValue.length < 3) return;
+        if (!referenceValue || referenceValue.length < 3) { setArticleNotFound(false); return; }
         if (lookupDebounceRef.current) clearTimeout(lookupDebounceRef.current);
         lookupDebounceRef.current = setTimeout(() => {
             fetchAndFillArticle(new URLSearchParams({ codein: referenceValue }));
@@ -575,7 +578,12 @@ export default function MobileCustomerOrdersPage() {
                                 )}
                             />
 
-                            <Button type="submit" className="w-full bg-blue-600 h-12 text-lg font-bold shadow-lg mt-4" disabled={createMutation.isPending}>
+                            {articleNotFound && (
+                                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                    <span className="font-medium">Produit non référencé</span> — ce produit n'existe pas dans la base. La commande ne peut pas être créée.
+                                </div>
+                            )}
+                            <Button type="submit" className="w-full bg-blue-600 h-12 text-lg font-bold shadow-lg mt-4" disabled={createMutation.isPending || articleNotFound || articleLookupLoading}>
                                 {createMutation.isPending ? "Création..." : "Valider la commande"}
                             </Button>
                         </form>
