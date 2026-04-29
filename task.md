@@ -21,7 +21,8 @@ Identifier la cause de l'erreur 500 lors de l'appel au webhook N8N et corriger l
   - [x] Remplacer l'implémentation personnalisée par une utilisation plus propre des APIs natives Node.js.
   - [x] Améliorer le parsing du boundary pour gérer les guillemets.
   - [x] Utiliser les APIs natives `fetch` et `FormData` de Node.js pour plus de robustesse.
-  - [ ] Demander à l'utilisateur de tester après avoir reconstruit son image Docker.
+  - [/] Demander à l'utilisateur de tester après avoir reconstruit son image Docker (`docker compose build`).
+  - [ ] Analyser la réponse détaillée du webhook si l'erreur persiste.
 
 ## Progress Log
 

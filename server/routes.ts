@@ -911,8 +911,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!response.ok) {
-        console.error('❌ INVOICE PROXY: Webhook error', response.status);
-        return res.status(500).json({ error: `Webhook error: ${response.status}` });
+        const errorBody = await response.text().catch(() => 'No body');
+        console.error('❌ INVOICE PROXY: Webhook error', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody
+        });
+        return res.status(500).json({ 
+          error: `Webhook error: ${response.status}`, 
+          details: errorBody 
+        });
       }
 
       console.log('✅ INVOICE PROXY: Success');
