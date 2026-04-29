@@ -6,7 +6,8 @@ import { requireModulePermission, requireAdmin, requirePermission } from "./perm
 import { db, pool } from "./db";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const FormData = require('form-data');
+// Suppression de l'import form-data car nous utilisons le FormData natif de Node.js 18+
+// const FormData = require('form-data');
 
 console.log('🔍 Using development storage and authentication');
 
@@ -861,8 +862,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Parser le multipart/form-data manuellement
       const contentType = req.headers['content-type'] || '';
-      const boundaryMatch = contentType.match(/boundary=(.+)$/);
+      // Gestion plus robuste du boundary (avec ou sans guillemets)
+      const boundaryMatch = contentType.match(/boundary="?([^";]+)"?/i);
       if (!boundaryMatch) {
+        console.error('❌ INVOICE PROXY: Boundary manquant dans Content-Type', contentType);
         return res.status(400).json({ error: 'Format multipart invalide' });
       }
 
@@ -889,27 +892,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         size: parts.file.buffer.length
       });
 
-      // Import dynamique standard pour ESM (sans eval)
-      console.log('🔍 INVOICE PROXY: FormData loaded', {
-        type: typeof FormData,
-        isConstructor: typeof FormData === 'function'
-      });
-
+      // Utilisation du FormData natif de Node.js (global)
+      // On utilise Blob pour transformer le Buffer en objet compatible
       const formData = new FormData();
-      formData.append('file', parts.file.buffer, {
-        filename: parts.file.filename,
-        contentType: parts.file.contentType
-      });
+      const fileBlob = new Blob([parts.file.buffer], { type: parts.file.contentType });
+      
+      formData.append('file', fileBlob, parts.file.filename);
       formData.append('supplier', parts.supplier || '');
       formData.append('blNumber', parts.blNumber || '');
       formData.append('type', parts.type || 'Facture');
 
       console.log('🔗 INVOICE PROXY: Calling webhook URL:', parts.webhookUrl);
 
+      // En utilisant le FormData natif avec fetch, pas besoin de headers manuels (boundary géré automatiquement)
       const response = await fetch(parts.webhookUrl, {
         method: 'POST',
-        body: formData as any,
-        headers: formData.getHeaders()
+        body: formData as any
       });
 
       if (!response.ok) {

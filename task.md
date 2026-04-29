@@ -1,38 +1,30 @@
-# Task: Correction blocage API Publicités
+# Task: Debugging Webhook Error 500 on Invoice Sending
 
 ## Context
 
-L'utilisateur rencontre une erreur `net::ERR_BLOCKED_BY_CLIENT` lors de l'appel à l'API `/api/publicities`. Cette erreur est typique des bloqueurs de publicité (AdBlock, uBlock) qui filtrent les requêtes contenant des mots-clés comme "publicity" ou "ads".
+L'utilisateur a redémarré son serveur et rencontre une erreur 500 lors de l'envoi d'une facture via le proxy `/api/reconciliation/send-invoice`. L'appel vers le webhook N8N (`https://workflow.ffnancy.fr/webhook/...`) échoue avec un code 500.
 
 ## Current Focus
 
-Renommer les endpoints API pour éviter le blocage par les bloqueurs de publicité.
+Identifier la cause de l'erreur 500 lors de l'appel au webhook N8N et corriger le comportement du proxy de facture.
 
 ## Master Plan
 
-- [x] **Remplacement des API calls (Client-side)**
-  - [x] `client/src/pages/Calendar.tsx`
-  - [x] `client/src/pages/Dashboard.tsx`
-  - [x] `client/src/components/PublicityForm.tsx`
-  - [x] `client/src/pages/Publicities.tsx`
-  - [x] `client/src/pages/mobile/PublicitiesPage.tsx`
-
-- [x] **Revue du sélecteur d'année Mobile**
-  - [x] Vérifier la logique de génération des années dans `client/src/pages/mobile/PublicitiesPage.tsx` pour inclure les années passées (ex: 2024 en 2026).
-  - [x] Aligner avec la correction desktop si nécessaire.
-
-- [x] **Correction des erreurs Lint TypeScript**
-  - [x] Installer les paquets `@types` manquants (`node`, `express`, `react`, etc.).
-  - [x] Fixer les paramètres `req` et `res` (implicitement `any`) dans `server/routes.ts`.
-  - [x] Corriger l'erreur de propriété `invoiceAmountTTC` dans `server/routes.ts`.
-  - [x] Résoudre `Property 'env' does not exist on type 'ImportMeta'`.
-  - [x] Résoudre `JSX element implicitly has type 'any'`.
-
-- [x] **Tests et Validation**
-  - [x] Vérifier que les appels API utilisent bien `/api/ad-campaigns`.
-  - [x] Tester le sélecteur d'année sur mobile.
-  - [x] Compiler le projet (`npm run check`) pour s'assurer que les erreurs critiques sont résolues.
+- [x] **Analyse du code source**
+  - [x] Examiner `server/routes.ts` pour trouver l'endpoint `/api/reconciliation/send-invoice`.
+  - [x] Analyser la construction de la requête vers N8N (utilisation de `FormData` natif vs bibliothèque `form-data`).
+- [x] **Investigation technique**
+  - [x] Vérifier la version de Node.js (v24.11.1 détectée).
+  - [x] Identifier pourquoi N8N renvoie 500 (problème de format multipart et de headers avec l'ancienne bibliothèque).
+  - [x] Prendre en compte l'URL de test fournie : `https://workflow.ffnancy.fr/webhook-test/...`.
+- [x] **Correction et Test**
+  - [x] Remplacer l'implémentation personnalisée par une utilisation plus propre des APIs natives Node.js.
+  - [x] Améliorer le parsing du boundary pour gérer les guillemets.
+  - [x] Utiliser les APIs natives `fetch` et `FormData` de Node.js pour plus de robustesse.
+  - [ ] Demander à l'utilisateur de tester après avoir reconstruit son image Docker.
 
 ## Progress Log
 
-- Création de la tâche suite aux logs fournis.
+- Initialisation de la tâche pour déboguer l'erreur 500 sur l'envoi de facture.
+- Analyse du code : le proxy utilisait une ancienne bibliothèque `form-data` manuellement importée via `require`, ce qui peut causer des problèmes de compatibilité en Node 24.
+- Correction appliquée : passage aux APIs natives `fetch` et `FormData` de Node.js et amélioration du parsing du boundary.
