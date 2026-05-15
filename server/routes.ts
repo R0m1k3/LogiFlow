@@ -119,6 +119,7 @@ import {
   insertUtilitiesSchema,
   insertAvoirSchema,
   insertReconciliationCommentSchema,
+  insertContactSchema,
   users, groups, userGroups, suppliers, orders, deliveries, publicities, publicityParticipations,
   customerOrders, nocodbConfig, dlcProducts, tasks, invoiceVerificationCache, dashboardMessages, webhookBapConfig,
   utilities,
@@ -1188,6 +1189,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting supplier:", error);
       res.status(500).json({ message: "Failed to delete supplier" });
+    }
+  });
+
+  // Contacts routes
+  app.get('/api/contacts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      let groupIds: number[] | undefined;
+      if (user.role !== 'admin') {
+        groupIds = (user.userGroups || []).map((ug: any) => ug.groupId);
+      } else if (req.query.groupId) {
+        groupIds = [parseInt(req.query.groupId as string)];
+      }
+
+      const result = await storage.getContacts(groupIds);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching contacts:", error);
+      res.status(500).json({ message: "Failed to fetch contacts" });
+    }
+  });
+
+  app.post('/api/contacts', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || !['admin', 'directeur', 'manager'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      const data = insertContactSchema.parse(req.body);
+      const contact = await storage.createContact(data);
+      res.json(contact);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation failed", errors: error.errors });
+      }
+      console.error("Error creating contact:", error);
+      res.status(500).json({ message: "Failed to create contact" });
+    }
+  });
+
+  app.put('/api/contacts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || !['admin', 'directeur', 'manager'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      const id = parseInt(req.params.id);
+      const data = insertContactSchema.partial().parse(req.body);
+      const contact = await storage.updateContact(id, data);
+      res.json(contact);
+    } catch (error) {
+      console.error("Error updating contact:", error);
+      res.status(500).json({ message: "Failed to update contact" });
+    }
+  });
+
+  app.delete('/api/contacts/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || !['admin', 'directeur', 'manager'].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      const id = parseInt(req.params.id);
+      await storage.deleteContact(id);
+      res.json({ message: "Contact deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting contact:", error);
+      res.status(500).json({ message: "Failed to delete contact" });
     }
   });
 

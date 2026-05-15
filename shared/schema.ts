@@ -80,12 +80,26 @@ export const suppliers = pgTable("suppliers", {
   name: varchar("name").notNull(),
   contact: varchar("contact"),
   phone: varchar("phone"),
+  email: varchar("email"),
   hasDlc: boolean("has_dlc").default(false), // Coche DLC pour la gestion DLC
   paymentMethod: varchar("payment_method"), // Mode de paiement: Virement, Traite, Traite Magnétique, Chèque
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   automaticReconciliation: boolean("automatic_reconciliation").default(false), // Rapprochement automatique BL/Factures
   requiresControl: boolean("requires_control").default(false), // Fournisseur nécessite un contrôle à la livraison
+});
+
+// Contacts libres (hors fournisseurs), rattachés à un magasin
+export const contacts = pgTable("contacts", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull(),
+  name: varchar("name").notNull(),
+  role: varchar("role"),
+  phone: varchar("phone"),
+  email: varchar("email"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Orders
@@ -544,6 +558,12 @@ export const insertSupplierSchema = createInsertSchema(suppliers).omit({
   updatedAt: true,
 });
 
+export const insertContactSchema = createInsertSchema(contacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertOrderSchema = createInsertSchema(orders).omit({
   id: true,
   createdAt: true,
@@ -706,6 +726,8 @@ export type Group = typeof groups.$inferSelect;
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type Delivery = typeof deliveries.$inferSelect;

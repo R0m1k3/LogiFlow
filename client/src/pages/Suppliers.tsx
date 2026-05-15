@@ -16,11 +16,12 @@ import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { 
-  Plus, 
-  Search, 
-  Building, 
-  Phone, 
+import {
+  Plus,
+  Search,
+  Building,
+  Phone,
+  Mail,
   Edit,
   Trash2,
   Package,
@@ -43,6 +44,7 @@ export default function Suppliers() {
     name: "",
     contact: "",
     phone: "",
+    email: "",
     hasDlc: false,
     automaticReconciliation: false,
     requiresControl: false,
@@ -198,6 +200,7 @@ export default function Suppliers() {
       name: "",
       contact: "",
       phone: "",
+      email: "",
       hasDlc: false,
       automaticReconciliation: false,
       requiresControl: false,
@@ -236,6 +239,7 @@ export default function Suppliers() {
       name: supplier.name || "",
       contact: supplier.contact || "",
       phone: supplier.phone || "",
+      email: (supplier as any).email || "",
       hasDlc: supplier.hasDlc || false,
       automaticReconciliation: supplier.automaticReconciliation || false,
       requiresControl: supplier.requiresControl || false,
@@ -409,6 +413,12 @@ export default function Suppliers() {
                           {supplier.phone}
                         </div>
                       )}
+                      {(supplier as any).email && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Mail className="w-4 h-4 mr-2" />
+                          {(supplier as any).email}
+                        </div>
+                      )}
                       {supplier.paymentMethod && (
                         <div className="flex items-center text-sm text-gray-600">
                           <Package className="w-4 h-4 mr-2" />
@@ -525,6 +535,17 @@ export default function Suppliers() {
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
                 placeholder="Numéro de téléphone"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="email">Email de contact</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder="Email du contact fournisseur"
               />
             </div>
 

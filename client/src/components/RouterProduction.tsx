@@ -28,6 +28,7 @@ import WeatherSettings from "@/pages/WeatherSettings";
 import Analytics from "@/pages/Analytics";
 import SalesAnalysisPage from "@/pages/SalesAnalysisPage";
 import PaymentSchedulePage from "@/pages/PaymentSchedulePage";
+import Contacts from "@/pages/Contacts";
 import Layout from "@/components/Layout";
 
 // Mobile pages
@@ -114,6 +115,7 @@ function RouterProduction() {
           <Route path="/tasks" component={MobileTasksPage} />
 
           {/* Pages sans version mobile - utiliser version desktop pour l'instant */}
+          <Route path="/contacts" component={Contacts} />
           <Route path="/suppliers" component={Suppliers} />
           <Route path="/groups" component={Groups} />
           <Route path="/users" component={Users} />
@@ -153,6 +155,7 @@ function RouterProduction() {
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/orders" component={Orders} />
         <Route path="/deliveries" component={Deliveries} />
+        <Route path="/contacts" component={Contacts} />
         <Route path="/suppliers" component={Suppliers} />
         <Route path="/groups" component={Groups} />
         <Route path="/users" component={Users} />

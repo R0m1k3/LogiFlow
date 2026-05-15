@@ -78,6 +78,9 @@ import {
   type Avoir,
   type InsertAvoir,
   type AvoirWithRelations,
+  contacts,
+  type Contact,
+  type InsertContact,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql, gte, lte, lt, gt, or, isNull, isNotNull, asc, ne } from "drizzle-orm";
@@ -108,6 +111,12 @@ export interface IStorage {
   createSupplier(supplier: InsertSupplier): Promise<Supplier>;
   updateSupplier(id: number, supplier: Partial<InsertSupplier>): Promise<Supplier>;
   deleteSupplier(id: number): Promise<void>;
+
+  // Contact operations
+  getContacts(groupIds?: number[]): Promise<Contact[]>;
+  createContact(contact: InsertContact): Promise<Contact>;
+  updateContact(id: number, contact: Partial<InsertContact>): Promise<Contact>;
+  deleteContact(id: number): Promise<void>;
 
   // Order operations
   getOrders(groupIds?: number[]): Promise<OrderWithRelations[]>;
@@ -452,6 +461,32 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSupplier(id: number): Promise<void> {
     await db.delete(suppliers).where(eq(suppliers.id, id));
+  }
+
+  // Contact operations
+  async getContacts(groupIds?: number[]): Promise<Contact[]> {
+    if (groupIds && groupIds.length > 0) {
+      return await db.select().from(contacts).where(inArray(contacts.groupId, groupIds)).orderBy(contacts.name);
+    }
+    return await db.select().from(contacts).orderBy(contacts.name);
+  }
+
+  async createContact(contactData: InsertContact): Promise<Contact> {
+    const [contact] = await db.insert(contacts).values(contactData).returning();
+    return contact;
+  }
+
+  async updateContact(id: number, contactData: Partial<InsertContact>): Promise<Contact> {
+    const [contact] = await db
+      .update(contacts)
+      .set({ ...contactData, updatedAt: new Date() })
+      .where(eq(contacts.id, id))
+      .returning();
+    return contact;
+  }
+
+  async deleteContact(id: number): Promise<void> {
+    await db.delete(contacts).where(eq(contacts.id, id));
   }
 
   // Order operations
@@ -3330,6 +3365,7 @@ export class MemStorage implements IStorage {
   private avoirs = new Map<number, Avoir>();
   private savTickets = new Map<number, SavTicket>();
   private invoiceVerificationCache = new Map<string, InvoiceVerificationCache>();
+  private contactsMap = new Map<number, Contact>();
 
   private idCounters = {
     group: 1,
@@ -3344,6 +3380,7 @@ export class MemStorage implements IStorage {
     avoir: 1,
     savTicket: 1,
     reconciliationComment: 1,
+    contact: 1,
   };
 
   constructor() {
@@ -3560,6 +3597,44 @@ export class MemStorage implements IStorage {
 
   async deleteSupplier(id: number): Promise<void> {
     this.suppliers.delete(id);
+  }
+
+  // Contact operations
+  async getContacts(groupIds?: number[]): Promise<Contact[]> {
+    const all = Array.from(this.contactsMap.values());
+    if (groupIds && groupIds.length > 0) {
+      return all.filter(c => groupIds.includes(c.groupId));
+    }
+    return all;
+  }
+
+  async createContact(contactData: InsertContact): Promise<Contact> {
+    const id = this.idCounters.contact++;
+    const contact: Contact = {
+      id,
+      groupId: contactData.groupId,
+      name: contactData.name,
+      role: contactData.role || null,
+      phone: contactData.phone || null,
+      email: contactData.email || null,
+      notes: contactData.notes || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.contactsMap.set(id, contact);
+    return contact;
+  }
+
+  async updateContact(id: number, contactData: Partial<InsertContact>): Promise<Contact> {
+    const existing = this.contactsMap.get(id);
+    if (!existing) throw new Error('Contact not found');
+    const updated = { ...existing, ...contactData, updatedAt: new Date() };
+    this.contactsMap.set(id, updated);
+    return updated;
+  }
+
+  async deleteContact(id: number): Promise<void> {
+    this.contactsMap.delete(id);
   }
 
   // NocoDB Configuration methods

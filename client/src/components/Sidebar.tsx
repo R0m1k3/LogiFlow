@@ -36,7 +36,8 @@ import {
   Send,
   Receipt,
   TrendingUp,
-  CreditCard
+  CreditCard,
+  BookUser,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -329,6 +330,12 @@ export default function Sidebar() {
           path: "/sav",
           label: "SAV",
           icon: Wrench,
+          roles: ["admin", "directeur", "manager", "employee"]
+        },
+        {
+          path: "/contacts",
+          label: "Contacts",
+          icon: BookUser,
           roles: ["admin", "directeur", "manager", "employee"]
         },
       ]
