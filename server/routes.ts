@@ -6,7 +6,8 @@ import { requireModulePermission, requireAdmin, requirePermission } from "./perm
 import { db, pool } from "./db";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const FormData = require('form-data');
+// Suppression de l'import form-data car nous utilisons le FormData natif de Node.js 18+
+// const FormData = require('form-data');
 
 console.log('🔍 Using development storage and authentication');
 
@@ -699,7 +700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Données manquantes: pdfBase64, fileName ou recipient' });
       }
 
-      if (!['Prissela', 'Jeremy'].includes(recipient)) {
+      if (!['Laurie', 'Jeremy'].includes(recipient)) {
         return res.status(400).json({ error: 'Destinataire invalide' });
       }
 
@@ -862,8 +863,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Parser le multipart/form-data manuellement
       const contentType = req.headers['content-type'] || '';
-      const boundaryMatch = contentType.match(/boundary=(.+)$/);
+      // Gestion plus robuste du boundary (avec ou sans guillemets)
+      const boundaryMatch = contentType.match(/boundary="?([^";]+)"?/i);
       if (!boundaryMatch) {
+        console.error('❌ INVOICE PROXY: Boundary manquant dans Content-Type', contentType);
         return res.status(400).json({ error: 'Format multipart invalide' });
       }
 
@@ -890,32 +893,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         size: parts.file.buffer.length
       });
 
-      // Import dynamique standard pour ESM (sans eval)
-      console.log('🔍 INVOICE PROXY: FormData loaded', {
-        type: typeof FormData,
-        isConstructor: typeof FormData === 'function'
-      });
-
+      // Utilisation du FormData natif de Node.js (global)
+      // On utilise Blob pour transformer le Buffer en objet compatible
       const formData = new FormData();
-      formData.append('file', parts.file.buffer, {
-        filename: parts.file.filename,
-        contentType: parts.file.contentType
-      });
+      const fileBlob = new Blob([parts.file.buffer], { type: parts.file.contentType });
+      
+      formData.append('file', fileBlob, parts.file.filename);
       formData.append('supplier', parts.supplier || '');
       formData.append('blNumber', parts.blNumber || '');
       formData.append('type', parts.type || 'Facture');
 
       console.log('🔗 INVOICE PROXY: Calling webhook URL:', parts.webhookUrl);
 
+      // En utilisant le FormData natif avec fetch, pas besoin de headers manuels (boundary géré automatiquement)
       const response = await fetch(parts.webhookUrl, {
         method: 'POST',
-        body: formData as any,
-        headers: formData.getHeaders()
+        body: formData as any
       });
 
       if (!response.ok) {
-        console.error('❌ INVOICE PROXY: Webhook error', response.status);
-        return res.status(500).json({ error: `Webhook error: ${response.status}` });
+        const errorBody = await response.text().catch(() => 'No body');
+        console.error('❌ INVOICE PROXY: Webhook error', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorBody
+        });
+        return res.status(500).json({ 
+          error: `Webhook error: ${response.status}`, 
+          details: errorBody 
+        });
       }
 
       console.log('✅ INVOICE PROXY: Success');
@@ -3423,9 +3429,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const updatedOrder = await storage.markClientCalled(id, user.id);
-
-      console.log(`📞 Client marked as called: order ${id} by user ${user.id} (${user.role})`);
+      const { comment } = req.body;
+      const updatedOrder = await storage.markClientCalled(id, user.id, comment);
       res.json(updatedOrder);
     } catch (error) {
       console.error("Error marking client as called:", error);
@@ -6099,6 +6104,37 @@ RÉSUMÉ DU SCAN
     } catch (error) {
       console.error('Error exporting analytics:', error);
       res.status(500).json({ message: 'Failed to export analytics' });
+    }
+  });
+
+  // Proxy API ffnancy - évite les problèmes CORS côté navigateur
+  app.get('/api/ffnancy/articles', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const params = new URLSearchParams();
+      const allowed = ['search', 'codein', 'ean', 'codefou', 'actif', 'page', 'limit'];
+      for (const key of allowed) {
+        if (req.query[key]) params.append(key, req.query[key] as string);
+      }
+      const response = await fetch(`https://api.ffnancy.fr/api/articles?${params}`);
+      if (!response.ok) return res.status(response.status).json({ error: 'API ffnancy error' });
+      res.json(await response.json());
+    } catch {
+      res.status(500).json({ error: 'Failed to reach API ffnancy' });
+    }
+  });
+
+  app.get('/api/ffnancy/mouvements/entrees', requireAuth, async (req: Request, res: Response) => {
+    try {
+      const params = new URLSearchParams();
+      const allowed = ['artNoId', 'dateDebut', 'dateFin', 'site', 'page', 'limit'];
+      for (const key of allowed) {
+        if (req.query[key]) params.append(key, req.query[key] as string);
+      }
+      const response = await fetch(`https://api.ffnancy.fr/api/mouvements/entrees?${params}`);
+      if (!response.ok) return res.status(response.status).json({ error: 'API ffnancy error' });
+      res.json(await response.json());
+    } catch {
+      res.status(500).json({ error: 'Failed to reach API ffnancy' });
     }
   });
 

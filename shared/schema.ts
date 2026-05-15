@@ -80,6 +80,7 @@ export const suppliers = pgTable("suppliers", {
   name: varchar("name").notNull(),
   contact: varchar("contact"),
   phone: varchar("phone"),
+  codefou: varchar("codefou"), // Code fournisseur dans l'API ffnancy
   email: varchar("email"),
   hasDlc: boolean("has_dlc").default(false), // Coche DLC pour la gestion DLC
   paymentMethod: varchar("payment_method"), // Mode de paiement: Virement, Traite, Traite Magnétique, Chèque
@@ -244,6 +245,8 @@ export const customerOrders = pgTable("customer_orders", {
   
   // Communication client
   customerNotified: boolean("customer_notified").default(false), // Client appelé
+  notifiedAt: timestamp("notified_at"), // Date/heure du contact
+  notifiedComment: text("notified_comment"), // Commentaire lors de l'appel
   
   // Notes additionnelles
   notes: text("notes"), // Notes sur la commande

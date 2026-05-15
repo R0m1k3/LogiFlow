@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Plus, Eye, Edit, Trash2, CheckCircle, CheckCircle2, Package, Clock, AlertCircle, Filter, Download, FileText, PackageX, RotateCcw, X } from "lucide-react";
+import { AlertTriangle, Plus, Eye, Edit, Trash2, CheckCircle, CheckCircle2, Package, Clock, AlertCircle, Filter, Download, FileText, PackageX, RotateCcw, X, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -114,6 +114,66 @@ export default function DlcPage() {
       notes: "",
     },
   });
+
+  // EAN lookup from external API
+  const [eanLookupLoading, setEanLookupLoading] = useState(false);
+  const eanDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gencodeValue = form.watch("gencode");
+
+  useEffect(() => {
+    if (!gencodeValue || gencodeValue.length < 8) return;
+
+    if (eanDebounceRef.current) clearTimeout(eanDebounceRef.current);
+
+    eanDebounceRef.current = setTimeout(async () => {
+      setEanLookupLoading(true);
+      try {
+        // Étape 1 : récupérer l'article par EAN
+        const res = await fetch(`/api/ffnancy/articles?ean=${encodeURIComponent(gencodeValue)}&limit=1`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const article = data.articles?.[0];
+        if (!article) return;
+
+        form.setValue("productName", article.libelle1, { shouldValidate: true });
+
+        // Étape 2 : chercher le fournisseur de la dernière entrée en stock
+        let codefouToMatch = article.codefou_principal;
+        try {
+          const mvtRes = await fetch(
+            `/api/ffnancy/mouvements/entrees?artNoId=${article.no_id}&limit=1&dateDebut=2000-01-01`,
+            { credentials: 'include' }
+          );
+          if (mvtRes.ok) {
+            const mvtData = await mvtRes.json();
+            const lastEntree = mvtData.entrees?.[0];
+            if (lastEntree?.codefou) codefouToMatch = lastEntree.codefou;
+          }
+        } catch { /* fallback sur codefou_principal */ }
+
+        // Matching : codefou exact en priorité, fallback par nom
+        if (codefouToMatch) {
+          const matched = (suppliers as any[]).find((s: any) =>
+            s.codefou && s.codefou.trim().toLowerCase() === codefouToMatch.trim().toLowerCase()
+          ) || (suppliers as any[]).find((s: any) =>
+            s.name.toLowerCase().trim().includes(article.nom_fou_principal?.toLowerCase().trim() || '') ||
+            (article.nom_fou_principal?.toLowerCase().trim() || '').includes(s.name.toLowerCase().trim())
+          );
+          if (matched) {
+            form.setValue("supplierId", matched.id, { shouldValidate: true });
+          }
+        }
+      } catch {
+        // Lookup best-effort, on ignore les erreurs
+      } finally {
+        setEanLookupLoading(false);
+      }
+    }, 600);
+
+    return () => {
+      if (eanDebounceRef.current) clearTimeout(eanDebounceRef.current);
+    };
+  }, [gencodeValue, suppliers]);
 
   // Create mutation - optimized cache invalidation
   const createMutation = useMutation({
@@ -670,11 +730,17 @@ export default function DlcPage() {
                     <FormItem>
                       <FormLabel>Code EAN13 (optionnel)</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field} 
-                          value={field.value || ""} 
-                          placeholder="1234567890123" 
-                        />
+                        <div className="relative">
+                          <Input
+                            {...field}
+                            value={field.value || ""}
+                            placeholder="1234567890123"
+                            className={eanLookupLoading ? "pr-8" : ""}
+                          />
+                          {eanLookupLoading && (
+                            <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />
+                          )}
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

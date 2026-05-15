@@ -163,7 +163,7 @@ export default function WebhookBAPConfig() {
             Configuration Webhook BAP
           </CardTitle>
           <CardDescription>
-            Configurez l'URL du webhook n8n pour l'envoi des fichiers BAP vers Prissela et Jeremy
+            Configurez l'URL du webhook n8n pour l'envoi des fichiers BAP vers Laurie et Jeremy
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

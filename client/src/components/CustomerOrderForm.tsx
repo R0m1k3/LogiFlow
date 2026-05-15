@@ -3,6 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
+import { useState, useRef } from "react";
+import { Loader2, Search } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -68,15 +70,6 @@ export function CustomerOrderForm({
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
 
-  // DEBUG: Log user data to see what we actually receive
-  console.log("🔍 FRONTEND USER DEBUG:", {
-    user: user,
-    userRole: user?.role,
-    userGroups: user?.userGroups,
-    userGroupsType: typeof user?.userGroups,
-    userGroupsLength: user?.userGroups?.length,
-    fullUserObject: JSON.stringify(user, null, 2)
-  });
 
   // Fetch groups for store selection
   const { data: groups = [] } = useQuery<Group[]>({
@@ -128,51 +121,18 @@ export function CustomerOrderForm({
   });
 
   const handleSubmit = (data: CustomerOrderFormData) => {
-    console.log("🚀 FORM SUBMIT STARTED");
-    console.log("📝 Form submission data:", data);
-    console.log("🔍 Form errors:", form.formState.errors);
-    console.log("✅ Form is valid:", form.formState.isValid);
-    console.log("👤 User context DETAILED:", {
-      role: user?.role,
-      userGroups: user?.userGroups,
-      userGroupsLength: user?.userGroups?.length,
-      userGroupsData: user?.userGroups?.map(ug => ({
-        groupId: ug.groupId,
-        group: ug.group,
-        fullObject: ug
-      })),
-      selectedStoreId,
-      fullUser: user
-    });
-    
-    // Validate required fields
-    if (!data.customerName || data.customerName.trim() === '') {
-      console.error("❌ Customer name is required but empty");
-      return;
-    }
-    
-    // Always use user's assigned group - no override needed
+    if (!data.customerName || data.customerName.trim() === '') return;
+
     const groupId = getUserAssignedGroupId();
-    
     if (!groupId) {
-      console.error("❌❌❌ CRITICAL: No group available for user:", {
-        role: user?.role, 
-        userGroups: user?.userGroups,
-        userGroupsCount: user?.userGroups?.length,
-        selectedStoreId,
-        getUserAssignedGroupIdResult: groupId
-      });
       alert("ERREUR: Votre utilisateur n'a pas de magasin assigné. Contactez l'administrateur.");
       return;
     }
-    
-    console.log("✅ Customer Order: Using assigned group:", groupId, "for user:", user?.role);
-    
-    // Prepare final data with user's assigned group
+
     const submitData = {
       orderTaker: data.orderTaker || user?.firstName + ' ' + user?.lastName || user?.username || "Inconnu",
       customerName: data.customerName.trim(),
-      customerPhone: data.contactNumber || '', 
+      customerPhone: data.contactNumber || '',
       customerEmail: data.customerEmail || '',
       productDesignation: data.productName || '',
       productReference: data.productReference || '',
@@ -184,28 +144,74 @@ export function CustomerOrderForm({
       isPromotionalPrice: data.isPromotionalPrice || false,
       customerNotified: data.customerNotified || false,
       notes: data.notes || '',
-      groupId: groupId, // Always use the assigned group
+      groupId: groupId,
     };
-    
-    console.log("✅ Customer Order Submit FINAL:", {
-      userRole: user?.role,
-      assignedGroupId: groupId,
-      submitData: submitData
-    });
-    
-    console.log("🔥 CALLING onSubmit with data:", submitData);
     onSubmit(submitData);
-    console.log("🔥 onSubmit CALLED");
   };
 
   // Auto-ensure groupId is always set to user's assigned group
   const currentGroupId = form.getValues('groupId');
   const userGroupId = getUserAssignedGroupId();
-  
   if (!currentGroupId && userGroupId) {
     form.setValue('groupId', userGroupId);
-    console.log("🏪 Auto-setting user's assigned group:", userGroupId);
   }
+
+  // Lookup API ffnancy par gencode ou référence (déclenché manuellement)
+  const [articleLookupLoading, setArticleLookupLoading] = useState(false);
+  const [articleNotFound, setArticleNotFound] = useState(false);
+
+  const fetchAndFillArticle = async (params: URLSearchParams) => {
+    setArticleLookupLoading(true);
+    setArticleNotFound(false);
+    try {
+      const res = await fetch(`/api/ffnancy/articles?${params}&limit=1`, { credentials: 'include' });
+      if (!res.ok) { setArticleNotFound(true); return; }
+      const data = await res.json();
+      const article = data.articles?.[0];
+      if (!article) { setArticleNotFound(true); return; }
+
+      setArticleNotFound(false);
+      form.setValue("productName", article.libelle1, { shouldValidate: true });
+      if (article.gtin) form.setValue("gencode", article.gtin, { shouldValidate: true });
+      if (article.ref_fou_principale) form.setValue("productReference", article.ref_fou_principale, { shouldValidate: true });
+
+      // Fournisseur : dernière entrée en stock en priorité
+      let codefouToMatch = article.codefou_principal;
+      try {
+        const mvtRes = await fetch(
+          `/api/ffnancy/mouvements/entrees?artNoId=${article.no_id}&limit=1&dateDebut=2000-01-01`,
+          { credentials: 'include' }
+        );
+        if (mvtRes.ok) {
+          const mvtData = await mvtRes.json();
+          const lastEntree = mvtData.entrees?.[0];
+          if (lastEntree?.codefou) codefouToMatch = lastEntree.codefou;
+        }
+      } catch { /* fallback codefou_principal */ }
+
+      if (codefouToMatch) {
+        const matched = (suppliers as any[]).find((s: any) =>
+          s.codefou && s.codefou.trim().toLowerCase() === codefouToMatch.trim().toLowerCase()
+        ) || (suppliers as any[]).find((s: any) =>
+          s.name.toLowerCase().trim().includes(article.nom_fou_principal?.toLowerCase().trim() || '') ||
+          (article.nom_fou_principal?.toLowerCase().trim() || '').includes(s.name.toLowerCase().trim())
+        );
+        if (matched) form.setValue("supplierId", matched.id, { shouldValidate: true });
+      }
+    } catch { setArticleNotFound(true); } finally {
+      setArticleLookupLoading(false);
+    }
+  };
+
+  const handleSearchByGencode = () => {
+    const val = form.getValues("gencode");
+    if (val) fetchAndFillArticle(new URLSearchParams({ ean: val }));
+  };
+
+  const handleSearchByReference = () => {
+    const val = form.getValues("productReference");
+    if (val) fetchAndFillArticle(new URLSearchParams({ codein: val }));
+  };
 
   return (
     <Form {...form}>
@@ -310,7 +316,19 @@ export function CustomerOrderForm({
                 <FormItem>
                   <FormLabel>Référence (optionnel)</FormLabel>
                   <FormControl>
-                    <Input placeholder="REF-123456" {...field} />
+                    <div className="flex gap-2">
+                      <Input placeholder="REF-123456" {...field} />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSearchByReference}
+                        disabled={articleLookupLoading}
+                        className="shrink-0"
+                      >
+                        {articleLookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      </Button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -324,7 +342,19 @@ export function CustomerOrderForm({
                 <FormItem>
                   <FormLabel>Gencode (obligatoire)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Code à barres" {...field} />
+                    <div className="flex gap-2">
+                      <Input placeholder="Code à barres" {...field} />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSearchByGencode}
+                        disabled={articleLookupLoading}
+                        className="shrink-0"
+                      >
+                        {articleLookupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      </Button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -403,26 +433,26 @@ export function CustomerOrderForm({
             {/* Case "Client appelé" cachée pour nouvelles commandes */}
         </div>
 
+        {/* Produit non référencé — uniquement en création */}
+        {articleNotFound && !order && (
+          <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <span className="font-medium">Produit non référencé</span> — ce produit n'existe pas dans la base. La commande ne peut pas être créée.
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex justify-end space-x-3 pt-4">
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={onCancel}
             disabled={isLoading}
           >
             Annuler
           </Button>
-          <Button 
+          <Button
             type="submit"
-            disabled={isLoading}
-            onClick={(e) => {
-              console.log("Submit button clicked");
-              console.log("Form state:", form.formState);
-              console.log("Form values:", form.getValues());
-              console.log("Form validation errors:", form.formState.errors);
-              console.log("Current user context:", user?.userGroups, "available groups:", groups);
-            }}
+            disabled={isLoading || (articleNotFound && !order) || articleLookupLoading}
           >
             {isLoading ? "Enregistrement..." : order ? "Modifier" : "Créer"}
           </Button>

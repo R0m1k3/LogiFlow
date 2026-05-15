@@ -26,7 +26,6 @@ import SavTickets from "@/pages/SavTickets";
 import Avoirs from "@/pages/Avoirs";
 import WeatherSettings from "@/pages/WeatherSettings";
 import Analytics from "@/pages/Analytics";
-import SalesAnalysisPage from "@/pages/SalesAnalysisPage";
 import PaymentSchedulePage from "@/pages/PaymentSchedulePage";
 import Contacts from "@/pages/Contacts";
 import Layout from "@/components/Layout";
@@ -127,7 +126,6 @@ function RouterProduction() {
           <Route path="/sav" component={MobileSavPage} />
           <Route path="/avoirs" component={MobileAvoirsPage} />
           <Route path="/analytics" component={Analytics} />
-          <Route path="/sales-analysis" component={SalesAnalysisPage} />
           <Route path="/payment-schedule" component={PaymentSchedulePage} />
 
           {/* Redirection /auth vers dashboard */}
@@ -169,7 +167,6 @@ function RouterProduction() {
         <Route path="/sav" component={SavTickets} />
         <Route path="/avoirs" component={Avoirs} />
         <Route path="/analytics" component={Analytics} />
-        <Route path="/sales-analysis" component={SalesAnalysisPage} />
         <Route path="/payment-schedule" component={PaymentSchedulePage} />
 
         {/* Routes de compatibilité - redirection vers utilities */}
