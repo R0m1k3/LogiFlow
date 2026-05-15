@@ -95,6 +95,7 @@ export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
   groupId: integer("group_id").notNull(),
   name: varchar("name").notNull(),
+  company: varchar("company"),
   role: varchar("role"),
   phone: varchar("phone"),
   email: varchar("email"),

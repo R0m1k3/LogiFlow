@@ -3616,6 +3616,7 @@ export class MemStorage implements IStorage {
       id,
       groupId: contactData.groupId,
       name: contactData.name,
+      company: contactData.company || null,
       role: contactData.role || null,
       phone: contactData.phone || null,
       email: contactData.email || null,

@@ -19,3 +19,6 @@ CREATE TABLE IF NOT EXISTS contacts (
 
 -- Index pour recherche rapide par magasin
 CREATE INDEX IF NOT EXISTS idx_contacts_group_id ON contacts(group_id);
+
+-- Ajout du champ entreprise sur les contacts
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS company VARCHAR(255);

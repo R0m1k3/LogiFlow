@@ -49,6 +49,7 @@ export default function Contacts() {
   const [formData, setFormData] = useState({
     groupId: effectiveGroupId ?? 0,
     name: "",
+    company: "",
     role: "",
     phone: "",
     email: "",
@@ -135,6 +136,7 @@ export default function Contacts() {
     setFormData({
       groupId: effectiveGroupId ?? 0,
       name: "",
+      company: "",
       role: "",
       phone: "",
       email: "",
@@ -148,6 +150,7 @@ export default function Contacts() {
     setFormData({
       groupId: contact.groupId,
       name: contact.name,
+      company: (contact as any).company || "",
       role: contact.role || "",
       phone: contact.phone || "",
       email: contact.email || "",
@@ -384,6 +387,9 @@ export default function Contacts() {
                         </div>
                         <div>
                           <p className="font-semibold text-gray-900">{contact.name}</p>
+                          {(contact as any).company && (
+                            <p className="text-sm font-medium text-gray-700">{(contact as any).company}</p>
+                          )}
                           {contact.role && (
                             <p className="text-sm text-gray-500">{contact.role}</p>
                           )}
@@ -482,6 +488,16 @@ export default function Contacts() {
                 onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                 placeholder="Nom du contact"
                 required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="c-company">Entreprise</Label>
+              <Input
+                id="c-company"
+                value={formData.company}
+                onChange={(e) => setFormData((p) => ({ ...p, company: e.target.value }))}
+                placeholder="Nom de l'entreprise"
               />
             </div>
 
