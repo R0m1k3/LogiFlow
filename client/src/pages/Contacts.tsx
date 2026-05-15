@@ -24,6 +24,7 @@ import {
 import type { Supplier, Contact, Group } from "@shared/schema";
 
 const CAN_EDIT_ROLES = ["admin", "directeur", "manager"];
+const CAN_EDIT_SUPPLIER = ["admin", "directeur"];
 
 export default function Contacts() {
   const { user } = useAuthUnified();
@@ -32,6 +33,7 @@ export default function Contacts() {
   const { stores, selectedStoreId } = useStore();
 
   const canEdit = user?.role && CAN_EDIT_ROLES.includes(user.role);
+  const canEditSupplier = user?.role && CAN_EDIT_SUPPLIER.includes(user.role);
   const isAdmin = user?.role === "admin";
 
   // Pour les admins, permettre de choisir un magasin
@@ -41,6 +43,7 @@ export default function Contacts() {
   const [supplierSearch, setSupplierSearch] = useState("");
   const [contactSearch, setContactSearch] = useState("");
 
+  // Modal contacts libres
   const [showModal, setShowModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [formData, setFormData] = useState({
@@ -50,6 +53,15 @@ export default function Contacts() {
     phone: "",
     email: "",
     notes: "",
+  });
+
+  // Modal coordonnées fournisseur
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [supplierFormData, setSupplierFormData] = useState({
+    contact: "",
+    phone: "",
+    email: "",
   });
 
   const { data: suppliers = [] } = useQuery<Supplier[]>({
@@ -105,6 +117,19 @@ export default function Contacts() {
     },
   });
 
+  const updateSupplierMutation = useMutation({
+    mutationFn: (data: any) => apiRequest(`/api/suppliers/${selectedSupplier?.id}`, "PUT", data),
+    onSuccess: () => {
+      toast({ title: "Succès", description: "Coordonnées fournisseur mises à jour" });
+      queryClient.invalidateQueries({ queryKey: ["/api/suppliers"] });
+      setShowSupplierModal(false);
+      setSelectedSupplier(null);
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de modifier le fournisseur", variant: "destructive" });
+    },
+  });
+
   const openCreate = () => {
     setSelectedContact(null);
     setFormData({
@@ -150,6 +175,16 @@ export default function Contacts() {
     if (confirm(`Supprimer le contact "${contact.name}" ?`)) {
       deleteMutation.mutate(contact.id);
     }
+  };
+
+  const openEditSupplier = (supplier: Supplier) => {
+    setSelectedSupplier(supplier);
+    setSupplierFormData({
+      contact: supplier.contact || "",
+      phone: supplier.phone || "",
+      email: (supplier as any).email || "",
+    });
+    setShowSupplierModal(true);
   };
 
   const filteredSuppliers = suppliers.filter((s) =>
@@ -260,6 +295,11 @@ export default function Contacts() {
                         )}
                       </div>
                     </div>
+                    {canEditSupplier && (
+                      <Button variant="ghost" size="sm" onClick={() => openEditSupplier(supplier)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                   <div className="mt-3 space-y-1 pl-12">
                     {supplier.phone && (
@@ -500,6 +540,56 @@ export default function Contacts() {
                   : selectedContact
                   ? "Modifier"
                   : "Créer"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal coordonnées fournisseur */}
+      <Dialog open={showSupplierModal} onOpenChange={() => { setShowSupplierModal(false); setSelectedSupplier(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Coordonnées — {selectedSupplier?.name}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => { e.preventDefault(); updateSupplierMutation.mutate(supplierFormData); }}
+            className="space-y-4"
+          >
+            <div>
+              <Label htmlFor="s-contact">Nom du contact</Label>
+              <Input
+                id="s-contact"
+                value={supplierFormData.contact}
+                onChange={(e) => setSupplierFormData((p) => ({ ...p, contact: e.target.value }))}
+                placeholder="Nom du contact chez le fournisseur"
+              />
+            </div>
+            <div>
+              <Label htmlFor="s-phone">Téléphone</Label>
+              <Input
+                id="s-phone"
+                value={supplierFormData.phone}
+                onChange={(e) => setSupplierFormData((p) => ({ ...p, phone: e.target.value }))}
+                placeholder="Numéro de téléphone"
+              />
+            </div>
+            <div>
+              <Label htmlFor="s-email">Email</Label>
+              <Input
+                id="s-email"
+                type="email"
+                value={supplierFormData.email}
+                onChange={(e) => setSupplierFormData((p) => ({ ...p, email: e.target.value }))}
+                placeholder="Adresse email"
+              />
+            </div>
+            <div className="flex items-center space-x-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => { setShowSupplierModal(false); setSelectedSupplier(null); }}>
+                Annuler
+              </Button>
+              <Button type="submit" disabled={updateSupplierMutation.isPending} className="bg-primary hover:bg-blue-700">
+                {updateSupplierMutation.isPending ? "Enregistrement..." : "Enregistrer"}
               </Button>
             </div>
           </form>
