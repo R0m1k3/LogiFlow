@@ -178,7 +178,7 @@ export default function EditDeliveryModal({
                     <div className="flex items-center space-x-2">
                       <div 
                         className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: group.color }}
+                        style={{ backgroundColor: group.color || undefined }}
                       />
                       <span>{group.name}</span>
                     </div>

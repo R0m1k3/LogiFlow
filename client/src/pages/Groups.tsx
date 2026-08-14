@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +34,38 @@ const colorOptions = [
   { value: '#00796B', label: 'Sarcelle' },
 ];
 
+// Taille maximale du logo magasin : il est encodé en base64 dans la fiche
+// et joint à chaque mail, un fichier lourd alourdirait tous les envois.
+const MAX_LOGO_KB = 200;
+
+// Valeurs par défaut du formulaire magasin (création et réinitialisations)
+const EMPTY_GROUP_FORM = {
+  name: "",
+  color: "#1976D2",
+  nocodbConfigId: "",
+  nocodbTableName: "",
+  invoiceColumnName: "",
+  nocodbBlColumnName: "",
+  nocodbAmountColumnName: "",
+  nocodbInvoiceAmountTTCColumnName: "",
+  nocodbSupplierColumnName: "",
+  nocodbDueDateColumnName: "",
+  webhookUrl: "",
+  // Coordonnées reprises dans la signature des mails fournisseurs
+  address: "",
+  phone: "",
+  logo: "",
+  // Configuration SMTP propre au magasin
+  smtpEnabled: false,
+  smtpHost: "",
+  smtpPort: "",
+  smtpSecure: false,
+  smtpUser: "",
+  smtpPassword: "",
+  smtpSenderEmail: "",
+  smtpSenderName: "",
+};
+
 export default function Groups() {
   const { user } = useAuthUnified();
   const { toast } = useToast();
@@ -42,19 +75,7 @@ export default function Groups() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    color: "#1976D2",
-    nocodbConfigId: "",
-    nocodbTableName: "",
-    invoiceColumnName: "",
-    nocodbBlColumnName: "",
-    nocodbAmountColumnName: "",
-    nocodbInvoiceAmountTTCColumnName: "",
-    nocodbSupplierColumnName: "",
-    nocodbDueDateColumnName: "",
-    webhookUrl: "",
-  });
+  const [formData, setFormData] = useState({ ...EMPTY_GROUP_FORM });
 
   const { data: groups = [], isLoading } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
@@ -66,16 +87,6 @@ export default function Groups() {
 
   // Protection renforcée contre les erreurs TypeError
   const nocodbConfigs = Array.isArray(rawNocodbConfigs) ? rawNocodbConfigs : [];
-  
-  console.log('🔍 Groups NocoDB Debug:', { 
-    rawNocodbConfigs, 
-    rawType: typeof rawNocodbConfigs,
-    nocodbConfigs,
-    configsType: typeof nocodbConfigs,
-    isArray: Array.isArray(rawNocodbConfigs),
-    length: nocodbConfigs.length,
-    environment: window.location.hostname
-  });
 
   // Comptages agrégés en base : la page n'affiche que des totaux, inutile de
   // rapatrier l'historique complet des commandes et des livraisons.
@@ -97,19 +108,7 @@ export default function Groups() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/groups'] });
       setShowCreateModal(false);
-      setFormData({
-        name: "",
-        color: "#1976D2",
-        nocodbConfigId: "",
-        nocodbTableName: "",
-        invoiceColumnName: "",
-        nocodbBlColumnName: "",
-        nocodbAmountColumnName: "",
-        nocodbInvoiceAmountTTCColumnName: "",
-        nocodbSupplierColumnName: "",
-        nocodbDueDateColumnName: "",
-        webhookUrl: "",
-      });
+      setFormData({ ...EMPTY_GROUP_FORM });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -143,19 +142,7 @@ export default function Groups() {
       queryClient.invalidateQueries({ queryKey: ['/api/groups'] });
       setShowEditModal(false);
       setSelectedGroup(null);
-      setFormData({
-        name: "",
-        color: "#1976D2",
-        nocodbConfigId: "",
-        nocodbTableName: "",
-        invoiceColumnName: "",
-        nocodbBlColumnName: "",
-        nocodbAmountColumnName: "",
-        nocodbInvoiceAmountTTCColumnName: "",
-        nocodbSupplierColumnName: "",
-        nocodbDueDateColumnName: "",
-        webhookUrl: "",
-      });
+      setFormData({ ...EMPTY_GROUP_FORM });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -176,6 +163,53 @@ export default function Groups() {
       });
     },
   });
+
+  // Test de la connexion SMTP du magasin (aucun message envoyé)
+  const testSmtpMutation = useMutation({
+    mutationFn: async (groupId: number) => {
+      return await apiRequest(`/api/groups/${groupId}/test-smtp`, 'POST');
+    },
+    onSuccess: (result: any) => {
+      toast({
+        title: "Connexion réussie",
+        description: result?.message || "Le serveur SMTP répond correctement",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Échec de la connexion",
+        description: error?.message || "Impossible de joindre le serveur SMTP",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Lecture du logo en data URI : stocké tel quel sur la fiche magasin
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_LOGO_KB * 1024) {
+      toast({
+        title: "Logo trop volumineux",
+        description: `Le fichier fait ${Math.round(file.size / 1024)} Ko. Maximum autorisé : ${MAX_LOGO_KB} Ko.`,
+        variant: "destructive",
+      });
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => handleChange('logo', String(reader.result || ''));
+    reader.onerror = () => {
+      toast({
+        title: "Lecture impossible",
+        description: "Le fichier n'a pas pu être lu",
+        variant: "destructive",
+      });
+    };
+    reader.readAsDataURL(file);
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -225,19 +259,7 @@ export default function Groups() {
   };
 
   const handleCreate = () => {
-    setFormData({
-      name: "",
-      color: "#1976D2",
-      nocodbConfigId: "",
-      nocodbTableName: "",
-      invoiceColumnName: "",
-      nocodbBlColumnName: "",
-      nocodbAmountColumnName: "",
-      nocodbInvoiceAmountTTCColumnName: "",
-      nocodbSupplierColumnName: "",
-      nocodbDueDateColumnName: "",
-      webhookUrl: "",
-    });
+    setFormData({ ...EMPTY_GROUP_FORM });
     setShowCreateModal(true);
   };
 
@@ -255,6 +277,18 @@ export default function Groups() {
       nocodbSupplierColumnName: group.nocodbSupplierColumnName || "",
       nocodbDueDateColumnName: group.nocodbDueDateColumnName || "",
       webhookUrl: group.webhookUrl || "",
+      address: (group as any).address || "",
+      phone: (group as any).phone || "",
+      logo: (group as any).logo || "",
+      smtpEnabled: Boolean((group as any).smtpEnabled),
+      smtpHost: (group as any).smtpHost || "",
+      smtpPort: (group as any).smtpPort?.toString() || "",
+      smtpSecure: Boolean((group as any).smtpSecure),
+      smtpUser: (group as any).smtpUser || "",
+      // Jamais renvoyé par l'API : vide = mot de passe inchangé
+      smtpPassword: "",
+      smtpSenderEmail: (group as any).smtpSenderEmail || "",
+      smtpSenderName: (group as any).smtpSenderName || "",
     });
     setShowEditModal(true);
   };
@@ -289,10 +323,16 @@ export default function Groups() {
     }
 
     // Prepare data with proper type conversion
-    const submitData = {
+    const submitData: any = {
       ...formData,
       nocodbConfigId: formData.nocodbConfigId ? parseInt(formData.nocodbConfigId) : null,
+      smtpPort: formData.smtpPort ? parseInt(formData.smtpPort) : null,
     };
+
+    // Mot de passe laissé vide = on conserve celui déjà enregistré
+    if (!formData.smtpPassword) {
+      delete submitData.smtpPassword;
+    }
 
     if (selectedGroup) {
       updateMutation.mutate(submitData);
@@ -301,7 +341,7 @@ export default function Groups() {
     }
   };
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -384,7 +424,7 @@ export default function Groups() {
                       <div className="flex items-center">
                         <div 
                           className="w-10 h-10 flex items-center justify-center mr-3"
-                          style={{ backgroundColor: group.color }}
+                          style={{ backgroundColor: group.color || undefined }}
                         >
                           <Users className="w-5 h-5 text-white" />
                         </div>
@@ -419,7 +459,7 @@ export default function Groups() {
                       <div className="flex items-center">
                         <div 
                           className="w-4 h-4 rounded mr-2"
-                          style={{ backgroundColor: group.color }}
+                          style={{ backgroundColor: group.color || undefined }}
                         />
                         <span className="text-sm text-gray-600">{group.color}</span>
                       </div>
@@ -463,14 +503,7 @@ export default function Groups() {
         setShowCreateModal(false);
         setShowEditModal(false);
         setSelectedGroup(null);
-        setFormData({
-          name: "",
-          color: "#1976D2",
-          nocodbConfigId: "",
-          nocodbTableId: "",
-          nocodbTableName: "",
-          invoiceColumnName: "Ref Facture",
-        });
+        setFormData({ ...EMPTY_GROUP_FORM, invoiceColumnName: "Ref Facture" });
       }}>
         <DialogContent className="sm:max-w-md" aria-describedby="group-modal-description">
           <DialogHeader>
@@ -683,27 +716,215 @@ export default function Groups() {
               )}
             </div>
 
+            {/* Section Coordonnées du magasin (signature des mails) */}
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center space-x-2 mb-1">
+                <div className="w-4 h-4 bg-green-500 rounded"></div>
+                <h3 className="font-medium text-gray-900">Coordonnées du magasin</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                Reprises dans la signature des mails envoyés aux fournisseurs.
+              </p>
+
+              <div>
+                <Label htmlFor="address">Adresse</Label>
+                <Textarea
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => handleChange('address', e.target.value)}
+                  placeholder={"12 rue des Fleurs\n54000 Nancy"}
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phone">Téléphone</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => handleChange('phone', e.target.value)}
+                  placeholder="03 83 00 00 00"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="logo">Logo</Label>
+                <div className="flex items-center space-x-3 mt-1">
+                  {formData.logo ? (
+                    <img
+                      src={formData.logo}
+                      alt="Logo du magasin"
+                      className="h-12 w-auto max-w-[120px] object-contain border rounded bg-white p-1"
+                    />
+                  ) : (
+                    <div className="h-12 w-[120px] border border-dashed rounded flex items-center justify-center text-xs text-gray-400">
+                      Aucun logo
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <Input
+                      id="logo"
+                      type="file"
+                      accept="image/png,image/jpeg,image/gif,image/webp"
+                      onChange={handleLogoChange}
+                      className="text-xs"
+                    />
+                    {formData.logo && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-red-600 hover:text-red-700"
+                        onClick={() => handleChange('logo', '')}
+                      >
+                        Retirer le logo
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  PNG ou JPEG, {MAX_LOGO_KB} Ko maximum. Affiché dans la signature des mails.
+                </p>
+              </div>
+            </div>
+
+            {/* Section Configuration SMTP du magasin */}
+            <div className="border-t pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-purple-500 rounded"></div>
+                  <h3 className="font-medium text-gray-900">Envoi de mails (SMTP)</h3>
+                </div>
+                <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.smtpEnabled}
+                    onChange={(e) => handleChange('smtpEnabled', e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span>Activé</span>
+                </label>
+              </div>
+              <p className="text-sm text-gray-600">
+                Serveur utilisé pour envoyer les demandes de facture aux fournisseurs
+                depuis le rapprochement. Chaque magasin utilise sa propre boîte mail.
+              </p>
+
+              {formData.smtpEnabled && (
+                <>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2">
+                      <Label htmlFor="smtpHost">Serveur SMTP *</Label>
+                      <Input
+                        id="smtpHost"
+                        value={formData.smtpHost}
+                        onChange={(e) => handleChange('smtpHost', e.target.value)}
+                        placeholder="smtp.office365.com"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="smtpPort">Port *</Label>
+                      <Input
+                        id="smtpPort"
+                        type="number"
+                        value={formData.smtpPort}
+                        onChange={(e) => handleChange('smtpPort', e.target.value)}
+                        placeholder="587"
+                      />
+                    </div>
+                  </div>
+
+                  <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.smtpSecure}
+                      onChange={(e) => handleChange('smtpSecure', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <span>Connexion SSL/TLS directe (port 465). Décoché = STARTTLS (port 587).</span>
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="smtpUser">Identifiant</Label>
+                      <Input
+                        id="smtpUser"
+                        value={formData.smtpUser}
+                        onChange={(e) => handleChange('smtpUser', e.target.value)}
+                        placeholder="magasin@lafoirfouille.fr"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="smtpPassword">Mot de passe</Label>
+                      <Input
+                        id="smtpPassword"
+                        type="password"
+                        value={formData.smtpPassword}
+                        onChange={(e) => handleChange('smtpPassword', e.target.value)}
+                        placeholder={
+                          selectedGroup && (selectedGroup as any).smtpPasswordSet
+                            ? "Inchangé"
+                            : "Mot de passe"
+                        }
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="smtpSenderEmail">Adresse expéditeur *</Label>
+                      <Input
+                        id="smtpSenderEmail"
+                        type="email"
+                        value={formData.smtpSenderEmail}
+                        onChange={(e) => handleChange('smtpSenderEmail', e.target.value)}
+                        placeholder="magasin@lafoirfouille.fr"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="smtpSenderName">Nom affiché</Label>
+                      <Input
+                        id="smtpSenderName"
+                        value={formData.smtpSenderName}
+                        onChange={(e) => handleChange('smtpSenderName', e.target.value)}
+                        placeholder={formData.name || "LaFoir'Fouille Nancy"}
+                      />
+                    </div>
+                  </div>
+
+                  {selectedGroup && (
+                    <div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        disabled={testSmtpMutation.isPending}
+                        onClick={() => testSmtpMutation.mutate(selectedGroup.id)}
+                      >
+                        {testSmtpMutation.isPending
+                          ? "Test en cours..."
+                          : "✉️ Tester la connexion SMTP"}
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-1 text-center">
+                        Vérifie le serveur et les identifiants enregistrés, sans envoyer de message
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
             <div className="flex items-center space-x-3 pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => {
                   setShowCreateModal(false);
                   setShowEditModal(false);
                   setSelectedGroup(null);
-                  setFormData({
-                    name: "",
-                    color: "#1976D2",
-                    nocodbConfigId: "",
-                    nocodbTableName: "",
-                    invoiceColumnName: "",
-                    nocodbBlColumnName: "",
-                    nocodbAmountColumnName: "",
-                    nocodbInvoiceAmountTTCColumnName: "",
-                    nocodbSupplierColumnName: "",
-                    nocodbDueDateColumnName: "",
-                    webhookUrl: "",
-                  });
+                  setFormData({ ...EMPTY_GROUP_FORM });
                 }}
               >
                 Annuler

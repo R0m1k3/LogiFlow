@@ -13,6 +13,7 @@ import {
   dashboardMessages,
   announcements,
   nocodbConfig,
+  supplierMailLogs,
   invoiceVerificationCache,
   reconciliationComments,
   savTickets,
@@ -56,12 +57,16 @@ import {
   type ReconciliationComment,
   type InsertReconciliationComment,
   type ReconciliationCommentWithRelations,
+  type DashboardMessage,
   type NocodbConfig,
   type InsertNocodbConfig,
+  type SupplierMailLog,
+  type InsertSupplierMailLog,
   type InvoiceVerificationCache,
   type InsertInvoiceVerificationCache,
   type SavTicket,
   type InsertSavTicket,
+  type SavTicketHistory,
   type InsertSavTicketHistory,
   type SavTicketWithRelations,
   type SavTicketHistoryWithCreator,
@@ -83,6 +88,7 @@ import {
   type Contact,
   type InsertContact,
 } from "@shared/schema";
+import { encryptSecret, decryptSecret } from "./crypto";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql, gte, lte, lt, gt, or, isNull, isNotNull, asc, ne } from "drizzle-orm";
 import { getAnnouncementStorage } from "./announcementStorage";
@@ -198,7 +204,7 @@ export interface IStorage {
 
   // Client call tracking
   getPendingClientCalls(groupIds?: number[]): Promise<CustomerOrderWithRelations[]>;
-  markClientCalled(customerOrderId: number, calledBy: string): Promise<CustomerOrder>;
+  markClientCalled(customerOrderId: number, calledBy: string, comment?: string): Promise<CustomerOrder>;
 
   // DLC Product operations
   getDlcProducts(groupIds?: number[], filters?: { status?: string; supplierId?: number; search?: string; }): Promise<DlcProductWithRelations[]>;
@@ -224,8 +230,8 @@ export interface IStorage {
   // Announcement operations
   createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
   getAnnouncements(groupIds?: number[]): Promise<AnnouncementWithRelations[]>;
-  getAnnouncement(id: number): Promise<AnnouncementWithRelations | undefined>;
-  updateAnnouncement(id: number, announcement: Partial<InsertAnnouncement>): Promise<AnnouncementWithRelations>;
+  getAnnouncement(id: number): Promise<AnnouncementWithRelations | null | undefined>;
+  updateAnnouncement(id: number, announcement: Partial<InsertAnnouncement>): Promise<DashboardMessage>;
   deleteAnnouncement(id: number): Promise<boolean>;
 
   // Avoir operations
@@ -269,6 +275,10 @@ export interface IStorage {
   updateWeatherData(id: number, data: Partial<InsertWeatherData>): Promise<WeatherData>;
   deleteOldWeatherData(daysToKeep: number): Promise<void>;
   clearWeatherCache(): Promise<void>;
+
+  // Historique des mails fournisseurs (rapprochement)
+  createSupplierMailLog(log: InsertSupplierMailLog): Promise<SupplierMailLog>;
+  getSupplierMailLogs(groupIds?: number[], deliveryId?: number): Promise<SupplierMailLog[]>;
 
   // Webhook BAP Configuration
   getWebhookBapConfig(): Promise<WebhookBapConfig | undefined>;
@@ -428,14 +438,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createGroup(groupData: InsertGroup): Promise<Group> {
-    const [group] = await db.insert(groups).values(groupData).returning();
+    // Le mot de passe SMTP est chiffré au repos ; il n'est déchiffré qu'au
+    // moment de l'envoi d'un mail (emailService)
+    const values = { ...groupData, smtpPassword: encryptSecret(groupData.smtpPassword) };
+    const [group] = await db.insert(groups).values(values).returning();
     return group;
   }
 
   async updateGroup(id: number, groupData: Partial<InsertGroup>): Promise<Group> {
+    const values = { ...groupData };
+    if (values.smtpPassword !== undefined) {
+      values.smtpPassword = encryptSecret(values.smtpPassword);
+    }
     const [group] = await db
       .update(groups)
-      .set({ ...groupData, updatedAt: new Date() })
+      .set({ ...values, updatedAt: new Date() })
       .where(eq(groups.id, id))
       .returning();
     return group;
@@ -1506,7 +1523,7 @@ export class DatabaseStorage implements IStorage {
     // LOG: Debug des publicités récupérées
     console.log(`📋 PUBLICITES FETCHED: ${results.length} résultats pour année ${year || 'toutes'}`);
     if (results.length > 0) {
-      console.log('🔍 PREMIERS RESULTATS:', results.slice(0, 3).map((p, i) => `${i + 1}. N°${p.pubNumber} - ${p.designation}`));
+      console.log('🔍 PREMIERS RESULTATS:', results.slice(0, 3).map((p: any, i: any) => `${i + 1}. N°${p.pubNumber} - ${p.designation}`));
     }
 
     const publicityIds = results.map((p: any) => p.id);
@@ -1523,7 +1540,7 @@ export class DatabaseStorage implements IStorage {
       : [];
 
     // Sort by pubNumber as integer on the server side for consistency
-    const sortedResults = results.sort((a, b) => {
+    const sortedResults = results.sort((a: any, b: any) => {
       const numA = parseInt(a.pubNumber) || 0;
       const numB = parseInt(b.pubNumber) || 0;
       return numA - numB;
@@ -1622,13 +1639,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // NocoDB Configuration operations
+  // Le jeton API est chiffré en base ; les lecteurs (vérification de facture,
+  // page d'admin) reçoivent la valeur en clair comme avant le chiffrement
+  private decryptNocodbConfig<T extends NocodbConfig | undefined>(config: T): T {
+    if (!config) return config;
+    try {
+      return { ...config, apiToken: decryptSecret(config.apiToken) } as T;
+    } catch (error) {
+      console.error(`❌ Jeton NocoDB illisible (config ${config.id}):`, error);
+      return { ...config, apiToken: '' } as T;
+    }
+  }
+
   async getNocodbConfigs(): Promise<NocodbConfig[]> {
-    return await db.select().from(nocodbConfig).orderBy(desc(nocodbConfig.createdAt));
+    const configs = await db.select().from(nocodbConfig).orderBy(desc(nocodbConfig.createdAt));
+    return configs.map((c: NocodbConfig) => this.decryptNocodbConfig(c));
   }
 
   async getNocodbConfig(id: number): Promise<NocodbConfig | undefined> {
     const [config] = await db.select().from(nocodbConfig).where(eq(nocodbConfig.id, id));
-    return config;
+    return this.decryptNocodbConfig(config);
   }
 
   async getActiveNocodbConfig(): Promise<NocodbConfig | undefined> {
@@ -1639,8 +1669,9 @@ export class DatabaseStorage implements IStorage {
         .where(eq(nocodbConfig.isActive, true))
         .limit(1);
 
-      console.log('🔧 Configuration NocoDB active récupérée:', config);
-      return config;
+      // Ne pas tracer le jeton en clair dans les logs
+      console.log('🔧 Configuration NocoDB active récupérée:', config?.id, config?.name);
+      return this.decryptNocodbConfig(config);
     } catch (error) {
       console.error('❌ Erreur récupération config NocoDB:', error);
       return undefined;
@@ -1648,17 +1679,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createNocodbConfig(configData: InsertNocodbConfig): Promise<NocodbConfig> {
-    const [config] = await db.insert(nocodbConfig).values(configData).returning();
-    return config;
+    const values = { ...configData, apiToken: encryptSecret(configData.apiToken) || '' };
+    const [config] = await db.insert(nocodbConfig).values(values).returning();
+    return this.decryptNocodbConfig(config);
   }
 
   async updateNocodbConfig(id: number, configData: Partial<InsertNocodbConfig>): Promise<NocodbConfig> {
+    const values = { ...configData };
+    if (values.apiToken !== undefined) {
+      values.apiToken = encryptSecret(values.apiToken) || '';
+    }
     const [config] = await db
       .update(nocodbConfig)
-      .set({ ...configData, updatedAt: new Date() })
+      .set({ ...values, updatedAt: new Date() })
       .where(eq(nocodbConfig.id, id))
       .returning();
-    return config;
+    return this.decryptNocodbConfig(config);
   }
 
   async deleteNocodbConfig(id: number): Promise<void> {
@@ -1913,7 +1949,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(customerOrders.createdAt));
 
-    return results.map(result => ({
+    return results.map((result: any) => ({
       ...result.customerOrder,
       supplier: result.supplier!,
       group: result.group!,
@@ -1967,8 +2003,8 @@ export class DatabaseStorage implements IStorage {
           in15Days.setHours(23, 59, 59, 999); // End of day
           conditions.push(
             and(
-              gt(dlcProducts.expiryDate, today),
-              lte(dlcProducts.expiryDate, in15Days),
+              gt(dlcProducts.expiryDate, today as any),
+              lte(dlcProducts.expiryDate, in15Days as any),
               ne(dlcProducts.status, 'valides'),
               or(
                 isNull(dlcProducts.processedUntilExpiry),
@@ -1981,7 +2017,7 @@ export class DatabaseStorage implements IStorage {
           // Ne pas afficher les produits déjà traités (processedUntilExpiry = true)
           conditions.push(
             and(
-              lte(dlcProducts.expiryDate, today),
+              lte(dlcProducts.expiryDate, today as any),
               ne(dlcProducts.status, 'valides'),
               or(
                 isNull(dlcProducts.processedUntilExpiry),
@@ -1996,7 +2032,7 @@ export class DatabaseStorage implements IStorage {
           in15Days.setHours(23, 59, 59, 999);
           conditions.push(
             and(
-              gt(dlcProducts.expiryDate, in15Days),
+              gt(dlcProducts.expiryDate, in15Days as any),
               ne(dlcProducts.status, 'valides')
             )
           );
@@ -2266,7 +2302,7 @@ export class DatabaseStorage implements IStorage {
     console.log('📋 DatabaseStorage.getTasks - Raw results:', {
       resultCount: results.length,
       userRole,
-      sampleTasks: results.slice(0, 2).map(r => ({
+      sampleTasks: results.slice(0, 2).map((r: any) => ({
         taskExists: !!r.task,
         taskId: r.task?.id,
         title: r.task?.title,
@@ -2377,7 +2413,7 @@ export class DatabaseStorage implements IStorage {
 
     // Gestion spéciale des dates selon les types PostgreSQL
     if (taskData.startDate !== undefined) {
-      if (taskData.startDate === '' || taskData.startDate === null) {
+      if ((taskData.startDate as any) === '' || taskData.startDate === null) {
         cleanData.startDate = null;
       } else {
         // start_date est un timestamp en PostgreSQL - on peut passer une date
@@ -2386,7 +2422,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (taskData.dueDate !== undefined) {
-      if (taskData.dueDate === '' || taskData.dueDate === null) {
+      if ((taskData.dueDate as any) === '' || taskData.dueDate === null) {
         cleanData.dueDate = null;
       } else {
         // due_date est un timestamp en PostgreSQL - convertir en Date object
@@ -2463,7 +2499,7 @@ export class DatabaseStorage implements IStorage {
     return await announcementStorage.getAnnouncements(groupIds);
   }
 
-  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | undefined> {
+  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | null | undefined> {
     const announcementStorage = getAnnouncementStorage(
       () => this.getUsers(),
       () => this.getGroups()
@@ -2471,7 +2507,7 @@ export class DatabaseStorage implements IStorage {
     return await announcementStorage.getAnnouncement(id);
   }
 
-  async updateAnnouncement(id: number, announcementData: Partial<InsertAnnouncement>): Promise<AnnouncementWithRelations> {
+  async updateAnnouncement(id: number, announcementData: Partial<InsertAnnouncement>): Promise<DashboardMessage> {
     const announcementStorage = getAnnouncementStorage(
       () => this.getUsers(),
       () => this.getGroups()
@@ -2665,7 +2701,7 @@ export class DatabaseStorage implements IStorage {
 
     // Get history for each ticket
     const ticketsWithHistory = await Promise.all(
-      results.map(async (result) => {
+      results.map(async (result: any) => {
         const history = await this.getSavTicketHistory(result.ticket.id);
         return {
           ...result.ticket,
@@ -2826,7 +2862,7 @@ export class DatabaseStorage implements IStorage {
     };
 
     // Process status results
-    statusResults.forEach(result => {
+    statusResults.forEach((result: any) => {
       const count = Number(result.count || 0);
 
       if (result.status === 'nouveau') {
@@ -2839,7 +2875,7 @@ export class DatabaseStorage implements IStorage {
     });
 
     // Process priority results for critical tickets
-    priorityResults.forEach(result => {
+    priorityResults.forEach((result: any) => {
       const count = Number(result.count || 0);
 
       if (result.priority === 'critique') {
@@ -2910,6 +2946,29 @@ export class DatabaseStorage implements IStorage {
   async clearWeatherCache(): Promise<void> {
     await db.delete(weatherData);
     console.log('🧹 Weather cache cleared due to location change');
+  }
+
+  // Historique des mails fournisseurs (rapprochement)
+  async createSupplierMailLog(logData: InsertSupplierMailLog): Promise<SupplierMailLog> {
+    const [log] = await db.insert(supplierMailLogs).values(logData).returning();
+    return log;
+  }
+
+  async getSupplierMailLogs(groupIds?: number[], deliveryId?: number): Promise<SupplierMailLog[]> {
+    const conditions = [];
+    if (groupIds && groupIds.length > 0) {
+      conditions.push(inArray(supplierMailLogs.groupId, groupIds));
+    }
+    if (deliveryId !== undefined) {
+      conditions.push(eq(supplierMailLogs.deliveryId, deliveryId));
+    }
+
+    let query = db.select().from(supplierMailLogs).$dynamic();
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    // Borné : la page de rapprochement n'a besoin que de l'historique récent
+    return await query.orderBy(desc(supplierMailLogs.createdAt)).limit(500);
   }
 
   // Webhook BAP Configuration
@@ -2998,7 +3057,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(reconciliationComments.deliveryId, deliveryId))
       .orderBy(desc(reconciliationComments.createdAt));
 
-    return comments.map(comment => ({
+    return comments.map((comment: any) => ({
       ...comment,
       delivery: {
         ...comment.delivery,
@@ -3187,13 +3246,13 @@ export class DatabaseStorage implements IStorage {
         reconciliationRate: deliveryStats.count ? (Number(deliveryStats.reconciled) / Number(deliveryStats.count)) * 100 : 0,
         totalAmount: Number(deliveryStats.totalAmount) || 0,
         avgDeliveryDelay: Number(deliveryStats.avgDelay) || 0,
-        topSuppliers: topSuppliers.map(s => ({
+        topSuppliers: topSuppliers.map((s: any) => ({
           id: s.id,
           name: s.name,
           count: Number(s.count),
           amount: Number(s.amount)
         })),
-        topStores: topStores.map(s => ({
+        topStores: topStores.map((s: any) => ({
           id: s.id,
           name: s.name,
           orders: Number(s.orders),
@@ -3313,7 +3372,7 @@ export class DatabaseStorage implements IStorage {
       .groupBy(suppliers.id, suppliers.name)
       .orderBy(desc(sql<number>`COUNT(${deliveries.id})`));
 
-    return result.map(row => ({
+    return result.map((row: any) => ({
       supplierId: row.supplierId,
       supplierName: row.supplierName,
       deliveries: Number(row.deliveries),
@@ -4276,7 +4335,7 @@ export class MemStorage implements IStorage {
     }));
   }
 
-  async markClientCalled(customerOrderId: number, calledBy: string): Promise<CustomerOrder> {
+  async markClientCalled(customerOrderId: number, calledBy: string, comment?: string): Promise<CustomerOrder> {
     const order = this.customerOrders.get(customerOrderId);
     if (!order) {
       throw new Error(`CustomerOrder with id ${customerOrderId} not found`);
@@ -5209,6 +5268,52 @@ export class MemStorage implements IStorage {
     console.log('🧹 DEV: Weather cache cleared due to location change');
   }
 
+  async markDeliveryControlValidated(id: number, userId: string): Promise<void> {
+    const delivery = this.deliveries.get(id);
+    if (delivery) {
+      this.deliveries.set(id, {
+        ...delivery,
+        controlValidated: true,
+        controlValidatedBy: userId,
+        controlValidatedAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+  }
+
+  // Historique des mails fournisseurs (en mémoire pour le développement)
+  private supplierMailLogsStore: SupplierMailLog[] = [];
+  private supplierMailLogIdCounter = 1;
+
+  async createSupplierMailLog(logData: InsertSupplierMailLog): Promise<SupplierMailLog> {
+    const log: SupplierMailLog = {
+      id: this.supplierMailLogIdCounter++,
+      deliveryId: logData.deliveryId,
+      groupId: logData.groupId,
+      supplierId: logData.supplierId ?? null,
+      supplierName: logData.supplierName ?? null,
+      sentTo: logData.sentTo,
+      subject: logData.subject ?? null,
+      status: logData.status,
+      errorMessage: logData.errorMessage ?? null,
+      messageId: logData.messageId ?? null,
+      sentBy: logData.sentBy,
+      sentByName: logData.sentByName ?? null,
+      createdAt: new Date(),
+    };
+    this.supplierMailLogsStore.unshift(log);
+    return log;
+  }
+
+  async getSupplierMailLogs(groupIds?: number[], deliveryId?: number): Promise<SupplierMailLog[]> {
+    return this.supplierMailLogsStore
+      .filter(log =>
+        (!groupIds || groupIds.length === 0 || groupIds.includes(log.groupId)) &&
+        (deliveryId === undefined || log.deliveryId === deliveryId)
+      )
+      .slice(0, 500);
+  }
+
   // Webhook BAP Configuration
   async getWebhookBapConfig(): Promise<WebhookBapConfig | undefined> {
     // En développement, retourner une config par défaut
@@ -5284,7 +5389,7 @@ export class MemStorage implements IStorage {
     return await announcementStorage.getAnnouncements(groupIds);
   }
 
-  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | undefined> {
+  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | null | undefined> {
     const announcementStorage = getAnnouncementStorage(
       async () => Array.from(this.users.values()),
       async () => Array.from(this.groups.values())
@@ -5292,7 +5397,7 @@ export class MemStorage implements IStorage {
     return await announcementStorage.getAnnouncement(id);
   }
 
-  async updateAnnouncement(id: number, announcementData: Partial<InsertAnnouncement>): Promise<AnnouncementWithRelations> {
+  async updateAnnouncement(id: number, announcementData: Partial<InsertAnnouncement>): Promise<DashboardMessage> {
     const announcementStorage = getAnnouncementStorage(
       async () => Array.from(this.users.values()),
       async () => Array.from(this.groups.values())

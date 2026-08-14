@@ -137,7 +137,7 @@ export function useAuthUnified() {
         console.log('🔄 Development refetch result:', { 
           success: result.isSuccess, 
           hasData: !!result.data,
-          userId: result.data?.id 
+          userId: (result.data as any)?.id 
         });
       }
       return result.data;

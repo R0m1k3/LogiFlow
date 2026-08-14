@@ -61,7 +61,7 @@ export default function DlcPage() {
   }, [searchTerm]);
 
   // Fetch stores/groups - optimized cache
-  const { data: stores = [] } = useQuery({
+  const { data: stores = [] } = useQuery<any[]>({
     queryKey: ["/api/groups"],
     enabled: !authLoading,
     staleTime: 5 * 60 * 1000, // 5 minutes cache
@@ -348,18 +348,18 @@ export default function DlcPage() {
     console.log("🏪 DLC GroupId Selection DEBUG:", {
       userRole: user?.role,
       selectedStoreId,
-      userGroups: user?.userGroups?.map(ug => ({groupId: ug.groupId, groupName: ug.group?.name})),
-      availableStores: stores.map(s => ({id: s.id, name: s.name})),
+      userGroups: user?.userGroups?.map((ug: any) => ({groupId: ug.groupId, groupName: ug.group?.name})),
+      availableStores: stores.map((s: any) => ({id: s.id, name: s.name})),
       userGroupsRaw: user?.userGroups,
       firstUserGroup: user?.userGroups?.[0],
       finalGroupId: groupId,
       logicPath: !groupId ? 'need-fallback' : 'already-set'
     });
     
-    const dlcData: InsertDlcProduct = {
+    const dlcData: any = {
       ...data,
       name: data.productName, // Copier productName vers name (requis dans la DB)
-      expiryDate: dlcDate,
+      expiryDate: dlcDate as any,
       quantity: 1, // Valeur par défaut
       unit: "unité", // Valeur par défaut
       location: "Magasin", // Valeur par défaut
@@ -377,7 +377,7 @@ export default function DlcPage() {
   const handleEdit = (product: DlcProductWithRelations) => {
     setEditingProduct(product);
     form.reset({
-      productName: product.productName,
+      productName: product.productName as string,
       gencode: product.gencode || "",
       dlcDate: product.expiryDate ? format(new Date(product.expiryDate), "yyyy-MM-dd") : "",
       dateType: product.dateType as "dlc" | "ddm" | "dluo",
@@ -526,7 +526,7 @@ export default function DlcPage() {
               </tr>
             </thead>
             <tbody>
-              ${expiringSoon.map(product => {
+              ${expiringSoon.map((product: any) => {
                 const today = new Date();
                 const expiry = new Date(product.dlcDate || new Date());
                 const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -585,7 +585,7 @@ export default function DlcPage() {
               </tr>
             </thead>
             <tbody>
-              ${expired.map(product => {
+              ${expired.map((product: any) => {
                 const today = new Date();
                 const expiry = new Date(product.dlcDate || new Date());
                 const diffDays = Math.ceil((today.getTime() - expiry.getTime()) / (1000 * 60 * 60 * 24));
@@ -620,14 +620,14 @@ export default function DlcPage() {
   // Memoized calculations for print functions
   const { expiringSoonProducts, expiredProducts } = useMemo(() => {
     const today = new Date();
-    const expiringSoon = filteredProducts.filter(product => {
+    const expiringSoon = filteredProducts.filter((product: any) => {
       if (product.status === 'valides') return false;
       const expiryDate = new Date(product.dlcDate || new Date());
       const diffDays = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       return diffDays <= 15 && diffDays > 0;
     });
 
-    const expired = filteredProducts.filter(product => {
+    const expired = filteredProducts.filter((product: any) => {
       if (product.status === 'valides') return false;
       const expiryDate = new Date(product.dlcDate || new Date());
       return expiryDate <= today;

@@ -27,7 +27,7 @@ RUN ls -la server/
 
 # Build the application
 # Build frontend first
-RUN npx vite build
+RUN NODE_ENV=production npx vite build
 
 # Vérifier que les fichiers sont construits
 RUN echo "=== BUILD VERIFICATION ===" && \
@@ -61,7 +61,8 @@ RUN npx esbuild server/index.production.ts \
     --external:express-rate-limit \
     --external:memoizee \
     --external:nanoid \
-    --external:date-fns
+    --external:date-fns \
+    --external:nodemailer
 
 # Production stage
 FROM node:20-alpine AS production

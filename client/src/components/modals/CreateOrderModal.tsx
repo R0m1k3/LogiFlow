@@ -210,7 +210,7 @@ export default function CreateOrderModal({
                     <>
                       <div 
                         className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: selectedGroup.color }}
+                        style={{ backgroundColor: selectedGroup.color || undefined }}
                       />
                       <span className="font-medium">{selectedGroup.name}</span>
                     </>

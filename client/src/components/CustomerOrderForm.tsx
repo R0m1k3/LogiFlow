@@ -42,13 +42,14 @@ const customerOrderFormSchema = z.object({
   customerNotified: z.boolean().default(false),
   notes: z.string().optional(),
   customerEmail: z.string().optional(),
+  status: z.string().optional(),
 });
 
 type CustomerOrderFormData = z.infer<typeof customerOrderFormSchema>;
 
 interface CustomerOrderFormProps {
   order?: CustomerOrderWithRelations;
-  onSubmit: (data: CustomerOrderFormData) => void;
+  onSubmit: (data: Record<string, any>) => void;
   onCancel: () => void;
   isLoading?: boolean;
 }
@@ -113,7 +114,7 @@ export function CustomerOrderForm({
       quantity: order?.quantity || 1,
       supplierId: order?.supplierId || 1,
       status: "En attente de Commande", // Statut fixe
-      deposit: order?.deposit || 0,
+      deposit: order?.deposit ? Number(order.deposit) : 0,
       isPromotionalPrice: order?.isPromotionalPrice || false,
       customerNotified: order?.customerNotified || false,
       groupId: order?.groupId || getUserAssignedGroupId() || 1,

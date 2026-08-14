@@ -93,7 +93,7 @@ export function invalidateCache(pattern: string): void {
 export function setupCompression(app: any) {
   app.use((req: Request, res: Response, next: NextFunction) => {
     // Activer la compression pour les réponses JSON
-    if (req.accepts('gzip') && res.getHeader('Content-Type')?.includes('json')) {
+    if (req.accepts('gzip') && String(res.getHeader('Content-Type') ?? '').includes('json')) {
       res.setHeader('Content-Encoding', 'gzip');
     }
     next();

@@ -19,7 +19,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ReconciliationComments from "@/components/ReconciliationComments";
 import ReconciliationModal from "@/components/modals/ReconciliationModal";
-import { buildSupplierMailtoUrl, openMailClient } from "@/lib/supplierMail";
 
 export default function BLReconciliation() {
   const { user } = useAuthUnified();
@@ -68,6 +67,8 @@ export default function BLReconciliation() {
   // État pour le système de vérification de facture
   const [verificationResults, setVerificationResults] = useState<Record<number, any>>({});
   const [verifyingDeliveries, setVerifyingDeliveries] = useState<Set<number>>(new Set());
+  // Livraisons dont le mail fournisseur est en cours d'envoi
+  const [sendingMailDeliveries, setSendingMailDeliveries] = useState<Set<number>>(new Set());
 
   // État pour le modal de commentaire
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -77,6 +78,34 @@ export default function BLReconciliation() {
   const { data: suppliers = [] } = useQuery<any[]>({
     queryKey: ['/api/suppliers'],
   });
+
+  // Historique des relances fournisseurs : dernier envoi affiché sur l'icône mail
+  const { data: supplierMailLogs = [] } = useQuery<any[]>({
+    queryKey: ['/api/supplier-mail-logs', selectedStoreId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedStoreId && (user?.role === 'admin' || user?.role === 'directeur')) {
+        params.append('storeId', selectedStoreId.toString());
+      }
+      const response = await fetch(`/api/supplier-mail-logs?${params.toString()}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch supplier mail logs');
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  // Dernier envoi réussi par livraison (les logs arrivent triés du plus récent au plus ancien)
+  const lastMailByDelivery = React.useMemo(() => {
+    const map = new Map<number, any>();
+    for (const log of supplierMailLogs) {
+      if (log.status === 'sent' && !map.has(log.deliveryId)) {
+        map.set(log.deliveryId, log);
+      }
+    }
+    return map;
+  }, [supplierMailLogs]);
 
   // ---------------------------------------------------------------------------
   // File d'attente des vérifications de facture
@@ -121,52 +150,31 @@ export default function BLReconciliation() {
       
       // Auto-remplissage si facture trouvée (référence facture OU numéro BL)
       if (result.exists) {
-        console.log('🔍 DEBUG - Résultat complet de vérification:', {
-          deliveryId: variables.deliveryId,
-          exists: result.exists,
-          matchType: result.matchType,
-          invoiceReference: result.invoiceReference,
-          invoiceAmount: result.invoiceAmount,
-          dueDate: result.dueDate,
-          hasInvoiceRef: !!result.invoiceReference,
-          hasAmount: result.invoiceAmount !== undefined && result.invoiceAmount !== null,
-          hasDueDate: !!result.dueDate
-        });
-        
-        // Auto-remplir les champs dans la livraison via API
         const updateData: any = {};
-        
+
         // Ajouter la référence de facture SEULEMENT si trouvée via BL (pas déjà renseignée)
         if (result.invoiceReference && result.matchType === 'bl_number') {
           updateData.invoiceReference = result.invoiceReference;
-          console.log('✅ Ajout invoiceReference:', result.invoiceReference);
-        } else {
-          console.log('⚠️ Pas d\'ajout invoiceReference:', { hasRef: !!result.invoiceReference, matchType: result.matchType });
         }
-        
+
         // TOUJOURS mettre à jour le montant si disponible (peu importe le matchType)
         if (result.invoiceAmount !== undefined && result.invoiceAmount !== null) {
           updateData.invoiceAmount = result.invoiceAmount;
-          console.log('✅ Ajout invoiceAmount:', result.invoiceAmount);
-        } else {
-          console.log('⚠️ Pas d\'ajout invoiceAmount:', { amount: result.invoiceAmount });
         }
-        
+
         // TOUJOURS mettre à jour la date d'échéance si disponible (peu importe le matchType)
         if (result.dueDate) {
           updateData.dueDate = result.dueDate;
-          console.log('✅ Ajout dueDate:', result.dueDate);
-        } else {
-          console.log('⚠️ Pas d\'ajout dueDate:', { dueDate: result.dueDate });
         }
-        
-        console.log('📝 Données finales à sauvegarder:', { deliveryId: variables.deliveryId, updateData, matchType: result.matchType });
-        
+
+        if (import.meta.env.DEV) {
+          console.log('📝 Auto-remplissage:', { deliveryId: variables.deliveryId, updateData, matchType: result.matchType });
+        }
+
         // Ne faire l'appel que si on a des données à mettre à jour
         if (Object.keys(updateData).length > 0) {
           apiRequest(`/api/deliveries/${variables.deliveryId}`, "PUT", updateData)
             .then(() => {
-              console.log('✅ Données sauvegardées avec succès');
               // Invalidation différée : sinon chaque auto-remplissage relance un
               // refetch complet de la liste, qui relance l'effet, qui relance des
               // vérifications... jusqu'à saturer le navigateur.
@@ -175,8 +183,6 @@ export default function BLReconciliation() {
             .catch((error) => {
               console.error('❌ Erreur auto-remplissage:', error);
             });
-        } else {
-          console.log('⚠️ Aucune donnée à sauvegarder');
         }
       }
       
@@ -676,8 +682,36 @@ export default function BLReconciliation() {
     return supplier?.email ? String(supplier.email).trim() : '';
   };
 
-  // Ouvre Outlook (client mail par défaut) avec un message prérempli
-  // demandant la facture au format PDF ou le BL au format Excel
+  // Envoi de la demande de facture (PDF) / BL (Excel) au fournisseur.
+  // Le mail part du serveur SMTP configuré sur la fiche du magasin.
+  const sendSupplierMailMutation = useMutation({
+    mutationFn: async (delivery: any) => {
+      return await apiRequest(`/api/deliveries/${delivery.id}/send-supplier-mail`, 'POST');
+    },
+    onSuccess: (result: any) => {
+      toast({
+        title: "Mail envoyé",
+        description: `Demande envoyée à ${result?.supplierName || 'le fournisseur'} (${result?.sentTo})`,
+      });
+      // Rafraîchir l'historique pour marquer la ligne comme relancée
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier-mail-logs'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Envoi impossible",
+        description: error?.message || "Le mail n'a pas pu être envoyé",
+        variant: "destructive",
+      });
+    },
+    onSettled: (_result, _error, delivery: any) => {
+      setSendingMailDeliveries(prev => {
+        const next = new Set(prev);
+        next.delete(delivery.id);
+        return next;
+      });
+    },
+  });
+
   const handleRequestDocumentsByEmail = (delivery: any) => {
     const supplierEmail = getSupplierEmail(delivery);
 
@@ -690,8 +724,12 @@ export default function BLReconciliation() {
       return;
     }
 
-    const mailtoUrl = buildSupplierMailtoUrl(delivery, supplierEmail);
-    openMailClient(mailtoUrl);
+    // Envoi direct : on bloque la ligne le temps de la requête pour éviter
+    // qu'un double clic ne déclenche deux mails au même fournisseur.
+    if (sendingMailDeliveries.has(delivery.id)) return;
+
+    setSendingMailDeliveries(prev => new Set(prev).add(delivery.id));
+    sendSupplierMailMutation.mutate(delivery);
   };
 
   const handleQuickValidate = async (delivery: any) => {
@@ -1132,23 +1170,36 @@ export default function BLReconciliation() {
                               <div className="flex items-center justify-end space-x-2">
                                 {(() => {
                                   const supplierEmail = getSupplierEmail(delivery);
+                                  const isSending = sendingMailDeliveries.has(delivery.id);
+                                  const lastMail = lastMailByDelivery.get(delivery.id);
                                   return (
                                     <Button
                                       variant="outline"
                                       size="sm"
+                                      disabled={isSending}
                                       onClick={() => handleRequestDocumentsByEmail(delivery)}
                                       className={`h-8 w-8 p-0 ${
-                                        supplierEmail
-                                          ? 'text-blue-600 hover:text-blue-700 border-blue-300'
-                                          : 'text-gray-400 hover:text-gray-500'
+                                        !supplierEmail
+                                          ? 'text-gray-400 hover:text-gray-500'
+                                          : lastMail
+                                            ? 'text-green-600 hover:text-green-700 border-green-300'
+                                            : 'text-blue-600 hover:text-blue-700 border-blue-300'
                                       }`}
                                       title={
-                                        supplierEmail
-                                          ? `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
-                                          : `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                        isSending
+                                          ? "Envoi en cours..."
+                                          : !supplierEmail
+                                            ? `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                            : lastMail
+                                              ? `Demande déjà envoyée le ${safeFormat(lastMail.createdAt, 'dd/MM/yyyy à HH:mm')} par ${lastMail.sentByName || lastMail.sentBy}. Cliquer pour renvoyer.`
+                                              : `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
                                       }
                                     >
-                                      <Mail className="h-4 w-4" />
+                                      {isSending ? (
+                                        <Clock className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Mail className={`h-4 w-4 ${lastMail ? 'fill-green-100' : ''}`} />
+                                      )}
                                     </Button>
                                   );
                                 })()}
@@ -1462,21 +1513,34 @@ export default function BLReconciliation() {
                                 <div className="flex items-center justify-end space-x-2">
                                   {(() => {
                                     const supplierEmail = getSupplierEmail(delivery);
+                                    const isSending = sendingMailDeliveries.has(delivery.id);
+                                    const lastMail = lastMailByDelivery.get(delivery.id);
                                     return (
                                       <button
+                                        disabled={isSending}
                                         onClick={() => handleRequestDocumentsByEmail(delivery)}
                                         className={`transition-colors duration-200 p-1 rounded opacity-70 ${
-                                          supplierEmail
-                                            ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                                            : 'text-gray-400 hover:text-gray-500 hover:bg-gray-50'
+                                          !supplierEmail
+                                            ? 'text-gray-400 hover:text-gray-500 hover:bg-gray-50'
+                                            : lastMail
+                                              ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                                              : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
                                         }`}
                                         title={
-                                          supplierEmail
-                                            ? `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
-                                            : `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                          isSending
+                                            ? "Envoi en cours..."
+                                            : !supplierEmail
+                                              ? `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                              : lastMail
+                                                ? `Demande déjà envoyée le ${safeFormat(lastMail.createdAt, 'dd/MM/yyyy à HH:mm')} par ${lastMail.sentByName || lastMail.sentBy}. Cliquer pour renvoyer.`
+                                                : `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
                                         }
                                       >
-                                        <Mail className="w-4 h-4" />
+                                        {isSending ? (
+                                          <Clock className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          <Mail className={`w-4 h-4 ${lastMail ? 'fill-green-100' : ''}`} />
+                                        )}
                                       </button>
                                     );
                                   })()}

@@ -183,7 +183,7 @@ export default function NocoDBConfig() {
       apiToken: config.apiToken,
       projectId: config.projectId,
       description: config.description || "",
-      isActive: config.isActive,
+      isActive: config.isActive ?? undefined,
     });
     setShowEditModal(true);
   };

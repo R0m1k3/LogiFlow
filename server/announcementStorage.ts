@@ -11,10 +11,10 @@ type AnnouncementWithRelations = DashboardMessageWithRelations;
 // Interface commune pour le stockage
 interface IAnnouncementStorage {
   getAnnouncements(groupIds?: number[]): Promise<AnnouncementWithRelations[]>;
-  getAnnouncement(id: number): Promise<AnnouncementWithRelations | null>;
+  getAnnouncement(id: number): Promise<AnnouncementWithRelations | null | undefined>;
   createAnnouncement(announcement: InsertAnnouncement): Promise<DashboardMessage>;
   updateAnnouncement(id: number, announcement: Partial<InsertAnnouncement>): Promise<DashboardMessage>;
-  deleteAnnouncement(id: number): Promise<void>;
+  deleteAnnouncement(id: number): Promise<boolean>;
 }
 
 // Stockage PostgreSQL pour la production
@@ -60,7 +60,7 @@ class AnnouncementDatabaseStorage implements IAnnouncementStorage {
     }));
   }
 
-  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | null> {
+  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | null | undefined> {
     console.log('🔍 [DB] Getting single announcement:', id);
     
     const result = await db
@@ -136,10 +136,12 @@ class AnnouncementDatabaseStorage implements IAnnouncementStorage {
     return updated;
   }
 
-  async deleteAnnouncement(id: number): Promise<void> {
-    await db
+  async deleteAnnouncement(id: number): Promise<boolean> {
+    const deleted = await db
       .delete(dashboardMessages)
-      .where(eq(dashboardMessages.id, id));
+      .where(eq(dashboardMessages.id, id))
+      .returning({ id: dashboardMessages.id });
+    return deleted.length > 0;
   }
 }
 
@@ -182,26 +184,6 @@ class AnnouncementMemoryStorage implements IAnnouncementStorage {
       createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Hier
     };
     this.announcements.set(testAnnouncement2.id, testAnnouncement2);
-  }
-
-  async getAnnouncement(id: number): Promise<AnnouncementWithRelations | null> {
-    const announcement = this.announcements.get(id);
-    if (!announcement) {
-      return null;
-    }
-
-    // Ajouter les relations
-    const users = await this.usersGetter();
-    const groups = await this.groupsGetter();
-
-    const author = users.find(u => u.id === announcement.createdBy || u.username === announcement.createdBy);
-    const group = announcement.storeId ? groups.find(g => g.id === announcement.storeId) : undefined;
-
-    return {
-      ...announcement,
-      author: author || { id: announcement.createdBy, firstName: 'Utilisateur', lastName: 'Inconnu', username: announcement.createdBy } as User,
-      group,
-    };
   }
 
   async getAnnouncements(groupIds?: number[]): Promise<AnnouncementWithRelations[]> {
@@ -329,12 +311,13 @@ class AnnouncementMemoryStorage implements IAnnouncementStorage {
     return announcementWithRelations;
   }
 
-  async deleteAnnouncement(id: number): Promise<void> {
+  async deleteAnnouncement(id: number): Promise<boolean> {
     const deleted = this.announcements.delete(id);
-    
+
     if (deleted) {
       console.log(`🗑️ Annonce supprimée: ID ${id} (${this.announcements.size}/${this.MAX_ANNOUNCEMENTS} restantes)`);
     }
+    return deleted;
   }
 }
 

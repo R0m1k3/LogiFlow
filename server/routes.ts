@@ -3,6 +3,23 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupLocalAuth, requireAuth } from "./localAuth";
 import { requireModulePermission, requireAdmin, requirePermission } from "./permissions";
+import { stripSmtpPassword } from "./sanitize";
+
+// Corps de requête sans les champs secrets : pour les logs uniquement
+function redactBody(body: any): any {
+  if (!body || typeof body !== 'object') return body;
+  const redacted = { ...body };
+  for (const key of ['smtpPassword', 'apiToken', 'password']) {
+    if (key in redacted && redacted[key]) redacted[key] = '[REDACTED]';
+  }
+  return redacted;
+}
+import {
+  sendSupplierDocumentRequest,
+  verifySmtpConfig,
+  getMissingSmtpFields,
+} from "./emailService";
+import { buildSupplierMailSubject } from "@shared/supplierMail";
 import { db, pool } from "./db";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -10,6 +27,7 @@ const require = createRequire(import.meta.url);
 // const FormData = require('form-data');
 
 console.log('🔍 Using development storage and authentication');
+
 
 // Fonction de normalisation des dates pour gérer différents formats de NocoDB
 function normalizeDateString(dateString: string | null | undefined): string | null {
@@ -138,6 +156,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Detect environment
   const environment = process.env.NODE_ENV || 'development';
   console.log('🌍 Environment detected:', environment);
+
+  // Le mot de passe SMTP des magasins ne doit jamais sortir du serveur.
+  // Les objets "group" sont joints à de nombreuses réponses (livraisons,
+  // commandes, utilisateurs...) : plutôt que de filtrer chaque requête, on
+  // nettoie une seule fois à la sortie. Le client reçoit à la place un booléen
+  // smtpPasswordSet lui indiquant si un mot de passe est enregistré.
+  app.use('/api', (req, res, next) => {
+    const originalJson = res.json.bind(res);
+
+    res.json = (body: any) => originalJson(stripSmtpPassword(body));
+
+    next();
+  });
 
   // Health check endpoint for Docker
   app.get('/api/health', (req, res) => {
@@ -967,7 +998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
       });
 
-      console.log('📋 POST /api/groups - Request body:', JSON.stringify(req.body, null, 2));
+      console.log('📋 POST /api/groups - Request body:', JSON.stringify(redactBody(req.body), null, 2));
 
       // Déterminer l'ID utilisateur selon l'environnement
       let userId;
@@ -1016,7 +1047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ Failed to create group:', {
         error: error?.message || 'Unknown error',
         stack: error?.stack,
-        body: req.body,
+        body: redactBody(req.body),
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
       });
 
@@ -1042,11 +1073,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const data = insertGroupSchema.partial().parse(req.body);
+
+      // Le mot de passe SMTP n'est jamais renvoyé au client : un champ vide
+      // signifie "inchangé", pas "effacer". On ne l'écrase que s'il est fourni.
+      if (!data.smtpPassword) {
+        delete (data as any).smtpPassword;
+      }
+
       const group = await storage.updateGroup(id, data);
       res.json(group);
     } catch (error: any) {
       console.error("Error updating group:", error);
       res.status(500).json({ message: "Failed to update group" });
+    }
+  });
+
+  // Test de la configuration SMTP d'un magasin (aucun message envoyé)
+  app.post('/api/groups/:id/test-smtp', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const id = parseInt(req.params.id);
+      const group = await storage.getGroup(id);
+      if (!group) {
+        return res.status(404).json({ message: "Magasin introuvable" });
+      }
+
+      const missing = getMissingSmtpFields(group as any);
+      if (missing.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Configuration incomplète : ${missing.join(', ')}`
+        });
+      }
+
+      await verifySmtpConfig(group as any);
+      res.json({ success: true, message: "Connexion au serveur SMTP réussie" });
+    } catch (error: any) {
+      console.error("Erreur test SMTP:", error);
+      res.status(400).json({
+        success: false,
+        message: error?.message || "Impossible de joindre le serveur SMTP"
+      });
     }
   });
 
@@ -1099,7 +1170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'content-length': req.headers['content-length']
       });
 
-      console.log('📋 POST /api/suppliers - Request body:', JSON.stringify(req.body, null, 2));
+      console.log('📋 POST /api/suppliers - Request body:', JSON.stringify(redactBody(req.body), null, 2));
 
       // Déterminer l'ID utilisateur selon l'environnement
       let userId;
@@ -1148,7 +1219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ Failed to create supplier:', {
         error: (error as Error).message,
         stack: error.stack,
-        body: req.body,
+        body: redactBody(req.body),
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
       });
 
@@ -1482,7 +1553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('📦 Order creation started:', {
         userId: req.user?.id || req.user?.claims?.sub,
-        body: req.body,
+        body: redactBody(req.body),
         environment: process.env.NODE_ENV
       });
 
@@ -1529,7 +1600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("❌ Error creating order:", {
         error: (error as Error).message,
         stack: error.stack,
-        body: req.body,
+        body: redactBody(req.body),
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
       });
 
@@ -2254,6 +2325,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Route de vérification de facture NocoDB
+  // Envoi au fournisseur de la demande de facture (PDF) ou de BL (Excel)
+  // via le serveur SMTP configuré sur la fiche du magasin de la livraison
+  app.post('/api/deliveries/:id/send-supplier-mail', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const deliveryId = parseInt(req.params.id);
+      const delivery = await storage.getDelivery(deliveryId);
+
+      if (!delivery) {
+        return res.status(404).json({ message: "Livraison introuvable" });
+      }
+
+      if (!hasPermission(user.role, 'deliveries', 'view')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      // Hors admin, l'utilisateur doit appartenir au magasin de la livraison
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
+        if (!userGroupIds.includes(delivery.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      // Adresse du fournisseur : celle enregistrée sur sa fiche
+      const supplierEmail = delivery.supplier?.email?.trim();
+      if (!supplierEmail) {
+        return res.status(400).json({
+          message: `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+        });
+      }
+
+      // Configuration SMTP du magasin (mot de passe inclus : usage serveur uniquement)
+      const group = await storage.getGroup(delivery.groupId);
+      if (!group) {
+        return res.status(404).json({ message: "Magasin de la livraison introuvable" });
+      }
+
+      if (!(group as any).smtpEnabled) {
+        return res.status(400).json({
+          message: `L'envoi de mails n'est pas activé pour le magasin ${group.name}. Renseignez la configuration SMTP sur sa fiche.`
+        });
+      }
+
+      const missing = getMissingSmtpFields(group as any);
+      if (missing.length > 0) {
+        return res.status(400).json({
+          message: `Configuration SMTP incomplète pour ${group.name} : ${missing.join(', ')}`
+        });
+      }
+
+      // Historisation de la tentative, succès comme échec — un échec de
+      // journalisation ne doit jamais faire échouer (ni annuler) l'envoi
+      const senderName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
+        || user.username || user.id;
+      const logAttempt = async (status: 'sent' | 'failed', extra: { messageId?: string; errorMessage?: string }) => {
+        try {
+          await storage.createSupplierMailLog({
+            deliveryId,
+            groupId: delivery.groupId,
+            supplierId: delivery.supplierId ?? null,
+            supplierName: delivery.supplier?.name || null,
+            sentTo: supplierEmail,
+            subject: buildSupplierMailSubject(delivery as any),
+            status,
+            errorMessage: extra.errorMessage || null,
+            messageId: extra.messageId || null,
+            sentBy: user.id,
+            sentByName: senderName,
+          });
+        } catch (logError) {
+          console.error('⚠️ Historisation du mail fournisseur impossible:', logError);
+        }
+      };
+
+      try {
+        const result = await sendSupplierDocumentRequest(group as any, delivery as any, supplierEmail);
+
+        await logAttempt('sent', { messageId: result.messageId });
+
+        console.log('📧 Mail fournisseur envoyé:', {
+          deliveryId,
+          supplier: delivery.supplier?.name,
+          to: supplierEmail,
+          store: group.name,
+          messageId: result.messageId
+        });
+
+        res.json({
+          success: true,
+          sentTo: supplierEmail,
+          supplierName: delivery.supplier?.name || null,
+          messageId: result.messageId
+        });
+      } catch (sendError: any) {
+        await logAttempt('failed', { errorMessage: sendError?.message || 'Erreur inconnue' });
+        throw sendError;
+      }
+    } catch (error: any) {
+      console.error("Erreur envoi mail fournisseur:", error);
+      res.status(500).json({
+        message: error?.message || "Impossible d'envoyer le mail au fournisseur"
+      });
+    }
+  });
+
+  // Historique des relances fournisseurs, restreint aux magasins de l'utilisateur
+  app.get('/api/supplier-mail-logs', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const deliveryId = req.query.deliveryId ? parseInt(req.query.deliveryId as string) : undefined;
+
+      let groupIds: number[] | undefined;
+      if (user.role !== 'admin') {
+        groupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
+        if (groupIds.length === 0) {
+          return res.json([]);
+        }
+      } else if (req.query.storeId) {
+        groupIds = [parseInt(req.query.storeId as string)];
+      }
+
+      const logs = await storage.getSupplierMailLogs(groupIds, deliveryId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Erreur lecture historique mails fournisseurs:", error);
+      res.status(500).json({ message: "Failed to fetch supplier mail logs" });
+    }
+  });
+
   app.post('/api/deliveries/:id/verify-invoice', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
@@ -2479,7 +2688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Vérifier que la livraison existe
-      const delivery = await storage.getDeliveryById(id);
+      const delivery = await storage.getDelivery(id);
       if (!delivery) {
         return res.status(404).json({ message: "Delivery not found" });
       }
@@ -4520,7 +4729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Publicity deleted successfully" });
     } catch (error) {
       console.error(`❌ [API] Error deleting publicity ${publicityId}:`, error);
-      res.status(500).json({ message: "Failed to delete publicity", error: error.message });
+      res.status(500).json({ message: "Failed to delete publicity", error: (error as Error).message });
     }
   });
 
@@ -4559,7 +4768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Publicity deleted successfully" });
     } catch (error) {
       console.error(`❌ [API-POST] Error deleting publicity ${publicityId} via POST:`, error);
-      res.status(500).json({ message: "Failed to delete publicity", error: error.message });
+      res.status(500).json({ message: "Failed to delete publicity", error: (error as Error).message });
     }
   });
 
@@ -5349,8 +5558,14 @@ RÉSUMÉ DU SCAN
   });
 
   // Emergency migration route for SAV priority column
-  app.post('/api/admin/emergency-migration', async (req, res) => {
+  // SÉCURITÉ : réservée aux administrateurs authentifiés (était accessible sans login)
+  app.post('/api/admin/emergency-migration', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
       console.log('🚨 EMERGENCY: Forcing SAV migration execution...');
 
       // Import migration function
@@ -6010,7 +6225,7 @@ RÉSUMÉ DU SCAN
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds
-          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          ? filters.groupIds.filter((id: number) => userGroupIds.includes(id))
           : userGroupIds;
       }
 
@@ -6041,7 +6256,7 @@ RÉSUMÉ DU SCAN
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds
-          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          ? filters.groupIds.filter((id: number) => userGroupIds.includes(id))
           : userGroupIds;
       }
 
@@ -6070,7 +6285,7 @@ RÉSUMÉ DU SCAN
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds
-          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          ? filters.groupIds.filter((id: number) => userGroupIds.includes(id))
           : userGroupIds;
       }
 
@@ -6123,7 +6338,7 @@ RÉSUMÉ DU SCAN
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds
-          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          ? filters.groupIds.filter((id: number) => userGroupIds.includes(id))
           : userGroupIds;
       }
 

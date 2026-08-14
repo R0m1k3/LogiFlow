@@ -46,9 +46,9 @@ pool.on('error', (err) => {
   } catch (error) {
     console.error('❌ DB: Database migrations failed with error:', error);
     console.error('❌ DB: Migration failure details:', {
-      name: error?.name,
-      message: error?.message,
-      code: error?.code
+      name: (error as any)?.name,
+      message: (error as any)?.message,
+      code: (error as any)?.code
     });
     // Don't fail the application startup for migration errors
   }

@@ -20,13 +20,32 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
+  },
+  // En production, les console.log/debug de debug sont retirés du bundle par
+  // le minifieur (console.warn et console.error sont conservés). En dev, tout
+  // reste visible.
+  esbuild: {
+    pure: process.env.NODE_ENV === "production" ? ["console.log", "console.debug"] : [],
   },
   root: path.resolve(import.meta.dirname, "client"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Sépare les grosses dépendances stables du code applicatif :
+        // elles ne changent qu'aux montées de version et restent donc en
+        // cache navigateur entre deux déploiements, au lieu de faire
+        // retélécharger 1,7 Mo à chaque mise en production.
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "wouter"],
+          "vendor-query": ["@tanstack/react-query"],
+          "vendor-charts": ["recharts"],
+          "vendor-icons": ["lucide-react"],
+        },
+      },
+    },
   },
   server: {
     fs: {

@@ -61,6 +61,19 @@ export const groups = pgTable("groups", {
   nocodbSupplierColumnName: varchar("nocodb_supplier_column_name"), // Nom de la colonne fournisseur dans leur table
   nocodbDueDateColumnName: varchar("nocodb_due_date_column_name"), // Nom de la colonne date d'échéance dans leur table
   webhookUrl: varchar("webhook_url", { length: 500 }), // URL de webhook pour notifications par magasin
+  // Coordonnées du magasin, reprises dans la signature des mails fournisseurs
+  address: text("address"), // Adresse postale
+  phone: varchar("phone", { length: 50 }), // Téléphone
+  logo: text("logo"), // Logo en data URI (data:image/png;base64,...), intégré aux mails
+  // Configuration SMTP propre au magasin (envoi des mails fournisseurs)
+  smtpEnabled: boolean("smtp_enabled").default(false),
+  smtpHost: varchar("smtp_host", { length: 255 }),
+  smtpPort: integer("smtp_port"),
+  smtpSecure: boolean("smtp_secure").default(false), // true = SSL/TLS direct (465), false = STARTTLS
+  smtpUser: varchar("smtp_user", { length: 255 }),
+  smtpPassword: varchar("smtp_password", { length: 255 }), // jamais renvoyé au client
+  smtpSenderEmail: varchar("smtp_sender_email", { length: 255 }), // adresse expéditeur "De :"
+  smtpSenderName: varchar("smtp_sender_name", { length: 255 }), // nom affiché, par défaut le nom du magasin
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -554,6 +567,17 @@ export const insertGroupSchema = createInsertSchema(groups).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  // Champs optionnels : le formulaire envoie "" quand ils ne sont pas renseignés
+  address: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  logo: z.string().optional().nullable(),
+  smtpHost: z.string().optional().nullable(),
+  smtpPort: z.coerce.number().int().min(1).max(65535).optional().nullable(),
+  smtpUser: z.string().optional().nullable(),
+  smtpPassword: z.string().optional().nullable(),
+  smtpSenderEmail: z.union([z.string().email(), z.literal("")]).optional().nullable(),
+  smtpSenderName: z.string().optional().nullable(),
 });
 
 export const insertSupplierSchema = createInsertSchema(suppliers).omit({
@@ -961,6 +985,23 @@ export type WeatherSettings = typeof weatherSettings.$inferSelect;
 export type InsertWeatherSettings = z.infer<typeof insertWeatherSettingsSchema>;
 
 // Configuration Webhook BAP
+// Historique des mails de relance envoyés aux fournisseurs (rapprochement)
+export const supplierMailLogs = pgTable("supplier_mail_logs", {
+  id: serial("id").primaryKey(),
+  deliveryId: integer("delivery_id").notNull(),
+  groupId: integer("group_id").notNull(),
+  supplierId: integer("supplier_id"),
+  supplierName: varchar("supplier_name", { length: 255 }), // figé au moment de l'envoi
+  sentTo: varchar("sent_to", { length: 255 }).notNull(), // adresse destinataire
+  subject: text("subject"),
+  status: varchar("status", { length: 20 }).notNull(), // 'sent' | 'failed'
+  errorMessage: text("error_message"),
+  messageId: varchar("message_id", { length: 255 }),
+  sentBy: varchar("sent_by").notNull(), // id utilisateur
+  sentByName: varchar("sent_by_name", { length: 255 }), // nom lisible, figé
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const webhookBapConfig = pgTable("webhook_bap_config", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull().default("Configuration BAP"),
@@ -981,3 +1022,11 @@ export const insertWebhookBapConfigSchema = createInsertSchema(webhookBapConfig)
 // Webhook BAP Types
 export type WebhookBapConfig = typeof webhookBapConfig.$inferSelect;
 export type InsertWebhookBapConfig = z.infer<typeof insertWebhookBapConfigSchema>;
+
+// Supplier mail logs
+export const insertSupplierMailLogSchema = createInsertSchema(supplierMailLogs).omit({
+  id: true,
+  createdAt: true,
+});
+export type SupplierMailLog = typeof supplierMailLogs.$inferSelect;
+export type InsertSupplierMailLog = z.infer<typeof insertSupplierMailLogSchema>;

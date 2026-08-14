@@ -23,8 +23,7 @@ import {
     X,
     Filter,
     Loader2,
-    MessageSquare,
-    Search
+    MessageSquare
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -553,7 +552,7 @@ export default function MobileCustomerOrdersPage() {
 
                             <FormField
                                 control={form.control}
-                                name="isPromotionalPrice"
+                                name={"isPromotionalPrice" as any}
                                 render={({ field }) => (
                                     <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                         <FormControl>
@@ -573,7 +572,7 @@ export default function MobileCustomerOrdersPage() {
 
                             <FormField
                                 control={form.control}
-                                name="customerNotified"
+                                name={"customerNotified" as any}
                                 render={({ field }) => (
                                     <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                         <FormControl>
