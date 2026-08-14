@@ -27,7 +27,7 @@ RUN ls -la server/
 
 # Build the application
 # Build frontend first
-RUN npx vite build
+RUN NODE_ENV=production npx vite build
 
 # Vérifier que les fichiers sont construits
 RUN echo "=== BUILD VERIFICATION ===" && \
