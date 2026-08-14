@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { safeFormat } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,6 @@ export default function BLReconciliation() {
   // État pour le système de vérification de facture
   const [verificationResults, setVerificationResults] = useState<Record<number, any>>({});
   const [verifyingDeliveries, setVerifyingDeliveries] = useState<Set<number>>(new Set());
-  const [autoVerifiedDeliveries, setAutoVerifiedDeliveries] = useState<Set<number>>(new Set());
 
   // État pour le modal de commentaire
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -79,9 +78,27 @@ export default function BLReconciliation() {
     queryKey: ['/api/suppliers'],
   });
 
+  // ---------------------------------------------------------------------------
+  // File d'attente des vérifications de facture
+  //
+  // Sans limite, une page de 200 livraisons déclenchait 200 requêtes simultanées
+  // (+ autant de PUT d'auto-remplissage), ce qui saturait le navigateur
+  // (net::ERR_INSUFFICIENT_RESOURCES). On limite donc le nombre de requêtes en
+  // vol et on dédoublonne les livraisons déjà en attente.
+  // ---------------------------------------------------------------------------
+  const MAX_CONCURRENT_VERIFICATIONS = 3;
+  const verificationQueueRef = useRef<Array<{ delivery: any; forceRefresh: boolean; silent: boolean }>>([]);
+  const activeVerificationsRef = useRef(0);
+  // Livraisons en file d'attente ou en cours (dédoublonnage synchrone)
+  const pendingVerificationIdsRef = useRef<Set<number>>(new Set());
+  // Livraisons déjà vérifiées automatiquement : jamais relancées par l'effet
+  const autoRequestedIdsRef = useRef<Set<number>>(new Set());
+  // Invalidation de cache différée : une seule fois quand la file est vidée
+  const needsCacheInvalidationRef = useRef(false);
+
   // Fonction de vérification de facture
   const verifyInvoiceMutation = useMutation({
-    mutationFn: async ({ deliveryId, invoiceReference, blNumber, forceRefresh }: { deliveryId: number; invoiceReference?: string; blNumber?: string; forceRefresh?: boolean }) => {
+    mutationFn: async ({ deliveryId, invoiceReference, blNumber, forceRefresh }: { deliveryId: number; invoiceReference?: string; blNumber?: string; forceRefresh?: boolean; silent?: boolean }) => {
       try {
         const result = await apiRequest(`/api/deliveries/${deliveryId}/verify-invoice`, 'POST', { 
           invoiceReference, 
@@ -150,9 +167,10 @@ export default function BLReconciliation() {
           apiRequest(`/api/deliveries/${variables.deliveryId}`, "PUT", updateData)
             .then(() => {
               console.log('✅ Données sauvegardées avec succès');
-              // Invalider les caches (pas de refetch pour éviter boucles)
-              queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-              queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+              // Invalidation différée : sinon chaque auto-remplissage relance un
+              // refetch complet de la liste, qui relance l'effet, qui relance des
+              // vérifications... jusqu'à saturer le navigateur.
+              needsCacheInvalidationRef.current = true;
             })
             .catch((error) => {
               console.error('❌ Erreur auto-remplissage:', error);
@@ -185,56 +203,113 @@ export default function BLReconciliation() {
         return newSet;
       });
       
-      toast({
-        title: "Erreur de vérification",
-        description: error instanceof Error ? error.message : 'Erreur inconnue',
-        variant: "destructive",
-      });
+      // Les vérifications automatiques restent silencieuses (coche rouge) :
+      // sinon une panne réseau génère autant de toasts que de lignes affichées.
+      if (!variables.silent) {
+        toast({
+          title: "Erreur de vérification",
+          description: error instanceof Error ? error.message : 'Erreur inconnue',
+          variant: "destructive",
+        });
+      }
     }
   });
 
 
-  // Fonction pour déclencher la vérification
-  const handleVerifyInvoice = (delivery: any, forceRefresh: boolean = false) => {
+  // Dépile la file d'attente en respectant la limite de requêtes simultanées
+  const drainVerificationQueue = () => {
+    while (
+      activeVerificationsRef.current < MAX_CONCURRENT_VERIFICATIONS &&
+      verificationQueueRef.current.length > 0
+    ) {
+      const next = verificationQueueRef.current.shift();
+      if (!next) break;
+
+      const { delivery, forceRefresh, silent } = next;
+      activeVerificationsRef.current += 1;
+
+      if (import.meta.env.DEV) {
+        console.log('🔍 Déclenchement vérification:', {
+          deliveryId: delivery.id,
+          invoiceReference: delivery.invoiceReference,
+          blNumber: delivery.blNumber,
+          supplier: delivery.supplier?.name,
+          enAttente: verificationQueueRef.current.length
+        });
+      }
+
+      verifyInvoiceMutation
+        .mutateAsync({
+          deliveryId: delivery.id,
+          invoiceReference: delivery.invoiceReference,
+          blNumber: delivery.blNumber,
+          forceRefresh,
+          silent
+        })
+        // Les erreurs sont déjà tracées et affichées par onError
+        .catch(() => undefined)
+        .finally(() => {
+          activeVerificationsRef.current -= 1;
+          pendingVerificationIdsRef.current.delete(delivery.id);
+          drainVerificationQueue();
+
+          // File vidée : on rafraîchit la liste une seule fois
+          if (
+            activeVerificationsRef.current === 0 &&
+            verificationQueueRef.current.length === 0 &&
+            needsCacheInvalidationRef.current
+          ) {
+            needsCacheInvalidationRef.current = false;
+            queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+          }
+        });
+    }
+  };
+
+  // Fonction pour déclencher la vérification (mise en file d'attente)
+  // silent = déclenchement automatique : aucun toast, seules les coches parlent
+  const handleVerifyInvoice = (
+    delivery: any,
+    forceRefresh: boolean = false,
+    silent: boolean = false
+  ) => {
     // Accepter soit une référence de facture soit un numéro BL
     const hasInvoiceRef = delivery.invoiceReference?.trim();
     const hasBlNumber = delivery.blNumber?.trim();
-    
+
     if (!hasInvoiceRef && !hasBlNumber) {
-      toast({
-        title: "Référence manquante",
-        description: "Veuillez saisir une référence de facture ou un numéro BL avant la vérification",
-        variant: "destructive",
-      });
+      if (!silent) {
+        toast({
+          title: "Référence manquante",
+          description: "Veuillez saisir une référence de facture ou un numéro BL avant la vérification",
+          variant: "destructive",
+        });
+      }
       return;
     }
 
     if (!delivery.group?.nocodbTableName && !delivery.group?.nocodbConfigId && !delivery.group?.webhookUrl) {
-      toast({
-        title: "Vérification non disponible", 
-        description: "Ce magasin n'a pas de configuration NocoDB",
-        variant: "destructive",
-      });
+      if (!silent) {
+        toast({
+          title: "Vérification non disponible",
+          description: "Ce magasin n'a pas de configuration NocoDB",
+          variant: "destructive",
+        });
+      }
       return;
     }
 
-    console.log('🔍 Déclenchement vérification:', {
-      deliveryId: delivery.id,
-      hasInvoiceRef,
-      hasBlNumber,
-      invoiceReference: delivery.invoiceReference,
-      blNumber: delivery.blNumber,
-      supplier: delivery.supplier?.name
-    });
-    
+    // Déjà en file d'attente ou en cours : on ne l'ajoute pas une seconde fois
+    if (pendingVerificationIdsRef.current.has(delivery.id)) {
+      return;
+    }
+
+    pendingVerificationIdsRef.current.add(delivery.id);
+    verificationQueueRef.current.push({ delivery, forceRefresh, silent });
     setVerifyingDeliveries(prev => new Set(prev).add(delivery.id));
-    
-    verifyInvoiceMutation.mutate({
-      deliveryId: delivery.id,
-      invoiceReference: delivery.invoiceReference,
-      blNumber: delivery.blNumber,
-      forceRefresh
-    });
+
+    drainVerificationQueue();
   };
 
   // Fonction pour vérifier toutes les factures avec un bouton
@@ -252,11 +327,10 @@ export default function BLReconciliation() {
       return;
     }
 
-    deliveriesToVerify.forEach((delivery: any, index: number) => {
-      // Délai échelonné pour éviter la surcharge
-      setTimeout(() => {
-        handleVerifyInvoice(delivery, true); // Force refresh pour toutes
-      }, index * 200); // 200ms entre chaque vérification
+    // La file d'attente limite déjà le nombre de requêtes simultanées :
+    // on peut tout empiler d'un coup sans surcharger le navigateur.
+    deliveriesToVerify.forEach((delivery: any) => {
+      handleVerifyInvoice(delivery, true); // Force refresh pour toutes
     });
 
     toast({
@@ -297,97 +371,80 @@ export default function BLReconciliation() {
   });
 
   // VÉRIFICATION AUTOMATIQUE AU CHARGEMENT avec système de cache
+  //
+  // Cet effet ne dépend QUE des données (livraisons + fournisseurs) : y ajouter
+  // verificationResults/verifyingDeliveries le relançait à chaque résultat reçu,
+  // ce qui reprogrammait en boucle les mêmes vérifications.
+  // Le dédoublonnage s'appuie sur autoRequestedIdsRef (ref, pas state) pour être
+  // effectif immédiatement, sans attendre un re-rendu.
   useEffect(() => {
     if (!deliveriesWithBL.length || !suppliers.length) return;
-    
+
     if (import.meta.env.DEV) {
       console.log('🔄 Déclenchement vérifications automatiques...');
     }
-    
-    // Pré-populer les résultats pour les livraisons déjà réconciliées
-    const newVerificationResults = { ...verificationResults };
-    let hasNewReconciledResults = false;
-    
+
+    // Résultats déduits localement (sans appel réseau) pour afficher les coches
+    const cachedResults: Record<number, any> = {};
+
     deliveriesWithBL.forEach((delivery: any) => {
-      // Si la livraison est déjà réconciliée, marquer comme vérifiée avec succès
-      if (delivery.reconciled && !verificationResults[delivery.id]) {
-        newVerificationResults[delivery.id] = {
+      const hasVerifiableData = delivery.invoiceReference || delivery.blNumber;
+
+      if (delivery.reconciled) {
+        // Livraison déjà réconciliée → coche verte sans vérification
+        cachedResults[delivery.id] = {
           exists: true,
           matchType: delivery.invoiceReference ? 'invoice_reference' : 'bl_number',
           fromCache: true,
           permanent: true,
           reconciled: true
         };
-        hasNewReconciledResults = true;
-        
-        if (import.meta.env.DEV) {
-          console.log(`✅ Livraison ${delivery.id} déjà réconciliée, marquée comme vérifiée`);
-        }
-      }
-    });
-    
-    // Mettre à jour les résultats si on a de nouvelles livraisons réconciliées
-    if (hasNewReconciledResults) {
-      setVerificationResults(newVerificationResults);
-    }
-    
-    // CAS SPÉCIAL : Livraisons réconciliées (✅) avec cellules vides
-    // Si reconciled=true ET (cellules vides) ET blNumber existe → auto-remplir
-    deliveriesWithBL.forEach((delivery: any) => {
-      if (delivery.reconciled) {
+
+        // CAS SPÉCIAL : réconciliée mais cellules vides → auto-remplissage (une seule fois)
         const hasEmptyCells = !delivery.invoiceReference || !delivery.invoiceAmount || !delivery.dueDate;
         const hasBLNumber = delivery.blNumber?.trim();
-        const notAlreadyAutoVerified = !autoVerifiedDeliveries.has(delivery.id);
-        const notCurrentlyVerifying = !verifyingDeliveries.has(delivery.id);
-        
-        if (hasEmptyCells && hasBLNumber && notAlreadyAutoVerified && notCurrentlyVerifying) {
-          // Livraison réconciliée avec cellules vides → vérifier pour auto-remplir (UNE SEULE FOIS)
-          if (import.meta.env.DEV) {
-            console.log(`🔄 Livraison réconciliée #${delivery.id} avec cellules vides, auto-vérification (première tentative)...`);
-          }
-          // Marquer comme auto-vérifiée AVANT de lancer pour éviter les doublons
-          setAutoVerifiedDeliveries(prev => new Set(prev).add(delivery.id));
-          // Lancer la vérification sans délai
-          handleVerifyInvoice(delivery, false);
+
+        if (hasEmptyCells && hasBLNumber && !autoRequestedIdsRef.current.has(delivery.id)) {
+          autoRequestedIdsRef.current.add(delivery.id);
+          handleVerifyInvoice(delivery, false, true);
         }
-        return; // Autres livraisons réconciliées = AUCUNE vérification nécessaire
+        return;
       }
-      
-      // VÉRIFICATION AUTOMATIQUE pour afficher les coches
-      // NE vérifier QUE les factures qui n'ont PAS encore de montant renseigné (pas encore trouvées)
-      const hasVerifiableData = delivery.invoiceReference || delivery.blNumber;
-      const hasNoInvoiceAmount = !delivery.invoiceAmount; // Pas encore trouvée dans NocoDB
-      const notAlreadyVerified = !verificationResults[delivery.id];
-      const notCurrentlyVerifying = !verifyingDeliveries.has(delivery.id);
-      
-      // Ne vérifier que si : a des données ET pas de montant (pas encore trouvée) ET pas déjà vérifiée
-      if (hasVerifiableData && hasNoInvoiceAmount && notAlreadyVerified && notCurrentlyVerifying) {
-        if (import.meta.env.DEV) {
-          console.log(`🔍 Vérification initiale ${delivery.id} (pas encore trouvée):`, {
-            invoiceRef: delivery.invoiceReference,
-            blNumber: delivery.blNumber
-          });
-        }
-        
-        // Délai pour éviter de surcharger le serveur
-        setTimeout(() => {
-          handleVerifyInvoice(delivery, false);
-        }, Math.random() * 1000);
-      }
-      
-      // Si la facture a déjà un montant → marquer comme trouvée (coche verte) sans vérifier
-      if (hasVerifiableData && delivery.invoiceAmount && !verificationResults[delivery.id]) {
-        newVerificationResults[delivery.id] = {
+
+      // Facture déjà trouvée (montant renseigné) → coche verte sans appel réseau
+      if (hasVerifiableData && delivery.invoiceAmount) {
+        cachedResults[delivery.id] = {
           exists: true,
           matchType: delivery.invoiceReference ? 'invoice_reference' : 'bl_number',
           fromCache: true,
           permanent: true,
           invoiceAmount: delivery.invoiceAmount
         };
-        hasNewReconciledResults = true;
+        return;
+      }
+
+      // Sinon : vérification réseau, une seule fois par livraison
+      if (hasVerifiableData && !autoRequestedIdsRef.current.has(delivery.id)) {
+        autoRequestedIdsRef.current.add(delivery.id);
+        handleVerifyInvoice(delivery, false, true);
       }
     });
-  }, [deliveriesWithBL, suppliers, verificationResults, verifyingDeliveries]);
+
+    // Application des résultats déduits, sans écraser ceux déjà obtenus
+    setVerificationResults(prev => {
+      const merged = { ...prev };
+      let changed = false;
+
+      Object.entries(cachedResults).forEach(([id, result]) => {
+        if (!merged[Number(id)]) {
+          merged[Number(id)] = result;
+          changed = true;
+        }
+      });
+
+      return changed ? merged : prev;
+    });
+  }, [deliveriesWithBL, suppliers]);
 
   // Séparer les livraisons : non validées manuelles et toutes les validées
   const manualNotValidatedDeliveries = deliveriesWithBL.filter((delivery: any) => {
@@ -633,7 +690,7 @@ export default function BLReconciliation() {
       return;
     }
 
-    const mailtoUrl = buildSupplierMailtoUrl(delivery, supplierEmail, user);
+    const mailtoUrl = buildSupplierMailtoUrl(delivery, supplierEmail);
     openMailClient(mailtoUrl);
   };
 

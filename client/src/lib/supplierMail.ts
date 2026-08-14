@@ -20,20 +20,8 @@ export interface SupplierMailDelivery {
   group?: { name?: string | null } | null;
 }
 
-export interface SupplierMailSender {
-  firstName?: string | null;
-  lastName?: string | null;
-  username?: string | null;
-}
-
-/**
- * Nom lisible de l'expéditeur pour la signature du mail.
- */
-export function getSenderName(user?: SupplierMailSender | null): string {
-  if (!user) return "";
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-  return fullName || user.username || "";
-}
+/** Enseigne utilisée dans la signature des mails fournisseurs. */
+export const COMPANY_NAME = "LaFoir'Fouille";
 
 /**
  * Objet du mail : identifie la livraison concernée.
@@ -66,10 +54,7 @@ export function buildSupplierMailSubject(delivery: SupplierMailDelivery): string
  * Corps du mail : rappel des documents attendus + récapitulatif de la livraison.
  * Seules les informations réellement renseignées sont listées.
  */
-export function buildSupplierMailBody(
-  delivery: SupplierMailDelivery,
-  user?: SupplierMailSender | null
-): string {
+export function buildSupplierMailBody(delivery: SupplierMailDelivery): string {
   const deliveryDate = delivery.deliveredDate || delivery.scheduledDate;
   const formattedDate = deliveryDate
     ? safeFormat(deliveryDate, "dd/MM/yyyy", { defaultValue: "" })
@@ -92,8 +77,8 @@ export function buildSupplierMailBody(
     details.push(`- Référence facture : ${delivery.invoiceReference}`);
   }
 
-  const senderName = getSenderName(user);
-  const signature = [senderName, delivery.group?.name].filter(Boolean).join("\n");
+  // Signature : enseigne + magasin enregistré sur la livraison
+  const signature = [COMPANY_NAME, delivery.group?.name].filter(Boolean).join("\n");
 
   const lines = [
     "Bonjour,",
@@ -120,13 +105,12 @@ export function buildSupplierMailBody(
  */
 export function buildSupplierMailtoUrl(
   delivery: SupplierMailDelivery,
-  supplierEmail: string,
-  user?: SupplierMailSender | null
+  supplierEmail: string
 ): string {
   const subject = buildSupplierMailSubject(delivery);
   // RFC 6068 : les sauts de ligne du corps doivent être encodés en CRLF (%0D%0A),
   // sinon Outlook peut coller les lignes les unes aux autres.
-  const body = buildSupplierMailBody(delivery, user).replace(/\n/g, "\r\n");
+  const body = buildSupplierMailBody(delivery).replace(/\n/g, "\r\n");
 
   return `mailto:${supplierEmail.trim()}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
