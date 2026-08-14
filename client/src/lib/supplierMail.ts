@@ -20,9 +20,6 @@ export interface SupplierMailDelivery {
   group?: { name?: string | null } | null;
 }
 
-/** Enseigne utilisée dans la signature des mails fournisseurs. */
-export const COMPANY_NAME = "LaFoir'Fouille";
-
 /**
  * Objet du mail : identifie la livraison concernée.
  */
@@ -77,9 +74,6 @@ export function buildSupplierMailBody(delivery: SupplierMailDelivery): string {
     details.push(`- Référence facture : ${delivery.invoiceReference}`);
   }
 
-  // Signature : enseigne + magasin enregistré sur la livraison
-  const signature = [COMPANY_NAME, delivery.group?.name].filter(Boolean).join("\n");
-
   const lines = [
     "Bonjour,",
     "",
@@ -93,8 +87,9 @@ export function buildSupplierMailBody(delivery: SupplierMailDelivery): string {
     "",
     "Vous en remerciant par avance.",
     "",
+    // Le corps s'arrête ici : l'enseigne, le magasin et le logo sont apportés
+    // par la signature configurée dans Outlook sur le poste.
     "Cordialement,",
-    ...(signature ? [signature] : []),
   ];
 
   return lines.join("\n");
