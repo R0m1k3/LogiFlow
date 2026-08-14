@@ -737,7 +737,7 @@ export default function UsersPage() {
                                   <div className="flex items-center">
                                     <div 
                                       className="w-2 h-2 rounded-full mr-1"
-                                      style={{ backgroundColor: userGroup.group.color }}
+                                      style={{ backgroundColor: userGroup.group.color || undefined }}
                                     />
                                     {userGroup.group.name}
                                   </div>
@@ -901,7 +901,7 @@ export default function UsersPage() {
                         <div className="flex items-center space-x-2">
                           <div 
                             className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: group.color }}
+                            style={{ backgroundColor: group.color || undefined }}
                           />
                           <span className="text-sm">{group.name}</span>
                         </div>
@@ -1063,7 +1063,7 @@ export default function UsersPage() {
                       <div className="flex items-center space-x-2">
                         <div 
                           className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: group.color }}
+                          style={{ backgroundColor: group.color || undefined }}
                         />
                         <Label htmlFor={`group-${group.id}`} className="text-sm">
                           {group.name}

@@ -2688,7 +2688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Vérifier que la livraison existe
-      const delivery = await storage.getDeliveryById(id);
+      const delivery = await storage.getDelivery(id);
       if (!delivery) {
         return res.status(404).json({ message: "Delivery not found" });
       }
@@ -4729,7 +4729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Publicity deleted successfully" });
     } catch (error) {
       console.error(`❌ [API] Error deleting publicity ${publicityId}:`, error);
-      res.status(500).json({ message: "Failed to delete publicity", error: error.message });
+      res.status(500).json({ message: "Failed to delete publicity", error: (error as Error).message });
     }
   });
 
@@ -4768,7 +4768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Publicity deleted successfully" });
     } catch (error) {
       console.error(`❌ [API-POST] Error deleting publicity ${publicityId} via POST:`, error);
-      res.status(500).json({ message: "Failed to delete publicity", error: error.message });
+      res.status(500).json({ message: "Failed to delete publicity", error: (error as Error).message });
     }
   });
 
@@ -6225,7 +6225,7 @@ RÉSUMÉ DU SCAN
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds
-          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          ? filters.groupIds.filter((id: number) => userGroupIds.includes(id))
           : userGroupIds;
       }
 
@@ -6256,7 +6256,7 @@ RÉSUMÉ DU SCAN
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds
-          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          ? filters.groupIds.filter((id: number) => userGroupIds.includes(id))
           : userGroupIds;
       }
 
@@ -6285,7 +6285,7 @@ RÉSUMÉ DU SCAN
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds
-          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          ? filters.groupIds.filter((id: number) => userGroupIds.includes(id))
           : userGroupIds;
       }
 
@@ -6338,7 +6338,7 @@ RÉSUMÉ DU SCAN
       if (user.role !== 'admin' && user.role !== 'directeur') {
         const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
         filters.groupIds = filters.groupIds
-          ? filters.groupIds.filter(id => userGroupIds.includes(id))
+          ? filters.groupIds.filter((id: number) => userGroupIds.includes(id))
           : userGroupIds;
       }
 

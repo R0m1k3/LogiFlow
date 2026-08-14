@@ -210,7 +210,7 @@ export function CustomerOrderDetails({ order }: CustomerOrderDetailsProps) {
             <Badge
               style={{ 
                 backgroundColor: order.group.color + "20", 
-                color: order.group.color,
+                color: order.group.color || undefined,
                 border: `1px solid ${order.group.color}30`
               }}
             >

@@ -252,6 +252,7 @@ export class InvoiceVerificationService {
     errorMessage?: string;
     invoiceReference?: string;
     invoiceAmount?: number;
+    invoiceAmountTTC?: number;
     supplierName?: string;
     dueDate?: string | null;
     fromCache?: boolean;
@@ -614,6 +615,7 @@ export class InvoiceVerificationService {
     errorMessage?: string;
     invoiceReference?: string;
     invoiceAmount?: number;
+    invoiceAmountTTC?: number;
     supplierName?: string;
     dueDate?: string | null;
     fromCache?: boolean;

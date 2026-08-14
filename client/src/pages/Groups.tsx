@@ -424,7 +424,7 @@ export default function Groups() {
                       <div className="flex items-center">
                         <div 
                           className="w-10 h-10 flex items-center justify-center mr-3"
-                          style={{ backgroundColor: group.color }}
+                          style={{ backgroundColor: group.color || undefined }}
                         >
                           <Users className="w-5 h-5 text-white" />
                         </div>
@@ -459,7 +459,7 @@ export default function Groups() {
                       <div className="flex items-center">
                         <div 
                           className="w-4 h-4 rounded mr-2"
-                          style={{ backgroundColor: group.color }}
+                          style={{ backgroundColor: group.color || undefined }}
                         />
                         <span className="text-sm text-gray-600">{group.color}</span>
                       </div>
@@ -503,14 +503,7 @@ export default function Groups() {
         setShowCreateModal(false);
         setShowEditModal(false);
         setSelectedGroup(null);
-        setFormData({
-          name: "",
-          color: "#1976D2",
-          nocodbConfigId: "",
-          nocodbTableId: "",
-          nocodbTableName: "",
-          invoiceColumnName: "Ref Facture",
-        });
+        setFormData({ ...EMPTY_GROUP_FORM, invoiceColumnName: "Ref Facture" });
       }}>
         <DialogContent className="sm:max-w-md" aria-describedby="group-modal-description">
           <DialogHeader>
