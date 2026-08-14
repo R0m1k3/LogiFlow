@@ -150,52 +150,31 @@ export default function BLReconciliation() {
       
       // Auto-remplissage si facture trouvée (référence facture OU numéro BL)
       if (result.exists) {
-        console.log('🔍 DEBUG - Résultat complet de vérification:', {
-          deliveryId: variables.deliveryId,
-          exists: result.exists,
-          matchType: result.matchType,
-          invoiceReference: result.invoiceReference,
-          invoiceAmount: result.invoiceAmount,
-          dueDate: result.dueDate,
-          hasInvoiceRef: !!result.invoiceReference,
-          hasAmount: result.invoiceAmount !== undefined && result.invoiceAmount !== null,
-          hasDueDate: !!result.dueDate
-        });
-        
-        // Auto-remplir les champs dans la livraison via API
         const updateData: any = {};
-        
+
         // Ajouter la référence de facture SEULEMENT si trouvée via BL (pas déjà renseignée)
         if (result.invoiceReference && result.matchType === 'bl_number') {
           updateData.invoiceReference = result.invoiceReference;
-          console.log('✅ Ajout invoiceReference:', result.invoiceReference);
-        } else {
-          console.log('⚠️ Pas d\'ajout invoiceReference:', { hasRef: !!result.invoiceReference, matchType: result.matchType });
         }
-        
+
         // TOUJOURS mettre à jour le montant si disponible (peu importe le matchType)
         if (result.invoiceAmount !== undefined && result.invoiceAmount !== null) {
           updateData.invoiceAmount = result.invoiceAmount;
-          console.log('✅ Ajout invoiceAmount:', result.invoiceAmount);
-        } else {
-          console.log('⚠️ Pas d\'ajout invoiceAmount:', { amount: result.invoiceAmount });
         }
-        
+
         // TOUJOURS mettre à jour la date d'échéance si disponible (peu importe le matchType)
         if (result.dueDate) {
           updateData.dueDate = result.dueDate;
-          console.log('✅ Ajout dueDate:', result.dueDate);
-        } else {
-          console.log('⚠️ Pas d\'ajout dueDate:', { dueDate: result.dueDate });
         }
-        
-        console.log('📝 Données finales à sauvegarder:', { deliveryId: variables.deliveryId, updateData, matchType: result.matchType });
-        
+
+        if (import.meta.env.DEV) {
+          console.log('📝 Auto-remplissage:', { deliveryId: variables.deliveryId, updateData, matchType: result.matchType });
+        }
+
         // Ne faire l'appel que si on a des données à mettre à jour
         if (Object.keys(updateData).length > 0) {
           apiRequest(`/api/deliveries/${variables.deliveryId}`, "PUT", updateData)
             .then(() => {
-              console.log('✅ Données sauvegardées avec succès');
               // Invalidation différée : sinon chaque auto-remplissage relance un
               // refetch complet de la liste, qui relance l'effet, qui relance des
               // vérifications... jusqu'à saturer le navigateur.
@@ -204,8 +183,6 @@ export default function BLReconciliation() {
             .catch((error) => {
               console.error('❌ Erreur auto-remplissage:', error);
             });
-        } else {
-          console.log('⚠️ Aucune donnée à sauvegarder');
         }
       }
       

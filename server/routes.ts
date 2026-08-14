@@ -4,6 +4,16 @@ import { storage } from "./storage";
 import { setupLocalAuth, requireAuth } from "./localAuth";
 import { requireModulePermission, requireAdmin, requirePermission } from "./permissions";
 import { stripSmtpPassword } from "./sanitize";
+
+// Corps de requête sans les champs secrets : pour les logs uniquement
+function redactBody(body: any): any {
+  if (!body || typeof body !== 'object') return body;
+  const redacted = { ...body };
+  for (const key of ['smtpPassword', 'apiToken', 'password']) {
+    if (key in redacted && redacted[key]) redacted[key] = '[REDACTED]';
+  }
+  return redacted;
+}
 import {
   sendSupplierDocumentRequest,
   verifySmtpConfig,
@@ -988,7 +998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
       });
 
-      console.log('📋 POST /api/groups - Request body:', JSON.stringify(req.body, null, 2));
+      console.log('📋 POST /api/groups - Request body:', JSON.stringify(redactBody(req.body), null, 2));
 
       // Déterminer l'ID utilisateur selon l'environnement
       let userId;
@@ -1037,7 +1047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ Failed to create group:', {
         error: error?.message || 'Unknown error',
         stack: error?.stack,
-        body: req.body,
+        body: redactBody(req.body),
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
       });
 
@@ -1160,7 +1170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'content-length': req.headers['content-length']
       });
 
-      console.log('📋 POST /api/suppliers - Request body:', JSON.stringify(req.body, null, 2));
+      console.log('📋 POST /api/suppliers - Request body:', JSON.stringify(redactBody(req.body), null, 2));
 
       // Déterminer l'ID utilisateur selon l'environnement
       let userId;
@@ -1209,7 +1219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('❌ Failed to create supplier:', {
         error: (error as Error).message,
         stack: error.stack,
-        body: req.body,
+        body: redactBody(req.body),
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
       });
 
@@ -1543,7 +1553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('📦 Order creation started:', {
         userId: req.user?.id || req.user?.claims?.sub,
-        body: req.body,
+        body: redactBody(req.body),
         environment: process.env.NODE_ENV
       });
 
@@ -1590,7 +1600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("❌ Error creating order:", {
         error: (error as Error).message,
         stack: error.stack,
-        body: req.body,
+        body: redactBody(req.body),
         userId: req.user?.id || req.user?.claims?.sub || 'unknown'
       });
 

@@ -87,16 +87,6 @@ export default function Groups() {
 
   // Protection renforcée contre les erreurs TypeError
   const nocodbConfigs = Array.isArray(rawNocodbConfigs) ? rawNocodbConfigs : [];
-  
-  console.log('🔍 Groups NocoDB Debug:', { 
-    rawNocodbConfigs, 
-    rawType: typeof rawNocodbConfigs,
-    nocodbConfigs,
-    configsType: typeof nocodbConfigs,
-    isArray: Array.isArray(rawNocodbConfigs),
-    length: nocodbConfigs.length,
-    environment: window.location.hostname
-  });
 
   // Comptages agrégés en base : la page n'affiche que des totaux, inutile de
   // rapatrier l'historique complet des commandes et des livraisons.
