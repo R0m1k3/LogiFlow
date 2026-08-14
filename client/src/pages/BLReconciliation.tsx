@@ -12,13 +12,14 @@ import { useStore } from "@/contexts/StoreContext";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { usePermissions } from "@shared/permissions";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload, CheckCircle, XCircle, Clock, MessageSquare } from "lucide-react";
+import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload, CheckCircle, XCircle, Clock, MessageSquare, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ReconciliationComments from "@/components/ReconciliationComments";
 import ReconciliationModal from "@/components/modals/ReconciliationModal";
+import { buildSupplierMailtoUrl, openMailClient } from "@/lib/supplierMail";
 
 export default function BLReconciliation() {
   const { user } = useAuthUnified();
@@ -607,6 +608,35 @@ export default function BLReconciliation() {
     return (isNotValidated || hasNoInvoiceReference) && hasValidGroup;
   };
 
+  // Email du fournisseur : donnée jointe à la livraison, avec repli sur la liste des fournisseurs
+  const getSupplierEmail = (delivery: any): string => {
+    const fromDelivery = delivery?.supplier?.email;
+    if (fromDelivery && String(fromDelivery).trim()) {
+      return String(fromDelivery).trim();
+    }
+
+    const supplier = suppliers.find((s: any) => s.id === delivery?.supplierId);
+    return supplier?.email ? String(supplier.email).trim() : '';
+  };
+
+  // Ouvre Outlook (client mail par défaut) avec un message prérempli
+  // demandant la facture au format PDF ou le BL au format Excel
+  const handleRequestDocumentsByEmail = (delivery: any) => {
+    const supplierEmail = getSupplierEmail(delivery);
+
+    if (!supplierEmail) {
+      toast({
+        title: "Email fournisseur manquant",
+        description: `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}. Ajoutez-la depuis la page Contacts ou Fournisseurs.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const mailtoUrl = buildSupplierMailtoUrl(delivery, supplierEmail, user);
+    openMailClient(mailtoUrl);
+  };
+
   const handleQuickValidate = async (delivery: any) => {
     try {
       await apiRequest(`/api/deliveries/${delivery.id}`, "PUT", {
@@ -1043,6 +1073,28 @@ export default function BLReconciliation() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
                               <div className="flex items-center justify-end space-x-2">
+                                {(() => {
+                                  const supplierEmail = getSupplierEmail(delivery);
+                                  return (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleRequestDocumentsByEmail(delivery)}
+                                      className={`h-8 w-8 p-0 ${
+                                        supplierEmail
+                                          ? 'text-blue-600 hover:text-blue-700 border-blue-300'
+                                          : 'text-gray-400 hover:text-gray-500'
+                                      }`}
+                                      title={
+                                        supplierEmail
+                                          ? `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
+                                          : `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                      }
+                                    >
+                                      <Mail className="h-4 w-4" />
+                                    </Button>
+                                  );
+                                })()}
                                 {shouldShowInvoiceButton(delivery) && (
                                   <Button
                                     variant="outline"
@@ -1351,6 +1403,26 @@ export default function BLReconciliation() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right">
                                 <div className="flex items-center justify-end space-x-2">
+                                  {(() => {
+                                    const supplierEmail = getSupplierEmail(delivery);
+                                    return (
+                                      <button
+                                        onClick={() => handleRequestDocumentsByEmail(delivery)}
+                                        className={`transition-colors duration-200 p-1 rounded opacity-70 ${
+                                          supplierEmail
+                                            ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                                            : 'text-gray-400 hover:text-gray-500 hover:bg-gray-50'
+                                        }`}
+                                        title={
+                                          supplierEmail
+                                            ? `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
+                                            : `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                        }
+                                      >
+                                        <Mail className="w-4 h-4" />
+                                      </button>
+                                    );
+                                  })()}
                                   <button
                                     onClick={() => handleOpenCommentModal(delivery)}
                                     className={`transition-colors duration-200 p-1 rounded ${
