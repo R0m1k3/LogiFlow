@@ -505,7 +505,7 @@ export default function Groups() {
         setSelectedGroup(null);
         setFormData({ ...EMPTY_GROUP_FORM, invoiceColumnName: "Ref Facture" });
       }}>
-        <DialogContent className="sm:max-w-md" aria-describedby="group-modal-description">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto" aria-describedby="group-modal-description">
           <DialogHeader>
             <DialogTitle>
               {selectedGroup ? 'Modifier' : 'Nouveau'} Groupe
