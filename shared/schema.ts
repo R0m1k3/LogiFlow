@@ -770,6 +770,15 @@ export type OrderWithRelations = Order & {
   deliveries?: DeliveryWithRelations[];
 };
 
+// Comptages commandes/livraisons par magasin ou par fournisseur, agrégés en base.
+// Évite de rapatrier tout l'historique côté client pour n'en compter que les lignes.
+export type EntityActivityStats = {
+  id: number;
+  orders: number;
+  deliveries: number;
+  delivered: number;
+};
+
 export type DeliveryWithRelations = Delivery & {
   supplier: Supplier;
   group: Group;

@@ -32,6 +32,7 @@ import {
   type InsertUserGroup,
   type OrderWithRelations,
   type DeliveryWithRelations,
+  type EntityActivityStats,
   type UserWithGroups,
   type Publicity,
   type InsertPublicity,
@@ -183,6 +184,10 @@ export interface IStorage {
   saveInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache>;
   createInvoiceVerificationCache(cache: InsertInvoiceVerificationCache): Promise<InvoiceVerificationCache>;
   clearExpiredCache(): Promise<void>;
+
+  // Statistiques agrégées (comptages calculés en base, sans rapatrier les lignes)
+  getOrderDeliveryStatsByGroup(groupIds?: number[]): Promise<EntityActivityStats[]>;
+  getOrderDeliveryStatsBySupplier(groupIds?: number[]): Promise<EntityActivityStats[]>;
 
   // Customer Order operations
   getCustomerOrders(groupIds?: number[]): Promise<CustomerOrderWithRelations[]>;
@@ -489,6 +494,168 @@ export class DatabaseStorage implements IStorage {
     await db.delete(contacts).where(eq(contacts.id, id));
   }
 
+  // Chargement groupé des relations.
+  //
+  // Les listes de commandes et de livraisons chargeaient auparavant leurs
+  // relations avec une requête par ligne (N+1). Sur un historique d'un an cela
+  // représentait plusieurs milliers d'allers-retours par appel d'API. Ces
+  // helpers récupèrent tout en une seule requête et regroupent côté Node.
+
+  private async loadDeliveriesByOrderIds(orderIds: number[]): Promise<Map<number, any[]>> {
+    const byOrderId = new Map<number, any[]>();
+    if (orderIds.length === 0) return byOrderId;
+
+    const rows = await db
+      .select({
+        id: deliveries.id,
+        orderId: deliveries.orderId,
+        supplierId: deliveries.supplierId,
+        groupId: deliveries.groupId,
+        scheduledDate: deliveries.scheduledDate,
+        deliveredDate: deliveries.deliveredDate,
+        status: deliveries.status,
+        quantity: deliveries.quantity,
+        unit: deliveries.unit,
+        blNumber: deliveries.blNumber,
+        blAmount: deliveries.blAmount,
+        invoiceReference: deliveries.invoiceReference,
+        invoiceAmount: deliveries.invoiceAmount,
+        invoiceAmountTTC: deliveries.invoiceAmountTTC,
+        dueDate: deliveries.dueDate,
+        reconciled: deliveries.reconciled,
+        validatedAt: deliveries.validatedAt,
+        controlValidated: deliveries.controlValidated,
+        controlValidatedBy: deliveries.controlValidatedBy,
+        controlValidatedAt: deliveries.controlValidatedAt,
+        notes: deliveries.notes,
+        createdBy: deliveries.createdBy,
+        createdAt: deliveries.createdAt,
+        updatedAt: deliveries.updatedAt,
+        supplier: suppliers,
+        group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
+      })
+      .from(deliveries)
+      .leftJoin(suppliers, eq(deliveries.supplierId, suppliers.id))
+      .leftJoin(groups, eq(deliveries.groupId, groups.id))
+      .leftJoin(users, eq(deliveries.createdBy, users.id))
+      .where(inArray(deliveries.orderId, orderIds));
+
+    for (const row of rows) {
+      if (row.orderId === null) continue;
+      const existing = byOrderId.get(row.orderId);
+      if (existing) {
+        existing.push(row);
+      } else {
+        byOrderId.set(row.orderId, [row]);
+      }
+    }
+
+    return byOrderId;
+  }
+
+  private async loadOrdersByIds(orderIds: number[]): Promise<Map<number, any>> {
+    const byId = new Map<number, any>();
+    if (orderIds.length === 0) return byId;
+
+    const rows = await db
+      .select({
+        id: orders.id,
+        supplierId: orders.supplierId,
+        groupId: orders.groupId,
+        plannedDate: orders.plannedDate,
+        status: orders.status,
+        quantity: orders.quantity,
+        unit: orders.unit,
+        notes: orders.notes,
+        createdBy: orders.createdBy,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt,
+        supplier: suppliers,
+        group: groups,
+        creator: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          username: users.username,
+          email: users.email
+        }
+      })
+      .from(orders)
+      .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
+      .leftJoin(groups, eq(orders.groupId, groups.id))
+      .leftJoin(users, eq(orders.createdBy, users.id))
+      .where(inArray(orders.id, orderIds));
+
+    for (const row of rows) {
+      byId.set(row.id, row);
+    }
+
+    return byId;
+  }
+
+  private async loadReconciliationCommentCounts(deliveryIds: number[]): Promise<Map<number, number>> {
+    const counts = new Map<number, number>();
+    if (deliveryIds.length === 0) return counts;
+
+    const rows = await db
+      .select({
+        deliveryId: reconciliationComments.deliveryId,
+        count: sql<number>`count(*)`
+      })
+      .from(reconciliationComments)
+      .where(inArray(reconciliationComments.deliveryId, deliveryIds))
+      .groupBy(reconciliationComments.deliveryId);
+
+    for (const row of rows) {
+      counts.set(row.deliveryId, Number(row.count));
+    }
+
+    return counts;
+  }
+
+  // Associe à chaque livraison sa commande et son nombre de commentaires, en
+  // deux requêtes au total quel que soit le nombre de livraisons.
+  private async attachOrdersAndCommentCounts(baseDeliveries: any[]): Promise<any[]> {
+    const orderIds = Array.from(
+      new Set(baseDeliveries.map((d) => d.orderId).filter((id): id is number => id !== null && id !== undefined))
+    );
+    const deliveryIds = baseDeliveries.map((d) => d.id);
+
+    const [ordersById, commentCounts] = await Promise.all([
+      this.loadOrdersByIds(orderIds),
+      this.loadReconciliationCommentCounts(deliveryIds)
+    ]);
+
+    return baseDeliveries.map((delivery) => {
+      let associatedOrder = undefined;
+
+      if (delivery.orderId) {
+        const orderData = ordersById.get(delivery.orderId);
+        if (orderData) {
+          // Une livraison ne doit jamais exposer une commande d'un autre magasin.
+          if (orderData.groupId !== delivery.groupId) {
+            console.error(`❌ PRODUCTION: Delivery #${delivery.id} (store ${delivery.groupId}) linked to order #${delivery.orderId} (store ${orderData.groupId}) - STORE MISMATCH DETECTED!`);
+          } else {
+            associatedOrder = orderData;
+          }
+        }
+      }
+
+      return {
+        ...delivery,
+        order: associatedOrder,
+        reconciliationCommentsCount: commentCounts.get(delivery.id) ?? 0
+      };
+    });
+  }
+
   // Order operations
   async getOrders(groupIds?: number[]): Promise<OrderWithRelations[]> {
     let query = db
@@ -525,52 +692,13 @@ export class DatabaseStorage implements IStorage {
 
     const baseOrders = await query.orderBy(desc(orders.createdAt));
 
-    // Pour chaque commande, récupérer ses livraisons associées (PRODUCTION RELATIONS)
-    const ordersWithDeliveries = await Promise.all(
-      baseOrders.map(async (order) => {
-        const associatedDeliveries = await db
-          .select({
-            id: deliveries.id,
-            orderId: deliveries.orderId,
-            supplierId: deliveries.supplierId,
-            groupId: deliveries.groupId,
-            scheduledDate: deliveries.scheduledDate,
-            deliveredDate: deliveries.deliveredDate,
-            status: deliveries.status,
-            quantity: deliveries.quantity,
-            unit: deliveries.unit,
-            blNumber: deliveries.blNumber,
-            blAmount: deliveries.blAmount,
-            invoiceReference: deliveries.invoiceReference,
-            invoiceAmount: deliveries.invoiceAmount,
-            reconciled: deliveries.reconciled,
-            validatedAt: deliveries.validatedAt,
-            notes: deliveries.notes,
-            createdBy: deliveries.createdBy,
-            createdAt: deliveries.createdAt,
-            updatedAt: deliveries.updatedAt,
-            supplier: suppliers,
-            group: groups,
-            creator: {
-              id: users.id,
-              firstName: users.firstName,
-              lastName: users.lastName,
-              username: users.username,
-              email: users.email
-            }
-          })
-          .from(deliveries)
-          .leftJoin(suppliers, eq(deliveries.supplierId, suppliers.id))
-          .leftJoin(groups, eq(deliveries.groupId, groups.id))
-          .leftJoin(users, eq(deliveries.createdBy, users.id))
-          .where(eq(deliveries.orderId, order.id));
+    // Livraisons associées chargées en une seule requête pour toutes les commandes.
+    const deliveriesByOrderId = await this.loadDeliveriesByOrderIds(baseOrders.map((o: any) => o.id));
 
-        return {
-          ...order,
-          deliveries: associatedDeliveries
-        };
-      })
-    );
+    const ordersWithDeliveries = baseOrders.map((order: any) => ({
+      ...order,
+      deliveries: deliveriesByOrderId.get(order.id) ?? []
+    }));
 
     console.log(`🔗 PRODUCTION: getOrders() récupéré ${ordersWithDeliveries.length} commandes avec relations`);
     return ordersWithDeliveries as OrderWithRelations[];
@@ -623,52 +751,13 @@ export class DatabaseStorage implements IStorage {
 
     const baseOrders = await query.orderBy(desc(orders.plannedDate));
 
-    // Pour chaque commande, récupérer ses livraisons associées (PRODUCTION RELATIONS)
-    const ordersWithDeliveries = await Promise.all(
-      baseOrders.map(async (order) => {
-        const associatedDeliveries = await db
-          .select({
-            id: deliveries.id,
-            orderId: deliveries.orderId,
-            supplierId: deliveries.supplierId,
-            groupId: deliveries.groupId,
-            scheduledDate: deliveries.scheduledDate,
-            deliveredDate: deliveries.deliveredDate,
-            status: deliveries.status,
-            quantity: deliveries.quantity,
-            unit: deliveries.unit,
-            blNumber: deliveries.blNumber,
-            blAmount: deliveries.blAmount,
-            invoiceReference: deliveries.invoiceReference,
-            invoiceAmount: deliveries.invoiceAmount,
-            reconciled: deliveries.reconciled,
-            validatedAt: deliveries.validatedAt,
-            notes: deliveries.notes,
-            createdBy: deliveries.createdBy,
-            createdAt: deliveries.createdAt,
-            updatedAt: deliveries.updatedAt,
-            supplier: suppliers,
-            group: groups,
-            creator: {
-              id: users.id,
-              firstName: users.firstName,
-              lastName: users.lastName,
-              username: users.username,
-              email: users.email
-            }
-          })
-          .from(deliveries)
-          .leftJoin(suppliers, eq(deliveries.supplierId, suppliers.id))
-          .leftJoin(groups, eq(deliveries.groupId, groups.id))
-          .leftJoin(users, eq(deliveries.createdBy, users.id))
-          .where(eq(deliveries.orderId, order.id));
+    // Livraisons associées chargées en une seule requête pour toutes les commandes.
+    const deliveriesByOrderId = await this.loadDeliveriesByOrderIds(baseOrders.map((o: any) => o.id));
 
-        return {
-          ...order,
-          deliveries: associatedDeliveries
-        };
-      })
-    );
+    const ordersWithDeliveries = baseOrders.map((order: any) => ({
+      ...order,
+      deliveries: deliveriesByOrderId.get(order.id) ?? []
+    }));
 
     return ordersWithDeliveries as OrderWithRelations[];
   }
@@ -823,76 +912,7 @@ export class DatabaseStorage implements IStorage {
 
     const baseDeliveries = await query.orderBy(desc(deliveries.createdAt));
 
-    // Pour chaque livraison, récupérer sa commande associée si elle existe (PRODUCTION RELATIONS)
-    const deliveriesWithOrders = await Promise.all(
-      baseDeliveries.map(async (delivery) => {
-        let associatedOrder = undefined;
-
-        if (delivery.orderId) {
-          try {
-            const [orderData] = await db
-              .select({
-                id: orders.id,
-                supplierId: orders.supplierId,
-                groupId: orders.groupId,
-                plannedDate: orders.plannedDate,
-                status: orders.status,
-                quantity: orders.quantity,
-                unit: orders.unit,
-                notes: orders.notes,
-                createdBy: orders.createdBy,
-                createdAt: orders.createdAt,
-                updatedAt: orders.updatedAt,
-                supplier: suppliers,
-                group: groups,
-                creator: {
-                  id: users.id,
-                  firstName: users.firstName,
-                  lastName: users.lastName,
-                  username: users.username,
-                  email: users.email
-                }
-              })
-              .from(orders)
-              .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
-              .leftJoin(groups, eq(orders.groupId, groups.id))
-              .leftJoin(users, eq(orders.createdBy, users.id))
-              .where(eq(orders.id, delivery.orderId));
-
-            if (orderData) {
-              // CRITICAL FIX: Vérifier que la commande appartient au même magasin que la livraison
-              if (orderData.groupId !== delivery.groupId) {
-                console.error(`❌ PRODUCTION: Delivery #${delivery.id} (store ${delivery.groupId}) linked to order #${delivery.orderId} (store ${orderData.groupId}) - STORE MISMATCH DETECTED!`);
-                // Ne pas inclure la commande si elle n'appartient pas au bon magasin
-              } else {
-                associatedOrder = orderData;
-              }
-            }
-          } catch (error) {
-            console.error(`❌ PRODUCTION: Failed to retrieve associated order #${delivery.orderId} for delivery #${delivery.id}:`, error);
-          }
-        }
-
-        // Compter les commentaires de rapprochement pour cette livraison
-        let commentsCount = 0;
-        try {
-          const [countResult] = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(reconciliationComments)
-            .where(eq(reconciliationComments.deliveryId, delivery.id));
-
-          commentsCount = Number(countResult?.count || 0);
-        } catch (error) {
-          console.error(`Failed to count reconciliation comments for delivery #${delivery.id}:`, error);
-        }
-
-        return {
-          ...delivery,
-          order: associatedOrder,
-          reconciliationCommentsCount: commentsCount
-        };
-      })
-    );
+    const deliveriesWithOrders = await this.attachOrdersAndCommentCounts(baseDeliveries);
 
     console.log(`🔗 PRODUCTION: getDeliveries() récupéré ${deliveriesWithOrders.length} livraisons avec relations`);
     return deliveriesWithOrders as DeliveryWithRelations[];
@@ -958,76 +978,7 @@ export class DatabaseStorage implements IStorage {
 
     const baseDeliveries = await query.orderBy(desc(deliveries.scheduledDate));
 
-    // Pour chaque livraison, récupérer sa commande associée si elle existe (PRODUCTION RELATIONS)
-    const deliveriesWithOrders = await Promise.all(
-      baseDeliveries.map(async (delivery) => {
-        let associatedOrder = undefined;
-
-        if (delivery.orderId) {
-          try {
-            const [orderData] = await db
-              .select({
-                id: orders.id,
-                supplierId: orders.supplierId,
-                groupId: orders.groupId,
-                plannedDate: orders.plannedDate,
-                status: orders.status,
-                quantity: orders.quantity,
-                unit: orders.unit,
-                notes: orders.notes,
-                createdBy: orders.createdBy,
-                createdAt: orders.createdAt,
-                updatedAt: orders.updatedAt,
-                supplier: suppliers,
-                group: groups,
-                creator: {
-                  id: users.id,
-                  firstName: users.firstName,
-                  lastName: users.lastName,
-                  username: users.username,
-                  email: users.email
-                }
-              })
-              .from(orders)
-              .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
-              .leftJoin(groups, eq(orders.groupId, groups.id))
-              .leftJoin(users, eq(orders.createdBy, users.id))
-              .where(eq(orders.id, delivery.orderId));
-
-            if (orderData) {
-              // CRITICAL FIX: Vérifier que la commande appartient au même magasin que la livraison
-              if (orderData.groupId !== delivery.groupId) {
-                console.error(`❌ PRODUCTION: Delivery #${delivery.id} (store ${delivery.groupId}) linked to order #${delivery.orderId} (store ${orderData.groupId}) - STORE MISMATCH DETECTED!`);
-                // Ne pas inclure la commande si elle n'appartient pas au bon magasin
-              } else {
-                associatedOrder = orderData;
-              }
-            }
-          } catch (error) {
-            console.error(`❌ PRODUCTION: Failed to retrieve associated order #${delivery.orderId} for delivery #${delivery.id}:`, error);
-          }
-        }
-
-        // Compter les commentaires de rapprochement pour cette livraison
-        let commentsCount = 0;
-        try {
-          const [countResult] = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(reconciliationComments)
-            .where(eq(reconciliationComments.deliveryId, delivery.id));
-
-          commentsCount = Number(countResult?.count || 0);
-        } catch (error) {
-          console.error(`Failed to count reconciliation comments for delivery #${delivery.id}:`, error);
-        }
-
-        return {
-          ...delivery,
-          order: associatedOrder,
-          reconciliationCommentsCount: commentsCount
-        };
-      })
-    );
+    const deliveriesWithOrders = await this.attachOrdersAndCommentCounts(baseDeliveries);
 
     return deliveriesWithOrders as DeliveryWithRelations[];
   }
@@ -1787,6 +1738,93 @@ export class DatabaseStorage implements IStorage {
     await db.delete(invoiceVerificationCache).where(
       sql`expires_at < NOW()`
     );
+  }
+
+  // Statistiques agrégées.
+  //
+  // Les pages Magasins et Fournisseurs n'affichent que des comptages. Elles
+  // téléchargeaient auparavant l'intégralité des commandes et des livraisons,
+  // relations imbriquées comprises, pour ne faire que des .filter().length côté
+  // navigateur. Ces deux méthodes font le comptage en base.
+
+  private mergeActivityStats(
+    orderRows: { id: number | null; count: unknown }[],
+    deliveryRows: { id: number | null; count: unknown; delivered: unknown }[]
+  ): EntityActivityStats[] {
+    const byId = new Map<number, EntityActivityStats>();
+
+    const entryFor = (id: number): EntityActivityStats => {
+      let entry = byId.get(id);
+      if (!entry) {
+        entry = { id, orders: 0, deliveries: 0, delivered: 0 };
+        byId.set(id, entry);
+      }
+      return entry;
+    };
+
+    for (const row of orderRows) {
+      if (row.id === null) continue;
+      entryFor(row.id).orders = Number(row.count) || 0;
+    }
+
+    for (const row of deliveryRows) {
+      if (row.id === null) continue;
+      const entry = entryFor(row.id);
+      entry.deliveries = Number(row.count) || 0;
+      entry.delivered = Number(row.delivered) || 0;
+    }
+
+    return Array.from(byId.values());
+  }
+
+  async getOrderDeliveryStatsByGroup(groupIds?: number[]): Promise<EntityActivityStats[]> {
+    const scoped = groupIds && groupIds.length > 0;
+
+    const orderQuery = db
+      .select({ id: orders.groupId, count: sql<number>`count(*)` })
+      .from(orders)
+      .groupBy(orders.groupId);
+
+    const deliveryQuery = db
+      .select({
+        id: deliveries.groupId,
+        count: sql<number>`count(*)`,
+        delivered: sql<number>`count(*) filter (where ${deliveries.status} = 'delivered')`
+      })
+      .from(deliveries)
+      .groupBy(deliveries.groupId);
+
+    const [orderRows, deliveryRows] = await Promise.all([
+      scoped ? orderQuery.where(inArray(orders.groupId, groupIds!)) : orderQuery,
+      scoped ? deliveryQuery.where(inArray(deliveries.groupId, groupIds!)) : deliveryQuery
+    ]);
+
+    return this.mergeActivityStats(orderRows, deliveryRows);
+  }
+
+  async getOrderDeliveryStatsBySupplier(groupIds?: number[]): Promise<EntityActivityStats[]> {
+    const scoped = groupIds && groupIds.length > 0;
+
+    const orderQuery = db
+      .select({ id: orders.supplierId, count: sql<number>`count(*)` })
+      .from(orders)
+      .groupBy(orders.supplierId);
+
+    const deliveryQuery = db
+      .select({
+        id: deliveries.supplierId,
+        count: sql<number>`count(*)`,
+        delivered: sql<number>`count(*) filter (where ${deliveries.status} = 'delivered')`
+      })
+      .from(deliveries)
+      .groupBy(deliveries.supplierId);
+
+    const [orderRows, deliveryRows] = await Promise.all([
+      scoped ? orderQuery.where(inArray(orders.groupId, groupIds!)) : orderQuery,
+      scoped ? deliveryQuery.where(inArray(deliveries.groupId, groupIds!)) : deliveryQuery
+    ]);
+
+    return this.mergeActivityStats(orderRows, deliveryRows);
   }
 
   // Real implementations for production operations
@@ -3760,6 +3798,47 @@ export class MemStorage implements IStorage {
 
   async clearExpiredCache(): Promise<void> {
     // No-op en développement
+  }
+
+  private activityStatsBy(
+    key: 'groupId' | 'supplierId',
+    groupIds?: number[]
+  ): EntityActivityStats[] {
+    const byId = new Map<number, EntityActivityStats>();
+
+    const entryFor = (id: number): EntityActivityStats => {
+      let entry = byId.get(id);
+      if (!entry) {
+        entry = { id, orders: 0, deliveries: 0, delivered: 0 };
+        byId.set(id, entry);
+      }
+      return entry;
+    };
+
+    const inScope = (groupId: number) =>
+      !groupIds || groupIds.length === 0 || groupIds.includes(groupId);
+
+    for (const order of this.orders.values()) {
+      if (!inScope(order.groupId)) continue;
+      entryFor(order[key]).orders += 1;
+    }
+
+    for (const delivery of this.deliveries.values()) {
+      if (!inScope(delivery.groupId)) continue;
+      const entry = entryFor(delivery[key]);
+      entry.deliveries += 1;
+      if (delivery.status === 'delivered') entry.delivered += 1;
+    }
+
+    return Array.from(byId.values());
+  }
+
+  async getOrderDeliveryStatsByGroup(groupIds?: number[]): Promise<EntityActivityStats[]> {
+    return this.activityStatsBy('groupId', groupIds);
+  }
+
+  async getOrderDeliveryStatsBySupplier(groupIds?: number[]): Promise<EntityActivityStats[]> {
+    return this.activityStatsBy('supplierId', groupIds);
   }
 
   // MemStorage implementations with actual data handling

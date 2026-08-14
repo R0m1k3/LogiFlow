@@ -1389,6 +1389,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Statistiques agrégées commandes/livraisons.
+  //
+  // Les pages Magasins et Fournisseurs n'affichent que des comptages. Elles
+  // chargeaient tout l'historique via /api/orders et /api/deliveries pour ne
+  // faire que des .filter().length côté navigateur : le comptage est fait en
+  // base et seules les valeurs agrégées transitent.
+  const resolveStatsGroupIds = (user: any, storeId?: string): number[] | undefined | null => {
+    const userGroupIds: number[] = user.userGroups?.map((ug: any) => ug.groupId) || [];
+
+    if (user.role === 'admin') {
+      return storeId ? [parseInt(storeId)] : undefined; // undefined = tous les magasins
+    }
+
+    if (storeId) {
+      const requestedStoreId = parseInt(storeId);
+      // null = accès refusé au magasin demandé
+      return userGroupIds.includes(requestedStoreId) ? [requestedStoreId] : null;
+    }
+
+    return userGroupIds.length > 0 ? userGroupIds : null;
+  };
+
+  app.get('/api/stats/by-group', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const groupIds = resolveStatsGroupIds(user, req.query.storeId as string | undefined);
+      if (groupIds === null) {
+        return res.json([]);
+      }
+
+      res.json(await storage.getOrderDeliveryStatsByGroup(groupIds));
+    } catch (error) {
+      console.error("Error fetching group stats:", error);
+      res.status(500).json({ message: "Failed to fetch group stats" });
+    }
+  });
+
+  app.get('/api/stats/by-supplier', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const groupIds = resolveStatsGroupIds(user, req.query.storeId as string | undefined);
+      if (groupIds === null) {
+        return res.json([]);
+      }
+
+      res.json(await storage.getOrderDeliveryStatsBySupplier(groupIds));
+    } catch (error) {
+      console.error("Error fetching supplier stats:", error);
+      res.status(500).json({ message: "Failed to fetch supplier stats" });
+    }
+  });
+
   app.get('/api/orders/:id', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
@@ -1571,11 +1631,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fixedOrders = [];
 
       for (const order of orders) {
-        // Get deliveries for this order separately since OrderWithRelations doesn't include deliveries
-        const deliveries = await storage.getDeliveries();
-        const orderDeliveries = deliveries.filter(d => d.orderId === order.id);
+        // getOrders() renvoie déjà les livraisons de chaque commande : les
+        // recharger ici relisait toute la table à chaque itération.
+        const orderDeliveries = order.deliveries ?? [];
 
-        if (orderDeliveries && orderDeliveries.length > 0) {
+        if (orderDeliveries.length > 0) {
           const hasDeliveredDeliveries = orderDeliveries.some((d: any) => d.status === 'delivered');
 
           if (hasDeliveredDeliveries && order.status !== 'delivered') {

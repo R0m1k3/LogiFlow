@@ -29,7 +29,7 @@ import {
   CheckCircle,
   Clock
 } from "lucide-react";
-import type { Supplier } from "@shared/schema";
+import type { EntityActivityStats, Supplier } from "@shared/schema";
 
 export default function Suppliers() {
   const { user } = useAuthUnified();
@@ -56,12 +56,10 @@ export default function Suppliers() {
     queryKey: ['/api/suppliers'],
   });
 
-  const { data: orders = [] } = useQuery({
-    queryKey: ['/api/orders'],
-  });
-
-  const { data: deliveries = [] } = useQuery({
-    queryKey: ['/api/deliveries'],
+  // Comptages agrégés en base : la page n'affiche que des totaux, inutile de
+  // rapatrier l'historique complet des commandes et des livraisons.
+  const { data: supplierStats = [] } = useQuery<EntityActivityStats[]>({
+    queryKey: ['/api/stats/by-supplier'],
   });
 
   const createMutation = useMutation({
@@ -280,14 +278,14 @@ export default function Suppliers() {
   );
 
   const getSupplierStats = (supplierId: number) => {
-    const supplierOrders = orders.filter((order: any) => order.supplierId === supplierId);
-    const supplierDeliveries = deliveries.filter((delivery: any) => delivery.supplierId === supplierId);
-    const deliveredCount = supplierDeliveries.filter((delivery: any) => delivery.status === 'delivered').length;
-    
+    const stats = Array.isArray(supplierStats)
+      ? supplierStats.find(s => s.id === supplierId)
+      : undefined;
+
     return {
-      orders: supplierOrders.length,
-      deliveries: supplierDeliveries.length,
-      delivered: deliveredCount,
+      orders: stats?.orders ?? 0,
+      deliveries: stats?.deliveries ?? 0,
+      delivered: stats?.delivered ?? 0,
     };
   };
 
