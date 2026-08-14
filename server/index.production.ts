@@ -74,14 +74,21 @@ async function registerProductionRoutes(app: Express): Promise<void> {
     });
   });
   
-  // Emergency admin reset endpoint (production only)  
+  // Emergency admin reset endpoint (production only)
+  // SÉCURITÉ : n'existe que si EMERGENCY_SECRET est défini dans l'environnement.
+  // L'ancien secret par défaut était codé en dur dans ce fichier, donc lisible
+  // par quiconque accède au dépôt — n'importe qui pouvait réinitialiser le
+  // compte admin en production.
   app.post('/api/emergency-admin-reset', async (req: Request, res: Response) => {
     try {
+      const emergencySecret = process.env.EMERGENCY_SECRET;
+      if (!emergencySecret) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
       const { secret } = req.body;
-      
-      // Require emergency secret
-      const emergencySecret = process.env.EMERGENCY_SECRET || 'logiflow-admin-reset-2025';
-      if (secret !== emergencySecret) {
+      if (!secret || secret !== emergencySecret) {
+        console.warn('🚨 Tentative de reset admin avec un secret invalide');
         return res.status(403).json({ error: 'Invalid emergency secret' });
       }
       

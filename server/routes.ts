@@ -5558,8 +5558,14 @@ RÉSUMÉ DU SCAN
   });
 
   // Emergency migration route for SAV priority column
-  app.post('/api/admin/emergency-migration', async (req, res) => {
+  // SÉCURITÉ : réservée aux administrateurs authentifiés (était accessible sans login)
+  app.post('/api/admin/emergency-migration', isAuthenticated, async (req: any, res) => {
     try {
+      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
       console.log('🚨 EMERGENCY: Forcing SAV migration execution...');
 
       // Import migration function
