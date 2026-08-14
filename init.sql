@@ -419,6 +419,25 @@ CREATE TABLE IF NOT EXISTS "webhook_bap_config" (
   "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Historique des mails de relance fournisseurs (rapprochement BL/Factures)
+CREATE TABLE IF NOT EXISTS "supplier_mail_logs" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "delivery_id" integer NOT NULL,
+  "group_id" integer NOT NULL,
+  "supplier_id" integer,
+  "supplier_name" varchar(255),
+  "sent_to" varchar(255) NOT NULL,
+  "subject" text,
+  "status" varchar(20) NOT NULL,
+  "error_message" text,
+  "message_id" varchar(255),
+  "sent_by" varchar NOT NULL,
+  "sent_by_name" varchar(255),
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_supplier_mail_logs_delivery ON supplier_mail_logs(delivery_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_mail_logs_group ON supplier_mail_logs(group_id);
+
 -- ============================================================================
 -- FOREIGN KEY CONSTRAINTS
 -- ============================================================================

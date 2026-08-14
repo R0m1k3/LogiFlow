@@ -79,6 +79,34 @@ export default function BLReconciliation() {
     queryKey: ['/api/suppliers'],
   });
 
+  // Historique des relances fournisseurs : dernier envoi affiché sur l'icône mail
+  const { data: supplierMailLogs = [] } = useQuery<any[]>({
+    queryKey: ['/api/supplier-mail-logs', selectedStoreId],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedStoreId && (user?.role === 'admin' || user?.role === 'directeur')) {
+        params.append('storeId', selectedStoreId.toString());
+      }
+      const response = await fetch(`/api/supplier-mail-logs?${params.toString()}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch supplier mail logs');
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  // Dernier envoi réussi par livraison (les logs arrivent triés du plus récent au plus ancien)
+  const lastMailByDelivery = React.useMemo(() => {
+    const map = new Map<number, any>();
+    for (const log of supplierMailLogs) {
+      if (log.status === 'sent' && !map.has(log.deliveryId)) {
+        map.set(log.deliveryId, log);
+      }
+    }
+    return map;
+  }, [supplierMailLogs]);
+
   // ---------------------------------------------------------------------------
   // File d'attente des vérifications de facture
   //
@@ -688,6 +716,8 @@ export default function BLReconciliation() {
         title: "Mail envoyé",
         description: `Demande envoyée à ${result?.supplierName || 'le fournisseur'} (${result?.sentTo})`,
       });
+      // Rafraîchir l'historique pour marquer la ligne comme relancée
+      queryClient.invalidateQueries({ queryKey: ['/api/supplier-mail-logs'] });
     },
     onError: (error: any) => {
       toast({
@@ -1164,6 +1194,7 @@ export default function BLReconciliation() {
                                 {(() => {
                                   const supplierEmail = getSupplierEmail(delivery);
                                   const isSending = sendingMailDeliveries.has(delivery.id);
+                                  const lastMail = lastMailByDelivery.get(delivery.id);
                                   return (
                                     <Button
                                       variant="outline"
@@ -1171,22 +1202,26 @@ export default function BLReconciliation() {
                                       disabled={isSending}
                                       onClick={() => handleRequestDocumentsByEmail(delivery)}
                                       className={`h-8 w-8 p-0 ${
-                                        supplierEmail
-                                          ? 'text-blue-600 hover:text-blue-700 border-blue-300'
-                                          : 'text-gray-400 hover:text-gray-500'
+                                        !supplierEmail
+                                          ? 'text-gray-400 hover:text-gray-500'
+                                          : lastMail
+                                            ? 'text-green-600 hover:text-green-700 border-green-300'
+                                            : 'text-blue-600 hover:text-blue-700 border-blue-300'
                                       }`}
                                       title={
                                         isSending
                                           ? "Envoi en cours..."
-                                          : supplierEmail
-                                            ? `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
-                                            : `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                          : !supplierEmail
+                                            ? `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                            : lastMail
+                                              ? `Demande déjà envoyée le ${safeFormat(lastMail.createdAt, 'dd/MM/yyyy à HH:mm')} par ${lastMail.sentByName || lastMail.sentBy}. Cliquer pour renvoyer.`
+                                              : `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
                                       }
                                     >
                                       {isSending ? (
                                         <Clock className="h-4 w-4 animate-spin" />
                                       ) : (
-                                        <Mail className="h-4 w-4" />
+                                        <Mail className={`h-4 w-4 ${lastMail ? 'fill-green-100' : ''}`} />
                                       )}
                                     </Button>
                                   );
@@ -1502,27 +1537,32 @@ export default function BLReconciliation() {
                                   {(() => {
                                     const supplierEmail = getSupplierEmail(delivery);
                                     const isSending = sendingMailDeliveries.has(delivery.id);
+                                    const lastMail = lastMailByDelivery.get(delivery.id);
                                     return (
                                       <button
                                         disabled={isSending}
                                         onClick={() => handleRequestDocumentsByEmail(delivery)}
                                         className={`transition-colors duration-200 p-1 rounded opacity-70 ${
-                                          supplierEmail
-                                            ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                                            : 'text-gray-400 hover:text-gray-500 hover:bg-gray-50'
+                                          !supplierEmail
+                                            ? 'text-gray-400 hover:text-gray-500 hover:bg-gray-50'
+                                            : lastMail
+                                              ? 'text-green-600 hover:text-green-700 hover:bg-green-50'
+                                              : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
                                         }`}
                                         title={
                                           isSending
                                             ? "Envoi en cours..."
-                                            : supplierEmail
-                                              ? `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
-                                              : `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                            : !supplierEmail
+                                              ? `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                              : lastMail
+                                                ? `Demande déjà envoyée le ${safeFormat(lastMail.createdAt, 'dd/MM/yyyy à HH:mm')} par ${lastMail.sentByName || lastMail.sentBy}. Cliquer pour renvoyer.`
+                                                : `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
                                         }
                                       >
                                         {isSending ? (
                                           <Clock className="w-4 h-4 animate-spin" />
                                         ) : (
-                                          <Mail className="w-4 h-4" />
+                                          <Mail className={`w-4 h-4 ${lastMail ? 'fill-green-100' : ''}`} />
                                         )}
                                       </button>
                                     );

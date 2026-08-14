@@ -985,6 +985,23 @@ export type WeatherSettings = typeof weatherSettings.$inferSelect;
 export type InsertWeatherSettings = z.infer<typeof insertWeatherSettingsSchema>;
 
 // Configuration Webhook BAP
+// Historique des mails de relance envoyés aux fournisseurs (rapprochement)
+export const supplierMailLogs = pgTable("supplier_mail_logs", {
+  id: serial("id").primaryKey(),
+  deliveryId: integer("delivery_id").notNull(),
+  groupId: integer("group_id").notNull(),
+  supplierId: integer("supplier_id"),
+  supplierName: varchar("supplier_name", { length: 255 }), // figé au moment de l'envoi
+  sentTo: varchar("sent_to", { length: 255 }).notNull(), // adresse destinataire
+  subject: text("subject"),
+  status: varchar("status", { length: 20 }).notNull(), // 'sent' | 'failed'
+  errorMessage: text("error_message"),
+  messageId: varchar("message_id", { length: 255 }),
+  sentBy: varchar("sent_by").notNull(), // id utilisateur
+  sentByName: varchar("sent_by_name", { length: 255 }), // nom lisible, figé
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const webhookBapConfig = pgTable("webhook_bap_config", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull().default("Configuration BAP"),
@@ -1005,3 +1022,11 @@ export const insertWebhookBapConfigSchema = createInsertSchema(webhookBapConfig)
 // Webhook BAP Types
 export type WebhookBapConfig = typeof webhookBapConfig.$inferSelect;
 export type InsertWebhookBapConfig = z.infer<typeof insertWebhookBapConfigSchema>;
+
+// Supplier mail logs
+export const insertSupplierMailLogSchema = createInsertSchema(supplierMailLogs).omit({
+  id: true,
+  createdAt: true,
+});
+export type SupplierMailLog = typeof supplierMailLogs.$inferSelect;
+export type InsertSupplierMailLog = z.infer<typeof insertSupplierMailLogSchema>;

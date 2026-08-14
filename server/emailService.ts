@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from 'nodemailer';
+import { decryptSecret } from './crypto';
 import {
   buildSupplierMailSubject,
   buildSupplierMailText,
@@ -61,14 +62,17 @@ export function createTransporter(group: StoreSmtpConfig): Transporter {
     throw new SmtpConfigError(`Configuration SMTP incomplète : ${missing.join(', ')}`);
   }
 
-  const hasAuth = Boolean(group.smtpUser?.trim() && group.smtpPassword);
+  // Le mot de passe est stocké chiffré (AES-256-GCM) : déchiffré uniquement
+  // ici, au moment de la connexion au serveur SMTP
+  const smtpPassword = decryptSecret(group.smtpPassword);
+  const hasAuth = Boolean(group.smtpUser?.trim() && smtpPassword);
 
   return nodemailer.createTransport({
     host: group.smtpHost!.trim(),
     port: Number(group.smtpPort),
     secure: Boolean(group.smtpSecure),
     auth: hasAuth
-      ? { user: group.smtpUser!.trim(), pass: group.smtpPassword! }
+      ? { user: group.smtpUser!.trim(), pass: smtpPassword! }
       : undefined,
   });
 }

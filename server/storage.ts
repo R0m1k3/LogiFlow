@@ -13,6 +13,7 @@ import {
   dashboardMessages,
   announcements,
   nocodbConfig,
+  supplierMailLogs,
   invoiceVerificationCache,
   reconciliationComments,
   savTickets,
@@ -58,6 +59,8 @@ import {
   type ReconciliationCommentWithRelations,
   type NocodbConfig,
   type InsertNocodbConfig,
+  type SupplierMailLog,
+  type InsertSupplierMailLog,
   type InvoiceVerificationCache,
   type InsertInvoiceVerificationCache,
   type SavTicket,
@@ -83,6 +86,7 @@ import {
   type Contact,
   type InsertContact,
 } from "@shared/schema";
+import { encryptSecret, decryptSecret } from "./crypto";
 import { db } from "./db";
 import { eq, and, inArray, desc, sql, gte, lte, lt, gt, or, isNull, isNotNull, asc, ne } from "drizzle-orm";
 import { getAnnouncementStorage } from "./announcementStorage";
@@ -270,6 +274,10 @@ export interface IStorage {
   deleteOldWeatherData(daysToKeep: number): Promise<void>;
   clearWeatherCache(): Promise<void>;
 
+  // Historique des mails fournisseurs (rapprochement)
+  createSupplierMailLog(log: InsertSupplierMailLog): Promise<SupplierMailLog>;
+  getSupplierMailLogs(groupIds?: number[], deliveryId?: number): Promise<SupplierMailLog[]>;
+
   // Webhook BAP Configuration
   getWebhookBapConfig(): Promise<WebhookBapConfig | undefined>;
   createWebhookBapConfig(config: InsertWebhookBapConfig): Promise<WebhookBapConfig>;
@@ -428,14 +436,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createGroup(groupData: InsertGroup): Promise<Group> {
-    const [group] = await db.insert(groups).values(groupData).returning();
+    // Le mot de passe SMTP est chiffré au repos ; il n'est déchiffré qu'au
+    // moment de l'envoi d'un mail (emailService)
+    const values = { ...groupData, smtpPassword: encryptSecret(groupData.smtpPassword) };
+    const [group] = await db.insert(groups).values(values).returning();
     return group;
   }
 
   async updateGroup(id: number, groupData: Partial<InsertGroup>): Promise<Group> {
+    const values = { ...groupData };
+    if (values.smtpPassword !== undefined) {
+      values.smtpPassword = encryptSecret(values.smtpPassword);
+    }
     const [group] = await db
       .update(groups)
-      .set({ ...groupData, updatedAt: new Date() })
+      .set({ ...values, updatedAt: new Date() })
       .where(eq(groups.id, id))
       .returning();
     return group;
@@ -1622,13 +1637,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   // NocoDB Configuration operations
+  // Le jeton API est chiffré en base ; les lecteurs (vérification de facture,
+  // page d'admin) reçoivent la valeur en clair comme avant le chiffrement
+  private decryptNocodbConfig<T extends NocodbConfig | undefined>(config: T): T {
+    if (!config) return config;
+    try {
+      return { ...config, apiToken: decryptSecret(config.apiToken) } as T;
+    } catch (error) {
+      console.error(`❌ Jeton NocoDB illisible (config ${config.id}):`, error);
+      return { ...config, apiToken: '' } as T;
+    }
+  }
+
   async getNocodbConfigs(): Promise<NocodbConfig[]> {
-    return await db.select().from(nocodbConfig).orderBy(desc(nocodbConfig.createdAt));
+    const configs = await db.select().from(nocodbConfig).orderBy(desc(nocodbConfig.createdAt));
+    return configs.map((c: NocodbConfig) => this.decryptNocodbConfig(c));
   }
 
   async getNocodbConfig(id: number): Promise<NocodbConfig | undefined> {
     const [config] = await db.select().from(nocodbConfig).where(eq(nocodbConfig.id, id));
-    return config;
+    return this.decryptNocodbConfig(config);
   }
 
   async getActiveNocodbConfig(): Promise<NocodbConfig | undefined> {
@@ -1639,8 +1667,9 @@ export class DatabaseStorage implements IStorage {
         .where(eq(nocodbConfig.isActive, true))
         .limit(1);
 
-      console.log('🔧 Configuration NocoDB active récupérée:', config);
-      return config;
+      // Ne pas tracer le jeton en clair dans les logs
+      console.log('🔧 Configuration NocoDB active récupérée:', config?.id, config?.name);
+      return this.decryptNocodbConfig(config);
     } catch (error) {
       console.error('❌ Erreur récupération config NocoDB:', error);
       return undefined;
@@ -1648,17 +1677,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createNocodbConfig(configData: InsertNocodbConfig): Promise<NocodbConfig> {
-    const [config] = await db.insert(nocodbConfig).values(configData).returning();
-    return config;
+    const values = { ...configData, apiToken: encryptSecret(configData.apiToken) || '' };
+    const [config] = await db.insert(nocodbConfig).values(values).returning();
+    return this.decryptNocodbConfig(config);
   }
 
   async updateNocodbConfig(id: number, configData: Partial<InsertNocodbConfig>): Promise<NocodbConfig> {
+    const values = { ...configData };
+    if (values.apiToken !== undefined) {
+      values.apiToken = encryptSecret(values.apiToken) || '';
+    }
     const [config] = await db
       .update(nocodbConfig)
-      .set({ ...configData, updatedAt: new Date() })
+      .set({ ...values, updatedAt: new Date() })
       .where(eq(nocodbConfig.id, id))
       .returning();
-    return config;
+    return this.decryptNocodbConfig(config);
   }
 
   async deleteNocodbConfig(id: number): Promise<void> {
@@ -2910,6 +2944,29 @@ export class DatabaseStorage implements IStorage {
   async clearWeatherCache(): Promise<void> {
     await db.delete(weatherData);
     console.log('🧹 Weather cache cleared due to location change');
+  }
+
+  // Historique des mails fournisseurs (rapprochement)
+  async createSupplierMailLog(logData: InsertSupplierMailLog): Promise<SupplierMailLog> {
+    const [log] = await db.insert(supplierMailLogs).values(logData).returning();
+    return log;
+  }
+
+  async getSupplierMailLogs(groupIds?: number[], deliveryId?: number): Promise<SupplierMailLog[]> {
+    const conditions = [];
+    if (groupIds && groupIds.length > 0) {
+      conditions.push(inArray(supplierMailLogs.groupId, groupIds));
+    }
+    if (deliveryId !== undefined) {
+      conditions.push(eq(supplierMailLogs.deliveryId, deliveryId));
+    }
+
+    let query = db.select().from(supplierMailLogs).$dynamic();
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    // Borné : la page de rapprochement n'a besoin que de l'historique récent
+    return await query.orderBy(desc(supplierMailLogs.createdAt)).limit(500);
   }
 
   // Webhook BAP Configuration
@@ -5207,6 +5264,39 @@ export class MemStorage implements IStorage {
   async clearWeatherCache(): Promise<void> {
     // In development, this is a no-op
     console.log('🧹 DEV: Weather cache cleared due to location change');
+  }
+
+  // Historique des mails fournisseurs (en mémoire pour le développement)
+  private supplierMailLogsStore: SupplierMailLog[] = [];
+  private supplierMailLogIdCounter = 1;
+
+  async createSupplierMailLog(logData: InsertSupplierMailLog): Promise<SupplierMailLog> {
+    const log: SupplierMailLog = {
+      id: this.supplierMailLogIdCounter++,
+      deliveryId: logData.deliveryId,
+      groupId: logData.groupId,
+      supplierId: logData.supplierId ?? null,
+      supplierName: logData.supplierName ?? null,
+      sentTo: logData.sentTo,
+      subject: logData.subject ?? null,
+      status: logData.status,
+      errorMessage: logData.errorMessage ?? null,
+      messageId: logData.messageId ?? null,
+      sentBy: logData.sentBy,
+      sentByName: logData.sentByName ?? null,
+      createdAt: new Date(),
+    };
+    this.supplierMailLogsStore.unshift(log);
+    return log;
+  }
+
+  async getSupplierMailLogs(groupIds?: number[], deliveryId?: number): Promise<SupplierMailLog[]> {
+    return this.supplierMailLogsStore
+      .filter(log =>
+        (!groupIds || groupIds.length === 0 || groupIds.includes(log.groupId)) &&
+        (deliveryId === undefined || log.deliveryId === deliveryId)
+      )
+      .slice(0, 500);
   }
 
   // Webhook BAP Configuration

@@ -9,6 +9,7 @@ import {
   verifySmtpConfig,
   getMissingSmtpFields,
 } from "./emailService";
+import { buildSupplierMailSubject } from "@shared/supplierMail";
 import { db, pool } from "./db";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -2369,27 +2370,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const result = await sendSupplierDocumentRequest(group as any, delivery as any, supplierEmail);
+      // Historisation de la tentative, succès comme échec — un échec de
+      // journalisation ne doit jamais faire échouer (ni annuler) l'envoi
+      const senderName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
+        || user.username || user.id;
+      const logAttempt = async (status: 'sent' | 'failed', extra: { messageId?: string; errorMessage?: string }) => {
+        try {
+          await storage.createSupplierMailLog({
+            deliveryId,
+            groupId: delivery.groupId,
+            supplierId: delivery.supplierId ?? null,
+            supplierName: delivery.supplier?.name || null,
+            sentTo: supplierEmail,
+            subject: buildSupplierMailSubject(delivery as any),
+            status,
+            errorMessage: extra.errorMessage || null,
+            messageId: extra.messageId || null,
+            sentBy: user.id,
+            sentByName: senderName,
+          });
+        } catch (logError) {
+          console.error('⚠️ Historisation du mail fournisseur impossible:', logError);
+        }
+      };
 
-      console.log('📧 Mail fournisseur envoyé:', {
-        deliveryId,
-        supplier: delivery.supplier?.name,
-        to: supplierEmail,
-        store: group.name,
-        messageId: result.messageId
-      });
+      try {
+        const result = await sendSupplierDocumentRequest(group as any, delivery as any, supplierEmail);
 
-      res.json({
-        success: true,
-        sentTo: supplierEmail,
-        supplierName: delivery.supplier?.name || null,
-        messageId: result.messageId
-      });
+        await logAttempt('sent', { messageId: result.messageId });
+
+        console.log('📧 Mail fournisseur envoyé:', {
+          deliveryId,
+          supplier: delivery.supplier?.name,
+          to: supplierEmail,
+          store: group.name,
+          messageId: result.messageId
+        });
+
+        res.json({
+          success: true,
+          sentTo: supplierEmail,
+          supplierName: delivery.supplier?.name || null,
+          messageId: result.messageId
+        });
+      } catch (sendError: any) {
+        await logAttempt('failed', { errorMessage: sendError?.message || 'Erreur inconnue' });
+        throw sendError;
+      }
     } catch (error: any) {
       console.error("Erreur envoi mail fournisseur:", error);
       res.status(500).json({
         message: error?.message || "Impossible d'envoyer le mail au fournisseur"
       });
+    }
+  });
+
+  // Historique des relances fournisseurs, restreint aux magasins de l'utilisateur
+  app.get('/api/supplier-mail-logs', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const deliveryId = req.query.deliveryId ? parseInt(req.query.deliveryId as string) : undefined;
+
+      let groupIds: number[] | undefined;
+      if (user.role !== 'admin') {
+        groupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
+        if (groupIds.length === 0) {
+          return res.json([]);
+        }
+      } else if (req.query.storeId) {
+        groupIds = [parseInt(req.query.storeId as string)];
+      }
+
+      const logs = await storage.getSupplierMailLogs(groupIds, deliveryId);
+      res.json(logs);
+    } catch (error) {
+      console.error("Erreur lecture historique mails fournisseurs:", error);
+      res.status(500).json({ message: "Failed to fetch supplier mail logs" });
     }
   });
 

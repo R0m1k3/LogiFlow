@@ -84,6 +84,28 @@ WHERE NOT EXISTS (SELECT 1 FROM webhook_bap_config);`
           ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_sender_email VARCHAR(255);
           ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_sender_name VARCHAR(255);
         `
+      },
+      {
+        filename: '20260814000001_create_supplier_mail_logs.sql',
+        content: `
+          CREATE TABLE IF NOT EXISTS supplier_mail_logs (
+            id SERIAL PRIMARY KEY,
+            delivery_id INTEGER NOT NULL,
+            group_id INTEGER NOT NULL,
+            supplier_id INTEGER,
+            supplier_name VARCHAR(255),
+            sent_to VARCHAR(255) NOT NULL,
+            subject TEXT,
+            status VARCHAR(20) NOT NULL,
+            error_message TEXT,
+            message_id VARCHAR(255),
+            sent_by VARCHAR NOT NULL,
+            sent_by_name VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE INDEX IF NOT EXISTS idx_supplier_mail_logs_delivery ON supplier_mail_logs(delivery_id);
+          CREATE INDEX IF NOT EXISTS idx_supplier_mail_logs_group ON supplier_mail_logs(group_id);
+        `
       }
     ];
     
