@@ -19,7 +19,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ReconciliationComments from "@/components/ReconciliationComments";
 import ReconciliationModal from "@/components/modals/ReconciliationModal";
-import { buildSupplierMailtoUrl, openMailClient } from "@/lib/supplierMail";
 
 export default function BLReconciliation() {
   const { user } = useAuthUnified();
@@ -68,6 +67,8 @@ export default function BLReconciliation() {
   // État pour le système de vérification de facture
   const [verificationResults, setVerificationResults] = useState<Record<number, any>>({});
   const [verifyingDeliveries, setVerifyingDeliveries] = useState<Set<number>>(new Set());
+  // Livraisons dont le mail fournisseur est en cours d'envoi
+  const [sendingMailDeliveries, setSendingMailDeliveries] = useState<Set<number>>(new Set());
 
   // État pour le modal de commentaire
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -676,8 +677,34 @@ export default function BLReconciliation() {
     return supplier?.email ? String(supplier.email).trim() : '';
   };
 
-  // Ouvre Outlook (client mail par défaut) avec un message prérempli
-  // demandant la facture au format PDF ou le BL au format Excel
+  // Envoi de la demande de facture (PDF) / BL (Excel) au fournisseur.
+  // Le mail part du serveur SMTP configuré sur la fiche du magasin.
+  const sendSupplierMailMutation = useMutation({
+    mutationFn: async (delivery: any) => {
+      return await apiRequest(`/api/deliveries/${delivery.id}/send-supplier-mail`, 'POST');
+    },
+    onSuccess: (result: any) => {
+      toast({
+        title: "Mail envoyé",
+        description: `Demande envoyée à ${result?.supplierName || 'le fournisseur'} (${result?.sentTo})`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Envoi impossible",
+        description: error?.message || "Le mail n'a pas pu être envoyé",
+        variant: "destructive",
+      });
+    },
+    onSettled: (_result, _error, delivery: any) => {
+      setSendingMailDeliveries(prev => {
+        const next = new Set(prev);
+        next.delete(delivery.id);
+        return next;
+      });
+    },
+  });
+
   const handleRequestDocumentsByEmail = (delivery: any) => {
     const supplierEmail = getSupplierEmail(delivery);
 
@@ -690,8 +717,12 @@ export default function BLReconciliation() {
       return;
     }
 
-    const mailtoUrl = buildSupplierMailtoUrl(delivery, supplierEmail);
-    openMailClient(mailtoUrl);
+    // Envoi direct : on bloque la ligne le temps de la requête pour éviter
+    // qu'un double clic ne déclenche deux mails au même fournisseur.
+    if (sendingMailDeliveries.has(delivery.id)) return;
+
+    setSendingMailDeliveries(prev => new Set(prev).add(delivery.id));
+    sendSupplierMailMutation.mutate(delivery);
   };
 
   const handleQuickValidate = async (delivery: any) => {
@@ -1132,10 +1163,12 @@ export default function BLReconciliation() {
                               <div className="flex items-center justify-end space-x-2">
                                 {(() => {
                                   const supplierEmail = getSupplierEmail(delivery);
+                                  const isSending = sendingMailDeliveries.has(delivery.id);
                                   return (
                                     <Button
                                       variant="outline"
                                       size="sm"
+                                      disabled={isSending}
                                       onClick={() => handleRequestDocumentsByEmail(delivery)}
                                       className={`h-8 w-8 p-0 ${
                                         supplierEmail
@@ -1143,12 +1176,18 @@ export default function BLReconciliation() {
                                           : 'text-gray-400 hover:text-gray-500'
                                       }`}
                                       title={
-                                        supplierEmail
-                                          ? `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
-                                          : `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                        isSending
+                                          ? "Envoi en cours..."
+                                          : supplierEmail
+                                            ? `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
+                                            : `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
                                       }
                                     >
-                                      <Mail className="h-4 w-4" />
+                                      {isSending ? (
+                                        <Clock className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Mail className="h-4 w-4" />
+                                      )}
                                     </Button>
                                   );
                                 })()}
@@ -1462,8 +1501,10 @@ export default function BLReconciliation() {
                                 <div className="flex items-center justify-end space-x-2">
                                   {(() => {
                                     const supplierEmail = getSupplierEmail(delivery);
+                                    const isSending = sendingMailDeliveries.has(delivery.id);
                                     return (
                                       <button
+                                        disabled={isSending}
                                         onClick={() => handleRequestDocumentsByEmail(delivery)}
                                         className={`transition-colors duration-200 p-1 rounded opacity-70 ${
                                           supplierEmail
@@ -1471,12 +1512,18 @@ export default function BLReconciliation() {
                                             : 'text-gray-400 hover:text-gray-500 hover:bg-gray-50'
                                         }`}
                                         title={
-                                          supplierEmail
-                                            ? `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
-                                            : `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+                                          isSending
+                                            ? "Envoi en cours..."
+                                            : supplierEmail
+                                              ? `Demander la facture (PDF) ou le BL (Excel) à ${delivery.supplier?.name || 'ce fournisseur'} (${supplierEmail})`
+                                              : `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
                                         }
                                       >
-                                        <Mail className="w-4 h-4" />
+                                        {isSending ? (
+                                          <Clock className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          <Mail className="w-4 h-4" />
+                                        )}
                                       </button>
                                     );
                                   })()}

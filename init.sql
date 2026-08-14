@@ -46,6 +46,19 @@ CREATE TABLE IF NOT EXISTS "groups" (
   "nocodb_supplier_column_name" varchar,
   "nocodb_due_date_column_name" varchar,
   "webhook_url" varchar(500),
+  -- Coordonnées du magasin (signature des mails fournisseurs)
+  "address" text,
+  "phone" varchar(50),
+  "logo" text,
+  -- Configuration SMTP propre au magasin
+  "smtp_enabled" boolean DEFAULT false,
+  "smtp_host" varchar(255),
+  "smtp_port" integer,
+  "smtp_secure" boolean DEFAULT false,
+  "smtp_user" varchar(255),
+  "smtp_password" varchar(255),
+  "smtp_sender_email" varchar(255),
+  "smtp_sender_name" varchar(255),
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
   "updated_at" timestamp DEFAULT CURRENT_TIMESTAMP
 );

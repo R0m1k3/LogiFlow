@@ -60,12 +60,30 @@ export async function runMigrations() {
 );
 
 INSERT INTO webhook_bap_config (name, webhook_url, description, is_active)
-SELECT 
+SELECT
   'Configuration BAP',
   'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d',
   'Configuration par défaut pour envoi des fichiers BAP vers n8n',
   true
 WHERE NOT EXISTS (SELECT 1 FROM webhook_bap_config);`
+      },
+      {
+        filename: '20260814000000_add_store_contact_and_smtp_to_groups.sql',
+        content: `
+          -- Coordonnées du magasin (signature des mails fournisseurs)
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS address TEXT;
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS logo TEXT;
+          -- Configuration SMTP propre à chaque magasin
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_enabled BOOLEAN DEFAULT false;
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_host VARCHAR(255);
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_port INTEGER;
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_secure BOOLEAN DEFAULT false;
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_user VARCHAR(255);
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_password VARCHAR(255);
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_sender_email VARCHAR(255);
+          ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_sender_name VARCHAR(255);
+        `
       }
     ];
     

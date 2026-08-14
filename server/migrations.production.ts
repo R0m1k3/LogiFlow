@@ -58,7 +58,24 @@ export async function runProductionMigrations() {
     } else {
       console.log('✅ MIGRATION: Priority column already exists, skipping migration');
     }
-    
+
+    // Coordonnées magasin + configuration SMTP par magasin (mails fournisseurs)
+    console.log('🔄 MIGRATION: Ensuring store contact and SMTP columns on groups...');
+    await client.query(`
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS address TEXT;
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS logo TEXT;
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_enabled BOOLEAN DEFAULT false;
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_host VARCHAR(255);
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_port INTEGER;
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_secure BOOLEAN DEFAULT false;
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_user VARCHAR(255);
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_password VARCHAR(255);
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_sender_email VARCHAR(255);
+      ALTER TABLE groups ADD COLUMN IF NOT EXISTS smtp_sender_name VARCHAR(255);
+    `);
+    console.log('✅ MIGRATION: Store contact and SMTP columns are present on groups');
+
   } catch (error) {
     console.error('❌ MIGRATION ERROR: Failed to run SAV production migrations:', error);
     console.error('❌ MIGRATION ERROR: Error details:', {

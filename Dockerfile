@@ -61,7 +61,8 @@ RUN npx esbuild server/index.production.ts \
     --external:express-rate-limit \
     --external:memoizee \
     --external:nanoid \
-    --external:date-fns
+    --external:date-fns \
+    --external:nodemailer
 
 # Production stage
 FROM node:20-alpine AS production

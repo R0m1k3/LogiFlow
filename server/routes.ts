@@ -3,6 +3,12 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupLocalAuth, requireAuth } from "./localAuth";
 import { requireModulePermission, requireAdmin, requirePermission } from "./permissions";
+import { stripSmtpPassword } from "./sanitize";
+import {
+  sendSupplierDocumentRequest,
+  verifySmtpConfig,
+  getMissingSmtpFields,
+} from "./emailService";
 import { db, pool } from "./db";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
@@ -10,6 +16,7 @@ const require = createRequire(import.meta.url);
 // const FormData = require('form-data');
 
 console.log('🔍 Using development storage and authentication');
+
 
 // Fonction de normalisation des dates pour gérer différents formats de NocoDB
 function normalizeDateString(dateString: string | null | undefined): string | null {
@@ -138,6 +145,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Detect environment
   const environment = process.env.NODE_ENV || 'development';
   console.log('🌍 Environment detected:', environment);
+
+  // Le mot de passe SMTP des magasins ne doit jamais sortir du serveur.
+  // Les objets "group" sont joints à de nombreuses réponses (livraisons,
+  // commandes, utilisateurs...) : plutôt que de filtrer chaque requête, on
+  // nettoie une seule fois à la sortie. Le client reçoit à la place un booléen
+  // smtpPasswordSet lui indiquant si un mot de passe est enregistré.
+  app.use('/api', (req, res, next) => {
+    const originalJson = res.json.bind(res);
+
+    res.json = (body: any) => originalJson(stripSmtpPassword(body));
+
+    next();
+  });
 
   // Health check endpoint for Docker
   app.get('/api/health', (req, res) => {
@@ -1042,11 +1062,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const id = parseInt(req.params.id);
       const data = insertGroupSchema.partial().parse(req.body);
+
+      // Le mot de passe SMTP n'est jamais renvoyé au client : un champ vide
+      // signifie "inchangé", pas "effacer". On ne l'écrase que s'il est fourni.
+      if (!data.smtpPassword) {
+        delete (data as any).smtpPassword;
+      }
+
       const group = await storage.updateGroup(id, data);
       res.json(group);
     } catch (error: any) {
       console.error("Error updating group:", error);
       res.status(500).json({ message: "Failed to update group" });
+    }
+  });
+
+  // Test de la configuration SMTP d'un magasin (aucun message envoyé)
+  app.post('/api/groups/:id/test-smtp', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const id = parseInt(req.params.id);
+      const group = await storage.getGroup(id);
+      if (!group) {
+        return res.status(404).json({ message: "Magasin introuvable" });
+      }
+
+      const missing = getMissingSmtpFields(group as any);
+      if (missing.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Configuration incomplète : ${missing.join(', ')}`
+        });
+      }
+
+      await verifySmtpConfig(group as any);
+      res.json({ success: true, message: "Connexion au serveur SMTP réussie" });
+    } catch (error: any) {
+      console.error("Erreur test SMTP:", error);
+      res.status(400).json({
+        success: false,
+        message: error?.message || "Impossible de joindre le serveur SMTP"
+      });
     }
   });
 
@@ -2254,6 +2314,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Route de vérification de facture NocoDB
+  // Envoi au fournisseur de la demande de facture (PDF) ou de BL (Excel)
+  // via le serveur SMTP configuré sur la fiche du magasin de la livraison
+  app.post('/api/deliveries/:id/send-supplier-mail', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const deliveryId = parseInt(req.params.id);
+      const delivery = await storage.getDelivery(deliveryId);
+
+      if (!delivery) {
+        return res.status(404).json({ message: "Livraison introuvable" });
+      }
+
+      if (!hasPermission(user.role, 'deliveries', 'view')) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      // Hors admin, l'utilisateur doit appartenir au magasin de la livraison
+      if (user.role !== 'admin') {
+        const userGroupIds = user.userGroups?.map((ug: any) => ug.groupId) || [];
+        if (!userGroupIds.includes(delivery.groupId)) {
+          return res.status(403).json({ message: "Access denied to this group" });
+        }
+      }
+
+      // Adresse du fournisseur : celle enregistrée sur sa fiche
+      const supplierEmail = delivery.supplier?.email?.trim();
+      if (!supplierEmail) {
+        return res.status(400).json({
+          message: `Aucune adresse email renseignée pour ${delivery.supplier?.name || 'ce fournisseur'}`
+        });
+      }
+
+      // Configuration SMTP du magasin (mot de passe inclus : usage serveur uniquement)
+      const group = await storage.getGroup(delivery.groupId);
+      if (!group) {
+        return res.status(404).json({ message: "Magasin de la livraison introuvable" });
+      }
+
+      if (!(group as any).smtpEnabled) {
+        return res.status(400).json({
+          message: `L'envoi de mails n'est pas activé pour le magasin ${group.name}. Renseignez la configuration SMTP sur sa fiche.`
+        });
+      }
+
+      const missing = getMissingSmtpFields(group as any);
+      if (missing.length > 0) {
+        return res.status(400).json({
+          message: `Configuration SMTP incomplète pour ${group.name} : ${missing.join(', ')}`
+        });
+      }
+
+      const result = await sendSupplierDocumentRequest(group as any, delivery as any, supplierEmail);
+
+      console.log('📧 Mail fournisseur envoyé:', {
+        deliveryId,
+        supplier: delivery.supplier?.name,
+        to: supplierEmail,
+        store: group.name,
+        messageId: result.messageId
+      });
+
+      res.json({
+        success: true,
+        sentTo: supplierEmail,
+        supplierName: delivery.supplier?.name || null,
+        messageId: result.messageId
+      });
+    } catch (error: any) {
+      console.error("Erreur envoi mail fournisseur:", error);
+      res.status(500).json({
+        message: error?.message || "Impossible d'envoyer le mail au fournisseur"
+      });
+    }
+  });
+
   app.post('/api/deliveries/:id/verify-invoice', isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
