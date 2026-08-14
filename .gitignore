@@ -4,3 +4,12 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Secrets et fichiers de session : ne jamais committer
+.env
+.env.local
+cookie*.txt
+
+# Artefacts de debug locaux
+*.log
+scratch/
