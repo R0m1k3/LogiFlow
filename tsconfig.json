@@ -34,9 +34,7 @@
       "vite/client",
       "express",
       "react",
-      "react-dom",
-      "node-fetch",
-      "date-fns"
+      "react-dom"
     ],
     "paths": {
       "@/*": [
