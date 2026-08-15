@@ -505,7 +505,7 @@ export default function Groups() {
         setSelectedGroup(null);
         setFormData({ ...EMPTY_GROUP_FORM, invoiceColumnName: "Ref Facture" });
       }}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto" aria-describedby="group-modal-description">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="group-modal-description">
           <DialogHeader>
             <DialogTitle>
               {selectedGroup ? 'Modifier' : 'Nouveau'} Groupe
@@ -516,6 +516,9 @@ export default function Groups() {
           </DialogHeader>
           
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start">
+            {/* Colonne gauche : identité + configuration NocoDB */}
+            <div className="space-y-4">
             <div>
               <Label htmlFor="name">Nom du groupe *</Label>
               <Input
@@ -716,8 +719,12 @@ export default function Groups() {
               )}
             </div>
 
+            </div>
+
+            {/* Colonne droite : coordonnées + envoi de mails */}
+            <div className="space-y-4">
             {/* Section Coordonnées du magasin (signature des mails) */}
-            <div className="border-t pt-4 space-y-4">
+            <div className="border-t md:border-t-0 pt-4 md:pt-0 space-y-4">
               <div className="flex items-center space-x-2 mb-1">
                 <div className="w-4 h-4 bg-green-500 rounded"></div>
                 <h3 className="font-medium text-gray-900">Coordonnées du magasin</h3>
@@ -916,7 +923,10 @@ export default function Groups() {
               )}
             </div>
 
-            <div className="flex items-center space-x-3 pt-4">
+            </div>
+            </div>
+
+            <div className="flex items-center space-x-3 pt-4 border-t">
               <Button
                 type="button"
                 variant="outline"
