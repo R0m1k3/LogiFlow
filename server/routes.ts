@@ -5723,6 +5723,16 @@ RÉSUMÉ DU SCAN
         }
       }
 
+      // Repli : si l'API historique a échoué (quota épuisé, panne, plan sans
+      // accès à l'historique), reprendre la ligne en cache la plus proche de
+      // la date cible plutôt que de faire disparaître la comparaison N-1
+      if (!previousYearData) {
+        previousYearData = await storage.getNearestWeatherData(previousYearDate, false, 7);
+        if (previousYearData) {
+          console.log(`🌤️ [FALLBACK] Using nearest cached previous-year data (${previousYearData.date}) for target ${previousYearDate}`);
+        }
+      }
+
       // Toujours retourner une réponse même si seule l'année actuelle est disponible
       const response = {
         currentYear: currentYearData ? {

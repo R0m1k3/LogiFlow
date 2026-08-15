@@ -274,6 +274,7 @@ export interface IStorage {
   createWeatherData(data: InsertWeatherData): Promise<WeatherData>;
   updateWeatherData(id: number, data: Partial<InsertWeatherData>): Promise<WeatherData>;
   deleteOldWeatherData(daysToKeep: number): Promise<void>;
+  getNearestWeatherData(date: string, isCurrentYear: boolean, maxDistanceDays: number): Promise<WeatherData | undefined>;
   clearWeatherCache(): Promise<void>;
 
   // Historique des mails fournisseurs (rapprochement)
@@ -2923,6 +2924,22 @@ export class DatabaseStorage implements IStorage {
     return weatherInfo;
   }
 
+  // Repli : ligne en cache la plus proche de la date demandée (à N jours près).
+  // Utilisé quand l'API météo historique échoue (quota, panne) pour continuer
+  // d'afficher la comparaison avec l'année dernière.
+  async getNearestWeatherData(date: string, isCurrentYear: boolean, maxDistanceDays: number): Promise<WeatherData | undefined> {
+    const [data] = await db
+      .select()
+      .from(weatherData)
+      .where(and(
+        eq(weatherData.isCurrentYear, isCurrentYear),
+        sql`ABS(${weatherData.date} - ${date}::date) <= ${maxDistanceDays}`
+      ))
+      .orderBy(sql`ABS(${weatherData.date} - ${date}::date)`)
+      .limit(1);
+    return data;
+  }
+
   async updateWeatherData(id: number, data: Partial<InsertWeatherData>): Promise<WeatherData> {
     const [weatherInfo] = await db
       .update(weatherData)
@@ -5238,6 +5255,10 @@ export class MemStorage implements IStorage {
   async getWeatherData(date: string, isCurrentYear: boolean): Promise<WeatherData | undefined> {
     // In development, return some mock data for testing
     return undefined; // Will trigger API calls
+  }
+
+  async getNearestWeatherData(date: string, isCurrentYear: boolean, maxDistanceDays: number): Promise<WeatherData | undefined> {
+    return undefined;
   }
 
   async createWeatherData(data: InsertWeatherData): Promise<WeatherData> {
