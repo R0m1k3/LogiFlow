@@ -142,7 +142,8 @@ import {
   users, groups, userGroups, suppliers, orders, deliveries, publicities, publicityParticipations,
   customerOrders, nocodbConfig, dlcProducts, tasks, invoiceVerificationCache, dashboardMessages, webhookBapConfig,
   utilities,
-  avoirs
+  avoirs,
+  type UserWithGroups
 } from "@shared/schema";
 import { hasPermission } from "@shared/permissions";
 import { z } from "zod";
@@ -151,6 +152,13 @@ import { invoiceVerificationService } from "./invoiceVerification";
 import { backupService } from "./backupService";
 import { weatherService } from "./weatherService.js";
 import fetch from "node-fetch";
+
+// Utilisateur courant avec ses magasins. deserializeUser (localAuth.ts) le
+// recharge déjà depuis la base à chaque requête authentifiée : inutile de le
+// relire dans chaque handler.
+function getCurrentUser(req: any): UserWithGroups | undefined {
+  return req.user;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Detect environment
@@ -166,6 +174,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const originalJson = res.json.bind(res);
 
     res.json = (body: any) => originalJson(stripSmtpPassword(body));
+
+    // Données privées par magasin : jamais stockées par un cache partagé, et
+    // toujours revalidées par le navigateur (les 304 via ETag restent possibles)
+    res.set('Cache-Control', 'private, no-cache');
 
     next();
   });
@@ -424,17 +436,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ schedules: [], message: 'Groupe non trouvé' });
       }
 
-      console.log('📅 Récupération échéances depuis deliveries:', { groupId, groupName: group.name });
-
-      // Récupérer toutes les livraisons du groupe
-      const allDeliveries = await storage.getDeliveries();
+      // Récupérer les livraisons du groupe (filtre magasin fait en base)
+      const allDeliveries = await storage.getDeliveries([groupId]);
       const groupDeliveries = allDeliveries.filter((d: any) => d.groupId === groupId && d.invoiceReference);
 
       // Séparer les livraisons avec et sans dueDate
       const deliveriesWithDueDate = groupDeliveries.filter((d: any) => d.dueDate);
       const deliveriesWithoutDueDate = groupDeliveries.filter((d: any) => !d.dueDate);
-
-      console.log(`📅 Livraisons avec échéance: ${deliveriesWithDueDate.length}, sans échéance: ${deliveriesWithoutDueDate.length}`);
 
       // FALLBACK : Pour les livraisons sans dueDate ou sans TTC, interroger NocoDB
       const { InvoiceVerificationService } = await import('./invoiceVerification.js');
@@ -486,8 +494,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // FALLBACK TTC : Pour les livraisons qui ont une dueDate mais pas de TTC
       const deliveriesNeedingTTC = allDeliveriesWithDueDate.filter((d: any) => !d.invoiceAmountTTC || parseFloat(d.invoiceAmountTTC) === 0);
 
-      console.log(`💰 Livraisons nécessitant récupération TTC: ${deliveriesNeedingTTC.length}`);
-
       for (const delivery of deliveriesNeedingTTC) {
         try {
           const result = await verificationService.verifyInvoice(
@@ -536,7 +542,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
 
-      console.log(`📅 Total échéances retournées: ${schedules.length}`);
       res.json({ schedules });
 
     } catch (error: any) {
@@ -592,8 +597,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Groupe non trouvé' });
       }
 
-      // Récupérer toutes les livraisons du groupe avec échéance
-      const allDeliveries = await storage.getDeliveries();
+      // Récupérer les livraisons du groupe avec échéance (filtre magasin fait en base)
+      const allDeliveries = await storage.getDeliveries([validatedGroupId]);
       const groupDeliveries = allDeliveries.filter((d: any) =>
         d.groupId === validatedGroupId &&
         d.invoiceReference &&
@@ -887,7 +892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Non authentifié' });
       }
 
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user || (user.role !== 'admin' && user.role !== 'directeur')) {
         return res.status(403).json({ error: 'Accès refusé' });
       }
@@ -969,8 +974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Groups routes
   app.get('/api/groups', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims ? req.user.claims ? req.user.claims.sub : req.user.id : req.user.id;
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1272,7 +1276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Contacts routes
   app.get('/api/contacts', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) return res.status(404).json({ message: "User not found" });
 
       let groupIds: number[] | undefined;
@@ -1342,7 +1346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Orders routes
   app.get('/api/orders', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1350,25 +1354,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate, storeId } = req.query;
       let orders;
 
-      console.log('Orders API called with:', { startDate, endDate, storeId, userRole: user.role });
-
       if (user.role === 'admin') {
         let groupIds: number[] | undefined;
 
         // If admin selected a specific store, filter by it
         if (storeId) {
           groupIds = [parseInt(storeId as string)];
-          console.log('🔍 Admin orders filtering by store:', { storeId, groupIds, role: user.role });
-        } else {
-          console.log('🔍 Admin orders - showing all stores', { role: user.role });
         }
 
         // Only filter by date if both startDate and endDate are provided
         if (startDate && endDate) {
-          console.log('Fetching orders by date range:', startDate, 'to', endDate);
           orders = await storage.getOrdersByDateRange(startDate as string, endDate as string, groupIds);
         } else {
-          console.log('Fetching all orders');
           orders = await storage.getOrders(groupIds);
         }
       } else {
@@ -1381,19 +1378,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const requestedStoreId = parseInt(storeId as string);
           if (userGroupIds.includes(requestedStoreId)) {
             groupIds = [requestedStoreId];
-            console.log('🔍 Non-admin orders - filtering by accessible store:', {
-              userId: user.id,
-              role: user.role,
-              requestedStoreId
-            });
           } else {
             // User doesn't have access to this store, return empty array
-            console.log('🚫 Non-admin orders - user has no access to requested store:', {
-              userId: user.id,
-              role: user.role,
-              requestedStoreId,
-              userGroups: userGroupIds
-            });
             return res.json([]);
           }
         } else {
@@ -1401,17 +1387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (user.role === 'directeur') {
             if (userGroupIds.length > 0) {
               groupIds = [userGroupIds[0]]; // Use first assigned store automatically
-              console.log('🔍 Directeur orders - using assigned store automatically:', {
-                userId: user.id,
-                role: user.role,
-                assignedStore: userGroupIds[0],
-                allUserGroups: userGroupIds
-              });
             } else {
-              console.log('🚫 Directeur has no assigned stores:', {
-                userId: user.id,
-                role: user.role
-              });
               return res.json([]);
             }
           }
@@ -1419,26 +1395,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           else if (user.role === 'manager') {
             if (userGroupIds.length > 0) {
               groupIds = [userGroupIds[0]]; // Use first assigned store automatically
-              console.log('🔍 Manager orders - using assigned store automatically:', {
-                userId: user.id,
-                role: user.role,
-                assignedStore: userGroupIds[0],
-                allUserGroups: userGroupIds
-              });
             } else {
-              console.log('🚫 Manager has no assigned stores:', {
-                userId: user.id,
-                role: user.role
-              });
               return res.json([]);
             }
           } else {
             // For employee role, require explicit store selection
-            console.log('🔍 Employee orders - no store selection, returning empty:', {
-              userId: user.id,
-              role: user.role,
-              userGroups: userGroupIds
-            });
             return res.json([]);
           }
         }
@@ -1450,8 +1411,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           orders = await storage.getOrders(groupIds);
         }
       }
-
-      console.log('Orders returned:', orders.length, 'items');
 
       res.json(orders);
     } catch (error) {
@@ -1484,7 +1443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/stats/by-group', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1503,7 +1462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/stats/by-supplier', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1522,7 +1481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/orders/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1557,7 +1516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         environment: process.env.NODE_ENV
       });
 
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         console.log('❌ User not found in order creation');
         return res.status(404).json({ message: "User not found" });
@@ -1619,7 +1578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/orders/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1654,7 +1613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/orders/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1689,7 +1648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour diagnostiquer et synchroniser les statuts commandes/livraisons
   app.post('/api/sync-order-delivery-status', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -1751,7 +1710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deliveries routes
   app.get('/api/deliveries', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1759,7 +1718,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate, storeId, withBL } = req.query;
       let deliveries;
 
-      console.log('Deliveries API called with:', { startDate, endDate, storeId, withBL, userRole: user.role });
+      // Filtre de statut optionnel, appliqué en base (ex. rapprochement BL :
+      // status=delivered). Toute autre valeur est ignorée.
+      const allowedStatuses = ['pending', 'planned', 'delivered'];
+      const status = typeof req.query.status === 'string' && allowedStatuses.includes(req.query.status)
+        ? req.query.status
+        : undefined;
 
       if (user.role === 'admin') {
         let groupIds: number[] | undefined;
@@ -1767,18 +1731,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If admin selected a specific store, filter by it
         if (storeId) {
           groupIds = [parseInt(storeId as string)];
-          console.log('🔍 Admin deliveries filtering by store:', { storeId, groupIds, role: user.role });
-        } else {
-          console.log('🔍 Admin deliveries - showing all stores', { role: user.role });
         }
 
         // Only filter by date if both startDate and endDate are provided
         if (startDate && endDate) {
-          console.log('Fetching deliveries by date range:', startDate, 'to', endDate);
           deliveries = await storage.getDeliveriesByDateRange(startDate as string, endDate as string, groupIds);
         } else {
-          console.log('Fetching all deliveries');
-          deliveries = await storage.getDeliveries(groupIds);
+          deliveries = await storage.getDeliveries(groupIds, { status });
         }
       } else {
         // For manager and employee roles, filter by their assigned groups
@@ -1790,19 +1749,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const requestedStoreId = parseInt(storeId as string);
           if (userGroupIds.includes(requestedStoreId)) {
             groupIds = [requestedStoreId];
-            console.log('🔍 Non-admin deliveries - filtering by accessible store:', {
-              userId: user.id,
-              role: user.role,
-              requestedStoreId
-            });
           } else {
             // User doesn't have access to this store, return empty array
-            console.log('🚫 Non-admin deliveries - user has no access to requested store:', {
-              userId: user.id,
-              role: user.role,
-              requestedStoreId,
-              userGroups: userGroupIds
-            });
             return res.json([]);
           }
         } else {
@@ -1810,17 +1758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (user.role === 'directeur') {
             if (userGroupIds.length > 0) {
               groupIds = [userGroupIds[0]]; // Use first assigned store automatically
-              console.log('🔍 Directeur deliveries - using assigned store automatically:', {
-                userId: user.id,
-                role: user.role,
-                assignedStore: userGroupIds[0],
-                allUserGroups: userGroupIds
-              });
             } else {
-              console.log('🚫 Directeur has no assigned stores:', {
-                userId: user.id,
-                role: user.role
-              });
               return res.json([]);
             }
           }
@@ -1828,26 +1766,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           else if (user.role === 'manager') {
             if (userGroupIds.length > 0) {
               groupIds = [userGroupIds[0]]; // Use first assigned store automatically
-              console.log('🔍 Manager deliveries - using assigned store automatically:', {
-                userId: user.id,
-                role: user.role,
-                assignedStore: userGroupIds[0],
-                allUserGroups: userGroupIds
-              });
             } else {
-              console.log('🚫 Manager has no assigned stores:', {
-                userId: user.id,
-                role: user.role
-              });
               return res.json([]);
             }
           } else {
             // For employee role, require explicit store selection
-            console.log('🔍 Employee deliveries - no store selection, returning empty:', {
-              userId: user.id,
-              role: user.role,
-              userGroups: userGroupIds
-            });
             return res.json([]);
           }
         }
@@ -1856,16 +1779,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (startDate && endDate) {
           deliveries = await storage.getDeliveriesByDateRange(startDate as string, endDate as string, groupIds);
         } else {
-          deliveries = await storage.getDeliveries(groupIds);
+          deliveries = await storage.getDeliveries(groupIds, { status });
         }
+      }
+
+      // La lecture par plage de dates ne filtre pas le statut en base
+      if (status && startDate && endDate) {
+        deliveries = deliveries.filter((d: any) => d.status === status);
       }
 
       // Filter for BL if requested
       if (withBL === 'true') {
         deliveries = deliveries.filter((d: any) => d.blNumber && d.status === 'delivered');
       }
-
-      console.log('Deliveries returned:', deliveries.length, 'items');
 
       res.json(deliveries);
     } catch (error) {
@@ -1876,7 +1802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/deliveries/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1905,7 +1831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/deliveries/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -1928,8 +1854,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Access denied" });
         }
       }
-
-      console.log('🔄 Updating delivery:', { id, data: req.body, user: user.id });
 
       // Transform data types before validation
       const transformedData = { ...req.body };
@@ -2030,7 +1954,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedDelivery = await storage.updateDelivery(id, data);
-      console.log('✅ Delivery updated successfully:', { id, updatedDelivery });
 
       // SYNCHRONISATION AUTOMATIQUE : Si livraison devient "delivered", marquer la commande associée comme "delivered"
       // MAIS seulement après validation explicite (pas juste mise à jour status)
@@ -2039,9 +1962,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // AUTO-VALIDATION RAPPROCHEMENT AUTOMATIQUE : Si fournisseur en mode automatique, livraison delivered + BL → auto-valider
       if (data.status === 'delivered' || data.blNumber) {
         try {
-          // Récupérer le fournisseur pour vérifier le mode automatique  
-          const suppliers = await storage.getSuppliers();
-          const supplier = suppliers.find((s: any) => s.id === updatedDelivery.supplierId);
+          // Récupérer le fournisseur pour vérifier le mode automatique : il est
+          // déjà joint à la livraison, la table n'est relue que s'il a changé
+          const supplier = (updatedDelivery.supplierId === delivery.supplierId && delivery.supplier)
+            ? delivery.supplier
+            : (await storage.getSuppliers()).find((s: any) => s.id === updatedDelivery.supplierId);
 
           if (supplier?.automaticReconciliation &&
             updatedDelivery.status === 'delivered' &&
@@ -2071,7 +1996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/deliveries', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2135,7 +2060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/deliveries/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2174,7 +2099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET - Récupérer les commentaires d'une livraison
   app.get('/api/deliveries/:id/reconciliation-comments', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2210,7 +2135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST - Créer un nouveau commentaire
   app.post('/api/deliveries/:id/reconciliation-comments', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2253,7 +2178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PUT - Modifier un commentaire
   app.put('/api/reconciliation-comments/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2291,7 +2216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DELETE - Supprimer un commentaire
   app.delete('/api/reconciliation-comments/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2329,7 +2254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // via le serveur SMTP configuré sur la fiche du magasin de la livraison
   app.post('/api/deliveries/:id/send-supplier-mail', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2438,7 +2363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Historique des relances fournisseurs, restreint aux magasins de l'utilisateur
   app.get('/api/supplier-mail-logs', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2465,7 +2390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/deliveries/:id/verify-invoice', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2513,15 +2438,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Référence de facture ou numéro BL requis" });
       }
 
-      console.log('🔍 Vérification facture:', {
-        deliveryId,
-        invoiceReference,
-        blNumber,
-        supplier: delivery.supplier?.name,
-        group: delivery.group?.name,
-        groupId: delivery.groupId
-      });
-
       let result;
 
       if (invoiceReference && invoiceReference.trim()) {
@@ -2548,8 +2464,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errorMessage: 'Aucune référence de facture ou numéro BL fourni'
         };
       }
-
-      console.log('✅ Résultat vérification:', result);
 
       // CRITICAL FIX: Sauvegarder les données dans la table deliveries après vérification réussie
       if (result.exists && (result.invoiceAmount !== undefined || result.invoiceAmountTTC !== undefined || result.dueDate !== undefined || result.invoiceReference !== undefined)) {
@@ -2603,7 +2517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/deliveries/:id/validate', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2677,7 +2591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Marquer le contrôle d'une livraison comme effectué
   app.put('/api/deliveries/:id/control', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2711,7 +2625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour diagnostiquer le cache des livraisons
   app.get('/api/cache/diagnosis', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2767,7 +2681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour mettre à jour les caches existants des livraisons validées
   app.post('/api/cache/update-reconciled', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2796,7 +2710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DLC Products routes
   app.get('/api/dlc-products', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2830,7 +2744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dlc-products/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2859,7 +2773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2888,7 +2802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/dlc-products', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2916,7 +2830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2946,7 +2860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/dlc-products/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2976,7 +2890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/dlc-products/:id/validate', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3022,7 +2936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour marquer un produit DLC comme stock épuisé - accessible à tous
   app.put('/api/dlc-products/:id/stock-epuise', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3062,7 +2976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour restaurer le stock d'un produit DLC - réservé aux admins, directeurs et managers
   app.put('/api/dlc-products/:id/restore-stock', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3107,7 +3021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour marquer un produit DLC comme traité temporairement (expire bientôt) - accessible à tous
   app.put('/api/dlc-products/:id/mark-processed', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3147,7 +3061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour annuler le traitement temporaire d'un produit DLC - réservé aux admins, directeurs et managers
   app.put('/api/dlc-products/:id/unmark-processed', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3192,7 +3106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Tasks routes
   app.get('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3203,11 +3117,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.role === 'admin') {
         // Admin can see all tasks or filter by specific store
         groupIds = storeId ? [parseInt(storeId as string)] : undefined;
-        console.log('🔍 Admin tasks filtering:', {
-          storeId,
-          groupIds,
-          message: storeId ? `Filtering by store ${storeId}` : 'Showing all stores'
-        });
       } else {
         // For directeur and other non-admin users: always restrict to their assigned groups
         const userGroupIds = user.userGroups.map(ug => ug.groupId);
@@ -3217,21 +3126,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const requestedStoreId = parseInt(storeId as string);
           if (userGroupIds.includes(requestedStoreId)) {
             groupIds = [requestedStoreId];
-            console.log('🔍 Non-admin user requesting specific accessible store:', {
-              userId: user.id,
-              role: user.role,
-              requestedStoreId,
-              hasAccess: true
-            });
           } else {
             // User doesn't have access to this store, return empty array
-            console.log('🚫 Non-admin user requesting inaccessible store:', {
-              userId: user.id,
-              role: user.role,
-              requestedStoreId,
-              userGroups: userGroupIds,
-              hasAccess: false
-            });
             return res.json([]);
           }
         } else {
@@ -3239,34 +3135,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // we should NOT show data from all their groups. This was causing the issue
           // where after page refresh, data from multiple groups was displayed.
           // Return empty result to force explicit store selection for non-admin users.
-          console.log('🔍 Non-admin user with no store selection - returning empty result:', {
-            userId: user.id,
-            role: user.role,
-            userGroups: userGroupIds,
-            message: 'Forcing explicit store selection'
-          });
           return res.json([]);
         }
       }
 
-      console.log('🔍 Tasks API called with:', {
-        groupIds,
-        userRole: user.role,
-        userId: user.id,
-        requestedStoreId: storeId,
-        userGroups: user.role !== 'admin' ? user.userGroups.map(ug => ug.groupId) : 'all',
-        timestamp: new Date().toISOString()
-      });
-
       const tasks = await storage.getTasks(groupIds, user.role);
-      console.log('📋 Tasks returned:', {
-        count: tasks.length,
-        userId: user.id,
-        userRole: user.role,
-        requestedStoreId: storeId,
-        groupIds,
-        taskGroups: tasks.map(t => ({ id: t.id, title: t.title, groupId: t.groupId })).slice(0, 3)
-      });
       res.json(tasks);
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -3276,7 +3149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tasks', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3291,14 +3164,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: user.id,
       };
 
-      console.log('📝 POST /api/tasks - Received data:', {
-        originalBody: req.body,
-        processedData: data,
-        dueDate: data.dueDate,
-        dueDateType: typeof data.dueDate,
-        dueDateValue: data.dueDate
-      });
-
       // Assign a default groupId if not provided
       if (!data.groupId) {
         if (user.role === 'admin') {
@@ -3307,29 +3172,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const userGroupIds = user.userGroups?.map(ug => ug.groupId) || [];
           data.groupId = userGroupIds.length > 0 ? userGroupIds[0] : 1;
         }
-        console.log('📝 POST /api/tasks - Assigned default groupId:', data.groupId);
       }
 
       // Check if user has access to the group
       if (user.role !== 'admin') {
         const userGroupIds = user.userGroups?.map(ug => ug.groupId) || [];
-        console.log('📝 POST /api/tasks - User group access check:', {
-          userGroupIds,
-          requestedGroupId: data.groupId,
-          hasUserGroups: !!user.userGroups
-        });
         if (userGroupIds.length > 0 && !userGroupIds.includes(data.groupId)) {
           return res.status(403).json({ message: "Access denied to this group" });
         }
       }
 
       const task = await storage.createTask(data);
-      console.log('✅ Task created:', {
-        id: task.id,
-        title: task.title,
-        dueDate: task.dueDate,
-        dueDateType: typeof task.dueDate
-      });
       res.json(task);
     } catch (error) {
       console.error("Error creating task:", error);
@@ -3339,7 +3192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3350,19 +3203,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
-
-      console.log('🔄 PUT /api/tasks/:id - Received data:', {
-        taskId: id,
-        originalTask: {
-          id: task.id,
-          title: task.title,
-          dueDate: task.dueDate,
-          dueDateType: typeof task.dueDate
-        },
-        updateBody: req.body,
-        newDueDate: req.body.dueDate,
-        newDueDateType: typeof req.body.dueDate
-      });
 
       // Check permissions
       if (user.role !== 'admin') {
@@ -3388,15 +3228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cleanData.dueDate = req.body.dueDate === '' ? null : req.body.dueDate;
       }
 
-      console.log('🧹 Cleaned data for update:', cleanData);
-
       const updatedTask = await storage.updateTask(id, cleanData);
-      console.log('✅ Task updated:', {
-        id: updatedTask.id,
-        title: updatedTask.title,
-        dueDate: updatedTask.dueDate,
-        dueDateType: typeof updatedTask.dueDate
-      });
       res.json(updatedTask);
     } catch (error) {
       const taskId = parseInt(req.params.id);
@@ -3404,7 +3236,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         taskId: taskId,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
-        reqBody: req.body,
         cleanData: req.body ? {
           title: req.body.title,
           description: req.body.description,
@@ -3424,7 +3255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3454,7 +3285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tasks/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3485,7 +3316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customer Orders routes
   app.get('/api/customer-orders', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3504,9 +3335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('Customer Orders API called with:', { groupIds, userRole: user.role });
       const customerOrders = await storage.getCustomerOrders(groupIds);
-      console.log('Customer Orders returned:', customerOrders.length, 'items');
       res.json(customerOrders);
     } catch (error) {
       console.error("Error fetching customer orders:", error);
@@ -3516,7 +3345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/customer-orders', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3526,44 +3355,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: user.id,
       };
 
-      // DEBUG: Log what we received and what we're about to save
-      console.log('🔍 CUSTOMER ORDER - Received data from frontend:', req.body);
-      console.log('🔍 CUSTOMER ORDER - Final data for DB:', data);
-      console.log('🔍 CUSTOMER ORDER - orderTaker value:', data.orderTaker, 'type:', typeof data.orderTaker);
-
-      // Check if user has access to the group - PRODUCTION DEBUG
-      console.log('🔍 CUSTOMER ORDER PERMISSION DEBUG:', {
-        userRole: user.role,
-        userId: user.id,
-        userGroups: user.userGroups,
-        requestedGroupId: data.groupId,
-        requestedGroupIdType: typeof data.groupId
-      });
-
+      // Check if user has access to the group
       if (user.role !== 'admin') {
         const userGroupIds = user.userGroups ? user.userGroups.map(ug => ug.groupId) : [];
-        console.log('🔍 CUSTOMER ORDER - User group IDs:', userGroupIds);
-        console.log('🔍 CUSTOMER ORDER - Requested group ID:', data.groupId);
 
         // Convert data.groupId to number if it's a string
         const requestedGroupId = typeof data.groupId === 'string' ? parseInt(data.groupId) : data.groupId;
-        console.log('🔍 CUSTOMER ORDER - Converted group ID:', requestedGroupId);
 
         // Allow managers, directeurs, and employees to create orders in their assigned groups
         if (!['manager', 'directeur', 'employee'].includes(user.role)) {
-          console.log('❌ CUSTOMER ORDER - Access denied: Invalid role for customer orders');
           return res.status(403).json({ message: "Insufficient permissions to create customer orders" });
         }
 
         if (!userGroupIds.includes(requestedGroupId)) {
-          console.log('❌ CUSTOMER ORDER - Access denied: User not in requested group');
-          console.log('🔍 Available groups:', userGroupIds, 'Requested:', requestedGroupId);
-          console.log('🔍 Type check - userGroupIds types:', userGroupIds.map(id => typeof id));
-          console.log('🔍 Type check - requestedGroupId type:', typeof requestedGroupId);
           return res.status(403).json({ message: "Access denied to this group" });
         }
-
-        console.log('✅ CUSTOMER ORDER - Permission granted for user role:', user.role);
       }
 
       const customerOrder = await storage.createCustomerOrder(data);
@@ -3576,7 +3382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/customer-orders/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3606,7 +3412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/customer-orders/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3637,7 +3443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Client call tracking routes
   app.get('/api/customer-orders/pending-calls', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3663,7 +3469,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const pendingCalls = await storage.getPendingClientCalls(groupIds);
 
-      console.log(`📞 Pending client calls fetched: ${pendingCalls.length} calls for user ${user.role}`);
       res.json(pendingCalls);
     } catch (error) {
       console.error("Error fetching pending client calls:", error);
@@ -3673,7 +3478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/customer-orders/:id/mark-called', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3710,7 +3515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Avoir routes
   app.get('/api/avoirs', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3732,9 +3537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('🔍 Avoirs API called with:', { groupIds, userRole: user.role });
       const avoirs = await storage.getAvoirs(groupIds);
-      console.log('📋 Avoirs returned:', avoirs.length, 'items');
       res.json(avoirs);
     } catch (error) {
       console.error("Error fetching avoirs:", error);
@@ -3744,7 +3547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/avoirs/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3773,22 +3576,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/avoirs', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-
-      // DEBUG: Log des données reçues
-      console.log('🔍 [POST AVOIR] Données reçues:', JSON.stringify(req.body, null, 2));
-      console.log('🔍 [POST AVOIR] User:', { id: user.id, role: user.role });
 
       // Validate data with Zod schema
       const validatedData = insertAvoirSchema.parse({
         ...req.body,
         createdBy: user.id,
       });
-
-      console.log('✅ [POST AVOIR] Données validées:', JSON.stringify(validatedData, null, 2));
 
       // Check if user has access to the specified group
       if (user.role !== 'admin' && user.role !== 'directeur') {
@@ -3850,7 +3647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/avoirs/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3871,9 +3668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // ✅ CRITICAL FIX: Validate data with Zod schema (partial)
-      console.log('💰 PUT Avoir - Raw body received:', JSON.stringify(req.body, null, 2));
       const validatedData = insertAvoirSchema.partial().parse(req.body);
-      console.log('💰 PUT Avoir - Validated data:', JSON.stringify(validatedData, null, 2));
 
       // ✅ FIX: Convertir undefined en null pour les champs optionnels (important pour PostgreSQL)
       const dataForDb: any = {
@@ -3882,7 +3677,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         invoiceReference: validatedData.invoiceReference === undefined ? null : validatedData.invoiceReference,
         comment: validatedData.comment === undefined ? null : validatedData.comment,
       };
-      console.log('💰 PUT Avoir - Data for DB (undefined → null):', JSON.stringify(dataForDb, null, 2));
 
       const updatedAvoir = await storage.updateAvoir(id, dataForDb);
       console.log('✅ Avoir updated:', id, 'by user:', user.id);
@@ -3944,7 +3738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/avoirs/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -3981,7 +3775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route de vérification de facture NocoDB pour les avoirs
   app.post('/api/avoirs/:id/verify-invoice', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4029,14 +3823,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Référence de facture requise" });
       }
 
-      console.log('🔍 Vérification facture avoir:', {
-        avoirId,
-        invoiceReference,
-        supplier: avoir.supplier?.name,
-        group: avoir.group?.name,
-        groupId: avoir.groupId
-      });
-
       // Vérifier par référence de facture uniquement
       const result = await invoiceVerificationService.verifyInvoice(
         invoiceReference,
@@ -4045,7 +3831,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         false // Les avoirs ne sont pas "réconciliés" comme les livraisons
       );
 
-      console.log('✅ Résultat vérification avoir:', result);
       res.json(result);
     } catch (error) {
       console.error("Error verifying avoir invoice:", error);
@@ -4059,7 +3844,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Avoir status update routes
   app.put('/api/avoirs/:id/webhook-status', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4082,7 +3867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/avoirs/:id/nocodb-verification', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4125,7 +3910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour marquer explicitement le cache comme réconcilié
   app.post('/api/cache/mark-reconciled', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4154,7 +3939,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Statistics routes
   app.get('/api/stats/monthly', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4191,7 +3976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Route pour les statistiques annuelles
   app.get('/api/stats/yearly', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4267,35 +4052,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Users management routes
   app.get('/api/users', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || !['admin', 'directeur', 'manager'].includes(user.role)) {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      // Get all basic users first
-      const baseUsers = await storage.getUsers();
-
-      // Add userGroups and userRoles to each user individually with error handling
-      const usersWithData = await Promise.all(
-        baseUsers.map(async (baseUser) => {
-          try {
-            const userWithGroups = await storage.getUserWithGroups(baseUser.id);
-            return {
-              ...baseUser,
-              userGroups: userWithGroups?.userGroups || [],
-              userRoles: [] // Keep roles simple for now since we're using hardcoded permissions
-            };
-          } catch (error) {
-            console.error(`❌ Error getting groups for user ${baseUser.username}:`, error);
-            // Return user with empty groups if there's an error
-            return {
-              ...baseUser,
-              userGroups: [],
-              userRoles: []
-            };
-          }
-        })
-      );
+      // Tous les utilisateurs avec leurs magasins en une fois (sans le mot de
+      // passe), au lieu d'une lecture par utilisateur
+      const allUsers = await storage.getUsersWithGroups();
+      const usersWithData = allUsers.map((baseUser) => ({
+        ...baseUser,
+        userGroups: baseUser.userGroups || [],
+        userRoles: [] // Keep roles simple for now since we're using hardcoded permissions
+      }));
 
       res.json(usersWithData);
     } catch (error) {
@@ -4308,8 +4077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/users', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      const currentUser = await storage.getUserWithGroups(userId);
+      const currentUser = getCurrentUser(req);
       if (!currentUser || currentUser.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -4391,7 +4159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -4460,7 +4228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/users/:id/groups', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -4480,7 +4248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/users/:id/groups/:groupId', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -4496,7 +4264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete user route
   app.delete('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -4509,12 +4277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Remove user from all groups first
-      const userWithGroups = await storage.getUserWithGroups(userToDelete);
-      if (userWithGroups) {
-        for (const userGroup of userWithGroups.userGroups) {
-          await storage.removeUserFromGroup(userToDelete, userGroup.groupId);
-        }
-      }
+      await storage.removeUserFromAllGroups(userToDelete);
 
       // Delete the user
       await storage.deleteUser(userToDelete);
@@ -4528,7 +4291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Publicity routes (renamed to ad-campaigns to avoid adblocker issues)
   app.get('/api/ad-campaigns/debug', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4562,7 +4325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/ad-campaigns/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4594,7 +4357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all publicities (with optional year and store filtering)
   app.get('/api/ad-campaigns', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4628,7 +4391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/ad-campaigns', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4664,7 +4427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/ad-campaigns/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4706,7 +4469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         console.log(`❌ [API] User not found for publicity deletion: ${publicityId}`);
         return res.status(404).json({ message: "User not found" });
@@ -4745,7 +4508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         console.log(`❌ [API-POST] User not found for publicity deletion: ${publicityId}`);
         return res.status(404).json({ message: "User not found" });
@@ -4775,7 +4538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Schema logging route for production debugging
   app.get('/api/debug/log-schema', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: 'Accès refusé. Seuls les administrateurs peuvent utiliser cette route de debug.' });
       }
@@ -4903,7 +4666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Download database schema report
   app.get('/api/debug/download-schema', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: 'Accès refusé. Seuls les administrateurs peuvent télécharger le rapport de schéma.' });
       }
@@ -5089,7 +4852,7 @@ RÉSUMÉ DU SCAN
   // NocoDB Configuration routes
   app.get('/api/nocodb-config', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: 'Accès refusé. Seuls les administrateurs peuvent gérer les configurations NocoDB.' });
       }
@@ -5104,7 +4867,7 @@ RÉSUMÉ DU SCAN
 
   app.post('/api/nocodb-config', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: 'Accès refusé. Seuls les administrateurs peuvent gérer les configurations NocoDB.' });
       }
@@ -5123,7 +4886,7 @@ RÉSUMÉ DU SCAN
 
   app.put('/api/nocodb-config/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: 'Accès refusé. Seuls les administrateurs peuvent gérer les configurations NocoDB.' });
       }
@@ -5140,7 +4903,7 @@ RÉSUMÉ DU SCAN
 
   app.delete('/api/nocodb-config/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: 'Accès refusé. Seuls les administrateurs peuvent gérer les configurations NocoDB.' });
       }
@@ -5156,7 +4919,7 @@ RÉSUMÉ DU SCAN
 
   app.get('/api/nocodb-config/active', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(403).json({ message: 'Accès refusé.' });
       }
@@ -5172,7 +4935,7 @@ RÉSUMÉ DU SCAN
   // Backup management routes (Admin only)
   app.get('/api/backups', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -5187,7 +4950,7 @@ RÉSUMÉ DU SCAN
 
   app.post('/api/backups', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -5202,7 +4965,7 @@ RÉSUMÉ DU SCAN
 
   app.get('/api/backups/:filename/download', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -5224,7 +4987,7 @@ RÉSUMÉ DU SCAN
 
   app.delete('/api/backups/:filename', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -5241,8 +5004,7 @@ RÉSUMÉ DU SCAN
   // SAV (Service Après-Vente) routes
   app.get('/api/sav/tickets', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -5255,16 +5017,13 @@ RÉSUMÉ DU SCAN
         const selectedGroupId = req.query.groupId ? parseInt(req.query.groupId) : null;
         if (selectedGroupId) {
           groupIds = [selectedGroupId];
-          console.log(`🎫 [SAV] Admin filtering by selected store: ${selectedGroupId}`);
         } else {
           groupIds = []; // See all tickets
-          console.log(`🎫 [SAV] Admin viewing all tickets`);
         }
       } else {
         // Other roles see only their assigned groups
         const userGroups = (user as any).userGroups;
         groupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
-        console.log(`🎫 [SAV] User ${user.username} (${user.role}) can see stores:`, groupIds);
       }
 
       // Parse query filters
@@ -5287,8 +5046,7 @@ RÉSUMÉ DU SCAN
 
   app.get('/api/sav/tickets/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -5318,8 +5076,7 @@ RÉSUMÉ DU SCAN
 
   app.post('/api/sav/tickets', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -5334,11 +5091,9 @@ RÉSUMÉ DU SCAN
       if (user.role === 'admin') {
         const allGroups = await storage.getGroups();
         availableGroupIds = allGroups.map(g => g.id);
-        console.log(`🎫 [SAV] Admin ${user.username} can access all groups:`, availableGroupIds);
       } else {
         const userGroups = (user as any).userGroups;
         availableGroupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
-        console.log(`🎫 [SAV] User ${user.username} (${user.role}) has groups:`, availableGroupIds);
       }
 
       if (availableGroupIds.length === 0) {
@@ -5351,7 +5106,6 @@ RÉSUMÉ DU SCAN
 
       // Parse and validate request body
       const assignedGroupId = req.body.groupId || availableGroupIds[0];
-      console.log(`🎫 [SAV] Creating ticket for user ${user.username} with groupId: ${assignedGroupId} (requested: ${req.body.groupId}, available: ${availableGroupIds})`);
 
       const ticketData = insertSavTicketSchema.parse({
         ...req.body,
@@ -5371,12 +5125,6 @@ RÉSUMÉ DU SCAN
       }
 
       const ticket = await storage.createSavTicket(ticketDataWithNumber);
-      console.log(`🎫 [SAV] Ticket created successfully:`, {
-        ticketNumber: ticket.ticketNumber,
-        groupId: ticket.groupId,
-        createdBy: ticket.createdBy,
-        userRole: user.role
-      });
       res.status(201).json(ticket);
     } catch (error) {
       console.error("Error creating SAV ticket:", error);
@@ -5389,8 +5137,7 @@ RÉSUMÉ DU SCAN
 
   app.patch('/api/sav/tickets/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -5470,8 +5217,7 @@ RÉSUMÉ DU SCAN
 
   app.post('/api/sav/tickets/:id/history', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -5523,8 +5269,7 @@ RÉSUMÉ DU SCAN
 
   app.get('/api/sav/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -5537,16 +5282,13 @@ RÉSUMÉ DU SCAN
         const selectedGroupId = req.query.groupId ? parseInt(req.query.groupId) : null;
         if (selectedGroupId) {
           groupIds = [selectedGroupId];
-          console.log(`📊 [SAV STATS] Admin filtering by selected store: ${selectedGroupId}`);
         } else {
           groupIds = []; // See all stats
-          console.log(`📊 [SAV STATS] Admin viewing all stats`);
         }
       } else {
         // Other roles see only their assigned groups
         const userGroups = (user as any).userGroups;
         groupIds = userGroups ? userGroups.map((ug: any) => ug.groupId) : [];
-        console.log(`📊 [SAV STATS] User ${user.username} (${user.role}) can see stores:`, groupIds);
       }
 
       const stats = await storage.getSavTicketStats(groupIds.length > 0 ? groupIds : undefined);
@@ -5595,7 +5337,7 @@ RÉSUMÉ DU SCAN
   // Weather routes
   app.get('/api/weather/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -5610,7 +5352,7 @@ RÉSUMÉ DU SCAN
 
   app.post('/api/weather/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -5629,7 +5371,7 @@ RÉSUMÉ DU SCAN
 
   app.put('/api/weather/settings/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -5649,7 +5391,7 @@ RÉSUMÉ DU SCAN
 
   app.post('/api/weather/test-connection', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user || user.role !== 'admin') {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -5679,49 +5421,58 @@ RÉSUMÉ DU SCAN
       const today = new Date().toISOString().split('T')[0];
       const previousYearDate = weatherService.getPreviousYearDate();
 
-      // Check if we already have today's data
-      let currentYearData = await storage.getWeatherData(today, true);
-      let previousYearData = await storage.getWeatherData(previousYearDate, false);
+      // Check if we already have today's data (deux lectures indépendantes)
+      let [currentYearData, previousYearData] = await Promise.all([
+        storage.getWeatherData(today, true),
+        storage.getWeatherData(previousYearDate, false),
+      ]);
 
-      // Fetch current year data if not in cache
-      if (!currentYearData) {
-        console.log("🌤️ [FETCH] Fetching current weather data from API");
-        const apiData = await weatherService.fetchCurrentWeather(settings);
-        if (apiData) {
-          const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, true);
-          if (weatherData) {
-            try {
-              currentYearData = await storage.createWeatherData(weatherData);
-              console.log("✅ [CACHE] Current year data saved to cache");
-            } catch (error: any) {
-              console.warn("⚠️ [CACHE] Could not save current year data (may already exist):", error.message);
-              // Récupérer les données existantes au lieu de créer
-              currentYearData = await storage.getWeatherData(today, true);
+      // Les appels à l'API pour l'année en cours et l'année précédente sont
+      // indépendants : ils sont lancés en parallèle
+      await Promise.all([
+        (async () => {
+          // Fetch current year data if not in cache
+          if (!currentYearData) {
+            console.log("🌤️ [FETCH] Fetching current weather data from API");
+            const apiData = await weatherService.fetchCurrentWeather(settings);
+            if (apiData) {
+              const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, true);
+              if (weatherData) {
+                try {
+                  currentYearData = await storage.createWeatherData(weatherData);
+                  console.log("✅ [CACHE] Current year data saved to cache");
+                } catch (error: any) {
+                  console.warn("⚠️ [CACHE] Could not save current year data (may already exist):", error.message);
+                  // Récupérer les données existantes au lieu de créer
+                  currentYearData = await storage.getWeatherData(today, true);
+                }
+              }
             }
           }
-        }
-      }
-
-      // Fetch previous year data if not in cache
-      if (!previousYearData) {
-        console.log("🌤️ [FETCH] Fetching previous year weather data from API");
-        const apiData = await weatherService.fetchPreviousYearWeather(settings, previousYearDate);
-        if (apiData) {
-          const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, false);
-          if (weatherData) {
-            try {
-              previousYearData = await storage.createWeatherData(weatherData);
-              console.log("✅ [CACHE] Previous year data saved to cache");
-            } catch (error: any) {
-              console.warn("⚠️ [CACHE] Could not save previous year data (may already exist):", error.message);
-              // Récupérer les données existantes au lieu de créer
-              previousYearData = await storage.getWeatherData(previousYearDate, false);
+        })(),
+        (async () => {
+          // Fetch previous year data if not in cache
+          if (!previousYearData) {
+            console.log("🌤️ [FETCH] Fetching previous year weather data from API");
+            const apiData = await weatherService.fetchPreviousYearWeather(settings, previousYearDate);
+            if (apiData) {
+              const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, false);
+              if (weatherData) {
+                try {
+                  previousYearData = await storage.createWeatherData(weatherData);
+                  console.log("✅ [CACHE] Previous year data saved to cache");
+                } catch (error: any) {
+                  console.warn("⚠️ [CACHE] Could not save previous year data (may already exist):", error.message);
+                  // Récupérer les données existantes au lieu de créer
+                  previousYearData = await storage.getWeatherData(previousYearDate, false);
+                }
+              }
+            } else {
+              console.warn("⚠️ [HISTORY] Could not fetch historical data - continuing with current year only");
             }
           }
-        } else {
-          console.warn("⚠️ [HISTORY] Could not fetch historical data - continuing with current year only");
-        }
-      }
+        })(),
+      ]);
 
       // Repli : si l'API historique a échoué (quota épuisé, panne, plan sans
       // accès à l'historique), reprendre la ligne en cache la plus proche de
@@ -5752,12 +5503,6 @@ RÉSUMÉ DU SCAN
         location: settings.location
       };
 
-      console.log('🌤️ [RESPONSE] Weather data prepared:', {
-        hasCurrentYear: !!response.currentYear,
-        hasPreviousYear: !!response.previousYear,
-        location: response.location
-      });
-
       res.json(response);
     } catch (error) {
       console.error("Error fetching weather data:", error);
@@ -5769,21 +5514,16 @@ RÉSUMÉ DU SCAN
   // Announcement routes - PostgreSQL en production, mémoire en développement
   app.get('/api/announcements', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      console.log('📢 [SERVER] Fetching announcements for user:', userId, 'environment:', environment);
-
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      console.log('📢 [SERVER] User found:', { username: user.username, role: user.role });
-
       if (environment === 'production') {
         // PRODUCTION: Utiliser PostgreSQL avec DASHBOARD_MESSAGES
-        console.log('🎯 [PRODUCTION] Using PostgreSQL DASHBOARD_MESSAGES table');
-
         try {
+          // Auteur et magasin joints dans la même requête, au lieu de deux
+          // lectures par message (username et id de magasin sont uniques)
           let query = db.select({
             id: dashboardMessages.id,
             title: dashboardMessages.title,
@@ -5792,7 +5532,18 @@ RÉSUMÉ DU SCAN
             storeId: dashboardMessages.storeId,
             createdBy: dashboardMessages.createdBy,
             createdAt: dashboardMessages.createdAt,
-          }).from(dashboardMessages);
+            authorId: users.id,
+            authorUsername: users.username,
+            authorFirstName: users.firstName,
+            authorLastName: users.lastName,
+            authorName: users.name,
+            groupId: groups.id,
+            groupName: groups.name,
+          })
+            .from(dashboardMessages)
+            // En production, createdBy est varchar, donc jointure par username
+            .leftJoin(users, eq(users.username, dashboardMessages.createdBy))
+            .leftJoin(groups, eq(groups.id, dashboardMessages.storeId));
 
           // Filtrage par magasin pour admin : inclure les annonces globales + annonces du magasin
           if (user.role === 'admin' && req.query.storeId) {
@@ -5806,67 +5557,43 @@ RÉSUMÉ DU SCAN
             );
           }
 
-          const messages = await query.orderBy(desc(dashboardMessages.createdAt)).limit(5);
+          const rows = await query.orderBy(desc(dashboardMessages.createdAt)).limit(5);
 
-          console.log('🔍 [PRODUCTION] Raw messages from DB:', messages.length, 'items:', messages);
+          const announcements = rows.map((row: any) => {
+            const {
+              authorId, authorUsername, authorFirstName, authorLastName, authorName,
+              groupId, groupName,
+              ...message
+            } = row;
 
-          // Ajouter les relations manuellement
-          const announcements = await Promise.all(
-            messages.map(async (message: any) => {
-              // Récupérer l'auteur
-              let author = { id: message.createdBy, firstName: 'Utilisateur', lastName: 'Inconnu', username: message.createdBy };
-              try {
-                // En production, createdBy est varchar, donc chercher par username
-                console.log('🔍 [PRODUCTION] Looking for user with username:', message.createdBy);
-                const [userResult] = await db.select({
-                  id: users.id,
-                  username: users.username,
-                  firstName: users.firstName,
-                  lastName: users.lastName,
-                  name: users.name
-                }).from(users).where(eq(users.username, message.createdBy));
-                console.log('🔍 [PRODUCTION] User search result:', userResult ? 'Found' : 'Not found');
-                if (userResult) {
-                  // Utiliser name s'il existe, sinon firstName + lastName, sinon username
-                  const displayName = userResult.name ||
-                    (userResult.firstName && userResult.lastName ? `${userResult.firstName} ${userResult.lastName}` : '') ||
-                    userResult.username;
+            // Auteur : repli sur "Utilisateur Inconnu" si l'utilisateur n'existe plus
+            let author = { id: message.createdBy, firstName: 'Utilisateur', lastName: 'Inconnu', username: message.createdBy };
+            if (authorId) {
+              // Utiliser name s'il existe, sinon firstName + lastName, sinon username
+              const displayName = authorName ||
+                (authorFirstName && authorLastName ? `${authorFirstName} ${authorLastName}` : '') ||
+                authorUsername;
 
-                  author = {
-                    id: userResult.id,
-                    firstName: userResult.firstName || displayName.split(' ')[0] || userResult.username,
-                    lastName: userResult.lastName || displayName.split(' ').slice(1).join(' ') || '',
-                    username: userResult.username
-                  };
-                } else {
-                  console.warn('❌ [PRODUCTION] User not found with username:', message.createdBy);
-                }
-              } catch (e) {
-                console.warn('❌ [PRODUCTION] Could not fetch author for message:', message.id, e);
-              }
-
-              // Récupérer le groupe si storeId est défini
-              let group = null;
-              if (message.storeId) {
-                try {
-                  const [groupResult] = await db.select().from(groups).where(eq(groups.id, message.storeId));
-                  if (groupResult) {
-                    group = { id: groupResult.id, name: groupResult.name };
-                  }
-                } catch (e) {
-                  console.warn('Could not fetch group for message:', message.id);
-                }
-              }
-
-              return {
-                ...message,
-                author,
-                group
+              author = {
+                id: authorId,
+                firstName: authorFirstName || displayName.split(' ')[0] || authorUsername,
+                lastName: authorLastName || displayName.split(' ').slice(1).join(' ') || '',
+                username: authorUsername
               };
-            })
-          );
+            } else {
+              console.warn('❌ [PRODUCTION] User not found with username:', message.createdBy);
+            }
 
-          console.log('🎯 [PRODUCTION] Found announcements:', announcements.length);
+            // Magasin uniquement si storeId est défini et existe
+            const group = message.storeId && groupId ? { id: groupId, name: groupName } : null;
+
+            return {
+              ...message,
+              author,
+              group
+            };
+          });
+
           res.json(announcements);
 
         } catch (dbError) {
@@ -5878,7 +5605,6 @@ RÉSUMÉ DU SCAN
         }
       } else {
         // DÉVELOPPEMENT: Utiliser stockage mémoire
-        console.log('🧠 [DEV] Using memory storage for announcements');
         const groupIds = user.role === 'admin' && req.query.storeId
           ? [parseInt(req.query.storeId as string)]
           : undefined;
@@ -5893,33 +5619,17 @@ RÉSUMÉ DU SCAN
   });
 
   app.post('/api/announcements', isAuthenticated, async (req: any, res) => {
-    console.log('🎯 [SERVER] POST /api/announcements endpoint hit');
-    console.log('🎯 [SERVER] Request body:', JSON.stringify(req.body, null, 2));
-    console.log('🎯 [SERVER] User object:', {
-      hasClaims: !!req.user.claims,
-      hasId: !!req.user.id,
-      userId: req.user.claims ? req.user.claims.sub : req.user.id
-    });
-
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      console.log('🎯 [SERVER] Extracted userId:', userId);
-
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
-        console.error('🎯 [SERVER] User not found for ID:', userId);
         return res.status(404).json({ message: "User not found" });
       }
-
-      console.log('🎯 [SERVER] User found:', { username: user.username, role: user.role, id: user.id });
 
       // Only admin can create announcements
       if (user.role !== 'admin') {
         console.error('🎯 [SERVER] Access denied - user role:', user.role);
         return res.status(403).json({ message: "Only administrators can create announcements" });
       }
-
-      console.log('🎯 [SERVER] User is admin, proceeding with validation');
 
       const announcementData = insertAnnouncementSchema.parse({
         title: req.body.title,
@@ -5929,11 +5639,8 @@ RÉSUMÉ DU SCAN
         createdBy: user.username, // Utiliser username pour PostgreSQL
       });
 
-      console.log('🎯 [SERVER] Announcement data validated:', announcementData);
-
       if (environment === 'production') {
         // PRODUCTION: Créer dans PostgreSQL DASHBOARD_MESSAGES
-        console.log('🎯 [PRODUCTION] Creating in PostgreSQL DASHBOARD_MESSAGES table');
         try {
           const [newMessage] = await db.insert(dashboardMessages).values({
             title: announcementData.title,
@@ -5949,7 +5656,6 @@ RÉSUMÉ DU SCAN
             group: null
           };
 
-          console.log('🎯 [PRODUCTION] Announcement created successfully in DB:', announcement);
           res.status(201).json(announcement);
         } catch (dbError) {
           console.error('🎯 [PRODUCTION] DB error, fallback to memory:', dbError);
@@ -5959,7 +5665,6 @@ RÉSUMÉ DU SCAN
       } else {
         // DÉVELOPPEMENT: Créer en mémoire
         const announcement = await storage.createAnnouncement(announcementData);
-        console.log('🧠 [DEV] Announcement created in memory:', announcement);
         res.status(201).json(announcement);
       }
     } catch (error) {
@@ -5974,20 +5679,11 @@ RÉSUMÉ DU SCAN
 
   // PUT /api/announcements/:id - Update announcement (admin only)
   app.put('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
-    console.log('📝 [SERVER] PUT /api/announcements/:id endpoint hit');
-    console.log('📝 [SERVER] Request body:', JSON.stringify(req.body, null, 2));
-
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      console.log('📝 [SERVER] Extracted userId:', userId);
-
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
-        console.error('📝 [SERVER] User not found for ID:', userId);
         return res.status(404).json({ message: "User not found" });
       }
-
-      console.log('📝 [SERVER] User found:', { username: user.username, role: user.role, id: user.id });
 
       // Only admin can edit announcements
       if (user.role !== 'admin') {
@@ -5996,7 +5692,6 @@ RÉSUMÉ DU SCAN
       }
 
       const id = parseInt(req.params.id);
-      console.log('📝 [SERVER] Announcement ID:', id);
 
       // Verify announcement exists
       const existingAnnouncement = await storage.getAnnouncement(id);
@@ -6005,13 +5700,9 @@ RÉSUMÉ DU SCAN
         return res.status(404).json({ message: "Announcement not found" });
       }
 
-      console.log('📝 [SERVER] User is admin, proceeding with validation');
-
       const announcementData = insertAnnouncementSchema.partial().parse(req.body);
-      console.log('📝 [SERVER] Announcement data validated:', announcementData);
 
       const updatedAnnouncement = await storage.updateAnnouncement(id, announcementData);
-      console.log('📝 [SERVER] Announcement updated successfully:', updatedAnnouncement);
 
       res.json(updatedAnnouncement);
     } catch (error) {
@@ -6025,20 +5716,11 @@ RÉSUMÉ DU SCAN
   });
 
   app.delete('/api/announcements/:id', isAuthenticated, async (req: any, res) => {
-    console.log('🗑️ [SERVER] DELETE /api/announcements/:id endpoint hit');
-    console.log('🗑️ [SERVER] Announcement ID:', req.params.id);
-
     try {
-      const userId = req.user.claims ? req.user.claims.sub : req.user.id;
-      console.log('🗑️ [SERVER] Extracted userId:', userId);
-
-      const user = await storage.getUserWithGroups(userId);
+      const user = getCurrentUser(req);
       if (!user) {
-        console.error('🗑️ [SERVER] User not found for ID:', userId);
         return res.status(404).json({ message: "User not found" });
       }
-
-      console.log('🗑️ [SERVER] User found:', { username: user.username, role: user.role, id: user.id });
 
       // Only admin can delete announcements
       if (user.role !== 'admin') {
@@ -6093,7 +5775,7 @@ RÉSUMÉ DU SCAN
 
   app.post('/api/weather/geolocation', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -6217,7 +5899,7 @@ RÉSUMÉ DU SCAN
   // Analytics routes
   app.get('/api/analytics/summary', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -6249,7 +5931,7 @@ RÉSUMÉ DU SCAN
 
   app.get('/api/analytics/timeseries', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -6280,7 +5962,7 @@ RÉSUMÉ DU SCAN
 
   app.get('/api/analytics/by-supplier', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -6309,7 +5991,7 @@ RÉSUMÉ DU SCAN
 
   app.get('/api/analytics/by-store', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -6330,7 +6012,7 @@ RÉSUMÉ DU SCAN
 
   app.get('/api/analytics/export', isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUserWithGroups(req.user.claims ? req.user.claims.sub : req.user.id);
+      const user = getCurrentUser(req);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }

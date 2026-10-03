@@ -1,4 +1,5 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import compression from "compression";
 import { createServer, type Server } from "http";
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -23,6 +24,10 @@ console.log('🐳 Environment:', {
 });
 
 const app = express();
+
+// Compression gzip des réponses (assets JS/CSS, index.html et JSON de l'API).
+// En premier pour couvrir toutes les réponses.
+app.use(compression());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
@@ -126,46 +131,60 @@ async function registerProductionRoutes(app: Express): Promise<void> {
   });
 }
 
-await registerProductionRoutes(app);
-
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-  console.error('Server error:', { status, message, error: err });
-  res.status(status).json({ message });
-  throw err;
-});
-
 // Serve static files directly in production (no Vite)
+// Déclarés AVANT les routes : les fichiers statiques et l'index.html ne passent
+// ni par la session ni par passport (aucune requête SQL par fichier).
 const publicPath = join(__dirname, 'public');
 console.log('🐳 Serving static files from:', publicPath);
 
-app.use('/assets', express.static(join(publicPath, 'assets')));
-app.use('/', express.static(publicPath));
-
-// Add explicit root route handler
-app.get('/', (req, res) => {
-  console.log('🏠 ROOT: Serving index.html for root request');
-  res.sendFile(join(publicPath, 'index.html'), (err) => {
-    if (err) {
-      console.error('❌ ROOT: Error serving index.html:', err);
-      res.status(500).send('Error loading application');
+// Les fichiers de /assets ont un nom haché par Vite : cache navigateur d'un an
+app.use('/assets', express.static(join(publicPath, 'assets'), {
+  maxAge: '1y',
+  immutable: true,
+  index: false,
+}));
+// Autres fichiers publics (favicon, manifest...). L'index.html est toujours
+// revalidé pour qu'un nouveau déploiement soit pris en compte immédiatement.
+app.use(express.static(publicPath, {
+  index: false,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
     }
-  });
-});
+  },
+}));
 
-// SPA fallback - serve index.html for all non-API routes
+// SPA fallback - serve index.html for all non-API routes (y compris "/")
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) {
     return next();
   }
-  console.log(`📄 SPA: Serving index.html for ${req.path}`);
+  res.set('Cache-Control', 'no-cache');
   res.sendFile(join(publicPath, 'index.html'), (err) => {
     if (err) {
       console.error(`❌ SPA: Error serving index.html for ${req.path}:`, err);
-      res.status(500).send('Error loading application');
+      if (!res.headersSent) {
+        res.status(500).send('Error loading application');
+      }
     }
   });
+});
+
+await registerProductionRoutes(app);
+
+// Tâches de maintenance périodiques (purge du cache factures expiré)
+const { startMaintenanceJobs } = await import('./maintenance.js');
+startMaintenanceJobs();
+
+app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  // Réponse déjà commencée : on laisse Express clore la connexion
+  if (res.headersSent) {
+    return next(err);
+  }
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  console.error('Server error:', { status, message, error: err });
+  res.status(status).json({ message });
 });
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;

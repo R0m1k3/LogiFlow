@@ -62,7 +62,8 @@ RUN npx esbuild server/index.production.ts \
     --external:memoizee \
     --external:nanoid \
     --external:date-fns \
-    --external:nodemailer
+    --external:nodemailer \
+    --external:compression
 
 # Production stage
 FROM node:20-alpine AS production
@@ -99,6 +100,8 @@ USER nextjs
 # Expose port
 EXPOSE 3000
 ENV PORT=3000
+# Fixé ici car db.ts lit NODE_ENV dès l'import, avant le forçage de index.production.ts
+ENV NODE_ENV=production
 
 # Install wget for health check and postgresql-client for pg_dump
 USER root

@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 import { nanoid } from 'nanoid';
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { db } from "./db";
 import { databaseBackups, utilities, users } from "@shared/schema";
 import type { DatabaseBackup, InsertDatabaseBackup } from "@shared/schema";
@@ -14,6 +14,8 @@ export class BackupService {
   private backupDir: string;
   private maxBackups = 10;
   private lastAutomaticBackupDate: string | null = null;
+  // Vérification quotidienne en cours, partagée par les connexions simultanées
+  private dailyBackupCheck: Promise<{ backupPerformed: boolean; message: string }> | null = null;
 
   constructor() {
     // Use /app/backups in production (with proper permissions), or use env variable
@@ -130,9 +132,10 @@ export class BackupService {
       await execAsync(command, { env });
 
       // Get file stats and count tables
-      const stats = fs.statSync(filepath);
-      const sqlContent = fs.readFileSync(filepath, 'utf8');
-      const tablesCount = (sqlContent.match(/CREATE TABLE/g) || []).length;
+      // Tables comptées en base plutôt qu'en relisant tout le dump en mémoire :
+      // la lecture synchrone et la regex gelaient le serveur sur les grosses bases
+      const stats = await fs.promises.stat(filepath);
+      const tablesCount = await this.countDatabaseTables();
 
       // Update database record with completion details
       const [updatedBackup] = await db.update(databaseBackups)
@@ -154,6 +157,18 @@ export class BackupService {
       console.error('❌ Backup failed:', error);
       throw new Error(`Backup failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  // Nombre de tables utilisateur (hors schémas système), proche de ce que
+  // pg_dump inclut dans la sauvegarde
+  private async countDatabaseTables(): Promise<number> {
+    const result = await db.execute(sql`
+      SELECT count(*)::int AS count
+      FROM information_schema.tables
+      WHERE table_type = 'BASE TABLE'
+        AND table_schema NOT IN ('pg_catalog', 'information_schema')
+    `);
+    return Number(result.rows[0]?.count ?? 0);
   }
 
   async getBackupList(): Promise<DatabaseBackup[]> {
@@ -238,6 +253,17 @@ export class BackupService {
 
   // Nouvelle méthode : Vérifier et effectuer une sauvegarde quotidienne si nécessaire
   async checkAndPerformDailyBackup(userId: string = 'system'): Promise<{ backupPerformed: boolean; message: string }> {
+    // Plusieurs connexions simultanées (ouverture des magasins) partagent la
+    // même vérification : un seul pg_dump est lancé
+    if (!this.dailyBackupCheck) {
+      this.dailyBackupCheck = this.performDailyBackupCheck(userId).finally(() => {
+        this.dailyBackupCheck = null;
+      });
+    }
+    return this.dailyBackupCheck;
+  }
+
+  private async performDailyBackupCheck(userId: string): Promise<{ backupPerformed: boolean; message: string }> {
     try {
       // Vérifier si les backups automatiques sont activés
       const [config] = await db.select()

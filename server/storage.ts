@@ -90,8 +90,53 @@ import {
 } from "@shared/schema";
 import { encryptSecret, decryptSecret } from "./crypto";
 import { db } from "./db";
-import { eq, and, inArray, desc, sql, gte, lte, lt, gt, or, isNull, isNotNull, asc, ne } from "drizzle-orm";
+import { eq, and, inArray, desc, sql, gte, lte, lt, gt, or, isNull, isNotNull, asc, ne, getTableColumns } from "drizzle-orm";
 import { getAnnouncementStorage } from "./announcementStorage";
+
+// Projections des relations jointes dans les listes.
+//
+// La ligne groups complète contient le logo (data URI de plusieurs dizaines de
+// Ko) et la configuration SMTP : la joindre telle quelle la recopiait dans
+// chaque ligne de chaque liste. Le client ne lit que ces champs. Le
+// rapprochement et les avoirs ont en plus besoin de la config NocoDB et du
+// webhook. La fiche complète reste disponible via getGroup/getGroups.
+// L'id doit rester en tête : drizzle renvoie null pour la relation quand la
+// première colonne d'une jointure externe est nulle.
+const groupSummaryColumns = {
+  id: groups.id,
+  name: groups.name,
+  color: groups.color,
+};
+
+const groupReconciliationColumns = {
+  ...groupSummaryColumns,
+  nocodbConfigId: groups.nocodbConfigId,
+  nocodbTableName: groups.nocodbTableName,
+  webhookUrl: groups.webhookUrl,
+};
+
+// Créateur ou auteur joint à une ligne, sans le hash du mot de passe
+const userSummaryColumns = {
+  id: users.id,
+  firstName: users.firstName,
+  lastName: users.lastName,
+  username: users.username,
+  email: users.email,
+};
+
+// Toutes les colonnes de users sauf le hash du mot de passe
+const { password: _password, ...publicUserColumns } = getTableColumns(users);
+
+// Magasin joint aux affectations d'un utilisateur (forme de UserWithGroups).
+// Les dates restent la valeur brute du driver, comme avec l'ancienne requête SQL
+// brute, pour ne pas changer ce que reçoit le client.
+const userGroupColumns = {
+  id: groups.id,
+  name: groups.name,
+  color: groups.color,
+  createdAt: sql<Date | null>`${groups.createdAt}`,
+  updatedAt: sql<Date | null>`${groups.updatedAt}`,
+};
 
 
 export interface IStorage {
@@ -101,6 +146,8 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   getUserWithGroups(id: string): Promise<UserWithGroups | undefined>;
+  // Tous les utilisateurs avec leurs magasins, sans le champ password
+  getUsersWithGroups(): Promise<UserWithGroups[]>;
   getUsers(): Promise<User[]>;
   createUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, user: Partial<UpsertUser>): Promise<User>;
@@ -134,7 +181,7 @@ export interface IStorage {
   deleteOrder(id: number): Promise<void>;
 
   // Delivery operations
-  getDeliveries(groupIds?: number[]): Promise<DeliveryWithRelations[]>;
+  getDeliveries(groupIds?: number[], options?: { status?: string }): Promise<DeliveryWithRelations[]>;
   getDeliveriesByDateRange(startDate: string, endDate: string, groupIds?: number[]): Promise<DeliveryWithRelations[]>;
   getDelivery(id: number): Promise<DeliveryWithRelations | undefined>;
   createDelivery(delivery: InsertDelivery): Promise<Delivery>;
@@ -147,6 +194,7 @@ export interface IStorage {
   getUserGroups(userId: string): Promise<UserGroup[]>;
   assignUserToGroup(userGroup: InsertUserGroup): Promise<UserGroup>;
   removeUserFromGroup(userId: string, groupId: number): Promise<void>;
+  removeUserFromAllGroups(userId: string): Promise<void>;
 
   // Statistics
   getMonthlyStats(year: number, month: number, groupIds?: number[]): Promise<{
@@ -369,41 +417,76 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserWithGroups(id: string): Promise<UserWithGroups | undefined> {
-    const user = await this.getUser(id);
-    if (!user) return undefined;
-
+    // Appelée à chaque requête authentifiée (deserializeUser) : l'utilisateur
+    // et ses magasins sont lus en une seule requête au lieu de deux successives
     try {
-      const result = await db.execute(sql`
-        SELECT 
-          ug.user_id,
-          ug.group_id,
-          g.id as group_id_ref,
-          g.name as group_name,
-          g.color as group_color,
-          g.created_at as group_created_at,
-          g.updated_at as group_updated_at
-        FROM user_groups ug
-        INNER JOIN groups g ON ug.group_id = g.id
-        WHERE ug.user_id = ${id}
-      `);
+      const rows = await db
+        .select({
+          user: users,
+          groupId: userGroups.groupId,
+          group: userGroupColumns,
+        })
+        .from(users)
+        .leftJoin(userGroups, eq(userGroups.userId, users.id))
+        .leftJoin(groups, eq(userGroups.groupId, groups.id))
+        .where(eq(users.id, id));
 
-      const userGroups = result.rows.map((row: any) => ({
-        userId: row.user_id,
-        groupId: row.group_id,
-        group: {
-          id: row.group_id_ref,
-          name: row.group_name,
-          color: row.group_color,
-          createdAt: row.group_created_at,
-          updatedAt: row.group_updated_at,
-        }
-      }));
+      if (rows.length === 0) return undefined;
 
-      return { ...user, userGroups };
+      // Les affectations vers un magasin inexistant sont ignorées, comme
+      // avec la jointure interne d'origine
+      const userGroupsList = rows
+        .filter((row: any) => row.group !== null)
+        .map((row: any) => ({
+          userId: id,
+          groupId: row.groupId,
+          group: row.group,
+        }));
+
+      return { ...rows[0].user, userGroups: userGroupsList };
     } catch (error) {
       console.error('Error fetching user with groups:', error);
-      return { ...user, userGroups: [] };
+      const user = await this.getUser(id);
+      return user ? { ...user, userGroups: [] } : undefined;
     }
+  }
+
+  async getUsersWithGroups(): Promise<UserWithGroups[]> {
+    // Deux requêtes en parallèle pour tous les utilisateurs, au lieu d'un
+    // getUserWithGroups par utilisateur
+    const [allUsers, memberships] = await Promise.all([
+      db.select(publicUserColumns).from(users),
+      (async () => {
+        try {
+          return await db
+            .select({
+              userId: userGroups.userId,
+              groupId: userGroups.groupId,
+              group: userGroupColumns,
+            })
+            .from(userGroups)
+            .innerJoin(groups, eq(userGroups.groupId, groups.id));
+        } catch (error) {
+          console.error('Error fetching user groups:', error);
+          return [];
+        }
+      })(),
+    ]);
+
+    const groupsByUserId = new Map<string, any[]>();
+    for (const membership of memberships) {
+      const list = groupsByUserId.get(membership.userId);
+      if (list) {
+        list.push(membership);
+      } else {
+        groupsByUserId.set(membership.userId, [membership]);
+      }
+    }
+
+    return allUsers.map((user: any) => ({
+      ...user,
+      userGroups: groupsByUserId.get(user.id) ?? [],
+    })) as UserWithGroups[];
   }
 
   async getUsers(): Promise<User[]> {
@@ -550,7 +633,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: deliveries.createdAt,
         updatedAt: deliveries.updatedAt,
         supplier: suppliers,
-        group: groups,
+        group: groupReconciliationColumns,
         creator: {
           id: users.id,
           firstName: users.firstName,
@@ -596,7 +679,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: orders.createdAt,
         updatedAt: orders.updatedAt,
         supplier: suppliers,
-        group: groups,
+        group: groupReconciliationColumns,
         creator: {
           id: users.id,
           firstName: users.firstName,
@@ -690,7 +773,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: orders.createdAt,
         updatedAt: orders.updatedAt,
         supplier: suppliers,
-        group: groups,
+        group: groupReconciliationColumns,
         creator: {
           id: users.id,
           firstName: users.firstName,
@@ -718,7 +801,6 @@ export class DatabaseStorage implements IStorage {
       deliveries: deliveriesByOrderId.get(order.id) ?? []
     }));
 
-    console.log(`🔗 PRODUCTION: getOrders() récupéré ${ordersWithDeliveries.length} commandes avec relations`);
     return ordersWithDeliveries as OrderWithRelations[];
   }
 
@@ -737,7 +819,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: orders.createdAt,
         updatedAt: orders.updatedAt,
         supplier: suppliers,
-        group: groups,
+        group: groupReconciliationColumns,
         creator: {
           id: users.id,
           firstName: users.firstName,
@@ -781,7 +863,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrder(id: number): Promise<OrderWithRelations | undefined> {
-    const [order] = await db
+    // La commande et ses livraisons ne dépendent que de l'id : les deux
+    // requêtes partent en parallèle
+    const orderQuery = db
       .select({
         id: orders.id,
         supplierId: orders.supplierId,
@@ -810,10 +894,8 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(orders.createdBy, users.id))
       .where(eq(orders.id, id));
 
-    if (!order) return undefined;
-
-    // Récupérer les livraisons associées à cette commande (PRODUCTION PostgreSQL)
-    const associatedDeliveries = await db
+    // Livraisons associées à cette commande
+    const deliveriesQuery = db
       .select({
         id: deliveries.id,
         orderId: deliveries.orderId,
@@ -840,7 +922,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: deliveries.createdAt,
         updatedAt: deliveries.updatedAt,
         supplier: suppliers,
-        group: groups,
+        group: groupReconciliationColumns,
         creator: {
           id: users.id,
           firstName: users.firstName,
@@ -855,7 +937,9 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(deliveries.createdBy, users.id))
       .where(eq(deliveries.orderId, id));
 
-    console.log(`🔗 PRODUCTION: getOrder #${id} found ${associatedDeliveries.length} associated deliveries`);
+    const [[order], associatedDeliveries] = await Promise.all([orderQuery, deliveriesQuery]);
+
+    if (!order) return undefined;
 
     return {
       ...order,
@@ -882,7 +966,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Delivery operations
-  async getDeliveries(groupIds?: number[]): Promise<DeliveryWithRelations[]> {
+  async getDeliveries(groupIds?: number[], options?: { status?: string }): Promise<DeliveryWithRelations[]> {
     let query = db
       .select({
         id: deliveries.id,
@@ -910,7 +994,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: deliveries.createdAt,
         updatedAt: deliveries.updatedAt,
         supplier: suppliers,
-        group: groups,
+        group: groupReconciliationColumns,
         creator: {
           id: users.id,
           firstName: users.firstName,
@@ -924,15 +1008,22 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(groups, eq(deliveries.groupId, groups.id))
       .leftJoin(users, eq(deliveries.createdBy, users.id));
 
+    const conditions = [];
     if (groupIds && groupIds.length > 0) {
-      query = query.where(inArray(deliveries.groupId, groupIds));
+      conditions.push(inArray(deliveries.groupId, groupIds));
+    }
+    // Filtre de statut optionnel (ex. le rapprochement ne lit que les livraisons livrées)
+    if (options?.status) {
+      conditions.push(eq(deliveries.status, options.status));
+    }
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
     }
 
     const baseDeliveries = await query.orderBy(desc(deliveries.createdAt));
 
     const deliveriesWithOrders = await this.attachOrdersAndCommentCounts(baseDeliveries);
 
-    console.log(`🔗 PRODUCTION: getDeliveries() récupéré ${deliveriesWithOrders.length} livraisons avec relations`);
     return deliveriesWithOrders as DeliveryWithRelations[];
   }
 
@@ -964,7 +1055,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: deliveries.createdAt,
         updatedAt: deliveries.updatedAt,
         supplier: suppliers,
-        group: groups,
+        group: groupReconciliationColumns,
         creator: {
           id: users.id,
           firstName: users.firstName,
@@ -1035,56 +1126,64 @@ export class DatabaseStorage implements IStorage {
 
     if (!delivery) return undefined;
 
-    // Add creator info separately to avoid complex JOIN issues in production
-    let creator = null;
-    try {
-      const user = await this.getUser(delivery.createdBy);
-      if (user) {
-        creator = {
+    // Créateur, commande associée et nombre de commentaires ne dépendent que de
+    // la livraison : les trois chargements partent en parallèle. Chacun garde
+    // son try/catch pour qu'un échec n'empêche pas de renvoyer la livraison.
+    const loadCreator = async () => {
+      try {
+        const user = await this.getUser(delivery.createdBy);
+        if (!user) return null;
+        return {
           id: user.id,
           firstName: user.firstName,
           lastName: user.lastName,
           username: user.username,
           email: user.email
         };
+      } catch (error) {
+        console.warn('⚠️ Could not load creator info:', error);
+        return null;
       }
-    } catch (error) {
-      console.log('⚠️ Could not load creator info:', error);
-    }
+    };
 
-    // Récupérer la commande associée si elle existe (PRODUCTION PostgreSQL)
-    let associatedOrder = undefined;
-    if (delivery.orderId) {
+    const loadAssociatedOrder = async () => {
+      if (!delivery.orderId) return undefined;
       try {
-        console.log(`🔗 PRODUCTION: getDelivery #${id} retrieving associated order #${delivery.orderId}`);
         const orderData = await this.getOrder(delivery.orderId);
-        if (orderData) {
-          // CRITICAL FIX: Vérifier que la commande appartient au même magasin que la livraison
-          if (orderData.groupId !== delivery.groupId) {
-            console.error(`❌ PRODUCTION: getDelivery #${id} (store ${delivery.groupId}) linked to order #${delivery.orderId} (store ${orderData.groupId}) - STORE MISMATCH DETECTED!`);
-            // Ne pas inclure la commande si elle n'appartient pas au bon magasin
-          } else {
-            associatedOrder = orderData;
-            console.log(`✅ PRODUCTION: getDelivery #${id} found associated order #${delivery.orderId} with status: ${orderData.status}`);
-          }
+        if (!orderData) return undefined;
+        // CRITICAL FIX: Vérifier que la commande appartient au même magasin que la livraison
+        if (orderData.groupId !== delivery.groupId) {
+          console.error(`❌ PRODUCTION: getDelivery #${id} (store ${delivery.groupId}) linked to order #${delivery.orderId} (store ${orderData.groupId}) - STORE MISMATCH DETECTED!`);
+          // Ne pas inclure la commande si elle n'appartient pas au bon magasin
+          return undefined;
         }
+        return orderData;
       } catch (error) {
         console.error(`❌ PRODUCTION: Failed to retrieve associated order #${delivery.orderId} for delivery #${id}:`, error);
+        return undefined;
       }
-    }
+    };
 
     // Compter les commentaires de rapprochement pour cette livraison
-    let commentsCount = 0;
-    try {
-      const [countResult] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(reconciliationComments)
-        .where(eq(reconciliationComments.deliveryId, id));
+    const countComments = async () => {
+      try {
+        const [countResult] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(reconciliationComments)
+          .where(eq(reconciliationComments.deliveryId, id));
 
-      commentsCount = Number(countResult?.count || 0);
-    } catch (error) {
-      console.error(`Failed to count reconciliation comments for delivery #${id}:`, error);
-    }
+        return Number(countResult?.count || 0);
+      } catch (error) {
+        console.error(`Failed to count reconciliation comments for delivery #${id}:`, error);
+        return 0;
+      }
+    };
+
+    const [creator, associatedOrder, commentsCount] = await Promise.all([
+      loadCreator(),
+      loadAssociatedOrder(),
+      countComments()
+    ]);
 
     return {
       ...delivery,
@@ -1218,6 +1317,10 @@ export class DatabaseStorage implements IStorage {
     );
   }
 
+  async removeUserFromAllGroups(userId: string): Promise<void> {
+    await db.delete(userGroups).where(eq(userGroups.userId, userId));
+  }
+
   // Statistics
   async getMonthlyStats(year: number, month: number, groupIds?: number[]): Promise<{
     ordersCount: number;
@@ -1229,7 +1332,6 @@ export class DatabaseStorage implements IStorage {
   }> {
     // En mode développement avec MemStorage, retourner des statistiques simulées
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Mode développement - statistiques simulées');
       return {
         ordersCount: 12,
         deliveriesCount: 8,
@@ -1247,8 +1349,6 @@ export class DatabaseStorage implements IStorage {
       : `${year}-${(month + 1).toString().padStart(2, '0')}-01`;
 
     try {
-      console.log('📊 Calcul statistiques mensuelles:', { year, month, startDate, endDate, groupIds });
-
       // Construire les conditions pour le filtrage par groupe - UTILISER LE BON CHAMP DE DATE
       let ordersWhereCondition = and(
         gte(orders.plannedDate, startDate),
@@ -1267,13 +1367,13 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Compter les commandes du mois
-      const ordersResult = await db
+      const ordersQuery = db
         .select({ count: sql<number>`count(*)` })
         .from(orders)
         .where(ordersWhereCondition);
 
       // Compter les livraisons du mois
-      const deliveriesResult = await db
+      const deliveriesQuery = db
         .select({ count: sql<number>`count(*)` })
         .from(deliveries)
         .where(deliveriesWhereCondition);
@@ -1284,7 +1384,7 @@ export class DatabaseStorage implements IStorage {
         pendingWhereCondition = and(pendingWhereCondition, inArray(orders.groupId, groupIds)) as any;
       }
 
-      const pendingResult = await db
+      const pendingQuery = db
         .select({ count: sql<number>`count(*)` })
         .from(orders)
         .where(pendingWhereCondition);
@@ -1305,7 +1405,7 @@ export class DatabaseStorage implements IStorage {
 
       // NOUVEAU: Calculer le délai moyen entre la date de commande et la date de livraison
       // Uniquement pour les livraisons qui ont une commande liée
-      const deliveriesStatsResult = await db
+      const deliveriesStatsQuery = db
         .select({
           totalPalettes: sql<number>`COALESCE(SUM(CAST(${deliveries.quantity} as INTEGER)), 0)`,
           totalPackages: sql<number>`COALESCE(COUNT(*), 0)`,
@@ -1321,21 +1421,20 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
+      // Les quatre requêtes sont indépendantes : on les lance en parallèle
+      const [ordersResult, deliveriesResult, pendingResult, deliveriesStatsResult] = await Promise.all([
+        ordersQuery,
+        deliveriesQuery,
+        pendingQuery,
+        deliveriesStatsQuery
+      ]);
+
       const ordersCount = Number(ordersResult[0]?.count || 0);
       const deliveriesCount = Number(deliveriesResult[0]?.count || 0);
       const pendingOrdersCount = Number(pendingResult[0]?.count || 0);
       const totalPalettes = Number(deliveriesStatsResult[0]?.totalPalettes || 0);
       const totalPackages = Number(deliveriesStatsResult[0]?.totalPackages || 0);
       const averageDeliveryTime = Number(deliveriesStatsResult[0]?.avgDelay || 0);
-
-      console.log('📊 Statistiques calculées:', {
-        ordersCount,
-        deliveriesCount,
-        pendingOrdersCount,
-        averageDeliveryTime: `${averageDeliveryTime} jours (commande → livraison, livraisons avec commande liée uniquement)`,
-        totalPalettes,
-        totalPackages,
-      });
 
       return {
         ordersCount,
@@ -1371,7 +1470,6 @@ export class DatabaseStorage implements IStorage {
   }> {
     // En mode développement avec MemStorage, retourner des statistiques simulées
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Mode développement - statistiques annuelles simulées');
       return {
         ordersCount: 144, // 12 mois * 12
         deliveriesCount: 96, // 12 mois * 8  
@@ -1387,8 +1485,6 @@ export class DatabaseStorage implements IStorage {
     const endDate = `${year + 1}-01-01`;
 
     try {
-      console.log('📊 Calcul statistiques annuelles:', { year, startDate, endDate, groupIds });
-
       // Construire les conditions pour le filtrage par groupe
       let ordersWhereCondition = and(
         gte(orders.plannedDate, startDate),
@@ -1406,13 +1502,13 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Compter les commandes de l'année
-      const ordersResult = await db
+      const ordersQuery = db
         .select({ count: sql<number>`count(*)` })
         .from(orders)
         .where(ordersWhereCondition);
 
       // Compter les livraisons de l'année
-      const deliveriesResult = await db
+      const deliveriesQuery = db
         .select({ count: sql<number>`count(*)` })
         .from(deliveries)
         .where(deliveriesWhereCondition);
@@ -1423,7 +1519,7 @@ export class DatabaseStorage implements IStorage {
         pendingWhereCondition = and(pendingWhereCondition, inArray(orders.groupId, groupIds)) as any;
       }
 
-      const pendingResult = await db
+      const pendingQuery = db
         .select({ count: sql<number>`count(*)` })
         .from(orders)
         .where(pendingWhereCondition);
@@ -1443,7 +1539,7 @@ export class DatabaseStorage implements IStorage {
 
       // NOUVEAU: Calculer le délai moyen entre la date de commande et la date de livraison
       // Uniquement pour les livraisons qui ont une commande liée
-      const deliveriesStatsResult = await db
+      const deliveriesStatsQuery = db
         .select({
           totalPalettes: sql<number>`COALESCE(SUM(CAST(${deliveries.quantity} as INTEGER)), 0)`,
           totalPackages: sql<number>`COALESCE(COUNT(*), 0)`,
@@ -1459,21 +1555,20 @@ export class DatabaseStorage implements IStorage {
           )
         );
 
+      // Les quatre requêtes sont indépendantes : on les lance en parallèle
+      const [ordersResult, deliveriesResult, pendingResult, deliveriesStatsResult] = await Promise.all([
+        ordersQuery,
+        deliveriesQuery,
+        pendingQuery,
+        deliveriesStatsQuery
+      ]);
+
       const ordersCount = Number(ordersResult[0]?.count || 0);
       const deliveriesCount = Number(deliveriesResult[0]?.count || 0);
       const pendingOrdersCount = Number(pendingResult[0]?.count || 0);
       const totalPalettes = Number(deliveriesStatsResult[0]?.totalPalettes || 0);
       const totalPackages = Number(deliveriesStatsResult[0]?.totalPackages || 0);
       const averageDeliveryTime = Number(deliveriesStatsResult[0]?.avgDelay || 0);
-
-      console.log('📊 Statistiques annuelles calculées:', {
-        ordersCount,
-        deliveriesCount,
-        pendingOrdersCount,
-        averageDeliveryTime: `${averageDeliveryTime} jours (commande → livraison, livraisons avec commande liée uniquement)`,
-        totalPalettes,
-        totalPackages,
-      });
 
       return {
         ordersCount,
@@ -1521,19 +1616,13 @@ export class DatabaseStorage implements IStorage {
     // SAFE: Use simple column ordering instead of SQL CAST which fails in production
     const results = await query.orderBy(publicities.pubNumber);
 
-    // LOG: Debug des publicités récupérées
-    console.log(`📋 PUBLICITES FETCHED: ${results.length} résultats pour année ${year || 'toutes'}`);
-    if (results.length > 0) {
-      console.log('🔍 PREMIERS RESULTATS:', results.slice(0, 3).map((p: any, i: any) => `${i + 1}. N°${p.pubNumber} - ${p.designation}`));
-    }
-
     const publicityIds = results.map((p: any) => p.id);
     const participations = publicityIds.length > 0
       ? await db
         .select({
           publicityId: publicityParticipations.publicityId,
           groupId: publicityParticipations.groupId,
-          group: groups,
+          group: groupSummaryColumns,
         })
         .from(publicityParticipations)
         .leftJoin(groups, eq(publicityParticipations.groupId, groups.id))
@@ -1547,15 +1636,25 @@ export class DatabaseStorage implements IStorage {
       return numA - numB;
     });
 
+    // Participations regroupées par publicité en un seul passage
+    const participationsByPublicityId = new Map<number, any[]>();
+    for (const p of participations as any[]) {
+      const participation = {
+        publicityId: p.publicityId,
+        groupId: p.groupId,
+        group: p.group!,
+      };
+      const list = participationsByPublicityId.get(p.publicityId);
+      if (list) {
+        list.push(participation);
+      } else {
+        participationsByPublicityId.set(p.publicityId, [participation]);
+      }
+    }
+
     return sortedResults.map((publicity: any) => ({
       ...publicity,
-      participations: participations
-        .filter((p: any) => p.publicityId === publicity.id)
-        .map((p: any) => ({
-          publicityId: p.publicityId,
-          groupId: p.groupId,
-          group: p.group!,
-        })),
+      participations: participationsByPublicityId.get(publicity.id) ?? [],
     }));
   }
 
@@ -1567,7 +1666,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         publicityId: publicityParticipations.publicityId,
         groupId: publicityParticipations.groupId,
-        group: groups,
+        group: groupSummaryColumns,
       })
       .from(publicityParticipations)
       .leftJoin(groups, eq(publicityParticipations.groupId, groups.id))
@@ -1598,22 +1697,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePublicity(id: number): Promise<void> {
-    console.log(`🗑️ [DELETION] Starting deletion of publicity ID: ${id}`);
-
     try {
       // First, delete all participations (defensive approach for production DB constraints)
-      const deletedParticipations = await db.delete(publicityParticipations).where(eq(publicityParticipations.publicityId, id)).returning();
-      console.log(`🗑️ [DELETION] Deleted ${deletedParticipations.length} participations for publicity ${id}`);
+      await db.delete(publicityParticipations).where(eq(publicityParticipations.publicityId, id));
 
       // Then delete the publicity itself
       const deletedPublicity = await db.delete(publicities).where(eq(publicities.id, id)).returning();
-      console.log(`🗑️ [DELETION] Deleted publicity ${id}, found: ${deletedPublicity.length > 0 ? 'YES' : 'NO'}`);
 
       if (deletedPublicity.length === 0) {
         throw new Error(`Publicity with ID ${id} not found`);
       }
-
-      console.log(`✅ [DELETION] Successfully deleted publicity ID: ${id}`);
     } catch (error) {
       console.error(`❌ [DELETION] Failed to delete publicity ID: ${id}`, error);
       throw error;
@@ -1670,8 +1763,6 @@ export class DatabaseStorage implements IStorage {
         .where(eq(nocodbConfig.isActive, true))
         .limit(1);
 
-      // Ne pas tracer le jeton en clair dans les logs
-      console.log('🔧 Configuration NocoDB active récupérée:', config?.id, config?.name);
       return this.decryptNocodbConfig(config);
     } catch (error) {
       console.error('❌ Erreur récupération config NocoDB:', error);
@@ -1715,11 +1806,6 @@ export class DatabaseStorage implements IStorage {
       const expiresAt = new Date(cache.expiresAt);
 
       if (now < expiresAt) {
-        console.log('✅ [DATABASE-CACHE] Cache hit pour:', {
-          cacheKey,
-          expires: cache.expiresAt,
-          hoursRemaining: Math.round((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60))
-        });
         return cache; // Cache valide
       } else {
         console.log('⏰ [DATABASE-CACHE] Cache expiré, suppression:', {
@@ -1733,7 +1819,6 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    console.log('❌ [DATABASE-CACHE] Cache miss pour:', { cacheKey });
     return undefined; // Pas de cache
   }
 
@@ -1870,7 +1955,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         customerOrder: customerOrders,
         supplier: suppliers,
-        group: groups
+        group: groupSummaryColumns
       })
       .from(customerOrders)
       .leftJoin(suppliers, eq(customerOrders.supplierId, suppliers.id))
@@ -1942,7 +2027,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         customerOrder: customerOrders,
         supplier: suppliers,
-        group: groups
+        group: groupSummaryColumns
       })
       .from(customerOrders)
       .leftJoin(suppliers, eq(customerOrders.supplierId, suppliers.id))
@@ -1978,7 +2063,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         dlcProduct: dlcProducts,
         supplier: suppliers,
-        group: groups
+        group: groupSummaryColumns
       })
       .from(dlcProducts)
       .leftJoin(suppliers, eq(dlcProducts.supplierId, suppliers.id))
@@ -2271,7 +2356,7 @@ export class DatabaseStorage implements IStorage {
     let query = db
       .select({
         task: tasks,
-        group: groups
+        group: groupSummaryColumns
       })
       .from(tasks)
       .leftJoin(groups, eq(tasks.groupId, groups.id));
@@ -2299,18 +2384,6 @@ export class DatabaseStorage implements IStorage {
     }
 
     const results = await query.orderBy(desc(tasks.createdAt));
-
-    console.log('📋 DatabaseStorage.getTasks - Raw results:', {
-      resultCount: results.length,
-      userRole,
-      sampleTasks: results.slice(0, 2).map((r: any) => ({
-        taskExists: !!r.task,
-        taskId: r.task?.id,
-        title: r.task?.title,
-        startDate: r.task?.startDate,
-        groupExists: !!r.group
-      }))
-    });
 
     return results
       .filter((row: any) => row.task) // Filtrer les tâches nulles
@@ -2544,7 +2617,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: avoirs.createdAt,
         updatedAt: avoirs.updatedAt,
         supplier: suppliers,
-        group: groups,
+        group: groupReconciliationColumns,
         creator: {
           id: users.id,
           firstName: users.firstName,
@@ -2665,8 +2738,8 @@ export class DatabaseStorage implements IStorage {
       .select({
         ticket: savTickets,
         supplier: suppliers,
-        group: groups,
-        creator: users,
+        group: groupSummaryColumns,
+        creator: userSummaryColumns,
       })
       .from(savTickets)
       .leftJoin(suppliers, eq(savTickets.supplierId, suppliers.id))
@@ -2700,21 +2773,16 @@ export class DatabaseStorage implements IStorage {
 
     const results = await query.orderBy(desc(savTickets.createdAt));
 
-    // Get history for each ticket
-    const ticketsWithHistory = await Promise.all(
-      results.map(async (result: any) => {
-        const history = await this.getSavTicketHistory(result.ticket.id);
-        return {
-          ...result.ticket,
-          supplier: result.supplier!,
-          group: result.group!,
-          creator: result.creator!,
-          history,
-        };
-      })
-    );
-
-    return ticketsWithHistory;
+    // L'historique SAV est désactivé (getSavTicketHistory renvoie toujours []) :
+    // pas d'appel par ticket. Si on le réactive, le charger en une seule
+    // requête groupée plutôt que ticket par ticket.
+    return results.map((result: any) => ({
+      ...result.ticket,
+      supplier: result.supplier!,
+      group: result.group!,
+      creator: result.creator!,
+      history: [],
+    }));
   }
 
   async getSavTicket(id: number): Promise<SavTicketWithRelations | undefined> {
@@ -2723,7 +2791,7 @@ export class DatabaseStorage implements IStorage {
         ticket: savTickets,
         supplier: suppliers,
         group: groups,
-        creator: users,
+        creator: userSummaryColumns,
       })
       .from(savTickets)
       .leftJoin(suppliers, eq(savTickets.supplierId, suppliers.id))
@@ -2747,10 +2815,11 @@ export class DatabaseStorage implements IStorage {
   async createSavTicket(ticketData: InsertSavTicket): Promise<SavTicket> {
     // Generate ticket number
     const currentYear = new Date().getFullYear();
+    // Bornes de l'année plutôt qu'EXTRACT(year ...), pour que l'index sur created_at serve
     const count = await db
       .select({ count: sql<number>`count(*)` })
       .from(savTickets)
-      .where(sql`EXTRACT(year from created_at) = ${currentYear}`);
+      .where(sql`${savTickets.createdAt} >= make_date(${currentYear}::int, 1, 1) AND ${savTickets.createdAt} < make_date(${currentYear + 1}::int, 1, 1)`);
 
     const ticketNumber = `SAV-${currentYear}-${String((count[0]?.count || 0) + 1).padStart(4, '0')}`;
 
@@ -2822,69 +2891,26 @@ export class DatabaseStorage implements IStorage {
     resolvedTickets: number;
     criticalTickets: number;
   }> {
-    let baseQuery = db.select().from(savTickets);
-
-    if (groupIds?.length) {
-      baseQuery = baseQuery.where(inArray(savTickets.groupId, groupIds));
-    }
-
-    // Get status counts
-    const statusResults = await db
+    // Tous les compteurs en une seule requête. « Critiques » compte tous les
+    // tickets de priorité critique, quel que soit leur statut.
+    const [result] = await db
       .select({
-        count: sql<number>`count(*)`,
-        status: savTickets.status
+        total: sql<number>`count(*)`,
+        newCount: sql<number>`count(*) filter (where ${savTickets.status} = 'nouveau')`,
+        inProgressCount: sql<number>`count(*) filter (where ${savTickets.status} in ('en_cours', 'attente_pieces', 'attente_echange'))`,
+        resolvedCount: sql<number>`count(*) filter (where ${savTickets.status} in ('resolu', 'ferme'))`,
+        criticalCount: sql<number>`count(*) filter (where ${savTickets.priority} = 'critique')`
       })
-      .from(savTickets)
-      .where(groupIds?.length ? inArray(savTickets.groupId, groupIds) : undefined)
-      .groupBy(savTickets.status);
-
-    // Get priority counts  
-    const priorityResults = await db
-      .select({
-        count: sql<number>`count(*)`,
-        priority: savTickets.priority
-      })
-      .from(savTickets)
-      .where(groupIds?.length ? inArray(savTickets.groupId, groupIds) : undefined)
-      .groupBy(savTickets.priority);
-
-    // Get total count
-    const totalResult = await db
-      .select({ count: sql<number>`count(*)` })
       .from(savTickets)
       .where(groupIds?.length ? inArray(savTickets.groupId, groupIds) : undefined);
 
-    const stats = {
-      totalTickets: Number(totalResult[0]?.count || 0),
-      newTickets: 0,
-      inProgressTickets: 0,
-      resolvedTickets: 0,
-      criticalTickets: 0,
+    return {
+      totalTickets: Number(result?.total || 0),
+      newTickets: Number(result?.newCount || 0),
+      inProgressTickets: Number(result?.inProgressCount || 0),
+      resolvedTickets: Number(result?.resolvedCount || 0),
+      criticalTickets: Number(result?.criticalCount || 0),
     };
-
-    // Process status results
-    statusResults.forEach((result: any) => {
-      const count = Number(result.count || 0);
-
-      if (result.status === 'nouveau') {
-        stats.newTickets = count;
-      } else if (['en_cours', 'attente_pieces', 'attente_echange'].includes(result.status)) {
-        stats.inProgressTickets += count;
-      } else if (['resolu', 'ferme'].includes(result.status)) {
-        stats.resolvedTickets += count;
-      }
-    });
-
-    // Process priority results for critical tickets
-    priorityResults.forEach((result: any) => {
-      const count = Number(result.count || 0);
-
-      if (result.priority === 'critique') {
-        stats.criticalTickets = count;
-      }
-    });
-
-    return stats;
   }
 
   // Weather operations
@@ -3043,8 +3069,8 @@ export class DatabaseStorage implements IStorage {
         authorId: reconciliationComments.authorId,
         createdAt: reconciliationComments.createdAt,
         updatedAt: reconciliationComments.updatedAt,
-        author: users,
-        group: groups,
+        author: { ...userSummaryColumns, role: users.role },
+        group: groupSummaryColumns,
         delivery: {
           id: deliveries.id,
           orderId: deliveries.orderId,
@@ -3096,7 +3122,7 @@ export class DatabaseStorage implements IStorage {
         authorId: reconciliationComments.authorId,
         createdAt: reconciliationComments.createdAt,
         updatedAt: reconciliationComments.updatedAt,
-        author: users,
+        author: { ...userSummaryColumns, role: users.role },
         group: groups,
         delivery: {
           id: deliveries.id,
@@ -3210,7 +3236,6 @@ export class DatabaseStorage implements IStorage {
       // Get total orders
       const orderQuery = db.select({ count: sql<number>`COUNT(*)` }).from(orders);
       if (orderConditions.length) orderQuery.where(and(...orderConditions));
-      const [{ count: totalOrders }] = await orderQuery;
 
       // Get total deliveries and amounts
       const deliveryQuery = db.select({
@@ -3220,7 +3245,6 @@ export class DatabaseStorage implements IStorage {
         avgDelay: sql<number>`AVG(EXTRACT(EPOCH FROM (delivered_date - scheduled_date)) / 86400)` // days
       }).from(deliveries);
       if (deliveryConditions.length) deliveryQuery.where(and(...deliveryConditions));
-      const [deliveryStats] = await deliveryQuery;
 
       // Get top suppliers
       const supplierQuery = db.select({
@@ -3233,29 +3257,46 @@ export class DatabaseStorage implements IStorage {
         .innerJoin(suppliers, eq(deliveries.supplierId, suppliers.id));
 
       if (deliveryConditions.length) supplierQuery.where(and(...deliveryConditions));
-      const topSuppliers = await supplierQuery
-        .groupBy(suppliers.id, suppliers.name)
-        .orderBy(desc(sql<number>`COUNT(${deliveries.id})`))
-        .limit(5);
 
-      // Get top stores
-      const storeQuery = db.select({
-        id: groups.id,
-        name: groups.name,
-        orders: sql<number>`COUNT(DISTINCT ${orders.id})`,
-        deliveries: sql<number>`COUNT(DISTINCT ${deliveries.id})`
-      })
-        .from(groups)
-        .leftJoin(orders, eq(groups.id, orders.groupId))
-        .leftJoin(deliveries, eq(groups.id, deliveries.groupId));
+      // Get top stores : commandes et livraisons comptées séparément par magasin
+      // puis jointes, au lieu d'une jointure orders × deliveries qui multipliait
+      // les lignes. Comme avant, seul le filtre magasin s'applique ici.
+      const storeGroupIds = filters.groupIds?.length ? filters.groupIds : null;
+      const storeQuery = db.execute(sql`
+        SELECT
+          g.id AS id,
+          g.name AS name,
+          COALESCE(o.count, 0) AS orders,
+          COALESCE(d.count, 0) AS deliveries
+        FROM groups g
+        LEFT JOIN (
+          SELECT group_id, COUNT(*) AS count
+          FROM orders
+          ${storeGroupIds ? sql`WHERE group_id IN ${storeGroupIds}` : sql``}
+          GROUP BY group_id
+        ) o ON o.group_id = g.id
+        LEFT JOIN (
+          SELECT group_id, COUNT(*) AS count
+          FROM deliveries
+          ${storeGroupIds ? sql`WHERE group_id IN ${storeGroupIds}` : sql``}
+          GROUP BY group_id
+        ) d ON d.group_id = g.id
+        ${storeGroupIds ? sql`WHERE g.id IN ${storeGroupIds}` : sql``}
+        ORDER BY COALESCE(o.count, 0) + COALESCE(d.count, 0) DESC
+        LIMIT 5
+      `);
 
-      if (filters.groupIds?.length) {
-        storeQuery.where(inArray(groups.id, filters.groupIds));
-      }
-      const topStores = await storeQuery
-        .groupBy(groups.id, groups.name)
-        .orderBy(desc(sql<number>`COUNT(DISTINCT ${orders.id}) + COUNT(DISTINCT ${deliveries.id})`))
-        .limit(5);
+      // Les quatre requêtes sont indépendantes : on les lance en parallèle
+      const [[{ count: totalOrders }], [deliveryStats], topSuppliers, storeResult] = await Promise.all([
+        orderQuery,
+        deliveryQuery,
+        supplierQuery
+          .groupBy(suppliers.id, suppliers.name)
+          .orderBy(desc(sql<number>`COUNT(${deliveries.id})`))
+          .limit(5),
+        storeQuery
+      ]);
+      const topStores = storeResult.rows;
 
       return {
         totalOrders: Number(totalOrders) || 0,
@@ -3330,8 +3371,6 @@ export class DatabaseStorage implements IStorage {
       ORDER BY TO_CHAR(planned_date, '${dateFormat}')
     `;
 
-    const ordersData = await db.execute(sql.raw(ordersSql));
-
     // Get deliveries by date using raw SQL
     const deliveriesSql = `
       SELECT TO_CHAR(scheduled_date, '${dateFormat}') as date, COUNT(*) as count
@@ -3341,7 +3380,11 @@ export class DatabaseStorage implements IStorage {
       ORDER BY TO_CHAR(scheduled_date, '${dateFormat}')
     `;
 
-    const deliveriesData = await db.execute(sql.raw(deliveriesSql));
+    // Les deux séries sont indépendantes : on les charge en parallèle
+    const [ordersData, deliveriesData] = await Promise.all([
+      db.execute(sql.raw(ordersSql)),
+      db.execute(sql.raw(deliveriesSql))
+    ]);
 
     // Merge data
     const dataMap = new Map<string, { orders: number; deliveries: number }>();
@@ -3614,6 +3657,19 @@ export class MemStorage implements IStorage {
     }));
 
     return { ...user, userGroups: userGroupsWithGroups };
+  }
+
+  async getUsersWithGroups(): Promise<UserWithGroups[]> {
+    return Array.from(this.users.values()).map(({ password: _password, ...user }) => {
+      const userGroupsList = this.userGroups.get(user.id) || [];
+      return {
+        ...user,
+        userGroups: userGroupsList.map(ug => ({
+          ...ug,
+          group: this.groups.get(ug.groupId)!,
+        })),
+      } as UserWithGroups;
+    });
   }
 
   async getUsers(): Promise<User[]> {
@@ -4029,10 +4085,13 @@ export class MemStorage implements IStorage {
     this.orders.delete(id);
   }
 
-  async getDeliveries(groupIds?: number[]): Promise<DeliveryWithRelations[]> {
+  async getDeliveries(groupIds?: number[], options?: { status?: string }): Promise<DeliveryWithRelations[]> {
     let deliveries = Array.from(this.deliveries.values());
     if (groupIds && groupIds.length > 0) {
       deliveries = deliveries.filter(delivery => groupIds.includes(delivery.groupId));
+    }
+    if (options?.status) {
+      deliveries = deliveries.filter(delivery => delivery.status === options.status);
     }
     return deliveries.map(delivery => {
       // Récupérer la commande associée à cette livraison si elle existe (DEV RELATIONS)
@@ -4217,6 +4276,9 @@ export class MemStorage implements IStorage {
   async getUserGroups(): Promise<UserGroup[]> { return []; }
   async assignUserToGroup(): Promise<UserGroup> { return {} as UserGroup; }
   async removeUserFromGroup(): Promise<void> { }
+  async removeUserFromAllGroups(userId: string): Promise<void> {
+    this.userGroups.delete(userId);
+  }
 
   async getMonthlyStats(): Promise<any> {
     return {

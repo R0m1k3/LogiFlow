@@ -1,4 +1,9 @@
+import { sql } from "drizzle-orm";
+import { db } from "./db.js";
 import { storage } from "./storage.js";
+
+// Blancs ASCII retirés par String.prototype.trim(), pour reproduire en SQL les clés de cache
+const ASCII_WHITESPACE = ' \t\n\v\f\r';
 
 /**
  * Service de vérification des factures avec NocoDB
@@ -19,26 +24,10 @@ export class InvoiceVerificationService {
   async checkCache(invoiceReference: string, groupId: number): Promise<any | null> {
     try {
       const cacheKey = this.generateCacheKey(invoiceReference, groupId);
-      console.log('🔍 [CACHE] Recherche cache pour:', { invoiceReference, groupId, cacheKey });
-      
       const cached = await storage.getInvoiceVerificationCache(cacheKey);
-      console.log('🔍 [CACHE] Résultat cache:', { 
-        found: !!cached, 
-        isReconciled: cached?.isReconciled,
-        expired: cached ? new Date() >= new Date(cached.expiresAt) : 'N/A',
-        expiresAt: cached?.expiresAt,
-        currentTime: new Date().toISOString()
-      });
-      
+
       // ✅ CACHE PERMANENT : Facture validée avec coche verte = JAMAIS re-vérifier
       if (cached && cached.isReconciled && cached.exists) {
-        console.log('🛡️ [CACHE] PERMANENT - Facture validée avec coche verte, AUCUNE vérification:', { 
-          invoiceReference, 
-          groupId, 
-          exists: cached.exists,
-          invoiceAmount: cached.invoiceAmount,
-          dueDate: cached.dueDate
-        });
         return {
           exists: cached.exists,
           matchType: cached.matchType,
@@ -55,7 +44,6 @@ export class InvoiceVerificationService {
       
       // Cache temporaire non expiré
       if (cached && new Date() < new Date(cached.expiresAt)) {
-        console.log('✅ [CACHE] Cache temporaire hit pour:', { invoiceReference, groupId, exists: cached.exists });
         return {
           exists: cached.exists,
           matchType: cached.matchType,
@@ -69,13 +57,7 @@ export class InvoiceVerificationService {
           permanent: false
         };
       }
-      
-      if (cached && new Date() >= new Date(cached.expiresAt)) {
-        console.log('⏰ [CACHE] Cache temporaire expiré pour:', { invoiceReference, groupId });
-      } else {
-        console.log('❌ [CACHE] Cache miss pour:', { invoiceReference, groupId });
-      }
-      
+
       return null;
     } catch (error) {
       console.error('❌ [CACHE] Erreur lecture cache:', error);
@@ -92,32 +74,18 @@ export class InvoiceVerificationService {
       
       // Durée de cache adaptative selon les cas
       const expiresAt = new Date();
-      let cacheDescription = '';
-      
+
       if (isReconciled) {
         // Cache PERMANENT pour factures validées - expire dans 50 ans
         expiresAt.setFullYear(expiresAt.getFullYear() + 50);
-        cacheDescription = 'PERMANENT (validé)';
       } else if (result.exists) {
         // Facture trouvée mais non validée - cache 6h pour permettre corrections
         expiresAt.setHours(expiresAt.getHours() + 6);
-        cacheDescription = 'temporaire 6h (trouvé)';
       } else {
         // Facture non trouvée - cache 12h pour éviter spam
         expiresAt.setHours(expiresAt.getHours() + 12);
-        cacheDescription = 'temporaire 12h (pas trouvé)';
       }
-      
-      console.log('💾 [CACHE] Tentative sauvegarde:', { 
-        invoiceReference, 
-        groupId, 
-        cacheKey, 
-        exists: result.exists,
-        isReconciled,
-        cacheType: cacheDescription,
-        expiresAt: expiresAt.toISOString() 
-      });
-      
+
       const cacheData = {
         cacheKey,
         groupId,
@@ -135,17 +103,7 @@ export class InvoiceVerificationService {
         expiresAt
       };
       
-      const savedCache = await storage.saveInvoiceVerificationCache(cacheData);
-      
-      console.log('✅ [CACHE] Résultat sauvé en cache:', { 
-        id: savedCache.id,
-        invoiceReference, 
-        groupId, 
-        exists: result.exists,
-        isReconciled,
-        cacheType: cacheDescription,
-        cacheKey
-      });
+      await storage.saveInvoiceVerificationCache(cacheData);
     } catch (error) {
       // Gérer spécifiquement les erreurs de contrainte unique (duplicate key)
       if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
@@ -211,7 +169,16 @@ export class InvoiceVerificationService {
   async updateExistingReconciledCaches(): Promise<void> {
     try {
       console.log('🔄 [CACHE] Mise à jour en lot des caches pour livraisons validées...');
-      
+
+      // Base PostgreSQL : une seule requête ensembliste au lieu de charger toutes
+      // les livraisons puis 2 requêtes (lecture + upsert) par référence
+      if (db) {
+        const updatedCount = await this.markReconciledCachesInDatabase();
+        console.log(`✅ [CACHE] Mise à jour terminée: ${updatedCount} caches mis à jour comme permanents`);
+        return;
+      }
+
+      // Stockage mémoire (développement sans base) : parcours livraison par livraison
       // Récupérer toutes les livraisons validées (reconciled = true)
       const deliveries = await storage.getDeliveries();
       const reconciledDeliveries = deliveries.filter(d => d.reconciled);
@@ -244,6 +211,36 @@ export class InvoiceVerificationService {
   }
 
   /**
+   * Équivalent SQL de updateCacheAsReconciled appliqué à toutes les livraisons validées.
+   * Mêmes clés que generateCacheKey (référence facture et numéro de BL non vides après
+   * trim), mêmes conditions (entrée présente, non expirée, pas encore réconciliée) et
+   * mêmes colonnes modifiées que l'upsert de DatabaseStorage : is_reconciled et
+   * updated_at (expires_at n'y est pas mis à jour). Écart accepté : seuls les blancs
+   * ASCII sont retirés, et lower() suit la locale de la base.
+   * Retourne le nombre d'entrées de cache mises à jour.
+   */
+  private async markReconciledCachesInDatabase(): Promise<number> {
+    // Heure UTC, comme drizzle écrit et relit les colonnes timestamp
+    const now = new Date().toISOString();
+    const result = await db.execute(sql`
+      UPDATE invoice_verification_cache
+      SET is_reconciled = true, updated_at = ${now}::timestamp
+      WHERE is_reconciled IS NOT TRUE
+        AND expires_at > ${now}::timestamp
+        AND cache_key IN (
+          SELECT group_id::text || '_' || lower(btrim(invoice_reference, ${ASCII_WHITESPACE}))
+          FROM deliveries
+          WHERE reconciled = true AND btrim(invoice_reference, ${ASCII_WHITESPACE}) <> ''
+          UNION
+          SELECT group_id::text || '_' || lower(btrim(bl_number, ${ASCII_WHITESPACE}))
+          FROM deliveries
+          WHERE reconciled = true AND btrim(bl_number, ${ASCII_WHITESPACE}) <> ''
+        )
+    `);
+    return result?.rowCount ?? 0;
+  }
+
+  /**
    * Vérifie une référence de facture pour un groupe donné
    */
   async verifyInvoice(invoiceReference: string, groupId: number, forceRefresh: boolean = false, isReconciled: boolean = false): Promise<{
@@ -258,8 +255,6 @@ export class InvoiceVerificationService {
     fromCache?: boolean;
   }> {
     try {
-      console.log('🔍 [INVOICE] Début vérification facture:', { invoiceReference, groupId, forceRefresh });
-      
       if (!invoiceReference || !invoiceReference.trim()) {
         return {
           exists: false,
@@ -270,15 +265,10 @@ export class InvoiceVerificationService {
 
       // Vérifier le cache d'abord (sauf si refresh forcé)
       if (!forceRefresh) {
-        console.log('🔍 [INVOICE] Vérification cache...');
         const cachedResult = await this.checkCache(invoiceReference, groupId);
         if (cachedResult) {
-          console.log('✅ [INVOICE] Résultat depuis cache:', cachedResult);
           return cachedResult;
         }
-        console.log('🔍 [INVOICE] Pas de cache, requête API...');
-      } else {
-        console.log('🔄 [INVOICE] Refresh forcé, ignorant le cache');
       }
 
       // Récupérer la configuration du groupe
@@ -291,16 +281,8 @@ export class InvoiceVerificationService {
         };
       }
 
-      console.log('🔧 Configuration groupe:', {
-        groupName: group.name,
-        hasNocodbConfig: !!group.nocodbConfigId,
-        hasTableName: !!group.nocodbTableName,
-        hasWebhook: !!group.webhookUrl
-      });
-
       // Si pas de configuration NocoDB, retourner un résultat par défaut
       if (!group.nocodbConfigId && !group.nocodbTableName && !group.webhookUrl) {
-        console.log('⚠️ Pas de configuration NocoDB pour ce groupe');
         return {
           exists: false,
           matchType: 'none',
@@ -353,8 +335,6 @@ export class InvoiceVerificationService {
       }
 
       // En production, faire l'appel réel à NocoDB
-      console.log('🔍 Vérification NocoDB en production...');
-      
       try {
         // Récupérer la configuration NocoDB active
         const nocodbConfig = await storage.getActiveNocodbConfig();
@@ -367,20 +347,8 @@ export class InvoiceVerificationService {
           };
         }
 
-        console.log('🔧 Configuration NocoDB trouvée:', {
-          configName: nocodbConfig.name,
-          baseUrl: nocodbConfig.baseUrl,
-          projectId: nocodbConfig.projectId,
-          hasToken: !!nocodbConfig.apiToken
-        });
-
         // Utiliser l'ID de table configuré dans le groupe
         const tableId = group.nocodbTableId || 'mrr733dfb8wtt9b'; // Fallback par défaut
-        console.log('🔧 Utilisation table ID:', { 
-          groupTable: group.nocodbTableName, 
-          configuredId: group.nocodbTableId,
-          resolvedId: tableId 
-        });
 
         // Vérifier d'abord par référence de facture
         let matchResult = await this.searchInNocoDB(
@@ -621,8 +589,6 @@ export class InvoiceVerificationService {
     fromCache?: boolean;
   }> {
     try {
-      console.log('🔍 Début vérification facture par BL:', { blNumber, supplierName, groupId, forceRefresh });
-      
       if (!blNumber || !blNumber.trim()) {
         return {
           exists: false,
@@ -639,7 +605,6 @@ export class InvoiceVerificationService {
         try {
           const cached = await storage.getInvoiceVerificationCache(cacheKey);
           if (cached && new Date() < new Date(cached.expiresAt)) {
-            console.log('💾 Cache hit pour BL:', { blNumber, groupId });
             return {
               exists: cached.exists,
               matchType: cached.matchType as 'invoice_reference' | 'bl_number' | 'none',
@@ -664,17 +629,8 @@ export class InvoiceVerificationService {
         };
       }
 
-      console.log('🔧 Configuration groupe pour BL:', {
-        groupName: group.name,
-        hasNocodbConfig: !!group.nocodbConfigId,
-        hasTableName: !!group.nocodbTableName,
-        hasWebhook: !!group.webhookUrl,
-        blColumnName: group.nocodbBlColumnName
-      });
-
       // Si pas de configuration NocoDB, retourner un résultat par défaut
       if (!group.nocodbConfigId && !group.nocodbTableName && !group.webhookUrl) {
-        console.log('⚠️ Pas de configuration NocoDB pour ce groupe');
         return {
           exists: false,
           matchType: 'none',
@@ -727,8 +683,6 @@ export class InvoiceVerificationService {
       }
 
       // En production, faire l'appel réel à NocoDB
-      console.log('🔍 Vérification BL NocoDB en production...');
-      
       try {
         // Récupérer la configuration NocoDB active
         const nocodbConfig = await storage.getActiveNocodbConfig();
@@ -743,11 +697,6 @@ export class InvoiceVerificationService {
 
         // Utiliser l'ID de table configuré dans le groupe
         const tableId = group.nocodbTableId || 'mrr733dfb8wtt9b';
-        console.log('🔧 Utilisation table ID pour BL:', { 
-          groupTable: group.nocodbTableName, 
-          configuredId: group.nocodbTableId,
-          resolvedId: tableId 
-        });
 
         // Rechercher par numéro de BL
         const blColumnName = group.nocodbBlColumnName || 'Numero_BL';

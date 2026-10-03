@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic } from "./vite.js";
@@ -23,6 +24,9 @@ await initializeWeatherConfig();
 console.log('✅ [STARTUP] Weather system initialized');
 
 const app = express();
+
+// Compression gzip des réponses, en premier pour couvrir toutes les réponses
+app.use(compression());
 
 // Parse cookies (required for CSRF)
 app.use(cookieParser());
@@ -63,11 +67,15 @@ const server = await registerRoutes(app);
 const { startMaintenanceJobs } = await import('./maintenance.js');
 startMaintenanceJobs();
 
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  // Réponse déjà commencée : on laisse Express clore la connexion
+  if (res.headersSent) {
+    return next(err);
+  }
   const status = err.status || err.statusCode || 500;
   const message = err.message || "Internal Server Error";
+  console.error('Server error:', { status, message, error: err });
   res.status(status).json({ message });
-  throw err;
 });
 
 // Setup Vite in development
