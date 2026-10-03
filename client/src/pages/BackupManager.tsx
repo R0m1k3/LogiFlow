@@ -54,11 +54,19 @@ export default function BackupManager() {
   const canManageBackups = hasPermission(user?.role || '', 'backups', 'manage');
 
   // Fetch backup list
+  // Rafraîchissement automatique, suspendu quand l'onglet du navigateur est en
+  // arrière-plan (comportement par défaut de React Query) : toutes les 30 s tant
+  // qu'une sauvegarde est en cours, sinon toutes les 5 min (la liste ne change
+  // qu'à la sauvegarde automatique ou après une action, déjà suivie d'un rechargement)
   const { data: backups = [], isLoading, error } = useQuery({
     queryKey: ['/api/backups'],
     queryFn: () => apiRequest('/api/backups'),
     enabled: canManageBackups,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: (query) => {
+      const list = query.state.data;
+      const hasRunningBackup = Array.isArray(list) && list.some((backup: BackupFile) => backup.status === 'creating');
+      return hasRunningBackup ? 30 * 1000 : 5 * 60 * 1000;
+    },
   });
 
   // Fetch utilities configuration

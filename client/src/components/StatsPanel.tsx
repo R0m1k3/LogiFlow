@@ -1,8 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Package, Truck, Clock } from "lucide-react";
 import { useStore } from "@/contexts/StoreContext";
-import { useAuthUnified } from "@/hooks/useAuthUnified";
 
 interface StatsPanelProps {
   currentDate?: Date;
@@ -10,14 +9,13 @@ interface StatsPanelProps {
 
 export default function StatsPanel({ currentDate = new Date() }: StatsPanelProps) {
   const { selectedStoreId } = useStore();
-  const { user } = useAuthUnified();
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
 
   // Construire l'URL avec les paramètres
   const statsUrl = `/api/stats/monthly?year=${year}&month=${month}${selectedStoreId ? `&storeId=${selectedStoreId}` : ''}`;
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading, isPlaceholderData } = useQuery({
     queryKey: [statsUrl, selectedStoreId], // Include selectedStoreId in key to force refetch
     queryFn: async () => {
       const response = await fetch(statsUrl, {
@@ -30,6 +28,10 @@ export default function StatsPanel({ currentDate = new Date() }: StatsPanelProps
       
       return response.json();
     },
+    // Changement de mois : garder les chiffres affichés pendant le chargement au lieu
+    // du squelette. Jamais au changement de magasin (chiffres d'un autre magasin).
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === selectedStoreId ? keepPreviousData(previousData) : undefined,
   });
 
   if (isLoading) {
@@ -58,7 +60,8 @@ export default function StatsPanel({ currentDate = new Date() }: StatsPanelProps
           Statistiques du mois
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      {/* Chiffres du mois précédent estompés pendant le chargement du nouveau mois */}
+      <CardContent className={isPlaceholderData ? "opacity-50 transition-opacity" : "transition-opacity"}>
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-primary flex items-center justify-center">

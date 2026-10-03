@@ -40,12 +40,35 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
   const [newComment, setNewComment] = useState("");
   const [editComment, setEditComment] = useState("");
 
+  const commentsQueryKey = [`/api/deliveries/${deliveryId}/reconciliation-comments`];
+
   // Récupérer les commentaires
   const { data: comments = [], isLoading } = useQuery({
-    queryKey: [`/api/deliveries/${deliveryId}/reconciliation-comments`],
+    queryKey: commentsQueryKey,
     queryFn: () => apiRequest(`/api/deliveries/${deliveryId}/reconciliation-comments`),
     enabled: !!deliveryId,
   });
+
+  // Compteur de commentaires affiché dans le rapprochement : mis à jour
+  // localement dans la liste en cache (même clé que BLReconciliation) plutôt
+  // que de retélécharger toute la liste des livraisons pour un compteur.
+  // Les listes qui ne contiennent pas la livraison ne sont pas touchées
+  // (undefined : aucune écriture, leur état « périmé » éventuel est conservé).
+  const adjustCommentsCount = (delta: number) => {
+    queryClient.setQueriesData({ queryKey: ['/api/deliveries', 'reconciliation'] }, (old: unknown) => {
+      if (!Array.isArray(old) || !old.some((delivery: any) => delivery?.id === deliveryId)) {
+        return undefined;
+      }
+      return old.map((delivery: any) =>
+        delivery?.id === deliveryId
+          ? {
+              ...delivery,
+              reconciliationCommentsCount: Math.max(0, (Number(delivery.reconciliationCommentsCount) || 0) + delta),
+            }
+          : delivery
+      );
+    });
+  };
 
   // Créer un commentaire
   const createCommentMutation = useMutation({
@@ -57,10 +80,8 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
         title: "Succès",
         description: "Commentaire ajouté avec succès",
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/deliveries/${deliveryId}/reconciliation-comments`] });
-      // Invalider aussi les queries des livraisons pour mettre à jour le compteur de commentaires
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+      adjustCommentsCount(1);
       setIsAdding(false);
       setNewComment("");
     },
@@ -83,10 +104,8 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
         title: "Succès",
         description: "Commentaire modifié avec succès",
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/deliveries/${deliveryId}/reconciliation-comments`] });
-      // Invalider aussi les queries des livraisons pour mettre à jour le compteur de commentaires
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      // Le nombre de commentaires ne change pas : la liste des livraisons reste valable
+      queryClient.invalidateQueries({ queryKey: commentsQueryKey });
       setEditingId(null);
     },
     onError: (error: any) => {
@@ -108,10 +127,8 @@ export default function ReconciliationComments({ deliveryId, className = "" }: R
         title: "Succès",
         description: "Commentaire supprimé avec succès",
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/deliveries/${deliveryId}/reconciliation-comments`] });
-      // Invalider aussi les queries des livraisons pour mettre à jour le compteur de commentaires
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
+      queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+      adjustCommentsCount(-1);
     },
     onError: (error: any) => {
       toast({

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import {
   Dialog,
   DialogContent,
@@ -39,12 +40,8 @@ interface DlcAlertModalProps {
 export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: DlcAlertModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [snoozeUntil, setSnoozeUntil] = useState<Date | null>(null);
-
-  // Invalider les queries DLC quand le magasin change
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"] });
-  }, [selectedStoreId, queryClient]);
 
   // Fetch detailed DLC products for the modal
   const { data: expiredProducts = [] } = useQuery<DlcProduct[]>({
@@ -138,8 +135,10 @@ export function DlcAlertModal({ isOpen, onClose, dlcStats, selectedStoreId }: Dl
     markStockEpuiseMutation.mutate(productId);
   };
 
+  // Navigation interne : pas de rechargement complet de l'application
   const handleViewDlcModule = () => {
-    window.location.href = '/dlc';
+    setLocation('/dlc');
+    onClose();
   };
 
   return (

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,19 +30,22 @@ import {
 } from "@/components/ui/select";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { Plus, Edit, Trash2, Phone, PhoneCall, Printer, Eye, Package, AlertCircle, MessageSquare } from "lucide-react";
-import JsBarcode from 'jsbarcode';
 import { safeFormat, safeDate } from "@/lib/dateUtils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { apiRequest } from "@/lib/queryClient";
 import { toast } from "@/hooks/use-toast";
-import type { CustomerOrderWithRelations, Group } from "@shared/schema";
+import type { CustomerOrderWithRelations } from "@shared/schema";
 import { CustomerOrderForm } from "@/components/CustomerOrderForm";
 import { CustomerOrderDetails } from "@/components/CustomerOrderDetails";
 import { ConfirmationModal } from "@/components/ConfirmationModal";
 import ClientCallsModal from "@/components/modals/ClientCallsModal";
 import { useStore } from "@/contexts/StoreContext";
 import { usePermissions } from "@shared/permissions";
+
+// Référence stable tant que la liste n'est pas chargée (évite de recalculer
+// filtre et tri à chaque rendu)
+const NO_ORDERS: CustomerOrderWithRelations[] = [];
 
 export default function CustomerOrders() {
   const { user } = useAuthUnified();
@@ -65,13 +68,11 @@ export default function CustomerOrders() {
   const [filterSupplier, setFilterSupplier] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
-  // Fetch groups for store filter
-  const { data: groups = [] } = useQuery<Group[]>({
-    queryKey: ['/api/groups'],
-  });
-
   // Query pour les appels clients en attente
-  const { data: pendingCalls = [], isLoading: isPendingCallsLoading } = useQuery<CustomerOrderWithRelations[]>({
+  // Le serveur refuse cette liste aux employés (403) : la requête et son
+  // rafraîchissement toutes les 30 s ne sont lancés que pour les autres rôles.
+  const canViewPendingCalls = !!user && user.role !== 'employee';
+  const { data: pendingCalls = NO_ORDERS, isLoading: isPendingCallsLoading } = useQuery<CustomerOrderWithRelations[]>({
     queryKey: ['/api/customer-orders/pending-calls', selectedStoreId],
     queryFn: async () => {
       const pendingCallsUrl = `/api/customer-orders/pending-calls${selectedStoreId ? `?storeId=${selectedStoreId}` : ''}`;
@@ -79,11 +80,11 @@ export default function CustomerOrders() {
       if (!response.ok) {
         throw new Error('Failed to fetch pending calls');
       }
-      const data = await response.json();
-      console.log('📞 Customer Orders - Pending calls received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
-      return data;
+      return response.json();
     },
+    enabled: canViewPendingCalls,
     refetchInterval: 30000, // Refetch every 30 seconds
+    refetchIntervalInBackground: false, // pas de rafraîchissement onglet masqué
   });
 
   // Fetch suppliers for filter
@@ -93,21 +94,20 @@ export default function CustomerOrders() {
 
   // Fetch customer orders with store filtering for admins
   const customerOrdersUrl = `/api/customer-orders${selectedStoreId && user?.role === 'admin' ? `?storeId=${selectedStoreId}` : ''}`;
-  const { data: customerOrders = [], isLoading } = useQuery<CustomerOrderWithRelations[]>({
+  const { data: customerOrders = NO_ORDERS, isLoading, isPlaceholderData } = useQuery<CustomerOrderWithRelations[]>({
     queryKey: [customerOrdersUrl, selectedStoreId],
+    // Au changement de magasin, la liste précédente reste affichée (estompée,
+    // non cliquable, avec un indicateur) au lieu de l'écran « Chargement... »
+    placeholderData: keepPreviousData,
   });
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: any) => {
-      console.log("🔥 CREATE MUTATION STARTED with data:", data);
-      return apiRequest('/api/customer-orders', 'POST', data);
-    },
-    onSuccess: (result) => {
-      console.log("✅ CREATE MUTATION SUCCESS:", result);
-      // Force refresh of the query with store context
+    mutationFn: (data: any) => apiRequest('/api/customer-orders', 'POST', data),
+    onSuccess: () => {
+      // invalidateQueries recharge les listes affichées et marque les autres
+      // comme périmées (pas de second rechargement forcé)
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
-      queryClient.refetchQueries({ predicate: (query) => query.queryKey[0]?.toString()?.includes('/api/customer-orders') ?? false });
       setShowCreateModal(false);
       toast({
         title: "Succès",
@@ -243,15 +243,7 @@ export default function CustomerOrders() {
   };
 
   const handleCreateOrder = (data: any) => {
-    console.log("🎯 HANDLE CREATE ORDER CALLED with data:", data);
-    console.log("🎯 createMutation state:", { 
-      isIdle: createMutation.isIdle,
-      isPending: createMutation.isPending,
-      isError: createMutation.isError,
-      isSuccess: createMutation.isSuccess
-    });
     createMutation.mutate(data);
-    console.log("🎯 createMutation.mutate CALLED");
   };
 
   const handleEditOrder = (data: any) => {
@@ -298,7 +290,8 @@ export default function CustomerOrders() {
   };
 
   // Fonction pour générer un code-barres scannable
-  const generateEAN13Barcode = (code: string): string => {
+  // (JsBarcode est chargé à la demande par handlePrintLabel)
+  const generateEAN13Barcode = (JsBarcode: typeof import('jsbarcode'), code: string): string => {
     try {
       // Créer un canvas temporaire
       const canvas = document.createElement('canvas');
@@ -317,8 +310,6 @@ export default function CustomerOrders() {
       // Ajouter le checksum pour avoir un EAN13 valide
       const checksum = calculateEAN13Checksum(processedCode);
       const ean13 = processedCode + checksum;
-      
-      console.log('Code original:', code, 'EAN13 généré:', ean13);
       
       // Générer le code-barres avec jsbarcode
       JsBarcode(canvas, ean13, {
@@ -378,11 +369,32 @@ export default function CustomerOrders() {
     }
   };
 
-  const handlePrintLabel = (order: CustomerOrderWithRelations) => {
-    // Ouvrir une nouvelle fenêtre pour imprimer l'étiquette
+  const handlePrintLabel = async (order: CustomerOrderWithRelations) => {
+    // Ouvrir une nouvelle fenêtre pour imprimer l'étiquette (immédiatement, dans
+    // le clic, pour ne pas être bloquée par le navigateur)
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-      const barcodeDisplay = order.gencode ? generateEAN13Barcode(order.gencode) : '';
+      let barcodeDisplay = '';
+      if (order.gencode) {
+        // JsBarcode n'est téléchargé qu'au moment d'imprimer une étiquette
+        let JsBarcode: typeof import('jsbarcode');
+        try {
+          ({ default: JsBarcode } = await import('jsbarcode'));
+        } catch (error) {
+          // Fichier introuvable (nouvelle version en ligne) ou réseau coupé :
+          // pas d'étiquette avec un faux code-barres
+          console.error('Chargement du générateur de code-barres impossible:', error);
+          printWindow.close();
+          toast({
+            title: "Erreur",
+            description: "Impossible de préparer l'étiquette, réessayez",
+            variant: "destructive",
+          });
+          return;
+        }
+        barcodeDisplay = generateEAN13Barcode(JsBarcode, order.gencode);
+      }
+      if (printWindow.closed) return;
       const isImageBarcode = barcodeDisplay.startsWith('data:');
       
       printWindow.document.write(`
@@ -653,74 +665,67 @@ export default function CustomerOrders() {
     }
   };
 
-  // Filter orders based on search term, supplier, and status
-  const filteredOrders = Array.isArray(customerOrders) ? customerOrders.filter(order => {
-    // Search term filter
-    const matchesSearch = !searchTerm || 
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.productDesignation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerPhone.includes(searchTerm) ||
-      (order.productReference && order.productReference.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (order.gencode && order.gencode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (order.supplier && order.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    // Supplier filter
-    const matchesSupplier = filterSupplier === "all" || 
-      (order.supplier && order.supplier.id.toString() === filterSupplier);
-    
-    // Status filter
-    const matchesStatus = filterStatus === "all" || order.status === filterStatus;
-    
-    return matchesSearch && matchesSupplier && matchesStatus;
-  }) : [];
+  // Filtre et tri recalculés seulement quand la liste ou un critère change
+  // (et non à chaque rendu, par exemple à chaque frappe dans le commentaire d'appel)
+  const sortedOrders = useMemo(() => {
+    if (!Array.isArray(customerOrders)) return NO_ORDERS;
 
-  // Sort orders - Active orders first, then "Retiré" orders last
-  const sortedOrders = (() => {
-    // Séparer les commandes en deux groupes
-    const activeOrders = filteredOrders.filter(order => order.status !== "Retiré");
-    const retiredOrders = filteredOrders.filter(order => order.status === "Retiré");
-    
-    // Fonction de tri commune
-    const sortFunction = (a: any, b: any) => {
-      let aValue: string | number;
-      let bValue: string | number;
+    const search = searchTerm.toLowerCase();
 
+    // Filter orders based on search term, supplier, and status
+    const filteredOrders = customerOrders.filter(order => {
+      // Search term filter
+      const matchesSearch = !searchTerm ||
+        order.customerName.toLowerCase().includes(search) ||
+        order.productDesignation.toLowerCase().includes(search) ||
+        order.customerPhone.includes(searchTerm) ||
+        (order.productReference && order.productReference.toLowerCase().includes(search)) ||
+        (order.gencode && order.gencode.toLowerCase().includes(search)) ||
+        (order.supplier && order.supplier.name.toLowerCase().includes(search));
+
+      // Supplier filter
+      const matchesSupplier = filterSupplier === "all" ||
+        (order.supplier && order.supplier.id.toString() === filterSupplier);
+
+      // Status filter
+      const matchesStatus = filterStatus === "all" || order.status === filterStatus;
+
+      return matchesSearch && matchesSupplier && matchesStatus;
+    });
+
+    // Valeur de tri calculée une seule fois par commande (et non à chaque comparaison)
+    const getSortValue = (order: CustomerOrderWithRelations): string | number => {
       switch (sortBy) {
-        case "date":
-          const dateA = safeDate(a.createdAt);
-          const dateB = safeDate(b.createdAt);
-          aValue = dateA ? dateA.getTime() : 0;
-          bValue = dateB ? dateB.getTime() : 0;
-          break;
         case "status":
-          aValue = a.status;
-          bValue = b.status;
-          break;
+          return order.status;
         case "supplier":
-          aValue = a.supplier?.name || "";
-          bValue = b.supplier?.name || "";
-          break;
-        default:
-          const defaultDateA = safeDate(a.createdAt);
-          const defaultDateB = safeDate(b.createdAt);
-          aValue = defaultDateA ? defaultDateA.getTime() : 0;
-          bValue = defaultDateB ? defaultDateB.getTime() : 0;
-      }
-
-      if (sortOrder === "desc") {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-      } else {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+          return order.supplier?.name || "";
+        case "date":
+        default: {
+          const date = safeDate(order.createdAt);
+          return date ? date.getTime() : 0;
+        }
       }
     };
-    
-    // Trier chaque groupe séparément
-    const sortedActiveOrders = [...activeOrders].sort(sortFunction);
-    const sortedRetiredOrders = [...retiredOrders].sort(sortFunction);
-    
-    // Concaténer : commandes actives d'abord, puis retiré en dernier
-    return [...sortedActiveOrders, ...sortedRetiredOrders];
-  })();
+
+    // Fonction de tri commune
+    const sortGroup = (orders: CustomerOrderWithRelations[]) =>
+      orders
+        .map(order => ({ order, value: getSortValue(order) }))
+        .sort((a, b) => {
+          if (sortOrder === "desc") {
+            return a.value > b.value ? -1 : a.value < b.value ? 1 : 0;
+          } else {
+            return a.value < b.value ? -1 : a.value > b.value ? 1 : 0;
+          }
+        })
+        .map(entry => entry.order);
+
+    // Sort orders - Active orders first, then "Retiré" orders last
+    const activeOrders = filteredOrders.filter(order => order.status !== "Retiré");
+    const retiredOrders = filteredOrders.filter(order => order.status === "Retiré");
+    return [...sortGroup(activeOrders), ...sortGroup(retiredOrders)];
+  }, [customerOrders, searchTerm, filterSupplier, filterStatus, sortBy, sortOrder]);
 
   // Pagination
   const {
@@ -732,6 +737,12 @@ export default function CustomerOrders() {
     paginatedData: paginatedOrders,
     totalItems
   } = usePagination(sortedOrders, 10);
+
+  // Retour à la première page au changement de magasin (la liste précédente
+  // reste affichée pendant le chargement, sa longueur ne change donc pas)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStoreId, setCurrentPage]);
 
   return (
     <div className="p-6 space-y-6">
@@ -823,9 +834,19 @@ export default function CustomerOrders() {
         <CardHeader>
           <CardTitle className="text-lg">
             Commandes ({totalItems})
+            {isPlaceholderData && (
+              <span className="inline-flex items-center gap-1 ml-2 text-xs font-normal text-gray-500" role="status">
+                <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary" />
+                Mise à jour…
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        {/* Estompé et non cliquable tant que la liste du nouveau magasin n'est pas arrivée */}
+        <CardContent
+          className={isPlaceholderData ? "opacity-60 pointer-events-none transition-opacity" : ""}
+          aria-busy={isPlaceholderData}
+        >
           {isLoading ? (
             <div>Chargement...</div>
           ) : (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,10 @@ import {
 } from "lucide-react";
 import type { EntityActivityStats, Supplier } from "@shared/schema";
 
+// Références stables tant que les données ne sont pas chargées (dépendances des useMemo)
+const NO_SUPPLIERS: Supplier[] = [];
+const NO_STATS: EntityActivityStats[] = [];
+
 export default function Suppliers() {
   const { user } = useAuthUnified();
   const { toast } = useToast();
@@ -52,22 +56,19 @@ export default function Suppliers() {
     paymentMethod: "",
   });
 
-  const { data: suppliers = [], isLoading } = useQuery<Supplier[]>({
+  const { data: suppliers = NO_SUPPLIERS, isLoading } = useQuery<Supplier[]>({
     queryKey: ['/api/suppliers'],
   });
 
   // Comptages agrégés en base : la page n'affiche que des totaux, inutile de
   // rapatrier l'historique complet des commandes et des livraisons.
-  const { data: supplierStats = [] } = useQuery<EntityActivityStats[]>({
+  const { data: supplierStats = NO_STATS } = useQuery<EntityActivityStats[]>({
     queryKey: ['/api/stats/by-supplier'],
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      console.log('🚚 Frontend: Creating supplier with data:', data);
-      const result = await apiRequest("/api/suppliers", "POST", data);
-      console.log('🚚 Frontend: Supplier creation result:', result);
-      return result;
+      return await apiRequest("/api/suppliers", "POST", data);
     },
     onSuccess: () => {
       toast({
@@ -100,14 +101,10 @@ export default function Suppliers() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      console.log('🔧 Frontend: Updating supplier with data:', data);
-      const result = await apiRequest(`/api/suppliers/${selectedSupplier?.id}`, "PUT", data);
-      console.log('🔧 Frontend: Supplier update result:', result);
-      return result;
+      return await apiRequest(`/api/suppliers/${selectedSupplier?.id}`, "PUT", data);
     },
     onMutate: async (newData) => {
       // Mise à jour optimiste - mettre à jour l'interface immédiatement
-      console.log('🚀 Frontend: Optimistic update starting...');
       await queryClient.cancelQueries({ queryKey: ['/api/suppliers'] });
       
       const previousSuppliers = queryClient.getQueryData(['/api/suppliers']);
@@ -119,14 +116,12 @@ export default function Suppliers() {
             : supplier
         );
         queryClient.setQueryData(['/api/suppliers'], updatedSuppliers);
-        console.log('✅ Frontend: Optimistic update applied');
       }
       
       return { previousSuppliers };
     },
     onError: (error, newData, context) => {
       // Rollback en cas d'erreur
-      console.log('⚠️ Frontend: Rolling back optimistic update due to error');
       if (context?.previousSuppliers) {
         queryClient.setQueryData(['/api/suppliers'], context.previousSuppliers);
       }
@@ -153,13 +148,15 @@ export default function Suppliers() {
         title: "Succès",
         description: "Fournisseur modifié avec succès",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
       setShowEditModal(false);
       setSelectedSupplier(null);
       resetForm();
     },
+    // Une seule invalidation, après succès comme après échec
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+      // Le mode de paiement est affiché dans l'échéancier (cache de 5 min)
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-schedule'] });
     },
   });
 
@@ -273,14 +270,20 @@ export default function Suppliers() {
     }
   };
 
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filtre recalculé seulement quand la liste ou la recherche change, terme normalisé une seule fois
+  const filteredSuppliers = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    return suppliers.filter(supplier => supplier.name.toLowerCase().includes(term));
+  }, [suppliers, searchTerm]);
+
+  // Statistiques indexées par fournisseur (au lieu d'une recherche par carte)
+  const statsBySupplierId = useMemo(
+    () => new Map(Array.isArray(supplierStats) ? supplierStats.map(s => [s.id, s]) : []),
+    [supplierStats]
   );
 
   const getSupplierStats = (supplierId: number) => {
-    const stats = Array.isArray(supplierStats)
-      ? supplierStats.find(s => s.id === supplierId)
-      : undefined;
+    const stats = statsBySupplierId.get(supplierId);
 
     return {
       orders: stats?.orders ?? 0,

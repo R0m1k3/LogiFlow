@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,9 @@ import OrderDetailModal from "@/components/modals/OrderDetailModal";
 import ValidateDeliveryModal from "@/components/modals/ValidateDeliveryModal";
 import ConfirmDeleteModal from "@/components/modals/ConfirmDeleteModal";
 import type { DeliveryWithRelations } from "@shared/schema";
+
+// Référence stable pendant le chargement (pour la mémoïsation du filtrage)
+const NO_DELIVERIES: DeliveryWithRelations[] = [];
 
 export default function Deliveries() {
   const { user } = useAuthUnified();
@@ -79,38 +82,29 @@ export default function Deliveries() {
   // CRITICAL FIX: Appliquer le filtrage par storeId pour TOUS les rôles, pas seulement admin
   const deliveriesUrl = `/api/deliveries${selectedStoreId ? `?storeId=${selectedStoreId}` : ''}`;
   
-  const { data: deliveriesData = [], isLoading } = useQuery<DeliveryWithRelations[]>({
+  const { data: deliveriesData = NO_DELIVERIES, isLoading } = useQuery<DeliveryWithRelations[]>({
     queryKey: ['/api/deliveries', selectedStoreId, user?.role],
     queryFn: async () => {
-      const url = deliveriesUrl;
-      console.log('🚚 Fetching deliveries from:', url);
-      const response = await fetch(url, { credentials: 'include' });
+      const response = await fetch(deliveriesUrl, { credentials: 'include' });
       if (!response.ok) {
         throw new Error('Failed to fetch deliveries');
       }
       const data = await response.json();
-      console.log('🚚 Deliveries received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items', data.slice(0, 2));
-      console.log('🚚 Sample delivery data:', data[0]);
       return Array.isArray(data) ? data : [];
     },
   });
 
   // Production Bug Fix: Ensure array safety for all data operations
-  const deliveries = Array.isArray(deliveriesData) ? deliveriesData : [];
+  const deliveries = Array.isArray(deliveriesData) ? deliveriesData : NO_DELIVERIES;
 
-  console.log('🚚 Deliveries Debug:', { 
-    isLoading, 
-    deliveriesCount: deliveries?.length, 
-    deliveries: deliveries?.slice(0, 2),
-    selectedStoreId,
-    deliveriesUrl 
-  });
-
-  const { data: groupsData = [] } = useQuery({
-    queryKey: ['/api/groups'],
-  });
-  
-  const groups = Array.isArray(groupsData) ? groupsData : [];
+  // Clé construite sur l'URL (tableau de bord admin avec magasin sélectionné).
+  // Sans magasin, elle vaut ['/api/deliveries'], déjà invalidée : la réinvalider
+  // relancerait une seconde fois le chargement complet des livraisons.
+  const invalidateDeliveriesUrlKey = () => {
+    if (selectedStoreId) {
+      queryClient.invalidateQueries({ queryKey: [deliveriesUrl] });
+    }
+  };
 
 
   const markControlValidatedMutation = useMutation({
@@ -123,7 +117,7 @@ export default function Deliveries() {
         description: "Contrôle validé avec succès",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      queryClient.invalidateQueries({ queryKey: [deliveriesUrl] });
+      invalidateDeliveriesUrlKey();
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
@@ -148,8 +142,10 @@ export default function Deliveries() {
       });
       // Invalider tous les caches liés aux livraisons
       queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      queryClient.invalidateQueries({ queryKey: [deliveriesUrl] });
+      invalidateDeliveriesUrlKey();
       queryClient.invalidateQueries({ queryKey: ['/api/stats/monthly'] });
+      // L'échéancier (cache de 5 min) liste les livraisons facturées
+      queryClient.invalidateQueries({ queryKey: ['/api/payment-schedule'] });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -171,16 +167,19 @@ export default function Deliveries() {
     },
   });
 
-  const filteredDeliveries = Array.isArray(deliveries) ? deliveries.filter(delivery => {
-    console.log('🔍 Filtering delivery:', delivery.id, { searchTerm, statusFilter });
-    const matchesSearch = delivery.supplier?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         delivery.group?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         delivery.notes?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || delivery.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  }) : [];
+  // Filtrage recalculé seulement quand la liste, la recherche ou le statut changent
+  const filteredDeliveries = useMemo(() => {
+    const search = searchTerm.toLowerCase();
+    return deliveries.filter(delivery => {
+      const matchesSearch = delivery.supplier?.name.toLowerCase().includes(search) ||
+                           delivery.group?.name.toLowerCase().includes(search) ||
+                           delivery.notes?.toLowerCase().includes(search);
+      
+      const matchesStatus = statusFilter === "all" || delivery.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [deliveries, searchTerm, statusFilter]);
 
   // Pagination
   const {

@@ -2,7 +2,7 @@
  * CalendarPage Mobile - Calendrier simplifié pour mobile
  * Affiche les commandes et livraisons comme événements
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
@@ -42,6 +42,10 @@ type CalendarEvent = {
     supplier?: { name: string };
 };
 
+// Références stables (évite de recalculer l'index des événements à chaque rendu)
+const NO_DATA: any[] = [];
+const NO_EVENTS: CalendarEvent[] = [];
+
 export default function MobileCalendarPage() {
     const { user } = useAuthUnified();
     const { selectedStoreId } = useStore();
@@ -49,7 +53,7 @@ export default function MobileCalendarPage() {
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
     // Fetch orders for current month
-    const { data: orders = [] } = useQuery({
+    const { data: orders = NO_DATA } = useQuery({
         queryKey: ["/api/orders", selectedStoreId, format(currentMonth, 'yyyy-MM')],
         queryFn: async () => {
             const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
@@ -74,7 +78,7 @@ export default function MobileCalendarPage() {
     });
 
     // Fetch deliveries for current month
-    const { data: deliveries = [] } = useQuery({
+    const { data: deliveries = NO_DATA } = useQuery({
         queryKey: ["/api/deliveries", selectedStoreId, format(currentMonth, 'yyyy-MM')],
         queryFn: async () => {
             const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
@@ -98,25 +102,45 @@ export default function MobileCalendarPage() {
         enabled: !!user,
     });
 
-    // Combine orders and deliveries into events
-    const events: CalendarEvent[] = [
-        ...orders.map((order: any) => ({
-            id: order.id,
-            title: `Cmd #${order.orderNumber || order.id}`,
-            date: order.plannedDate,
-            type: 'order' as const,
-            status: order.status,
-            supplier: order.supplier
-        })),
-        ...deliveries.map((delivery: any) => ({
-            id: delivery.id,
-            title: `Liv #${delivery.deliveryNumber || delivery.id}`,
-            date: delivery.scheduledDate,
-            type: 'delivery' as const,
-            status: delivery.status,
-            supplier: delivery.supplier
-        }))
-    ];
+    // Combine orders and deliveries into events, indexés par jour ('yyyy-MM-dd',
+    // heure locale comme isSameDay) une seule fois par chargement au lieu d'un
+    // filtrage complet pour chaque case du calendrier
+    const { events, eventsByDay } = useMemo(() => {
+        const events: CalendarEvent[] = [
+            ...orders.map((order: any) => ({
+                id: order.id,
+                title: `Cmd #${order.orderNumber || order.id}`,
+                date: order.plannedDate,
+                type: 'order' as const,
+                status: order.status,
+                supplier: order.supplier
+            })),
+            ...deliveries.map((delivery: any) => ({
+                id: delivery.id,
+                title: `Liv #${delivery.deliveryNumber || delivery.id}`,
+                date: delivery.scheduledDate,
+                type: 'delivery' as const,
+                status: delivery.status,
+                supplier: delivery.supplier
+            }))
+        ];
+
+        const eventsByDay = new Map<string, CalendarEvent[]>();
+        for (const event of events) {
+            if (!event.date) continue;
+            const eventDate = new Date(event.date);
+            if (isNaN(eventDate.getTime())) continue;
+            const key = format(eventDate, 'yyyy-MM-dd');
+            const dayEvents = eventsByDay.get(key);
+            if (dayEvents) {
+                dayEvents.push(event);
+            } else {
+                eventsByDay.set(key, [event]);
+            }
+        }
+
+        return { events, eventsByDay };
+    }, [orders, deliveries]);
 
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
@@ -126,23 +150,13 @@ export default function MobileCalendarPage() {
     const calendarEnd = endOfWeek(monthEnd, { locale: fr });
     const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-    // Get events for selected date
-    const selectedDateEvents = selectedDate
-        ? events.filter((event) => {
-            if (!event.date) return false;
-            const eventDate = new Date(event.date);
-            return !isNaN(eventDate.getTime()) && isSameDay(eventDate, selectedDate);
-        })
-        : [];
-
     // Check if a day has events
     const getEventsForDay = (day: Date) => {
-        return events.filter((event) => {
-            if (!event.date) return false;
-            const eventDate = new Date(event.date);
-            return !isNaN(eventDate.getTime()) && isSameDay(eventDate, day);
-        });
+        return eventsByDay.get(format(day, 'yyyy-MM-dd')) || NO_EVENTS;
     };
+
+    // Get events for selected date
+    const selectedDateEvents = selectedDate ? getEventsForDay(selectedDate) : NO_EVENTS;
 
     const navigateMonth = (direction: 'prev' | 'next') => {
         setCurrentMonth(direction === 'prev'

@@ -70,30 +70,40 @@ const dlcFormSchema = z.object({
     notes: z.string().optional(),
 });
 
+// Référence stable tant que la liste n'est pas chargée
+const NO_PRODUCTS: any[] = [];
+
 export default function MobileDlcPage() {
     const { user } = useAuthUnified();
     const { selectedStoreId } = useStore();
     const [searchTerm, setSearchTerm] = useState("");
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("en_cours"); // en_cours, expires_soon, expires, valides
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const { toast } = useToast();
     const queryClient = useQueryClient();
 
+    // Recherche appliquée 300 ms après la dernière frappe (filtrage local)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
     // Data fetching
-    const { data: dlcProducts = [], isLoading } = useQuery({
-        queryKey: ["/api/dlc-products", selectedStoreId, statusFilter, searchTerm],
+    // Toute la liste du magasin est chargée une seule fois : l'onglet et la
+    // recherche filtrent localement, sans nouvelle requête (clé propre au mobile,
+    // toujours invalidée par le préfixe "/api/dlc-products" des mutations)
+    const { data: dlcProducts = NO_PRODUCTS, isLoading } = useQuery({
+        queryKey: ["/api/dlc-products", "mobile", selectedStoreId],
         queryFn: async () => {
-            const params = new URLSearchParams();
-            if (selectedStoreId) params.append("storeId", selectedStoreId.toString());
-            // Simplify fetching everything client side for mobile smoothness or filter server side?
-            // Let's filter client side for better UX given the likely smaller dataset per store
-            if (selectedStoreId) {
-                const res = await fetch(`/api/dlc-products?storeId=${selectedStoreId}`, { credentials: 'include' });
-                return res.json();
-            }
-            return [];
+            if (!selectedStoreId) return [];
+            return apiRequest(`/api/dlc-products?storeId=${selectedStoreId}`);
         },
         enabled: !!selectedStoreId && !!user,
+        staleTime: 2 * 60 * 1000, // 2 minutes, comme sur ordinateur
     });
 
     const { data: suppliers = [] } = useQuery({
@@ -230,8 +240,8 @@ export default function MobileDlcPage() {
         let filtered = dlcProducts;
 
         // Search
-        if (searchTerm) {
-            const lower = searchTerm.toLowerCase();
+        if (debouncedSearchTerm) {
+            const lower = debouncedSearchTerm.toLowerCase();
             filtered = filtered.filter((p: any) =>
                 p.productName.toLowerCase().includes(lower) ||
                 (p.gencode && p.gencode.includes(lower))
@@ -254,7 +264,7 @@ export default function MobileDlcPage() {
         });
 
         return filtered.sort((a: any, b: any) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
-    }, [dlcProducts, searchTerm, statusFilter]);
+    }, [dlcProducts, debouncedSearchTerm, statusFilter]);
 
     const getDaysBadge = (dateStr: string) => {
         const today = new Date();

@@ -2,7 +2,7 @@
  * MobileAvoirsPage.tsx
  * Version mobile de la page Gestion des Avoirs
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
@@ -68,16 +68,20 @@ const avoirSchema = z.object({
     status: z.enum(["En attente de demande", "Demandé", "Reçu"]).default("En attente de demande"),
 });
 
+// Tableau vide stable tant que la liste n'est pas chargée (calculs mémoïsés)
+const NO_AVOIRS: any[] = [];
+
 export default function MobileAvoirsPage() {
     const { user } = useAuthUnified();
-    const { selectedStoreId } = useStore();
+    // Magasins déjà chargés par l'application (même liste que /api/groups)
+    const { selectedStoreId, stores } = useStore();
     const [searchTerm, setSearchTerm] = useState("");
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const { toast } = useToast();
     const queryClient = useQueryClient();
 
     // Queries
-    const { data: avoirs = [], isLoading } = useQuery({
+    const { data: avoirs = NO_AVOIRS, isLoading } = useQuery<any[]>({
         queryKey: ["/api/avoirs", selectedStoreId],
         queryFn: async () => {
             if (!selectedStoreId) return [];
@@ -88,14 +92,11 @@ export default function MobileAvoirsPage() {
         enabled: !!selectedStoreId && !!user,
     });
 
+    // Fournisseurs : utiles seulement dans la feuille de création, chargés à son ouverture
     const { data: suppliers = [] } = useQuery({
         queryKey: ['/api/suppliers'],
-        queryFn: () => apiRequest('/api/suppliers')
-    });
-
-    const { data: groups = [] } = useQuery({
-        queryKey: ['/api/groups'],
-        queryFn: () => apiRequest('/api/groups')
+        queryFn: () => apiRequest('/api/suppliers'),
+        enabled: isCreateOpen,
     });
 
     // Mutations
@@ -142,7 +143,7 @@ export default function MobileAvoirsPage() {
     const onSubmit = (data: any) => {
         let groupId = selectedStoreId;
         if (!groupId && user?.userGroups?.[0]?.groupId) groupId = user.userGroups[0].groupId;
-        if (!groupId && groups.length > 0 && user?.role === 'admin') groupId = groups[0].id;
+        if (!groupId && stores.length > 0 && user?.role === 'admin') groupId = stores[0].id;
 
         if (!groupId) {
             toast({ title: "Erreur", description: "Aucun magasin sélectionné", variant: "destructive" });
@@ -155,12 +156,30 @@ export default function MobileAvoirsPage() {
         });
     };
 
-    const sortedAvoirs = [...avoirs].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-    const filteredAvoirs = sortedAvoirs.filter((a: any) =>
-        (a.supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || "") ||
-        (a.invoiceReference?.toLowerCase().includes(searchTerm.toLowerCase()) || "")
+    // Tri et filtrage recalculés seulement quand la liste ou la recherche change
+    const sortedAvoirs = useMemo(
+        () => [...avoirs].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+        [avoirs]
     );
+
+    const filteredAvoirs = useMemo(() => {
+        const searchLower = searchTerm.toLowerCase();
+        return sortedAvoirs.filter((a: any) =>
+            (a.supplier?.name?.toLowerCase().includes(searchLower) || "") ||
+            (a.invoiceReference?.toLowerCase().includes(searchLower) || "")
+        );
+    }, [sortedAvoirs, searchTerm]);
+
+    // Changement de statut : le PUT remet à null montant, référence et
+    // commentaire absents du corps. On envoie donc le statut et les valeurs
+    // actuelles de ces trois champs (une valeur nulle est omise et reste nulle),
+    // sans l'avoir complet et ses relations (fournisseur, magasin, créateur).
+    const buildStatusUpdate = (avoir: any, status: string) => ({
+        status,
+        amount: avoir.amount ?? null,
+        ...(avoir.invoiceReference != null ? { invoiceReference: avoir.invoiceReference } : {}),
+        ...(avoir.comment != null ? { comment: avoir.comment } : {}),
+    });
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -238,19 +257,19 @@ export default function MobileAvoirsPage() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => updateStatusMutation.mutate({
                                                     id: avoir.id,
-                                                    data: { ...avoir, status: 'En attente de demande' }
+                                                    data: buildStatusUpdate(avoir, 'En attente de demande')
                                                 })}>
                                                     Marquer En attente
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => updateStatusMutation.mutate({
                                                     id: avoir.id,
-                                                    data: { ...avoir, status: 'Demandé' }
+                                                    data: buildStatusUpdate(avoir, 'Demandé')
                                                 })}>
                                                     Marquer Demandé
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => updateStatusMutation.mutate({
                                                     id: avoir.id,
-                                                    data: { ...avoir, status: 'Reçu' }
+                                                    data: buildStatusUpdate(avoir, 'Reçu')
                                                 })}>
                                                     Marquer Reçu
                                                 </DropdownMenuItem>

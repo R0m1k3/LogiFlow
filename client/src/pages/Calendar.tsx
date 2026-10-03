@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Plus, RefreshCw, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CalendarGrid from "@/components/CalendarGrid";
@@ -16,6 +16,9 @@ import { format, startOfMonth, endOfMonth } from "date-fns";
 import { fr } from "date-fns/locale";
 import { hasPermission } from "@/lib/permissions";
 
+// Référence stable tant que les données ne sont pas chargées (CalendarGrid est mémorisé)
+const NO_ITEMS: any[] = [];
+
 export default function Calendar() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
@@ -30,36 +33,20 @@ export default function Calendar() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
 
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
+  const startDate = format(startOfMonth(currentDate), 'yyyy-MM-dd');
+  const endDate = format(endOfMonth(currentDate), 'yyyy-MM-dd');
 
   // Fetch orders and deliveries for the current month with store filtering
-  const { data: orders = [], isLoading: loadingOrders } = useQuery({
-    queryKey: ['/api/orders', selectedStoreId, {
-      startDate: format(monthStart, 'yyyy-MM-dd'),
-      endDate: format(monthEnd, 'yyyy-MM-dd')
-    }],
+  const { data: orders = NO_ITEMS, isLoading: loadingOrders, isPlaceholderData: ordersPlaceholder } = useQuery({
+    queryKey: ['/api/orders', selectedStoreId, { startDate, endDate }],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        startDate: format(monthStart, 'yyyy-MM-dd'),
-        endDate: format(monthEnd, 'yyyy-MM-dd')
-      });
+      const params = new URLSearchParams({ startDate, endDate });
       // CRITICAL FIX: Appliquer le filtrage par storeId pour TOUS les rôles, pas seulement admin
       if (selectedStoreId) {
         params.append('storeId', selectedStoreId.toString());
       }
 
-      const url = `/api/orders?${params.toString()}`;
-      if (import.meta.env.DEV) {
-        console.log('📅 Calendar fetching orders:', {
-          url,
-          selectedStoreId,
-          userRole: user?.role,
-          params: params.toString()
-        });
-      }
-
-      const response = await fetch(url, {
+      const response = await fetch(`/api/orders?${params.toString()}`, {
         credentials: 'include'
       });
 
@@ -68,9 +55,6 @@ export default function Calendar() {
       }
 
       const data = await response.json();
-      if (import.meta.env.DEV) {
-        console.log('📅 Calendar orders received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
-      }
 
       // Protection contre les données invalides en production
       if (!Array.isArray(data)) {
@@ -81,34 +65,22 @@ export default function Calendar() {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes de cache pour éviter la disparition des données
     gcTime: 10 * 60 * 1000, // 10 minutes en cache
+    // Changement de mois : garder la grille affichée pendant le chargement au lieu
+    // du spinner. Jamais au changement de magasin (données d'un autre magasin).
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === selectedStoreId ? keepPreviousData(previousData) : undefined,
   });
 
-  const { data: deliveries = [], isLoading: loadingDeliveries } = useQuery({
-    queryKey: ['/api/deliveries', selectedStoreId, {
-      startDate: format(monthStart, 'yyyy-MM-dd'),
-      endDate: format(monthEnd, 'yyyy-MM-dd')
-    }],
+  const { data: deliveries = NO_ITEMS, isLoading: loadingDeliveries, isPlaceholderData: deliveriesPlaceholder } = useQuery({
+    queryKey: ['/api/deliveries', selectedStoreId, { startDate, endDate }],
     queryFn: async () => {
-      const params = new URLSearchParams({
-        startDate: format(monthStart, 'yyyy-MM-dd'),
-        endDate: format(monthEnd, 'yyyy-MM-dd')
-      });
+      const params = new URLSearchParams({ startDate, endDate });
       // CRITICAL FIX: Appliquer le filtrage par storeId pour TOUS les rôles, pas seulement admin
       if (selectedStoreId) {
         params.append('storeId', selectedStoreId.toString());
       }
 
-      const url = `/api/deliveries?${params.toString()}`;
-      if (import.meta.env.DEV) {
-        console.log('📅 Calendar fetching deliveries:', {
-          url,
-          selectedStoreId,
-          userRole: user?.role,
-          params: params.toString()
-        });
-      }
-
-      const response = await fetch(url, {
+      const response = await fetch(`/api/deliveries?${params.toString()}`, {
         credentials: 'include'
       });
 
@@ -117,9 +89,6 @@ export default function Calendar() {
       }
 
       const data = await response.json();
-      if (import.meta.env.DEV) {
-        console.log('📅 Calendar deliveries received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
-      }
 
       // Protection contre les données invalides en production
       if (!Array.isArray(data)) {
@@ -130,10 +99,13 @@ export default function Calendar() {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes de cache pour éviter la disparition des données
     gcTime: 10 * 60 * 1000, // 10 minutes en cache
+    // Même règle que pour les commandes : jamais au changement de magasin
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === selectedStoreId ? keepPreviousData(previousData) : undefined,
   });
 
   // Fetch publicities for the current year
-  const { data: publicities = [], isLoading: loadingPublicities } = useQuery({
+  const { data: publicities = NO_ITEMS } = useQuery({
     queryKey: ['/api/ad-campaigns', currentDate.getFullYear(), selectedStoreId],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -142,17 +114,7 @@ export default function Calendar() {
         params.append('storeId', selectedStoreId.toString());
       }
 
-      const url = `/api/ad-campaigns?${params.toString()}`;
-      if (import.meta.env.DEV) {
-        console.log('📅 Calendar fetching publicities:', {
-          url,
-          selectedStoreId,
-          userRole: user?.role,
-          year: currentDate.getFullYear()
-        });
-      }
-
-      const response = await fetch(url, {
+      const response = await fetch(`/api/ad-campaigns?${params.toString()}`, {
         credentials: 'include'
       });
 
@@ -161,11 +123,12 @@ export default function Calendar() {
       }
 
       const data = await response.json();
-      if (import.meta.env.DEV) {
-        console.log('📅 Calendar publicities received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
-      }
       return Array.isArray(data) ? data : [];
     },
+    // Changement d'année : garder les publicités affichées pendant le chargement,
+    // sauf au changement de magasin
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[2] === selectedStoreId ? keepPreviousData(previousData) : undefined,
   });
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -178,16 +141,18 @@ export default function Calendar() {
     setCurrentDate(newDate);
   };
 
-  const handleDateClick = (date: Date) => {
+  // Gestionnaires stables : CalendarGrid (mémorisé) n'est pas re-rendu à
+  // l'ouverture ou à la fermeture des modales
+  const handleDateClick = useCallback((date: Date) => {
     setSelectedDate(date);
     setShowQuickCreate(true);
-  };
+  }, []);
 
-  const handleItemClick = (item: any, type: 'order' | 'delivery') => {
+  const handleItemClick = useCallback((item: any, type: 'order' | 'delivery') => {
     // Ne pas invalider le cache à l'ouverture pour éviter la disparition des données
     setSelectedItem({ ...item, type });
     setShowOrderDetail(true);
-  };
+  }, []);
 
   const handleCreateOrder = () => {
     setShowQuickCreate(false);
@@ -201,7 +166,10 @@ export default function Calendar() {
 
 
 
-  const isLoading = loadingOrders || loadingDeliveries || loadingPublicities;
+  // La grille n'attend pas les publicités : elles s'affichent dès leur arrivée
+  const isLoading = loadingOrders || loadingDeliveries;
+  // Mois précédent encore affiché pendant le chargement du nouveau mois
+  const isMonthLoading = ordersPlaceholder || deliveriesPlaceholder;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -284,16 +252,21 @@ export default function Calendar() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         ) : (
-          <CalendarGrid
-            currentDate={currentDate}
-            orders={orders || []}
-            deliveries={deliveries || []}
-            publicities={publicities || []}
-            selectedStoreId={selectedStoreId}
-            userGroups={user?.userGroups || []}
-            onDateClick={handleDateClick}
-            onItemClick={handleItemClick}
-          />
+          <div
+            className={`transition-opacity ${isMonthLoading ? 'opacity-60' : ''}`}
+            aria-busy={isMonthLoading}
+          >
+            <CalendarGrid
+              currentDate={currentDate}
+              orders={orders}
+              deliveries={deliveries}
+              publicities={publicities}
+              selectedStoreId={selectedStoreId}
+              userGroups={user?.userGroups || NO_ITEMS}
+              onDateClick={handleDateClick}
+              onItemClick={handleItemClick}
+            />
+          </div>
         )}
       </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef, useDeferredValue } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Trash2, UserCheck, Send, Upload, XCircle, MessageSquare, Settings } from "lucide-react";
 import { useStore } from "@/contexts/StoreContext";
@@ -21,6 +21,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuthUnified } from "@/hooks/useAuthUnified";
 
 // Types
 interface Avoir {
@@ -108,6 +109,58 @@ type AvoirUpdateData = AvoirFormData & {
   nocodbVerifiedAt?: Date | null;
 };
 
+// Tableau vide stable tant que la liste n'est pas chargée (évite de relancer
+// effets et calculs mémoïsés à chaque rendu)
+const NO_AVOIRS: Avoir[] = [];
+
+// Nombre maximal de vérifications de facture simultanées
+const MAX_CONCURRENT_VERIFICATIONS = 4;
+
+// Le montant de l'avoir doit-il être remplacé par celui de la facture ?
+// Oui s'il est vide ou différent au centime près ; sinon la mise à jour ne
+// changerait rien et la requête est évitée.
+function amountDiffers(current: unknown, invoiceAmount: number) {
+  if (current === null || current === undefined || current === '') return true;
+  return Math.round(Number(current) * 100) !== Math.round(Number(invoiceAmount) * 100);
+}
+
+// Filtrage par recherche (fournisseur, référence, commentaire)
+function filterAvoirsBySearch(avoirsList: Avoir[], searchTerm: string) {
+  const searchLower = searchTerm.toLowerCase();
+  return avoirsList.filter((avoir) => (
+    avoir.supplier?.name?.toLowerCase().includes(searchLower) ||
+    avoir.invoiceReference?.toLowerCase().includes(searchLower) ||
+    avoir.comment?.toLowerCase().includes(searchLower)
+  ));
+}
+
+// Durée d'envoi affichée dans le modal d'attente. Le compteur vit dans ce
+// composant pour ne pas re-rendre toute la page chaque seconde ; il repart de
+// zéro à chaque ouverture du modal et s'arrête à sa fermeture.
+function UploadElapsedTime() {
+  const [processingSeconds, setProcessingSeconds] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProcessingSeconds(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <>
+      <p className="text-sm text-gray-600 text-center">
+        Envoi du fichier vers le webhook... {processingSeconds}s
+      </p>
+      {processingSeconds > 30 && (
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          Le traitement peut prendre quelques minutes
+        </p>
+      )}
+    </>
+  );
+}
+
 export default function Avoirs() {
   const [activeTab, setActiveTab] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
@@ -122,10 +175,8 @@ export default function Avoirs() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
-  // État pour le modal d'attente du webhook
+  // État pour le modal d'attente du webhook (compteur dans UploadElapsedTime)
   const [showWaitingModal, setShowWaitingModal] = useState(false);
-  const [processingSeconds, setProcessingSeconds] = useState(0);
-  const [processingTimeout, setProcessingTimeout] = useState<NodeJS.Timeout | null>(null);
   
   // États pour le système de vérification de facture
   const [avoirVerificationResults, setAvoirVerificationResults] = useState<Record<number, any>>({});
@@ -143,10 +194,8 @@ export default function Avoirs() {
   const queryClient = useQueryClient();
 
 
-  // Fetch user profile
-  const { data: user } = useQuery({
-    queryKey: ['/api/user'],
-  });
+  // Utilisateur connecté : cache partagé par toute l'application (pas de requête supplémentaire)
+  const { user } = useAuthUnified();
 
   // Fetch groups for store filter
   const { data: groups = [] } = useQuery<Group[]>({
@@ -162,86 +211,110 @@ export default function Avoirs() {
 
   // Fetch avoirs avec filtrage par groupe (comme Orders/Deliveries)
   const avoirsUrl = `/api/avoirs${selectedStoreId ? `?storeId=${selectedStoreId}` : ''}`;
-  const { data: avoirs = [], isLoading } = useQuery<Avoir[]>({
+  const { data: avoirs = NO_AVOIRS, isLoading } = useQuery<Avoir[]>({
     queryKey: [avoirsUrl, selectedStoreId, (user as any)?.role],
     queryFn: async () => {
-      console.log('💰 Fetching avoirs from:', avoirsUrl);
       const response = await fetch(avoirsUrl, { credentials: 'include' });
       if (!response.ok) {
         throw new Error('Failed to fetch avoirs');
       }
       const data = await response.json();
-      console.log('💰 Avoirs received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items');
-      
-      // 🔍 Debug: Vérifier les champs nocodbVerified
-      if (Array.isArray(data) && data.length > 0) {
-        console.log('🔍 Premiers avoirs avec nocodbVerified:', data.map(a => ({
-          id: a.id,
-          invoiceReference: a.invoiceReference,
-          nocodbVerified: a.nocodbVerified,
-          nocodbVerifiedAt: a.nocodbVerifiedAt
-        })));
-      }
-      
       return Array.isArray(data) ? data : [];
     },
     enabled: !!user,
   });
 
-  // 🔄 Charger les vérifications depuis le cache serveur au démarrage
+  // Recharge la liste des avoirs, quelle que soit la variante de clé
+  // (avec ou sans magasin sélectionné, bureau ou mobile)
+  const invalidateAvoirs = () => queryClient.invalidateQueries({
+    predicate: (query) => {
+      return query.queryKey[0]?.toString().includes('/api/avoirs') || false;
+    }
+  });
+
+  // Données du PUT qui reporte le montant de la facture sur l'avoir : le serveur
+  // remet à null les champs absents, on renvoie donc les valeurs actuelles
+  const buildAmountUpdate = (avoir: Avoir, amount: number): AvoirUpdateData => ({
+    supplierId: avoir.supplierId,
+    groupId: avoir.groupId,
+    invoiceReference: avoir.invoiceReference || "",
+    amount,
+    comment: avoir.comment || "",
+    commercialProcessed: avoir.commercialProcessed || false,
+    status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
+  });
+
+  // ---------------------------------------------------------------------------
+  // File d'attente des vérifications de facture : au plus
+  // MAX_CONCURRENT_VERIFICATIONS requêtes simultanées, au lieu d'une boucle
+  // séquentielle au chargement ou d'une rafale de requêtes (« Vérifier toutes »).
+  // ---------------------------------------------------------------------------
+  const verificationQueueRef = useRef<Array<() => Promise<void>>>([]);
+  const activeVerificationsRef = useRef(0);
+  // Référence déjà vérifiée (ou en cours) pour chaque avoir : un rechargement de
+  // la liste ne relance pas les vérifications déjà faites
+  const verifiedReferencesRef = useRef<Map<number, string>>(new Map());
+  // Dernière liste reçue, relue au moment de remplir un montant
+  const avoirsRef = useRef<Avoir[]>(avoirs);
+  avoirsRef.current = avoirs;
+
+  const drainVerificationQueue = () => {
+    while (
+      activeVerificationsRef.current < MAX_CONCURRENT_VERIFICATIONS &&
+      verificationQueueRef.current.length > 0
+    ) {
+      const task = verificationQueueRef.current.shift();
+      if (!task) break;
+
+      activeVerificationsRef.current += 1;
+      task().finally(() => {
+        activeVerificationsRef.current -= 1;
+        drainVerificationQueue();
+      });
+    }
+  };
+
+  // Met les tâches en file ; la promesse est résolue quand toutes sont terminées
+  // (chaque tâche traite elle-même ses erreurs)
+  const runVerificationTasks = (tasks: Array<() => Promise<void>>) =>
+    Promise.all(tasks.map(task => new Promise<void>(resolve => {
+      verificationQueueRef.current.push(() => task().catch(() => undefined).finally(resolve));
+      drainVerificationQueue();
+    })));
+
+  // 🔄 Charger les vérifications depuis le cache serveur à l'affichage de la liste.
+  // Seuls les avoirs non validés dont la référence n'a pas encore été vérifiée
+  // sont envoyés (un avoir validé affiche « Validé » quel que soit le résultat) ;
+  // les résultats sont appliqués en une seule fois, comme auparavant.
   useEffect(() => {
-    const loadCachedVerifications = async () => {
-      console.log('🔍 LoadCache - Début vérification:', { 
-        hasAvoirs: !!avoirs, 
-        avoirCount: avoirs?.length || 0 
-      });
-      
-      if (!avoirs || avoirs.length === 0) return;
-      
-      const cachedResults: Record<number, any> = {};
-      
-      // Charger les vérifications depuis le cache serveur pour TOUS les avoirs avec référence
-      for (const avoir of avoirs) {
-        console.log('🔍 LoadCache - Avoir analysé:', {
-          id: avoir.id,
-          hasInvoiceRef: !!avoir.invoiceReference?.trim(),
+    const avoirsToVerify = avoirs.filter(avoir =>
+      avoir.invoiceReference?.trim() &&
+      !avoir.nocodbVerified &&
+      verifiedReferencesRef.current.get(avoir.id) !== avoir.invoiceReference
+    );
+    if (avoirsToVerify.length === 0) return;
+
+    // Marquage immédiat : un rechargement pendant la vérification ne la double pas
+    avoirsToVerify.forEach(avoir => verifiedReferencesRef.current.set(avoir.id, avoir.invoiceReference || ''));
+
+    const cachedResults: Record<number, any> = {};
+    runVerificationTasks(avoirsToVerify.map(avoir => async () => {
+      try {
+        const result = await apiRequest(`/api/avoirs/${avoir.id}/verify-invoice`, 'POST', {
           invoiceReference: avoir.invoiceReference,
-          nocodbVerified: avoir.nocodbVerified
+          forceRefresh: false // Utiliser le cache si disponible
         });
-        
-        // Si l'avoir a une référence de facture, vérifier le cache serveur
-        if (avoir.invoiceReference?.trim()) {
-          try {
-            const result = await apiRequest(`/api/avoirs/${avoir.id}/verify-invoice`, 'POST', { 
-              invoiceReference: avoir.invoiceReference,
-              forceRefresh: false // Utiliser le cache si disponible
-            });
-            
-            console.log('🔍 LoadCache - Résultat cache serveur pour avoir', avoir.id, ':', result);
-            
-            if (result.exists !== undefined) {
-              cachedResults[avoir.id] = result;
-              console.log('✅ LoadCache - Avoir ajouté au cache depuis serveur:', avoir.id);
-            }
-          } catch (error) {
-            console.log('⚠️ LoadCache - Erreur cache serveur pour avoir', avoir.id, ':', error);
-            // Continuer sans erreur si le cache échoue
-          }
+        if (result?.exists !== undefined) {
+          cachedResults[avoir.id] = result;
         }
+      } catch {
+        // Vérification silencieuse : la loupe reste disponible pour réessayer
       }
-      
-      console.log('🔍 LoadCache - Résultats finaux:', {
-        cachedCount: Object.keys(cachedResults).length,
-        cachedResults
-      });
-      
+    })).then(() => {
       if (Object.keys(cachedResults).length > 0) {
         setAvoirVerificationResults(prev => ({ ...prev, ...cachedResults }));
-        console.log('✅ Vérifications chargées depuis le serveur:', cachedResults);
       }
-    };
-    
-    loadCachedVerifications();
+    });
   }, [avoirs]);
 
   // Create avoir mutation
@@ -262,11 +335,7 @@ export default function Avoirs() {
     },
     onSuccess: () => {
       // ✅ FIX: Invalider toutes les variations de queryKey avoirs
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          return query.queryKey[0]?.toString().includes('/api/avoirs') || false;
-        }
-      });
+      invalidateAvoirs();
       setIsCreateDialogOpen(false);
       toast({
         title: "Avoir créé",
@@ -300,11 +369,7 @@ export default function Avoirs() {
     },
     onSuccess: () => {
       // ✅ FIX: Invalider toutes les variations de queryKey avoirs
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          return query.queryKey[0]?.toString().includes('/api/avoirs') || false;
-        }
-      });
+      invalidateAvoirs();
       setIsEditDialogOpen(false);
       setSelectedAvoir(null);
       toast({
@@ -335,11 +400,7 @@ export default function Avoirs() {
     },
     onSuccess: () => {
       // ✅ FIX: Invalider toutes les variations de queryKey avoirs
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          return query.queryKey[0]?.toString().includes('/api/avoirs') || false;
-        }
-      });
+      invalidateAvoirs();
       setIsDeleteDialogOpen(false);
       setSelectedAvoir(null);
       toast({
@@ -411,13 +472,6 @@ export default function Avoirs() {
         amount: finalAmount
       };
       
-      console.log('💰 Editing avoir - Form data sent:', {
-        originalCommercial: selectedAvoir.commercialProcessed,
-        formCommercial: finalData.commercialProcessed,
-        editAmountValue,
-        finalAmount,
-        fullData: finalData
-      });
       editAvoirMutation.mutate({ id: selectedAvoir.id, data: finalData });
     }
   };
@@ -498,35 +552,23 @@ export default function Avoirs() {
   // Handle validation/devalidation
   const handleValidateAvoir = async (avoirId: number) => {
     try {
-      // Utiliser la route spécifique pour la vérification NocoDB
+      // Utiliser la route spécifique pour la vérification NocoDB. Elle marque
+      // aussi le cache de vérification comme réconcilié (permanent) : un appel
+      // séparé à /api/cache/mark-reconciled serait redondant.
       await apiRequest(`/api/avoirs/${avoirId}/nocodb-verification`, 'PUT', {
         verified: true
       });
-
-      // Marquer le cache comme réconcilié (permanent)
-      const avoir = avoirs.find(a => a.id === avoirId);
-      if (avoir?.invoiceReference) {
-        try {
-          await apiRequest('/api/cache/mark-reconciled', 'POST', {
-            invoiceReference: avoir.invoiceReference,
-            groupId: avoir.groupId
-          });
-        } catch (cacheError) {
-          console.warn('Cache marking failed but verification succeeded:', cacheError);
-        }
-      }
 
       // ✅ Mettre à jour l'état local immédiatement pour affichage instantané
       setAvoirVerificationResults(prev => ({
         ...prev,
         [avoirId]: { exists: true, fromCache: true, permanent: true, validated: true }
       }));
-      
-      console.log('✅ Avoir validé - État local mis à jour:', avoirId);
 
-      // Recharger les avoirs pour voir les changements en base
-      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
-      
+      // Recharger les avoirs pour voir les changements en base (toutes les
+      // variantes de clé : la clé contient l'URL avec le magasin sélectionné)
+      invalidateAvoirs();
+
       toast({
         title: "Avoir validé",
         description: "L'avoir a été marqué comme validé avec succès",
@@ -553,12 +595,13 @@ export default function Avoirs() {
         delete updated[avoirId]; // Supprimer complètement l'entrée
         return updated;
       });
-      
-      console.log('✅ Avoir dévalidé - État local mis à jour:', avoirId);
+      // L'avoir sera revérifié au rechargement de la liste
+      verifiedReferencesRef.current.delete(avoirId);
 
-      // Recharger les avoirs pour voir les changements en base
-      queryClient.invalidateQueries({ queryKey: ['/api/avoirs'] });
-      
+      // Recharger les avoirs pour voir les changements en base (toutes les
+      // variantes de clé : la clé contient l'URL avec le magasin sélectionné)
+      invalidateAvoirs();
+
       toast({
         title: "Avoir dévalidé",
         description: "L'avoir a été marqué comme non-validé avec succès",
@@ -593,26 +636,14 @@ export default function Avoirs() {
       }));
 
       // Auto-remplissage sécurisé si facture trouvée et montant disponible
+      // (seulement si le montant change : sinon la mise à jour serait inutile)
       if (result?.exists === true && result?.invoiceAmount !== undefined && result?.invoiceAmount !== null) {
         const avoir = avoirs?.find(a => a?.id === variables.avoirId);
-        if (avoir && avoir.supplierId && avoir.groupId) {
-          try {
-            console.log('🔄 Auto-remplissage montant:', { avoirId: variables.avoirId, amount: result.invoiceAmount });
-            editAvoirMutation.mutate({
-              id: variables.avoirId,
-              data: {
-                supplierId: avoir.supplierId,
-                groupId: avoir.groupId,
-                invoiceReference: avoir.invoiceReference || "",
-                amount: result.invoiceAmount,
-                comment: avoir.comment || "",
-                commercialProcessed: avoir.commercialProcessed || false,
-                status: avoir.status as "En attente de demande" | "Demandé" | "Reçu",
-              }
-            });
-          } catch (autoFillError) {
-            console.error('❌ Erreur auto-remplissage:', autoFillError);
-          }
+        if (avoir && avoir.supplierId && avoir.groupId && amountDiffers(avoir.amount, result.invoiceAmount)) {
+          editAvoirMutation.mutate({
+            id: variables.avoirId,
+            data: buildAmountUpdate(avoir, result.invoiceAmount),
+          });
         }
       }
       
@@ -669,13 +700,8 @@ export default function Avoirs() {
       return;
     }
 
-    console.log('🔍 Déclenchement vérification avoir:', {
-      avoirId: avoir.id,
-      invoiceReference: avoir.invoiceReference,
-      supplier: avoir.supplier?.name,
-      group: avoir.group?.name
-    });
-    
+    // Référence vérifiée : le rechargement de la liste ne la revérifiera pas
+    verifiedReferencesRef.current.set(avoir.id, avoir.invoiceReference || '');
     setVerifyingAvoirs(prev => new Set(prev).add(avoir.id));
     
     verifyAvoirInvoiceMutation.mutate({
@@ -685,8 +711,11 @@ export default function Avoirs() {
     });
   };
 
-  // Fonction pour vérifier tous les avoirs avec une référence facture
-  const handleVerifyAllAvoirInvoices = () => {
+  // Fonction pour vérifier tous les avoirs avec une référence facture.
+  // File d'attente bornée, montants remplis sans recharger la liste à chaque
+  // avoir (ni toast, ni fermeture de modale), puis un seul rafraîchissement et
+  // un seul toast récapitulatif à la fin.
+  const handleVerifyAllAvoirInvoices = async () => {
     const avoirsToVerify = avoirs.filter(avoir => 
       avoir.invoiceReference?.trim() && 
       (avoir.group?.nocodbTableName || avoir.group?.nocodbConfigId)
@@ -700,21 +729,84 @@ export default function Avoirs() {
       return;
     }
 
-    avoirsToVerify.forEach((avoir, index) => {
-      // Délai échelonné pour éviter la surcharge
-      setTimeout(() => {
-        handleVerifyAvoirInvoice(avoir, true); // Force refresh pour tous
-      }, index * 200); // 200ms entre chaque vérification
-    });
-
     toast({
       title: "Vérification lancée",
       description: `Vérification de ${avoirsToVerify.length} avoir(s) en cours...`,
     });
-  };
 
-  // ✅ SUPPRIMÉ : Le chargement automatique causait des crashes JavaScript
-  // Les vérifications se font maintenant uniquement à la demande utilisateur
+    setVerifyingAvoirs(prev => {
+      const next = new Set(prev);
+      avoirsToVerify.forEach(avoir => next.add(avoir.id));
+      return next;
+    });
+    avoirsToVerify.forEach(avoir => verifiedReferencesRef.current.set(avoir.id, avoir.invoiceReference || ''));
+
+    let found = 0;
+    let notFound = 0;
+    let failed = 0;
+    let amountsUpdated = 0;
+
+    await runVerificationTasks(avoirsToVerify.map(avoir => async () => {
+      let result: any;
+      let requestFailed = false;
+      try {
+        result = await apiRequest(`/api/avoirs/${avoir.id}/verify-invoice`, 'POST', {
+          invoiceReference: avoir.invoiceReference,
+          forceRefresh: true // Force refresh pour tous
+        });
+      } catch (error) {
+        console.error('Erreur vérification facture avoir:', error);
+        requestFailed = true;
+        result = {
+          exists: false,
+          matchType: 'none',
+          errorMessage: error instanceof Error ? error.message : 'Erreur inconnue'
+        };
+      }
+
+      setAvoirVerificationResults(prev => ({ ...prev, [avoir.id]: result }));
+      setVerifyingAvoirs(prev => {
+        const next = new Set(prev);
+        next.delete(avoir.id);
+        return next;
+      });
+
+      if (requestFailed) {
+        failed += 1;
+        return;
+      }
+      if (result?.exists !== true) {
+        notFound += 1;
+        return;
+      }
+      found += 1;
+
+      // Report du montant de la facture, à partir des données les plus récentes de l'avoir
+      if (result.invoiceAmount === undefined || result.invoiceAmount === null) return;
+      const current = avoirsRef.current.find(a => a?.id === avoir.id) ?? avoir;
+      if (!current.supplierId || !current.groupId || !amountDiffers(current.amount, result.invoiceAmount)) return;
+      try {
+        await apiRequest(`/api/avoirs/${avoir.id}`, 'PUT', buildAmountUpdate(current, result.invoiceAmount));
+        amountsUpdated += 1;
+      } catch (error) {
+        console.error('❌ Erreur auto-remplissage:', error);
+      }
+    }));
+
+    // Un seul rechargement de la liste, seulement si des montants ont changé
+    if (amountsUpdated > 0) {
+      invalidateAvoirs();
+    }
+
+    const details = [`${found} facture(s) trouvée(s)`, `${notFound} introuvable(s)`];
+    if (failed > 0) details.push(`${failed} erreur(s)`);
+    if (amountsUpdated > 0) details.push(`${amountsUpdated} montant(s) mis à jour`);
+    toast({
+      title: "Vérification terminée",
+      description: details.join(', '),
+      variant: failed > 0 ? "destructive" : "default",
+    });
+  };
 
   // 🔥 FONCTIONS WEBHOOK MODAL (comme rapprochement)
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -743,22 +835,9 @@ export default function Avoirs() {
     setIsUploading(false);
   };
 
-  const startProcessingTimer = () => {
-    setProcessingSeconds(0);
-    const interval = setInterval(() => {
-      setProcessingSeconds(prev => prev + 1);
-    }, 1000);
-    setProcessingTimeout(interval);
-  };
-
   const handleCloseWaitingModal = () => {
     setShowWaitingModal(false);
     setIsUploading(false);
-    setProcessingSeconds(0);
-    if (processingTimeout) {
-      clearInterval(processingTimeout);
-      setProcessingTimeout(null);
-    }
   };
 
   const handleSendAvoir = async () => {
@@ -789,7 +868,6 @@ export default function Avoirs() {
     setShowAvoirModal(false);
     setShowWaitingModal(true);
     setIsUploading(true);
-    startProcessingTimer();
 
     try {
       const formData = new FormData();
@@ -833,11 +911,7 @@ export default function Avoirs() {
       setSelectedFile(null);
 
       // Invalider les caches pour recharger
-      queryClient.invalidateQueries({ 
-        predicate: (query) => {
-          return query.queryKey[0]?.toString().includes('/api/avoirs') || false;
-        }
-      });
+      invalidateAvoirs();
       
     } catch (error: any) {
       handleCloseWaitingModal();
@@ -867,17 +941,6 @@ export default function Avoirs() {
     }
   };
 
-  // Filter avoirs based on search term
-  const filteredAvoirs = avoirs.filter(avoir =>
-    avoir.invoiceReference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    avoir.supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    avoir.comment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (avoir.creator.firstName && avoir.creator.lastName 
-      ? `${avoir.creator.firstName} ${avoir.creator.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
-      : avoir.creator.username.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
-
   // Status badge variant
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -906,24 +969,27 @@ export default function Avoirs() {
     }
   };
 
-  // Séparer les avoirs par statut : Finalisé = Reçu ET validé
-  const pendingAvoirs = avoirs.filter(avoir => !(avoir.status === 'Reçu' && avoir.nocodbVerified));
-  const completedAvoirs = avoirs.filter(avoir => avoir.status === 'Reçu' && avoir.nocodbVerified);
+  // Séparer les avoirs par statut : Finalisé = Reçu ET validé (recalculé
+  // seulement quand la liste change, pas à chaque frappe ou résultat de vérification)
+  const pendingAvoirs = useMemo(
+    () => avoirs.filter(avoir => !(avoir.status === 'Reçu' && avoir.nocodbVerified)),
+    [avoirs]
+  );
+  const completedAvoirs = useMemo(
+    () => avoirs.filter(avoir => avoir.status === 'Reçu' && avoir.nocodbVerified),
+    [avoirs]
+  );
 
-  // Filtrage par recherche
-  const filterAvoirs = (avoirsList: Avoir[]) => {
-    return avoirsList.filter((avoir) => {
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        avoir.supplier?.name?.toLowerCase().includes(searchLower) ||
-        avoir.invoiceReference?.toLowerCase().includes(searchLower) ||
-        avoir.comment?.toLowerCase().includes(searchLower)
-      );
-    });
-  };
-
-  const filteredPendingAvoirs = filterAvoirs(pendingAvoirs);
-  const filteredCompletedAvoirs = filterAvoirs(completedAvoirs);
+  // Filtrage par recherche, différée pour garder la saisie fluide
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const filteredPendingAvoirs = useMemo(
+    () => filterAvoirsBySearch(pendingAvoirs, deferredSearchTerm),
+    [pendingAvoirs, deferredSearchTerm]
+  );
+  const filteredCompletedAvoirs = useMemo(
+    () => filterAvoirsBySearch(completedAvoirs, deferredSearchTerm),
+    [completedAvoirs, deferredSearchTerm]
+  );
 
   const canEditDelete = ['admin', 'directeur'].includes((user as any)?.role);
 
@@ -1243,7 +1309,8 @@ export default function Avoirs() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              {renderAvoirTable(filteredPendingAvoirs)}
+              {/* Seul le tableau de l'onglet affiché est construit */}
+              {activeTab === "pending" && renderAvoirTable(filteredPendingAvoirs)}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1260,7 +1327,7 @@ export default function Avoirs() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              {renderAvoirTable(filteredCompletedAvoirs)}
+              {activeTab === "completed" && renderAvoirTable(filteredCompletedAvoirs)}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1691,14 +1758,7 @@ export default function Avoirs() {
           
           <div className="flex flex-col items-center p-6">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-            <p className="text-sm text-gray-600 text-center">
-              Envoi du fichier vers le webhook... {processingSeconds}s
-            </p>
-            {processingSeconds > 30 && (
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Le traitement peut prendre quelques minutes
-              </p>
-            )}
+            <UploadElapsedTime />
           </div>
         </DialogContent>
       </Dialog>

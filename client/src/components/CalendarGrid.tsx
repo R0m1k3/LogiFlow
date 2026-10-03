@@ -1,10 +1,9 @@
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, isToday } from "date-fns";
-import { fr } from "date-fns/locale";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from "date-fns";
 import { safeDate } from "@/lib/dateUtils";
 import { Plus, Check, MoreHorizontal, Package, Link, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 // Composant modal pour afficher les commentaires
 function CommentModal({ isOpen, onClose, comment }: { isOpen: boolean, onClose: () => void, comment: string }) {
@@ -353,7 +352,10 @@ function DayItemsContainer({ dayOrders, dayDeliveries, onItemClick }: { dayOrder
   );
 }
 
-export default function CalendarGrid({
+// Liste vide partagée pour les jours sans élément (référence stable)
+const NO_ITEMS: any[] = [];
+
+function CalendarGrid({
   currentDate,
   orders,
   deliveries,
@@ -363,196 +365,157 @@ export default function CalendarGrid({
   onDateClick,
   onItemClick,
 }: CalendarGridProps) {
-  if (import.meta.env.DEV) {
-    console.log('🗓️ CalendarGrid rendered with:', {
-      currentDate: currentDate?.toISOString(),
-      ordersCount: orders?.length || 0,
-      deliveriesCount: deliveries?.length || 0,
-      publicitiesCount: publicities?.length || 0,
-      selectedStoreId,
-      userGroupsCount: userGroups?.length || 0
-    });
-  }
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
+  // Jours affichés : 6 semaines complètes commençant un lundi
+  const paddedDays = useMemo(() => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
 
-  // Helper function to filter publicities based on user's assigned stores
-  const getPublicitiesForDate = (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    
+    // Get all days in the month
+    const monthDays = eachDayOfInterval({
+      start: monthStart,
+      end: monthEnd,
+    });
+
+    // Pad the calendar to start on Monday
+    const firstDayOfWeek = monthStart.getDay();
+    const startPadding = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+    const days: Date[] = [];
+
+    // Add padding days from previous month
+    for (let i = startPadding; i > 0; i--) {
+      const paddingDate = new Date(monthStart);
+      paddingDate.setDate(paddingDate.getDate() - i);
+      days.push(paddingDate);
+    }
+
+    // Add current month days
+    days.push(...monthDays);
+
+    // Add padding days from next month to complete the grid
+    const remainingCells = 42 - days.length; // 6 weeks * 7 days
+    for (let i = 1; i <= remainingCells; i++) {
+      const paddingDate = new Date(monthEnd);
+      paddingDate.setDate(paddingDate.getDate() + i);
+      days.push(paddingDate);
+    }
+
+    return days;
+  }, [currentDate]);
+
+  // Commandes et livraisons indexées par jour ('yyyy-MM-dd', heure locale comme
+  // isSameDay) en une seule passe sur chaque liste, au lieu de filtrer toutes
+  // les listes pour chacune des 42 cases à chaque rendu
+  const itemsByDay = useMemo(() => {
+    const index = new Map<string, { orders: OrderWithRelations[]; deliveries: DeliveryWithRelations[] }>();
+    const getDayEntry = (key: string) => {
+      let entry = index.get(key);
+      if (!entry) {
+        entry = { orders: [], deliveries: [] };
+        index.set(key, entry);
+      }
+      return entry;
+    };
+    let invalidCount = 0;
+
+    for (const order of orders) {
+      // Protection contre undefined/null
+      if (!order || !order.supplier) {
+        invalidCount++;
+        continue;
+      }
+      // Essayer plusieurs champs de date possibles
+      const orderDate = safeDate(order.plannedDate || order.createdAt);
+      if (orderDate) {
+        getDayEntry(format(orderDate, 'yyyy-MM-dd')).orders.push(order);
+      }
+    }
+
+    for (const delivery of deliveries) {
+      // Protection contre undefined/null
+      if (!delivery || !delivery.supplier) {
+        invalidCount++;
+        continue;
+      }
+      // Essayer plusieurs champs de date possibles
+      const deliveryDate = safeDate(delivery.scheduledDate || delivery.deliveredDate || delivery.createdAt);
+      if (deliveryDate) {
+        getDayEntry(format(deliveryDate, 'yyyy-MM-dd')).deliveries.push(delivery);
+      }
+    }
+
+    if (invalidCount > 0) {
+      console.warn(`⚠️ CalendarGrid: ${invalidCount} élément(s) sans fournisseur ignoré(s)`);
+    }
+
+    return index;
+  }, [orders, deliveries]);
+
+  // Publicités par jour affiché : filtrage par magasin fait une seule fois,
+  // puis répartition sur les 42 jours selon la période de chaque publicité
+  const publicitiesByDay = useMemo(() => {
+    const byDay = new Map<string, any[]>();
+
     // Protection contre les données invalides qui causent des plantages en production
     if (!publicities || !Array.isArray(publicities)) {
       console.warn('⚠️ Invalid publicities data:', publicities);
-      return [];
+      return byDay;
     }
-    
-    if (import.meta.env.DEV) {
-      console.log('🔍 CalendarGrid getPublicitiesForDate:', {
-        date: dateStr,
-        totalPublicities: publicities.length,
-        selectedStoreId,
-        userGroups: userGroups?.length || 0
-      });
-    }
-    
+
     try {
-      return publicities.filter(pub => {
+      let invalidCount = 0;
+      const storePublicities = publicities.filter(pub => {
         // Vérifications de sécurité pour éviter les plantages
-        if (!pub || typeof pub !== 'object') {
-          console.warn('⚠️ Invalid publicity object:', pub);
+        if (!pub || typeof pub !== 'object' || !pub.startDate || !pub.endDate) {
+          invalidCount++;
           return false;
         }
-      // Check if the date is within the publicity period
-      const pubStart = pub.startDate;
-      const pubEnd = pub.endDate;
-      
-      if (!pubStart || !pubEnd) {
-        console.warn('⚠️ Publicity missing dates:', { pubNumber: pub.pubNumber, startDate: pubStart, endDate: pubEnd });
-        return false;
-      }
-      
-      if (dateStr < pubStart || dateStr > pubEnd) {
-        return false;
-      }
 
-      // If no store is selected and user has no assigned groups, show only publicities with participations
-      if (!selectedStoreId && (!userGroups || userGroups.length === 0)) {
-        const hasParticipations = pub.participations && Array.isArray(pub.participations) && pub.participations.length > 0;
-        if (hasParticipations && import.meta.env.DEV) {
-          console.log('📋 Publicity has participations (no store selected):', { pubNumber: pub.pubNumber, participationCount: pub.participations.length });
+        // If no store is selected and user has no assigned groups, show only publicities with participations
+        if (!selectedStoreId && (!userGroups || userGroups.length === 0)) {
+          return pub.participations && Array.isArray(pub.participations) && pub.participations.length > 0;
         }
-        return hasParticipations;
-      }
 
-      // If a specific store is selected, check if that store participates
-      if (selectedStoreId) {
-        const matches = pub.participations && Array.isArray(pub.participations) && 
-                       pub.participations.some((pg: any) => pg?.groupId === selectedStoreId);
-        if (matches && import.meta.env.DEV) {
-          console.log('🎯 Publicity matches selected store:', { pubNumber: pub.pubNumber, selectedStoreId });
+        // If a specific store is selected, check if that store participates
+        if (selectedStoreId) {
+          return pub.participations && Array.isArray(pub.participations) &&
+                 pub.participations.some((pg: any) => pg?.groupId === selectedStoreId);
         }
-        return matches;
-      }
 
-      // If no specific store selected but user has assigned stores, 
-      // show publicities where any of user's stores participate
-      if (userGroups && Array.isArray(userGroups) && userGroups.length > 0) {
-        const userGroupIds = userGroups.map((ug: any) => ug?.groupId).filter(id => id !== undefined);
-        const matches = pub.participations && Array.isArray(pub.participations) &&
-                       pub.participations.some((pg: any) => pg?.groupId && userGroupIds.includes(pg.groupId));
-        if (matches) {
-          console.log('👥 Publicity matches user groups:', { pubNumber: pub.pubNumber, userGroupIds });
+        // If no specific store selected but user has assigned stores,
+        // show publicities where any of user's stores participate
+        if (userGroups && Array.isArray(userGroups) && userGroups.length > 0) {
+          const userGroupIds = userGroups.map((ug: any) => ug?.groupId).filter(id => id !== undefined);
+          return pub.participations && Array.isArray(pub.participations) &&
+                 pub.participations.some((pg: any) => pg?.groupId && userGroupIds.includes(pg.groupId));
         }
-        return matches;
-      }
 
-      // Default case: only show publicities with participations
-      const hasParticipations = pub.participations && Array.isArray(pub.participations) && pub.participations.length > 0;
-      if (hasParticipations) {
-        console.log('📋 Publicity has participations (default case):', { pubNumber: pub.pubNumber, participationCount: pub.participations.length });
-      }
-      return hasParticipations;
+        // Default case: only show publicities with participations
+        return pub.participations && Array.isArray(pub.participations) && pub.participations.length > 0;
       });
+
+      if (invalidCount > 0) {
+        console.warn(`⚠️ CalendarGrid: ${invalidCount} publicité(s) invalide(s) ou sans dates ignorée(s)`);
+      }
+
+      if (storePublicities.length > 0) {
+        for (const date of paddedDays) {
+          const dateStr = format(date, 'yyyy-MM-dd');
+          // Check if the date is within the publicity period
+          const dayPublicities = storePublicities.filter(pub => !(dateStr < pub.startDate || dateStr > pub.endDate));
+          if (dayPublicities.length > 0) {
+            byDay.set(dateStr, dayPublicities);
+          }
+        }
+      }
     } catch (error) {
       console.error('❌ Error filtering publicities:', error);
-      return [];
+      byDay.clear();
     }
-  };
 
-  // Get all days in the month
-  const monthDays = eachDayOfInterval({
-    start: monthStart,
-    end: monthEnd,
-  });
-
-  // Pad the calendar to start on Monday
-  const firstDayOfWeek = monthStart.getDay();
-  const startPadding = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-  const paddedDays = [];
-
-  // Add padding days from previous month
-  for (let i = startPadding; i > 0; i--) {
-    const paddingDate = new Date(monthStart);
-    paddingDate.setDate(paddingDate.getDate() - i);
-    paddedDays.push(paddingDate);
-  }
-
-  // Add current month days
-  paddedDays.push(...monthDays);
-
-  // Add padding days from next month to complete the grid
-  const remainingCells = 42 - paddedDays.length; // 6 weeks * 7 days
-  for (let i = 1; i <= remainingCells; i++) {
-    const paddingDate = new Date(monthEnd);
-    paddingDate.setDate(paddingDate.getDate() + i);
-    paddedDays.push(paddingDate);
-  }
+    return byDay;
+  }, [publicities, selectedStoreId, userGroups, paddedDays]);
 
   const weekDays = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-
-  const getItemsForDate = (date: Date) => {
-    // Debug: Log des commandes reçues (seulement une fois)
-    if (orders.length > 0 && date.getDate() === 1) {
-      console.log('📅 CalendarGrid Debug - Orders received:', orders.length);
-      console.log('📅 First order structure:', orders[0]);
-      console.log('📅 All orders dates:', orders.map(o => ({ id: o.id, plannedDate: o.plannedDate, supplier: o.supplier?.name })));
-    }
-    
-    // Debug: Log des livraisons reçues (seulement une fois)
-    if (deliveries.length > 0 && date.getDate() === 1) {
-      console.log('🚛 CalendarGrid Debug - Deliveries received:', deliveries.length);
-      console.log('🚛 First delivery structure:', deliveries[0]);
-      console.log('🚛 All deliveries dates:', deliveries.map(d => ({ id: d.id, scheduledDate: d.scheduledDate, supplier: d.supplier?.name })));
-    }
-    
-    const dayOrders = orders.filter(order => {
-      // Protection contre undefined/null
-      if (!order || !order.supplier) {
-        console.warn('📅 Invalid order found:', order);
-        return false;
-      }
-      
-      // Essayer plusieurs champs de date possibles
-      const orderDate = safeDate(order.plannedDate || order.createdAt);
-      const matches = orderDate && isSameDay(orderDate, date);
-      
-      if (matches) {
-        console.log('📅 Order matches date:', {
-          orderId: order.id,
-          supplier: order.supplier?.name,
-          plannedDate: order.plannedDate,
-          matchingDate: format(date, 'yyyy-MM-dd')
-        });
-      }
-      
-      return matches;
-    });
-    
-    const dayDeliveries = deliveries.filter(delivery => {
-      // Protection contre undefined/null
-      if (!delivery || !delivery.supplier) {
-        console.warn('🚛 Invalid delivery found:', delivery);
-        return false;
-      }
-      
-      // Essayer plusieurs champs de date possibles
-      const deliveryDate = safeDate(delivery.scheduledDate || delivery.deliveredDate || delivery.createdAt);
-      const matches = deliveryDate && isSameDay(deliveryDate, date);
-      
-      if (matches) {
-        console.log('🚛 Delivery matches date:', {
-          deliveryId: delivery.id,
-          supplier: delivery.supplier?.name,
-          scheduledDate: delivery.scheduledDate,
-          matchingDate: format(date, 'yyyy-MM-dd')
-        });
-      }
-      
-      return matches;
-    });
-    
-    return { orders: dayOrders, deliveries: dayDeliveries };
-  };
 
   return (
     <div className="bg-white shadow-xl border-2 border-gray-300 overflow-hidden">
@@ -576,8 +539,11 @@ export default function CalendarGrid({
           const isCurrentMonth = isSameMonth(date, currentDate);
           const isTodayDate = isToday(date);
           const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-          const { orders: dayOrders, deliveries: dayDeliveries } = getItemsForDate(date);
-          const dayPublicities = getPublicitiesForDate(date);
+          const dayKey = format(date, 'yyyy-MM-dd');
+          const dayItems = itemsByDay.get(dayKey);
+          const dayOrders = dayItems ? dayItems.orders : NO_ITEMS;
+          const dayDeliveries = dayItems ? dayItems.deliveries : NO_ITEMS;
+          const dayPublicities = publicitiesByDay.get(dayKey) || NO_ITEMS;
           
           return (
             <div
@@ -694,3 +660,6 @@ export default function CalendarGrid({
     </div>
   );
 }
+
+// Mémorisé : l'ouverture d'une modale dans la page Calendrier ne recalcule pas la grille
+export default memo(CalendarGrid);

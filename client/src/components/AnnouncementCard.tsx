@@ -49,7 +49,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 // Type pour les annonces avec relations
-type AnnouncementWithRelations = DashboardMessage & {
+export type AnnouncementWithRelations = DashboardMessage & {
   author: {
     id: string | number;
     firstName?: string;
@@ -97,6 +97,45 @@ const getPriorityConfig = (type: string) => {
   }
 };
 
+// Requête des annonces, partagée avec le tableau de bord (même clé, même URL) :
+// un seul appel réseau, et les invalidations ['/api/announcements'] des
+// mutations ci-dessous rafraîchissent les deux affichages.
+export function getAnnouncementsQueryOptions(selectedStoreId: number | null, role: string | undefined) {
+  return {
+    queryKey: ['/api/announcements', selectedStoreId, role],
+    queryFn: async (): Promise<AnnouncementWithRelations[]> => {
+      const params = new URLSearchParams();
+
+      // Pour les admins, permettre le filtrage par magasin sélectionné
+      if (role === 'admin' && selectedStoreId) {
+        params.append('storeId', selectedStoreId.toString());
+      }
+
+      const url = `/api/announcements${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url, {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        console.error('❌ [ANNOUNCEMENTS] Fetch failed:', response.status, response.statusText);
+        if (response.status === 401) {
+          return [];
+        }
+        throw new Error(`Failed to fetch announcements: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!Array.isArray(data)) {
+        console.warn('⚠️ [ANNOUNCEMENTS] Data is not an array:', data);
+        return [];
+      }
+
+      return data;
+    },
+  };
+}
+
 export default function AnnouncementCard() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
@@ -117,48 +156,9 @@ export default function AnnouncementCard() {
     },
   });
 
-  // Construire l'URL avec les paramètres appropriés
-  const buildApiUrl = () => {
-    const params = new URLSearchParams();
-    
-    // Pour les admins, permettre le filtrage par magasin sélectionné
-    if (user?.role === 'admin' && selectedStoreId) {
-      params.append('storeId', selectedStoreId.toString());
-    }
-    
-    return `/api/announcements${params.toString() ? `?${params.toString()}` : ''}`;
-  };
-
   // Récupérer les annonces
-  const { data: announcements = [], isLoading } = useQuery<AnnouncementWithRelations[]>({
-    queryKey: ['/api/announcements', selectedStoreId, user?.role],
-    queryFn: async () => {
-      const url = buildApiUrl();
-      console.log('🔍 [ANNOUNCEMENTS] Fetching from:', url);
-      
-      const response = await fetch(url, {
-        credentials: 'include'
-      });
-      
-      if (!response.ok) {
-        console.error('❌ [ANNOUNCEMENTS] Fetch failed:', response.status, response.statusText);
-        if (response.status === 401) {
-          console.log('🔑 [ANNOUNCEMENTS] Authentication required');
-          return [];
-        }
-        throw new Error(`Failed to fetch announcements: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('✅ [ANNOUNCEMENTS] Data received:', data);
-      
-      if (!Array.isArray(data)) {
-        console.warn('⚠️ [ANNOUNCEMENTS] Data is not an array:', data);
-        return [];
-      }
-      
-      return data;
-    },
+  const { data: announcements = [], isLoading } = useQuery({
+    ...getAnnouncementsQueryOptions(selectedStoreId, user?.role),
     enabled: !!user,
   });
 
@@ -170,9 +170,7 @@ export default function AnnouncementCard() {
         : '/api/announcements';
       
       const method = editingAnnouncement ? 'PUT' : 'POST';
-      
-      console.log(`🔍 [ANNOUNCEMENTS] ${method} ${url}`, announcementData);
-      
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -241,8 +239,6 @@ export default function AnnouncementCard() {
 
   // Soumission du formulaire
   const onSubmit = (data: InsertAnnouncement) => {
-    console.log('🔍 [ANNOUNCEMENTS] Form submitted:', data);
-    
     const announcementData = {
       ...data,
       createdBy: user?.username || '',

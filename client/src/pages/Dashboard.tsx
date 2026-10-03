@@ -1,54 +1,47 @@
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar, Package, ShoppingCart, TrendingUp, Clock, MapPin, User, AlertTriangle, CheckCircle, Truck, FileText, BarChart3, Megaphone, Shield, XCircle, CheckSquare, Circle, Info, Star, Sparkles, X } from "lucide-react";
+import { Calendar, Package, Clock, User, AlertTriangle, Truck, BarChart3, Megaphone, XCircle, CheckSquare, Circle, Info, Star, Sparkles, X } from "lucide-react";
 import { safeFormat, safeDate } from "@/lib/dateUtils";
-import type { PublicityWithRelations, DashboardMessage } from "@shared/schema";
-import AnnouncementCard from "@/components/AnnouncementCard";
+import type { PublicityWithRelations } from "@shared/schema";
+import AnnouncementCard, { getAnnouncementsQueryOptions, type AnnouncementWithRelations } from "@/components/AnnouncementCard";
 import { DlcAlertModal } from "@/components/DlcAlertModal";
+
+// Annonce la plus récente créée il y a moins de 2 jours (null s'il n'y en a pas)
+const selectRecentAnnouncement = (announcements: AnnouncementWithRelations[]): AnnouncementWithRelations | null => {
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+  const recentAnnouncements = announcements.filter(announcement => {
+    if (!announcement.createdAt) return false;
+    const createdAt = safeDate(announcement.createdAt);
+    return createdAt && createdAt >= twoDaysAgo;
+  });
+
+  // filter() renvoie une copie : le tri ne modifie pas le cache partagé
+  return recentAnnouncements.length > 0
+    ? recentAnnouncements.sort((a, b) => {
+      const dateA = safeDate(a.createdAt);
+      const dateB = safeDate(b.createdAt);
+      return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
+    })[0]
+    : null;
+};
 
 export default function Dashboard() {
   const { user } = useAuthUnified();
   const { selectedStoreId } = useStore();
-  const queryClient = useQueryClient();
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [showDlcAlertModal, setShowDlcAlertModal] = useState(false);
 
-  // Invalider les queries DLC quand le magasin change
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"] });
-  }, [selectedStoreId, queryClient]);
-
-  const { data: stats } = useQuery({
-    queryKey: ['/api/stats/monthly', selectedStoreId],
-    queryFn: async () => {
-      const currentDate = new Date();
-      const params = new URLSearchParams({
-        year: currentDate.getFullYear().toString(),
-        month: (currentDate.getMonth() + 1).toString(),
-      });
-
-      if (selectedStoreId && user?.role === 'admin') {
-        params.append('storeId', selectedStoreId.toString());
-      }
-
-      const response = await fetch(`/api/stats/monthly?${params.toString()}`, {
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch stats');
-      }
-
-      return response.json();
-    },
-  });
+  // Toutes les requêtes attendent l'utilisateur (enabled: !!user) : le storeId envoyé
+  // dépend de son rôle, et une réponse obtenue sans lui resterait en cache sous la
+  // clé du magasin sélectionné
 
   // Statistiques annuelles pour la carte de délai moyen
   const { data: yearlyStats } = useQuery({
@@ -73,65 +66,29 @@ export default function Dashboard() {
 
       return response.json();
     },
+    enabled: !!user,
   });
 
   // Construire les URLs pour récupérer toutes les données (pas de filtrage par date)
   const ordersUrl = `/api/orders${selectedStoreId && user?.role === 'admin' ? `?storeId=${selectedStoreId}` : ''}`;
   const deliveriesUrl = `/api/deliveries${selectedStoreId && user?.role === 'admin' ? `?storeId=${selectedStoreId}` : ''}`;
-  const customerOrdersUrl = `/api/customer-orders${selectedStoreId && user?.role === 'admin' ? `?storeId=${selectedStoreId}` : ''}`;
 
   // Utiliser les mêmes clés de cache que les autres pages pour assurer la cohérence
   const { data: allOrders = [] } = useQuery({
     queryKey: [ordersUrl, selectedStoreId],
+    enabled: !!user,
   });
 
   const { data: allDeliveries = [] } = useQuery({
     queryKey: [deliveriesUrl, selectedStoreId],
+    enabled: !!user,
   });
 
-  const { data: customerOrders = [] } = useQuery({
-    queryKey: [customerOrdersUrl, selectedStoreId],
-  });
-
-  // Récupérer la dernière annonce récente (créée il y a moins de 2 jours)
-  const { data: recentAnnouncement } = useQuery<DashboardMessage | null>({
-    queryKey: ['/api/announcements/recent', selectedStoreId],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedStoreId && user?.role === 'admin') {
-        params.append('storeId', selectedStoreId.toString());
-      }
-      params.append('recent', 'true');
-
-      const response = await fetch(`/api/announcements?${params.toString()}`, {
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const announcements: DashboardMessage[] = await response.json();
-
-      // Filtrer les annonces créées il y a moins de 2 jours côté client
-      const twoDaysAgo = new Date();
-      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
-      const recentAnnouncements = announcements.filter(announcement => {
-        if (!announcement.createdAt) return false;
-        const createdAt = safeDate(announcement.createdAt);
-        return createdAt && createdAt >= twoDaysAgo;
-      });
-
-      // Retourner la plus récente
-      return recentAnnouncements.length > 0
-        ? recentAnnouncements.sort((a, b) => {
-          const dateA = safeDate(a.createdAt);
-          const dateB = safeDate(b.createdAt);
-          return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
-        })[0]
-        : null;
-    },
+  // Dernière annonce récente (créée il y a moins de 2 jours), extraite de la
+  // requête des annonces partagée avec AnnouncementCard
+  const { data: recentAnnouncement } = useQuery({
+    ...getAnnouncementsQueryOptions(selectedStoreId, user?.role),
+    select: selectRecentAnnouncement,
     enabled: !!user,
   });
 
@@ -193,43 +150,48 @@ export default function Dashboard() {
     }
   };
 
-  // Récupérer les publicités à venir (chercher dans 2024 ET 2025) - TOUTES les publicités
+  // Récupérer les publicités à venir (années N-1, N et N+1) - TOUTES les publicités
   const { data: upcomingPublicities = [] } = useQuery<PublicityWithRelations[]>({
     queryKey: ['/api/ad-campaigns', 'upcoming'],
     queryFn: async () => {
-      // Essayer d'abord 2024, puis 2025 pour avoir toutes les publicités
       const currentYear = new Date().getFullYear();
       const years = [currentYear - 1, currentYear, currentYear + 1];
-      let allPublicities: PublicityWithRelations[] = [];
 
-      for (const year of years) {
+      // Les trois années sont demandées en parallèle ; une année en échec est ignorée
+      const publicitiesByYear = await Promise.all(years.map(async (year): Promise<PublicityWithRelations[]> => {
         const params = new URLSearchParams();
         params.append('year', year.toString());
         // NE PAS filtrer par magasin - on veut toutes les publicités
 
         try {
           const response = await fetch(`/api/ad-campaigns?${params}`, { credentials: 'include' });
-          if (response.ok) {
-            const yearPublicities = await response.json();
-            allPublicities = [...allPublicities, ...yearPublicities];
-          }
+          if (!response.ok) return [];
+          const yearPublicities = await response.json();
+          return Array.isArray(yearPublicities) ? yearPublicities : [];
         } catch (error) {
-          console.log(`Erreur lors de la récupération des publicités ${year}:`, error);
+          console.warn(`Erreur lors de la récupération des publicités ${year}:`, error);
+          return [];
         }
-      }
+      }));
 
       // Filtrer les publicités à venir et les trier par date
-      const futurePublicities = allPublicities
-        .filter((publicity: any) => new Date(publicity.startDate) > new Date())
+      const now = new Date();
+      const futurePublicities = publicitiesByYear
+        .flat()
+        .filter((publicity: any) => new Date(publicity.startDate) > now)
         .sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
 
       return futurePublicities;
     },
+    enabled: !!user,
   });
 
   // Fetch DLC stats
+  // Clé distincte de celle de DlcPage, qui n'envoie storeId que pour l'admin (réponse
+  // différente pour un non-admin multi-magasins). Le préfixe reste couvert par les
+  // invalidations des mutations DLC.
   const { data: dlcStats = { active: 0, expiringSoon: 0, expired: 0 } } = useQuery({
-    queryKey: ["/api/dlc-products/stats", selectedStoreId],
+    queryKey: ["/api/dlc-products/stats", selectedStoreId, "dashboard"],
     queryFn: () => {
       const params = new URLSearchParams();
       // Envoyer selectedStoreId pour tous les utilisateurs (le backend gère les permissions)
@@ -238,6 +200,7 @@ export default function Dashboard() {
         credentials: 'include'
       }).then(res => res.json());
     },
+    enabled: !!user,
   });
 
   // Effet pour afficher automatiquement le modal DLC pour les utilisateurs non-admin
@@ -287,55 +250,66 @@ export default function Dashboard() {
         credentials: 'include'
       }).then(res => res.json());
     },
+    enabled: !!user,
   });
 
-  // Données dérivées pour les sections
-  const recentOrders = Array.isArray(allOrders) ? allOrders
-    .sort((a: any, b: any) => {
-      const dateA = safeDate(a.createdAt);
-      const dateB = safeDate(b.createdAt);
-      return (dateB ? dateB.getTime() : 0) - (dateA ? dateA.getTime() : 0);
-    })
-    .slice(0, 4) : []; // Afficher les 4 dernières commandes
+  // Données dérivées pour les sections, recalculées seulement quand les données
+  // changent. Les tris portent sur des copies : le cache React Query reste intact.
 
-  // Toutes les commandes en attente
-  const pendingOrders = Array.isArray(allOrders) ? allOrders
-    .filter((order: any) => order.status === 'pending')
-    .sort((a: any, b: any) => {
-      const dateA = safeDate(a.createdAt);
-      const dateB = safeDate(b.createdAt);
-      return (dateB ? dateB.getTime() : 0) - (dateA ? dateA.getTime() : 0);
-    }) : []; // Afficher toutes les commandes en attente
+  // Toutes les commandes en attente, les plus récentes d'abord
+  const pendingOrders = useMemo(() => {
+    if (!Array.isArray(allOrders)) return [];
+    const createdTime = (order: any) => safeDate(order.createdAt)?.getTime() ?? 0;
+    return allOrders
+      .filter((order: any) => order.status === 'pending')
+      .sort((a: any, b: any) => createdTime(b) - createdTime(a));
+  }, [allOrders]);
 
-  const upcomingDeliveries = Array.isArray(allDeliveries) ? allDeliveries
-    .filter((d: any) => d.status === 'planned')
-    .sort((a: any, b: any) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
-    .slice(0, 4) : [];
+  // Livraisons : un seul passage pour les livraisons prévues et les compteurs du mois
+  const { upcomingDeliveries, deliveredThisMonth, totalPalettes } = useMemo(() => {
+    const planned: any[] = [];
+    let deliveredCount = 0;
+    let palettes = 0;
+
+    if (Array.isArray(allDeliveries)) {
+      const now = new Date();
+      for (const delivery of allDeliveries) {
+        if (delivery.status === 'planned') {
+          planned.push(delivery);
+        } else if (delivery.status === 'delivered') {
+          const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
+          if (deliveryDate && deliveryDate.getMonth() === now.getMonth() && deliveryDate.getFullYear() === now.getFullYear()) {
+            deliveredCount++;
+            // Total des palettes pour les livraisons 'delivered' du mois en cours
+            if (delivery.unit === 'palettes') {
+              palettes += delivery.quantity || 0;
+            }
+          }
+        }
+      }
+      planned.sort((a: any, b: any) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+    }
+
+    return {
+      upcomingDeliveries: planned.slice(0, 4),
+      deliveredThisMonth: deliveredCount,
+      totalPalettes: palettes,
+    };
+  }, [allDeliveries]);
+
+  // Tâches non terminées, les plus anciennes d'abord (5 au maximum)
+  const openTasks = useMemo(() => {
+    if (!Array.isArray(tasks)) return [];
+    const createdTime = (task: any) => safeDate(task.createdAt)?.getTime() ?? 0;
+    return tasks
+      .filter((task: any) => task.status !== 'completed')
+      .sort((a: any, b: any) => createdTime(a) - createdTime(b))
+      .slice(0, 5);
+  }, [tasks]);
 
   // Calculs pour les statistiques
-  const pendingOrdersCount = Array.isArray(allOrders) ? allOrders.filter((order: any) => order.status === 'pending').length : 0;
+  const pendingOrdersCount = pendingOrders.length;
   const averageDeliveryTime = Math.round(yearlyStats?.averageDeliveryTime || 0);
-  const deliveredThisMonth = Array.isArray(allDeliveries) ? allDeliveries.filter((delivery: any) => {
-    const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
-    if (!deliveryDate) return false;
-    const now = new Date();
-    return deliveryDate.getMonth() === now.getMonth() &&
-      deliveryDate.getFullYear() === now.getFullYear() &&
-      delivery.status === 'delivered';
-  }).length : 0;
-
-  // Calculer le total des palettes pour les livraisons 'delivered' du mois en cours
-  const totalPalettes = Array.isArray(allDeliveries) ? allDeliveries.reduce((total: number, delivery: any) => {
-    if (delivery.status === 'delivered' && delivery.unit === 'palettes') {
-      const deliveryDate = safeDate(delivery.deliveredDate || delivery.createdAt);
-      if (!deliveryDate) return total;
-      const now = new Date();
-      if (deliveryDate.getMonth() === now.getMonth() && deliveryDate.getFullYear() === now.getFullYear()) {
-        return total + (delivery.quantity || 0);
-      }
-    }
-    return total;
-  }, 0) : 0;
 
   // Fonction pour obtenir la configuration des priorités (identique au module Tasks)
   const getPriorityConfig = (priority: string) => {
@@ -365,25 +339,6 @@ export default function Dashboard() {
           label: 'Moyenne'
         };
     }
-  };
-
-
-  // Statistiques pour les commandes clients
-  const ordersByStatus = {
-    pending: Array.isArray(allOrders) ? allOrders.filter((o: any) => o.status === 'pending').length : 0,
-    planned: Array.isArray(allOrders) ? allOrders.filter((o: any) => o.status === 'planned').length : 0,
-    delivered: Array.isArray(allOrders) ? allOrders.filter((o: any) => o.status === 'delivered').length : 0,
-    total: Array.isArray(allOrders) ? allOrders.length : 0
-  };
-
-  // Statistiques pour les commandes clients (nouveau module)
-  const customerOrderStats = {
-    waiting: Array.isArray(customerOrders) ? customerOrders.filter((o: any) => o.status === 'En attente de Commande').length : 0,
-    inProgress: Array.isArray(customerOrders) ? customerOrders.filter((o: any) => o.status === 'Commande en Cours').length : 0,
-    available: Array.isArray(customerOrders) ? customerOrders.filter((o: any) => o.status === 'Disponible').length : 0,
-    withdrawn: Array.isArray(customerOrders) ? customerOrders.filter((o: any) => o.status === 'Retiré').length : 0,
-    canceled: Array.isArray(customerOrders) ? customerOrders.filter((o: any) => o.status === 'Annulé').length : 0,
-    total: Array.isArray(customerOrders) ? customerOrders.length : 0
   };
 
   return (
@@ -660,14 +615,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 p-6">
-            {Array.isArray(tasks) && tasks.length > 0 ? tasks
-              .filter((task: any) => task.status !== 'completed')
-              .sort((a: any, b: any) => {
-                const dateA = safeDate(a.createdAt);
-                const dateB = safeDate(b.createdAt);
-                return (dateA ? dateA.getTime() : 0) - (dateB ? dateB.getTime() : 0);
-              })
-              .slice(0, 5)
+            {Array.isArray(tasks) && tasks.length > 0 ? openTasks
               .map((task: any) => {
                 const priorityConfig = getPriorityConfig(task.priority);
                 const PriorityIcon = priorityConfig.icon;

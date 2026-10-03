@@ -81,8 +81,13 @@ export default function Groups() {
     queryKey: ['/api/groups'],
   });
 
+  // Configurations NocoDB (liste déroulante de la fenêtre magasin) : réservées à
+  // l'admin, le serveur répond 403 aux autres rôles. Les mutations de la page
+  // NocoDB invalident déjà cette clé.
   const { data: rawNocodbConfigs = [] } = useQuery<NocodbConfig[]>({
     queryKey: ['/api/nocodb-config'],
+    enabled: user?.role === 'admin',
+    staleTime: 5 * 60 * 1000,
   });
 
   // Protection renforcée contre les erreurs TypeError
@@ -96,10 +101,7 @@ export default function Groups() {
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      console.log('🏪 Frontend: Creating group with data:', data);
-      const result = await apiRequest("/api/groups", "POST", data);
-      console.log('🏪 Frontend: Group creation result:', result);
-      return result;
+      return await apiRequest("/api/groups", "POST", data);
     },
     onSuccess: () => {
       toast({

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery, useQueryClient, useMutation, keepPreviousData } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
 import { useToast } from "@/hooks/use-toast";
@@ -32,9 +32,13 @@ type TaskWithRelations = Task & {
     isFutureTask?: boolean;
 };
 
+// Référence stable tant que la liste n'est pas chargée (évite de recalculer les filtres)
+const NO_TASKS: TaskWithRelations[] = [];
+
 // Mobile Task Form Component
 function MobileTaskForm({ task, onClose, selectedStoreId, user }: any) {
     const { toast } = useToast();
+    const queryClient = useQueryClient();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -84,7 +88,9 @@ function MobileTaskForm({ task, onClose, selectedStoreId, user }: any) {
                 title: "Succès",
                 description: task ? "Tâche modifiée" : "Tâche créée",
             });
-            window.location.reload();
+            // Rechargement ciblé de la liste (plus de rechargement complet de la page)
+            await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+            onClose();
 
         } catch (error) {
             toast({ title: "Erreur", description: "Erreur lors de l'opération", variant: "destructive" });
@@ -291,9 +297,11 @@ export default function MobileTasksPage() {
     const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(null);
     const [deletingTask, setDeletingTask] = useState<TaskWithRelations | null>(null);
 
+    const tasksQueryKey = ["/api/tasks", selectedStoreId];
+
     // Fetch tasks
-    const { data: tasks = [], isLoading } = useQuery({
-        queryKey: ["/api/tasks", selectedStoreId],
+    const { data: tasks = NO_TASKS, isLoading, isPlaceholderData } = useQuery({
+        queryKey: tasksQueryKey,
         queryFn: async () => {
             const params = new URLSearchParams();
             if (selectedStoreId) params.append('storeId', selectedStoreId.toString());
@@ -305,55 +313,113 @@ export default function MobileTasksPage() {
             return Array.isArray(data) ? data.filter((t: any) => t && t.id) : [];
         },
         enabled: !!user,
+        // Au changement de magasin, la liste précédente reste affichée (estompée et
+        // non cliquable, avec un indicateur) au lieu d'un spinner plein écran
+        placeholderData: keepPreviousData,
     });
 
-    // Filter tasks
-    const filteredTasks = tasks
-        .filter((task: TaskWithRelations) => {
-            // Tab filter
-            if (activeTab === 'pending' && task.status === 'completed') return false;
-            if (activeTab === 'completed' && task.status !== 'completed') return false;
+    // Filter tasks (recalculé seulement quand la liste, l'onglet ou la recherche change)
+    const filteredTasks = useMemo(() => {
+        const search = searchTerm.toLowerCase();
+        return tasks
+            .filter((task: TaskWithRelations) => {
+                // Tab filter
+                if (activeTab === 'pending' && task.status === 'completed') return false;
+                if (activeTab === 'completed' && task.status !== 'completed') return false;
 
-            // Search filter
-            if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase())) {
-                return false;
-            }
-            return true;
-        })
-        .sort((a: TaskWithRelations, b: TaskWithRelations) => {
-            // Pending first, then by priority
-            if (a.status !== b.status) return a.status === 'pending' ? -1 : 1;
-            const priorityOrder = { high: 3, medium: 2, low: 1 };
-            return (priorityOrder[b.priority as keyof typeof priorityOrder] || 2) -
-                (priorityOrder[a.priority as keyof typeof priorityOrder] || 2);
-        });
+                // Search filter
+                if (search && !task.title.toLowerCase().includes(search)) {
+                    return false;
+                }
+                return true;
+            })
+            .sort((a: TaskWithRelations, b: TaskWithRelations) => {
+                // Pending first, then by priority
+                if (a.status !== b.status) return a.status === 'pending' ? -1 : 1;
+                const priorityOrder = { high: 3, medium: 2, low: 1 };
+                return (priorityOrder[b.priority as keyof typeof priorityOrder] || 2) -
+                    (priorityOrder[a.priority as keyof typeof priorityOrder] || 2);
+            });
+    }, [tasks, activeTab, searchTerm]);
 
-    // Handlers
-    const handleComplete = async (taskId: number) => {
-        try {
-            await fetch(`/api/tasks/${taskId}/complete`, {
+    // Mise à jour optimiste de la liste affichée ; renvoie l'état précédent pour
+    // pouvoir le restaurer si le serveur refuse l'opération
+    const updateCachedTasks = async (update: (list: TaskWithRelations[]) => TaskWithRelations[]) => {
+        const queryKey = tasksQueryKey;
+        await queryClient.cancelQueries({ queryKey });
+        const previousTasks = queryClient.getQueryData<TaskWithRelations[]>(queryKey);
+        if (Array.isArray(previousTasks)) {
+            queryClient.setQueryData<TaskWithRelations[]>(queryKey, update(previousTasks));
+        }
+        return { queryKey, previousTasks };
+    };
+
+    const restoreCachedTasks = (context?: { queryKey: unknown[]; previousTasks?: TaskWithRelations[] }) => {
+        if (context?.previousTasks) {
+            queryClient.setQueryData(context.queryKey, context.previousTasks);
+        }
+    };
+
+    // Terminer : la carte passe tout de suite en « terminée », puis la liste est
+    // rechargée depuis le serveur ; le succès n'est annoncé que si l'API l'accepte
+    const completeMutation = useMutation({
+        mutationFn: async (taskId: number) => {
+            const response = await fetch(`/api/tasks/${taskId}/complete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({}),
             });
-            queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+            if (!response.ok) throw new Error(`Erreur ${response.status}`);
+        },
+        onMutate: (taskId: number) => {
+            const now = new Date();
+            return updateCachedTasks((list) => list.map((task) =>
+                task.id === taskId
+                    ? { ...task, status: 'completed', completedAt: now, completedBy: user?.id ?? task.completedBy, updatedAt: now }
+                    : task
+            ));
+        },
+        onSuccess: () => {
             toast({ title: "✅ Tâche terminée" });
-        } catch (error) {
+        },
+        onError: (_error, _taskId, context) => {
+            restoreCachedTasks(context);
             toast({ title: "Erreur", variant: "destructive" });
-        }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+        },
+    });
+
+    // Supprimer : la carte disparaît et la feuille se ferme tout de suite
+    const deleteMutation = useMutation({
+        mutationFn: async (taskId: number) => {
+            const response = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE', credentials: 'include' });
+            if (!response.ok) throw new Error(`Erreur ${response.status}`);
+        },
+        onMutate: (taskId: number) => updateCachedTasks((list) => list.filter((task) => task.id !== taskId)),
+        onSuccess: () => {
+            toast({ title: "🗑️ Tâche supprimée" });
+        },
+        onError: (_error, _taskId, context) => {
+            restoreCachedTasks(context);
+            toast({ title: "Erreur", variant: "destructive" });
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+        },
+    });
+
+    // Handlers
+    const handleComplete = (taskId: number) => {
+        completeMutation.mutate(taskId);
     };
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!deletingTask) return;
-        try {
-            await fetch(`/api/tasks/${deletingTask.id}`, { method: 'DELETE', credentials: 'include' });
-            queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-            toast({ title: "🗑️ Tâche supprimée" });
-            setDeletingTask(null);
-        } catch (error) {
-            toast({ title: "Erreur", variant: "destructive" });
-        }
+        deleteMutation.mutate(deletingTask.id);
+        setDeletingTask(null);
     };
 
     const canEdit = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'directeur';
@@ -378,6 +444,12 @@ export default function MobileTasksPage() {
                             <div className="flex items-center gap-2">
                                 <ListTodo className="w-5 h-5 text-blue-600" />
                                 <h1 className="text-lg font-bold">Tâches</h1>
+                                {isPlaceholderData && (
+                                    <span className="inline-flex items-center gap-1 text-xs text-gray-500" role="status">
+                                        <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600" />
+                                        Mise à jour…
+                                    </span>
+                                )}
                             </div>
                             <Badge variant="secondary">{filteredTasks.length}</Badge>
                         </div>
@@ -423,8 +495,12 @@ export default function MobileTasksPage() {
                     </div>
                 </div>
 
-                {/* Task List */}
-                <div className="px-3 py-2 overflow-hidden" style={{ maxWidth: '100%' }}>
+                {/* Task List (liste du magasin précédent estompée et non cliquable pendant le chargement) */}
+                <div
+                    className={`px-3 py-2 overflow-hidden ${isPlaceholderData ? 'opacity-60 pointer-events-none transition-opacity' : ''}`}
+                    style={{ maxWidth: '100%' }}
+                    aria-busy={isPlaceholderData}
+                >
                     {filteredTasks.length === 0 ? (
                         <div className="text-center py-12 text-gray-500">
                             <ListTodo className="w-12 h-12 mx-auto mb-3 opacity-50" />

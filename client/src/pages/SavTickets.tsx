@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,10 @@ const priorityConfig = {
   critique: { label: "Critique", color: "bg-red-100 text-red-800" }
 };
 
+// Références stables tant que les données ne sont pas chargées (évitent de recalculer les filtres)
+const NO_TICKETS: SavTicketWithRelations[] = [];
+const NO_GROUPS: Group[] = [];
+
 export default function SavTickets() {
   const { user } = useAuthUnified();
   const { toast } = useToast();
@@ -94,10 +98,15 @@ export default function SavTickets() {
   
   const ticketsUrl = `/api/sav/tickets${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
 
-  const { data: ticketsData = [], isLoading } = useQuery<SavTicketWithRelations[]>({
+  const { data: ticketsData = NO_TICKETS, isLoading, isPlaceholderData } = useQuery<SavTicketWithRelations[]>({
     queryKey: [ticketsUrl, selectedStoreId],
     enabled: !!user && (user.role !== 'admin' || storeInitialized),
     staleTime: 1000 * 60 * 5, // 5 minutes
+    // Changement de filtre : les tickets précédents restent affichés (estompés)
+    // pendant le chargement. Jamais au changement de magasin, pour ne pas montrer
+    // un instant les tickets d'un autre magasin.
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === selectedStoreId ? keepPreviousData(previousData) : undefined,
   });
 
   const { data: suppliersData = [] } = useQuery<Supplier[]>({
@@ -105,7 +114,7 @@ export default function SavTickets() {
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
 
-  const { data: groupsData = [] } = useQuery<Group[]>({
+  const { data: groupsData = NO_GROUPS } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
@@ -288,30 +297,32 @@ export default function SavTickets() {
   const canModify = ['admin', 'directeur', 'manager'].includes(user?.role || '');
   const canDelete = ['admin', 'directeur'].includes(user?.role || '');
 
-  // Get user's available groups for auto-assignment
-  const getUserGroups = () => {
+  // Get user's available groups for auto-assignment (recalculé seulement quand
+  // l'utilisateur ou la liste des magasins change, et non à chaque frappe)
+  const availableGroups = useMemo(() => {
     if (!user || user.role === 'admin') {
-      console.log('🎫 [CLIENT] Admin user - can access all groups:', groupsData?.length || 0);
       return groupsData; // Admin can access all groups
     }
     
     // For other users, get their assigned groups
     const userGroups = (user as any).userGroups || [];
-    const filteredGroups = groupsData.filter(group => 
+    return groupsData.filter(group => 
       userGroups.some((ug: any) => ug.groupId === group.id)
     );
-    
-    console.log('🎫 [CLIENT] Non-admin user groups:', {
-      userRole: user.role,
-      userUsername: user.username,
-      allUserGroups: userGroups,
-      filteredGroups: filteredGroups.map(g => ({ id: g.id, name: g.name }))
-    });
-    
-    return filteredGroups;
-  };
+  }, [user, groupsData]);
 
-  const availableGroups = getUserGroups();
+  // Filter tickets by search term
+  const filteredTickets = useMemo(() => {
+    if (!searchTerm) return ticketsData;
+    const searchLower = searchTerm.toLowerCase();
+    return ticketsData.filter(ticket => (
+      ticket.ticketNumber.toLowerCase().includes(searchLower) ||
+      ticket.clientName?.toLowerCase().includes(searchLower) ||
+      ticket.problemDescription?.toLowerCase().includes(searchLower) ||
+      ticket.productDesignation?.toLowerCase().includes(searchLower) ||
+      ticket.supplier?.name.toLowerCase().includes(searchLower)
+    ));
+  }, [ticketsData, searchTerm]);
 
   // Handle form submission
   const handleCreateTicket = () => {
@@ -327,17 +338,9 @@ export default function SavTickets() {
     // Auto-assign group based on user role and available groups
     let selectedGroupId = formData.groupId ? parseInt(formData.groupId) : null;
     
-    console.log('🎫 [CLIENT] User groups analysis:', {
-      userRole: user?.role,
-      formDataGroupId: formData.groupId,
-      availableGroups: availableGroups.map(g => ({ id: g.id, name: g.name })),
-      selectedGroupId
-    });
-    
     if (!selectedGroupId && availableGroups.length > 0) {
       // Auto-assign first available group
       selectedGroupId = availableGroups[0].id;
-      console.log('🎫 [CLIENT] Auto-assigned group:', selectedGroupId, availableGroups[0].name);
     }
 
     const ticketData: InsertSavTicket = {
@@ -355,14 +358,6 @@ export default function SavTickets() {
       clientPhone: formData.clientPhone || undefined,
     };
 
-    console.log('🎫 [CLIENT] Creating ticket with data:', {
-      ...ticketData,
-      userInfo: {
-        role: user?.role,
-        username: user?.username,
-        availableGroups: availableGroups.length
-      }
-    });
     createTicketMutation.mutate(ticketData);
   };
 
@@ -371,13 +366,6 @@ export default function SavTickets() {
     setSelectedTicket(ticket);
     setShowDetailModal(true);
   };
-
-  // Query pour récupérer les détails complets du ticket avec historique
-  const { data: ticketDetails } = useQuery({
-    queryKey: [`/api/sav/tickets/${selectedTicket?.id}`],
-    enabled: !!selectedTicket && showDetailModal,
-    staleTime: 0, // Toujours récupérer les derniers commentaires
-  });
 
   // Function to check if ticket has recent comments (last 24h)
   const hasRecentComments = (ticket: SavTicketWithRelations) => {
@@ -440,19 +428,6 @@ export default function SavTickets() {
       </div>
     );
   }
-
-  // Filter tickets by search term
-  const filteredTickets = ticketsData.filter(ticket => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      ticket.ticketNumber.toLowerCase().includes(searchLower) ||
-      ticket.clientName?.toLowerCase().includes(searchLower) ||
-      ticket.problemDescription?.toLowerCase().includes(searchLower) ||
-      ticket.productDesignation?.toLowerCase().includes(searchLower) ||
-      ticket.supplier?.name.toLowerCase().includes(searchLower)
-    );
-  });
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
@@ -823,7 +798,11 @@ export default function SavTickets() {
             Liste des tickets de service après-vente
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        {/* Estompé pendant le chargement d'un nouveau filtre (anciens résultats affichés) */}
+        <CardContent
+          className={`p-0 ${isPlaceholderData ? 'opacity-60 transition-opacity' : ''}`}
+          aria-busy={isPlaceholderData}
+        >
           {isLoading ? (
             <div className="p-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>

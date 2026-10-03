@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, Suspense, useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useScreenSize } from "@/hooks/use-screen-size";
 import { StoreProvider } from "@/contexts/StoreContext";
 import Sidebar from "./Sidebar";
+import ErrorBoundary from "./ErrorBoundary";
 import WeatherWidget from "./WeatherWidget";
 import DateWidget from "./DateWidget";
 import type { Group } from "@shared/schema";
@@ -16,6 +17,23 @@ import type { Group } from "@shared/schema";
 
 interface LayoutProps {
   children: ReactNode;
+}
+
+// Tableau vide stable : évite de recréer la valeur du contexte magasin à chaque
+// rendu tant que /api/groups n'a pas répondu
+const EMPTY_STORES: Group[] = [];
+
+// Affiché dans la zone de contenu pendant le chargement du code d'une page
+// (le menu et l'en-tête restent visibles)
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Chargement...</p>
+      </div>
+    </div>
+  );
 }
 
 export default function Layout({ children }: LayoutProps) {
@@ -45,10 +63,34 @@ export default function Layout({ children }: LayoutProps) {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const { data: stores = [] } = useQuery<Group[]>({
+  const { data: stores = EMPTY_STORES } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
     enabled: !!user,
   });
+
+  // Changement de magasin demandé dans le sélecteur : les données dépendantes du
+  // magasin sont invalidées après le rendu (effet ci-dessous) et non dans le
+  // gestionnaire. À ce moment les pages ont déjà basculé sur les clés du nouveau
+  // magasin : les requêtes de l'ancien magasin ne sont plus actives et ne sont
+  // donc plus rechargées pour rien, et cancelRefetch: false réutilise les
+  // requêtes du nouveau magasin déjà en cours. L'invalidation est conservée pour
+  // les requêtes dont la clé ne contient pas le magasin (ex. ['/api/orders'] des
+  // modales de livraison).
+  const storeChangePendingRef = useRef(false);
+
+  useEffect(() => {
+    if (!storeChangePendingRef.current) return;
+    storeChangePendingRef.current = false;
+    queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey;
+        return Boolean(key[0]?.toString().includes('/api/orders') ||
+          key[0]?.toString().includes('/api/deliveries') ||
+          key[0]?.toString().includes('/api/stats/monthly') ||
+          key[0]?.toString().includes('/api/tasks'));
+      }
+    }, { cancelRefetch: false });
+  }, [selectedStoreId, queryClient]);
 
   // Effet pour marquer l'initialisation comme terminée
   useEffect(() => {
@@ -82,8 +124,21 @@ export default function Layout({ children }: LayoutProps) {
     window.location.href = "/api/logout";
   };
 
+  // Valeur du contexte mémorisée : les consommateurs de useStore() ne sont
+  // re-rendus que lorsqu'une de ces valeurs change réellement
+  const storeContextValue = useMemo(() => ({
+    selectedStoreId,
+    setSelectedStoreId,
+    stores,
+    sidebarCollapsed,
+    setSidebarCollapsed,
+    mobileMenuOpen,
+    setMobileMenuOpen,
+    storeInitialized
+  }), [selectedStoreId, stores, sidebarCollapsed, mobileMenuOpen, storeInitialized]);
+
   return (
-    <StoreProvider value={{ selectedStoreId, setSelectedStoreId, stores, sidebarCollapsed, setSidebarCollapsed, mobileMenuOpen, setMobileMenuOpen, storeInitialized }}>
+    <StoreProvider value={storeContextValue}>
       <div className="layout-container flex bg-gray-50">
         {/* Mobile overlay for normal mode */}
         {isMobile && mobileMenuOpen && (
@@ -135,15 +190,10 @@ export default function Layout({ children }: LayoutProps) {
                   value={selectedStoreId?.toString() || (user.role === 'admin' ? "all" : "")}
                   onValueChange={(value) => {
                     const newStoreId = value === "all" ? null : parseInt(value);
-                    queryClient.invalidateQueries({
-                      predicate: (query) => {
-                        const key = query.queryKey;
-                        return Boolean(key[0]?.toString().includes('/api/orders') ||
-                          key[0]?.toString().includes('/api/deliveries') ||
-                          key[0]?.toString().includes('/api/stats/monthly') ||
-                          key[0]?.toString().includes('/api/tasks'));
-                      }
-                    });
+                    // Invalidation des données du magasin après le rendu (voir plus haut)
+                    if (newStoreId !== selectedStoreId) {
+                      storeChangePendingRef.current = true;
+                    }
 
                     // Sauvegarder dans localStorage et mettre à jour l'état
                     if (newStoreId) {
@@ -210,7 +260,13 @@ export default function Layout({ children }: LayoutProps) {
 
           <div className={`flex-1 bg-gray-50 h-full overflow-y-auto overflow-x-hidden ${isMobileOrTablet ? 'p-3' : 'p-6'
             }`} style={{ maxWidth: '100%' }}>
-            {children}
+            {/* Une erreur dans une page (ou l'échec du chargement de son fichier JS)
+                n'efface plus le menu ; réinitialisée à chaque changement d'URL */}
+            <ErrorBoundary key={location}>
+              <Suspense fallback={<PageFallback />}>
+                {children}
+              </Suspense>
+            </ErrorBoundary>
           </div>
         </main>
 

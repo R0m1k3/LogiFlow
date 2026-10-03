@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
 import type { Group, Supplier } from "@shared/schema";
+
+// Référence stable tant que les magasins ne sont pas chargés
+const NO_GROUPS: Group[] = [];
 
 interface CreateOrderModalProps {
   isOpen: boolean;
@@ -41,34 +44,23 @@ export default function CreateOrderModal({
     queryKey: ['/api/suppliers'],
   });
 
-  const { data: groupsData = [] } = useQuery<Group[]>({
+  const { data: groupsData = NO_GROUPS } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
   });
   
   // Filtrer les groupes selon le magasin sélectionné pour les admins
-  const groups = Array.isArray(groupsData) ? (
+  // (mémorisé : la liste est une dépendance de l'effet ci-dessous, qui
+  // tournait sinon à chaque rendu, donc à chaque frappe dans le formulaire)
+  const groups = useMemo(() => Array.isArray(groupsData) ? (
     user?.role === 'admin' && selectedStoreId 
       ? groupsData.filter(g => g.id === selectedStoreId)
       : groupsData
-  ) : [];
+  ) : NO_GROUPS, [groupsData, user?.role, selectedStoreId]);
 
   // Auto-sélectionner le magasin selon les règles
   useEffect(() => {
-    console.log('🏪 CreateOrderModal - Store selection effect:', {
-      groupsLength: groups.length,
-      currentFormGroupId: formData.groupId,
-      selectedStoreId,
-      userRole: user?.role,
-      allGroups: groups.map(g => ({ id: g.id, name: g.name })),
-      filteredGroups: groups.length
-    });
-    
     // Reset le formulaire si le magasin sélectionné change
     if (user?.role === 'admin' && selectedStoreId && formData.groupId && formData.groupId !== selectedStoreId.toString()) {
-      console.log('🔄 Resetting form because store changed:', { 
-        currentGroupId: formData.groupId, 
-        newStoreId: selectedStoreId.toString() 
-      });
       setFormData(prev => ({ ...prev, groupId: "" }));
       return;
     }
@@ -83,20 +75,12 @@ export default function CreateOrderModal({
         } else {
           defaultGroupId = groups[0].id.toString();
         }
-        console.log('🏪 Admin store selection:', { 
-          selectedStoreId, 
-          defaultGroupId, 
-          firstGroupId: groups[0].id,
-          groupsAvailable: groups.map(g => g.name)
-        });
       } else {
         // Pour les autres rôles : prendre le premier magasin attribué
         defaultGroupId = groups[0].id.toString();
-        console.log('🏪 Non-admin store selection:', { defaultGroupId, firstGroupId: groups[0].id });
       }
       
       if (defaultGroupId) {
-        console.log('🏪 Setting default group ID:', defaultGroupId, 'for group:', groups.find(g => g.id.toString() === defaultGroupId)?.name);
         setFormData(prev => ({ ...prev, groupId: defaultGroupId }));
       }
     }
@@ -104,9 +88,7 @@ export default function CreateOrderModal({
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: any) => {
-      console.log('🚀 Creating order with data:', data);
       const response = await apiRequest("/api/orders", "POST", data);
-      console.log('✅ Order created successfully:', response);
       return response;
     },
     onSuccess: () => {
@@ -114,8 +96,6 @@ export default function CreateOrderModal({
         title: "Succès",
         description: "Commande créée avec succès",
       });
-      // Force un nettoyage complet du cache pour éviter incohérences
-      console.log('🆕 Order created, clearing cache for consistency');
       
       // Invalider toutes les variantes de queryKey pour assurer cohérence
       queryClient.invalidateQueries({ predicate: (query) => {

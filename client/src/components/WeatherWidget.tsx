@@ -121,7 +121,11 @@ export default function WeatherWidget() {
   const { data: weather, isLoading, error } = useQuery<WeatherResponse>({
     queryKey: ['/api/weather/current'],
     refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes
-    retry: 1,
+    // Données valables jusqu'au prochain rafraîchissement : pas de rechargement au remontage
+    staleTime: 30 * 60 * 1000,
+    // Pas de nouvel essai : un 404 (météo non configurée) ne changera pas, et le
+    // serveur peut appeler l'API météo externe à chaque requête
+    retry: false,
   });
 
 

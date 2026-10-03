@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useMutationState, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,14 @@ const dlcFormSchema = z.object({
 });
 
 type DlcFormData = z.infer<typeof dlcFormSchema>;
+
+// Référence stable tant que la liste n'est pas chargée (évite de recalculer
+// les listes d'impression à chaque rendu)
+const NO_PRODUCTS: DlcProductWithRelations[] = [];
+
+// Préfixe des actions faites depuis une ligne du tableau : sert à savoir
+// quelles lignes ont une action en cours
+const DLC_ROW_ACTION_KEY = "dlc-row-action";
 
 export default function DlcPage() {
   const { user, isLoading: authLoading } = useAuthUnified();
@@ -76,7 +84,7 @@ export default function DlcPage() {
   });
 
   // Fetch DLC products - optimized with server-side search
-  const { data: dlcProducts = [], isLoading: productsLoading } = useQuery({
+  const { data: dlcProducts = NO_PRODUCTS, isLoading: productsLoading, isPlaceholderData } = useQuery({
     queryKey: ["/api/dlc-products", selectedStoreId, statusFilter, supplierFilter, debouncedSearchTerm],
     queryFn: () => {
       const params = new URLSearchParams();
@@ -89,6 +97,11 @@ export default function DlcPage() {
     },
     enabled: !authLoading,
     staleTime: 2 * 60 * 1000, // 2 minutes cache for DLC data
+    // Changement de filtre ou de recherche : le tableau précédent reste affiché
+    // (estompé, avec un indicateur) au lieu de disparaître. Jamais au
+    // changement de magasin (produits d'un autre magasin).
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === selectedStoreId ? keepPreviousData(previousData) : undefined,
   });
 
   // Fetch DLC stats - optimized cache
@@ -175,13 +188,30 @@ export default function DlcPage() {
     };
   }, [gencodeValue, suppliers]);
 
+  // Après une modification, la liste et les compteurs changent : seules les
+  // requêtes affichées sont rechargées, les autres (autres filtres, tableau de
+  // bord) sont seulement marquées périmées
+  const invalidateDlcData = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], refetchType: "active" }),
+      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], refetchType: "active" }),
+    ]);
+
+  // Actions en cours, par produit : seuls les boutons de la ligne concernée sont
+  // désactivés (et non ceux de toutes les lignes), y compris si plusieurs
+  // produits sont traités à la suite
+  const pendingRowActions = useMutationState({
+    filters: { mutationKey: [DLC_ROW_ACTION_KEY], status: "pending" },
+    select: (mutation) => `${String(mutation.options.mutationKey?.[1])}:${String(mutation.state.variables)}`,
+  });
+  const isRowActionPending = (action: string, productId: number) =>
+    pendingRowActions.includes(`${action}:${productId}`);
+
   // Create mutation - optimized cache invalidation
   const createMutation = useMutation({
     mutationFn: (data: InsertDlcProduct) => apiRequest("/api/dlc-products", "POST", data),
     onSuccess: () => {
-      // Selective cache invalidation
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
+      invalidateDlcData();
       toast({ title: "Produit DLC créé avec succès" });
       setIsDialogOpen(false);
       form.reset();
@@ -201,8 +231,7 @@ export default function DlcPage() {
     mutationFn: ({ id, data }: { id: number; data: Partial<InsertDlcProduct> }) =>
       apiRequest(`/api/dlc-products/${id}`, "PUT", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
+      invalidateDlcData();
       toast({ title: "Produit DLC mis à jour avec succès" });
       setIsDialogOpen(false);
       form.reset();
@@ -219,11 +248,12 @@ export default function DlcPage() {
 
   // Validate mutation - optimized cache invalidation
   const validateMutation = useMutation({
+    mutationKey: [DLC_ROW_ACTION_KEY, "validate"],
     mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/validate`, "POST"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
       toast({ title: "Produit validé avec succès" });
+      // La ligne reste désactivée jusqu'au rechargement de la liste
+      return invalidateDlcData();
     },
     onError: (error: any) => {
       toast({
@@ -236,11 +266,12 @@ export default function DlcPage() {
 
   // Delete mutation - optimized cache invalidation
   const deleteMutation = useMutation({
+    mutationKey: [DLC_ROW_ACTION_KEY, "delete"],
     mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}`, "DELETE"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
       toast({ title: "Produit supprimé avec succès" });
+      // La ligne reste désactivée jusqu'au rechargement de la liste
+      return invalidateDlcData();
     },
     onError: (error: any) => {
       toast({
@@ -253,11 +284,12 @@ export default function DlcPage() {
 
   // Stock épuisé mutation - accessible à tous
   const markStockEpuiseMutation = useMutation({
+    mutationKey: [DLC_ROW_ACTION_KEY, "stock-epuise"],
     mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/stock-epuise`, "PUT"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
       toast({ title: "Produit marqué comme stock épuisé" });
+      // La ligne reste désactivée jusqu'au rechargement de la liste
+      return invalidateDlcData();
     },
     onError: (error: any) => {
       toast({
@@ -270,11 +302,12 @@ export default function DlcPage() {
 
   // Restaurer stock mutation - réservé aux admins, directeurs et managers
   const restoreStockMutation = useMutation({
+    mutationKey: [DLC_ROW_ACTION_KEY, "restore-stock"],
     mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/restore-stock`, "PUT"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
       toast({ title: "Stock restauré avec succès" });
+      // La ligne reste désactivée jusqu'au rechargement de la liste
+      return invalidateDlcData();
     },
     onError: (error: any) => {
       toast({
@@ -287,11 +320,12 @@ export default function DlcPage() {
 
   // Marquer comme traité mutation - accessible à tous
   const markProcessedMutation = useMutation({
+    mutationKey: [DLC_ROW_ACTION_KEY, "mark-processed"],
     mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/mark-processed`, "PUT"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
       toast({ title: "Produit marqué comme traité" });
+      // La ligne reste désactivée jusqu'au rechargement de la liste
+      return invalidateDlcData();
     },
     onError: (error: any) => {
       toast({
@@ -304,11 +338,12 @@ export default function DlcPage() {
 
   // Annuler traitement mutation - réservé aux admins, directeurs et managers
   const unmarkProcessedMutation = useMutation({
+    mutationKey: [DLC_ROW_ACTION_KEY, "unmark-processed"],
     mutationFn: (id: number) => apiRequest(`/api/dlc-products/${id}/unmark-processed`, "PUT"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products"], exact: false });
-      queryClient.invalidateQueries({ queryKey: ["/api/dlc-products/stats"], exact: false });
       toast({ title: "Traitement annulé avec succès" });
+      // La ligne reste désactivée jusqu'au rechargement de la liste
+      return invalidateDlcData();
     },
     onError: (error: any) => {
       toast({
@@ -330,32 +365,17 @@ export default function DlcPage() {
     if (user?.userGroups?.[0]?.groupId) {
       // Utilisateur avec groupe assigné : TOUJOURS utiliser ce groupe
       groupId = user.userGroups[0].groupId;
-      console.log("🎯 DLC Frontend: Using user's assigned group (PRIORITY):", groupId);
     } else if (user?.role === 'admin' && selectedStoreId) {
       // Admin avec magasin sélectionné ET pas de groupe assigné
       groupId = selectedStoreId;
-      console.log("🎯 DLC Frontend: Using admin selected store:", groupId);
     } else if (user?.role === 'admin' && stores?.[0]?.id) {
       // Admin sans sélection : premier magasin disponible
       groupId = stores[0].id;
-      console.log("🎯 DLC Frontend: Using first available store for admin:", groupId);
     } else {
       // Fallback d'urgence
       groupId = 1;
-      console.log("🚨 DLC Frontend: Using emergency fallback groupId:", groupId);
     }
 
-    console.log("🏪 DLC GroupId Selection DEBUG:", {
-      userRole: user?.role,
-      selectedStoreId,
-      userGroups: user?.userGroups?.map((ug: any) => ({groupId: ug.groupId, groupName: ug.group?.name})),
-      availableStores: stores.map((s: any) => ({id: s.id, name: s.name})),
-      userGroupsRaw: user?.userGroups,
-      firstUserGroup: user?.userGroups?.[0],
-      finalGroupId: groupId,
-      logicPath: !groupId ? 'need-fallback' : 'already-set'
-    });
-    
     const dlcData: any = {
       ...data,
       name: data.productName, // Copier productName vers name (requis dans la DB)
@@ -615,7 +635,7 @@ export default function DlcPage() {
   };
 
   // Products are already filtered server-side, no client filtering needed
-  const filteredProducts = dlcProducts || [];
+  const filteredProducts = dlcProducts || NO_PRODUCTS;
 
   // Memoized calculations for print functions
   const { expiringSoonProducts, expiredProducts } = useMemo(() => {
@@ -646,6 +666,13 @@ export default function DlcPage() {
     paginatedData: paginatedProducts,
     totalItems
   } = usePagination(filteredProducts, 10);
+
+  // Retour à la première page quand le magasin, un filtre ou la recherche change
+  // (le tableau précédent reste affiché pendant le chargement : sa longueur ne
+  // change pas forcément)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStoreId, statusFilter, supplierFilter, debouncedSearchTerm, setCurrentPage]);
 
   if (authLoading) {
     return <div className="flex justify-center items-center h-64">Chargement...</div>;
@@ -926,7 +953,15 @@ export default function DlcPage() {
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
-              <CardTitle>Produits DLC ({totalItems})</CardTitle>
+              <CardTitle>
+                Produits DLC ({totalItems})
+                {isPlaceholderData && (
+                  <span className="inline-flex items-center gap-1 ml-2 text-xs font-normal text-gray-500" role="status">
+                    <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary" />
+                    Mise à jour…
+                  </span>
+                )}
+              </CardTitle>
               <Button variant="outline" size="sm">
                 <Download className="w-4 h-4 mr-2" />
                 Exporter PDF
@@ -934,14 +969,17 @@ export default function DlcPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {productsLoading ? (
+            {productsLoading || (isPlaceholderData && totalItems === 0) ? (
               <div className="flex justify-center items-center h-32">Chargement des produits...</div>
             ) : totalItems === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 Aucun produit DLC trouvé
               </div>
             ) : (
-              <div>
+              <div
+                className={isPlaceholderData ? "opacity-60 pointer-events-none transition-opacity" : ""}
+                aria-busy={isPlaceholderData}
+              >
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -992,7 +1030,7 @@ export default function DlcPage() {
                                 variant="default"
                                 size="sm"
                                 onClick={() => handleValidate(product.id)}
-                                disabled={validateMutation.isPending}
+                                disabled={isRowActionPending("validate", product.id)}
                                 className="bg-green-600 hover:bg-green-700"
                                 data-testid={`button-validate-${product.id}`}
                                 title="Valider définitivement ce produit"
@@ -1010,7 +1048,7 @@ export default function DlcPage() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => handleMarkProcessed(product.id)}
-                                      disabled={markProcessedMutation.isPending}
+                                      disabled={isRowActionPending("mark-processed", product.id)}
                                       className="border-blue-300 text-blue-700 hover:bg-blue-50"
                                       data-testid={`button-mark-processed-${product.id}`}
                                     >
@@ -1036,7 +1074,7 @@ export default function DlcPage() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => handleUnmarkProcessed(product.id)}
-                                      disabled={unmarkProcessedMutation.isPending}
+                                      disabled={isRowActionPending("unmark-processed", product.id)}
                                       className="border-orange-300 text-orange-700 hover:bg-orange-50"
                                     >
                                       <X className="w-4 h-4" />
@@ -1062,7 +1100,7 @@ export default function DlcPage() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => handleMarkStockEpuise(product.id)}
-                                      disabled={markStockEpuiseMutation.isPending}
+                                      disabled={isRowActionPending("stock-epuise", product.id)}
                                       className="border-yellow-300 text-yellow-700 hover:bg-yellow-50"
                                     >
                                       <PackageX className="w-4 h-4" />
@@ -1087,7 +1125,7 @@ export default function DlcPage() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => handleRestoreStock(product.id)}
-                                      disabled={restoreStockMutation.isPending}
+                                      disabled={isRowActionPending("restore-stock", product.id)}
                                       className="border-blue-300 text-blue-700 hover:bg-blue-50"
                                     >
                                       <RotateCcw className="w-4 h-4" />
@@ -1106,7 +1144,7 @@ export default function DlcPage() {
                               variant="destructive"
                               size="sm"
                               onClick={() => handleDelete(product.id)}
-                              disabled={deleteMutation.isPending}
+                              disabled={isRowActionPending("delete", product.id)}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>

@@ -1,47 +1,48 @@
-import { useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { lazy, useEffect } from "react";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useScreenSize } from "@/hooks/use-screen-size";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/AuthPage";
 import Dashboard from "@/pages/Dashboard";
-import Calendar from "@/pages/Calendar";
-import Orders from "@/pages/Orders";
-import Deliveries from "@/pages/Deliveries";
-import Suppliers from "@/pages/Suppliers";
-import Groups from "@/pages/Groups";
-import Users from "@/pages/Users";
-import BLReconciliation from "@/pages/BLReconciliation";
-import Publicities from "@/pages/Publicities";
-
-import NocoDBConfig from "@/pages/NocoDBConfig";
-import DatabaseDebug from "@/pages/DatabaseDebug";
-import CustomerOrders from "@/pages/CustomerOrders";
-
-import DlcPage from "@/pages/DlcPage";
-import BackupManager from "@/pages/BackupManager";
-import Utilities from "@/pages/Utilities";
-import Tasks from "@/pages/Tasks";
-import SavTickets from "@/pages/SavTickets";
-import Avoirs from "@/pages/Avoirs";
-import WeatherSettings from "@/pages/WeatherSettings";
-import Analytics from "@/pages/Analytics";
-import PaymentSchedulePage from "@/pages/PaymentSchedulePage";
-import Contacts from "@/pages/Contacts";
 import Layout from "@/components/Layout";
 
-// Mobile pages
+// Mobile : coque et page d'accueil chargées immédiatement
 import MobileApp from "@/pages/mobile/MobileApp";
 import MobileDashboardPage from "@/pages/mobile/DashboardPage";
-import MobileOrdersPage from "@/pages/mobile/OrdersPage";
-import MobileDeliveriesPage from "@/pages/mobile/DeliveriesPage";
-import MobileCalendarPage from "@/pages/mobile/CalendarPage";
-import MobileTasksPage from "@/pages/mobile/TasksPage";
-import MobilePublicitiesPage from "@/pages/mobile/PublicitiesPage";
-import MobileCustomerOrdersPage from "@/pages/mobile/CustomerOrdersPage";
-import MobileDlcPage from "@/pages/mobile/DlcPage";
-import MobileSavPage from "@/pages/mobile/SavPage";
-import MobileAvoirsPage from "@/pages/mobile/AvoirsPage";
+
+// Les autres pages sont chargées à la demande (un fichier JS par page) : l'écran
+// de connexion et le tableau de bord n'attendent plus le code de toutes les pages
+// ni la bibliothèque de graphiques. Le <Suspense> est placé dans la zone de
+// contenu de Layout et de MobileApp, le menu et l'en-tête restent affichés.
+const Calendar = lazy(() => import("@/pages/Calendar"));
+const Orders = lazy(() => import("@/pages/Orders"));
+const Deliveries = lazy(() => import("@/pages/Deliveries"));
+const Suppliers = lazy(() => import("@/pages/Suppliers"));
+const Groups = lazy(() => import("@/pages/Groups"));
+const Users = lazy(() => import("@/pages/Users"));
+const BLReconciliation = lazy(() => import("@/pages/BLReconciliation"));
+const Publicities = lazy(() => import("@/pages/Publicities"));
+const CustomerOrders = lazy(() => import("@/pages/CustomerOrders"));
+const DlcPage = lazy(() => import("@/pages/DlcPage"));
+const Utilities = lazy(() => import("@/pages/Utilities"));
+const Tasks = lazy(() => import("@/pages/Tasks"));
+const SavTickets = lazy(() => import("@/pages/SavTickets"));
+const Avoirs = lazy(() => import("@/pages/Avoirs"));
+const Analytics = lazy(() => import("@/pages/Analytics"));
+const PaymentSchedulePage = lazy(() => import("@/pages/PaymentSchedulePage"));
+const Contacts = lazy(() => import("@/pages/Contacts"));
+
+// Pages mobiles chargées à la demande
+const MobileOrdersPage = lazy(() => import("@/pages/mobile/OrdersPage"));
+const MobileDeliveriesPage = lazy(() => import("@/pages/mobile/DeliveriesPage"));
+const MobileCalendarPage = lazy(() => import("@/pages/mobile/CalendarPage"));
+const MobileTasksPage = lazy(() => import("@/pages/mobile/TasksPage"));
+const MobilePublicitiesPage = lazy(() => import("@/pages/mobile/PublicitiesPage"));
+const MobileCustomerOrdersPage = lazy(() => import("@/pages/mobile/CustomerOrdersPage"));
+const MobileDlcPage = lazy(() => import("@/pages/mobile/DlcPage"));
+const MobileSavPage = lazy(() => import("@/pages/mobile/SavPage"));
+const MobileAvoirsPage = lazy(() => import("@/pages/mobile/AvoirsPage"));
 
 // Helper component to handle redirection
 const RedirectToAuth = () => {
@@ -53,27 +54,8 @@ const RedirectToAuth = () => {
 };
 
 function RouterProduction() {
-  const { isAuthenticated, isLoading, user, environment, error } = useAuthUnified();
+  const { isAuthenticated, isLoading, user } = useAuthUnified();
   const { isMobile } = useScreenSize();
-
-  // Debug uniquement en développement
-  if (import.meta.env.DEV) {
-    console.log('🔍 RouterProduction Debug:', {
-      environment,
-      isAuthenticated,
-      isLoading,
-      hasUser: !!user,
-      userId: user?.id,
-      username: user?.username,
-      isMobile,
-      error: error?.message
-    });
-  }
-
-  // Debug minimal basé sur l'environnement
-  if (environment === 'production' && error && import.meta.env.DEV) {
-    console.error('🚨 Production Auth Error:', error);
-  }
 
   // Loading state
   if (isLoading) {
@@ -89,9 +71,6 @@ function RouterProduction() {
 
   // Not authenticated
   if (!isAuthenticated || !user) {
-    if (import.meta.env.DEV) {
-      console.log('🔐 Not authenticated, showing auth routes');
-    }
     return (
       <Switch>
         <Route path="/auth" component={AuthPage} />
@@ -128,14 +107,9 @@ function RouterProduction() {
           <Route path="/analytics" component={Analytics} />
           <Route path="/payment-schedule" component={PaymentSchedulePage} />
 
-          {/* Redirection /auth vers dashboard */}
+          {/* Redirection /auth vers dashboard (navigation interne, sans rechargement) */}
           <Route path="/auth">
-            {() => {
-              if (typeof window !== 'undefined') {
-                window.location.href = '/dashboard';
-              }
-              return <MobileDashboardPage />;
-            }}
+            <Redirect to="/dashboard" replace />
           </Route>
 
           <Route path="/" component={MobileDashboardPage} />
@@ -175,17 +149,10 @@ function RouterProduction() {
         <Route path="/database-debug" component={Utilities} />
         <Route path="/weather-settings" component={Utilities} />
 
-        {/* Redirection depuis /auth vers dashboard après authentification */}
+        {/* Redirection depuis /auth vers dashboard après authentification
+            (navigation interne, sans rechargement complet de l'application) */}
         <Route path="/auth">
-          {() => {
-            if (typeof window !== 'undefined') {
-              if (import.meta.env.DEV) {
-                console.log('🔄 Authenticated user on /auth, redirecting to dashboard');
-              }
-              window.location.href = '/';
-            }
-            return <Dashboard />;
-          }}
+          <Redirect to="/" replace />
         </Route>
 
         <Route path="/" component={Dashboard} />

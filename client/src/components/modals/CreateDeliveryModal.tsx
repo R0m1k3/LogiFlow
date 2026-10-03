@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { format } from "date-fns";
 import { safeFormat } from "@/lib/dateUtils";
 import type { Group, Supplier, OrderWithRelations } from "@shared/schema";
+
+// Référence stable tant que les magasins ne sont pas chargés
+const NO_GROUPS: Group[] = [];
 
 interface CreateDeliveryModalProps {
   isOpen: boolean;
@@ -45,20 +48,29 @@ export default function CreateDeliveryModal({
     queryKey: ['/api/suppliers'],
   });
 
-  const { data: groupsData = [] } = useQuery<Group[]>({
+  const { data: groupsData = NO_GROUPS } = useQuery<Group[]>({
     queryKey: ['/api/groups'],
   });
   
   // Filtrer les groupes selon le magasin sélectionné pour les admins
-  const groups = Array.isArray(groupsData) ? (
+  // (mémorisé : la liste est une dépendance de l'effet ci-dessous, qui
+  // tournait sinon à chaque rendu, donc à chaque frappe dans le formulaire)
+  const groups = useMemo(() => Array.isArray(groupsData) ? (
     user?.role === 'admin' && selectedStoreId 
       ? groupsData.filter(g => g.id === selectedStoreId)
       : groupsData
-  ) : [];
+  ) : NO_GROUPS, [groupsData, user?.role, selectedStoreId]);
 
-  // Filtrer les commandes par fournisseur sélectionné
+  // Commandes du magasin du formulaire uniquement (paramètre storeId, dont
+  // l'accès est contrôlé par le serveur) au lieu de tout l'historique de tous
+  // les magasins ; filtrées ensuite par fournisseur
   const { data: allOrders = [] } = useQuery<OrderWithRelations[]>({
-    queryKey: ['/api/orders'],
+    queryKey: ['/api/orders', 'store', formData.groupId],
+    queryFn: async () => {
+      const data = await apiRequest(`/api/orders?storeId=${formData.groupId}`);
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: !!formData.groupId,
   });
 
   // Filtrer les commandes par fournisseur ET magasin sélectionnés - montrer toutes les commandes non livrées
@@ -74,21 +86,8 @@ export default function CreateDeliveryModal({
 
   // Auto-sélectionner le magasin selon les règles
   useEffect(() => {
-    console.log('🏪 CreateDeliveryModal - Store selection effect:', {
-      groupsLength: groups.length,
-      currentFormGroupId: formData.groupId,
-      selectedStoreId,
-      userRole: user?.role,
-      allGroups: groups.map(g => ({ id: g.id, name: g.name })),
-      filteredGroups: groups.length
-    });
-    
     // Reset le formulaire si le magasin sélectionné change
     if (user?.role === 'admin' && selectedStoreId && formData.groupId && formData.groupId !== selectedStoreId.toString()) {
-      console.log('🔄 Resetting delivery form because store changed:', { 
-        currentGroupId: formData.groupId, 
-        newStoreId: selectedStoreId.toString() 
-      });
       setFormData(prev => ({ ...prev, groupId: "", orderId: "" }));
       return;
     }
@@ -103,21 +102,13 @@ export default function CreateDeliveryModal({
         } else {
           defaultGroupId = groups[0].id.toString();
         }
-        console.log('🏪 Admin delivery store selection:', { 
-          selectedStoreId, 
-          defaultGroupId, 
-          firstGroupId: groups[0].id,
-          groupsAvailable: groups.map(g => g.name)
-        });
       } else {
         // Pour les autres rôles : prendre le premier magasin attribué
         // (La logique existante filtre déjà les groupes selon les permissions)
         defaultGroupId = groups[0].id.toString();
-        console.log('🏪 Non-admin delivery store selection:', { defaultGroupId, firstGroupId: groups[0].id });
       }
       
       if (defaultGroupId) {
-        console.log('🏪 Setting default group ID for delivery:', defaultGroupId, 'for group:', groups.find(g => g.id.toString() === defaultGroupId)?.name);
         setFormData(prev => ({ ...prev, groupId: defaultGroupId }));
       }
     }
@@ -148,7 +139,6 @@ export default function CreateDeliveryModal({
       });
       
       // Invalider toutes les variantes de queryKey pour assurer cohérence
-      console.log('🚚 Delivery created, clearing cache for consistency');
       queryClient.invalidateQueries({ predicate: (query) => {
         const key = query.queryKey;
         const firstKey = key[0]?.toString() || '';

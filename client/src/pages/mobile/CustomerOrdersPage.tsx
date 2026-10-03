@@ -2,7 +2,7 @@
  * MobileCustomerOrdersPage.tsx
  * Version mobile de la page Commandes Clients avec création
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
@@ -77,6 +77,9 @@ const customerOrderFormSchema = z.object({
     deposit: z.coerce.number().optional().default(0),
 });
 
+// Référence stable tant que la liste n'est pas chargée
+const NO_ORDERS: any[] = [];
+
 export default function MobileCustomerOrdersPage() {
     const { user } = useAuthUnified();
     const { selectedStoreId } = useStore();
@@ -88,7 +91,7 @@ export default function MobileCustomerOrdersPage() {
     const queryClient = useQueryClient();
 
     // Queries
-    const { data: orders = [], isLoading } = useQuery({
+    const { data: orders = NO_ORDERS, isLoading } = useQuery({
         queryKey: ["/api/customer-orders", selectedStoreId],
         queryFn: async () => {
             if (!selectedStoreId) return [];
@@ -267,11 +270,16 @@ export default function MobileCustomerOrdersPage() {
         createMutation.mutate(submitData);
     };
 
-    const filteredOrders = orders.filter((order: any) =>
-        order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.productDesignation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.productReference && order.productReference.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    // Recalculé seulement quand la liste ou la recherche change (et non à
+    // chaque frappe dans le commentaire de contact)
+    const filteredOrders = useMemo(() => {
+        const search = searchTerm.toLowerCase();
+        return orders.filter((order: any) =>
+            order.customerName.toLowerCase().includes(search) ||
+            order.productDesignation.toLowerCase().includes(search) ||
+            (order.productReference && order.productReference.toLowerCase().includes(search))
+        );
+    }, [orders, searchTerm]);
 
     const getStatusColor = (status: string) => {
         switch (status) {

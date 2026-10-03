@@ -47,8 +47,16 @@ export default function EditDeliveryModal({
     queryKey: ['/api/groups'],
   });
 
+  // Commandes du magasin du formulaire uniquement (paramètre storeId, dont
+  // l'accès est contrôlé par le serveur) au lieu de tout l'historique de tous
+  // les magasins ; même clé que la modale de création
   const { data: allOrders = [] } = useQuery<OrderWithRelations[]>({
-    queryKey: ['/api/orders'],
+    queryKey: ['/api/orders', 'store', formData.groupId],
+    queryFn: async () => {
+      const data = await apiRequest(`/api/orders?storeId=${formData.groupId}`);
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: !!formData.groupId,
   });
 
   // Filtrer les commandes par fournisseur sélectionné et groupe - montrer toutes les commandes non livrées du même groupe

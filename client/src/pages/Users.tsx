@@ -28,7 +28,7 @@ import {
 import type { UserWithGroups, Group } from "@shared/schema";
 
 export default function UsersPage() {
-  const { user } = useAuthUnified();
+  const { user, refreshAuth } = useAuthUnified();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -132,11 +132,16 @@ export default function UsersPage() {
       const response = await apiRequest(`/api/users/${data.id}`, "PUT", cleanedUpdates);
       return response;
     },
-    onSuccess: (updatedUser) => {
+    onSuccess: (updatedUser, variables) => {
       toast({
         title: "Succès",
         description: "Utilisateur mis à jour avec succès",
       });
+
+      // Compte de l'administrateur connecté : rafraîchir l'utilisateur partagé par l'application
+      if (variables.id === user?.id) {
+        refreshAuth();
+      }
       
       // Update the form with the response data before closing
       if (updatedUser) {
@@ -224,25 +229,24 @@ export default function UsersPage() {
 
   const assignGroupMutation = useMutation({
     mutationFn: async (data: { userId: string; groupId: number }) => {
-      console.log('📤 Assigning group:', data);
       const response = await apiRequest(
         `/api/users/${data.userId}/groups`, 
         "POST",
         { groupId: data.groupId }
       );
-      console.log('✅ Group assignment response:', response);
       return response;
     },
-    onSuccess: () => {
-      console.log('✅ Group assigned successfully');
+    onSuccess: (_response, variables) => {
       toast({
         title: "Succès",
         description: "Utilisateur assigné au groupe avec succès",
       });
-      // Invalidation complète du cache
+      // Seule la liste des utilisateurs change : la liste des magasins
+      // (['/api/groups']) ne dépend pas des affectations
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-      
-      queryClient.invalidateQueries({ queryKey: ['/api/groups'] });
+      if (variables.userId === user?.id) {
+        refreshAuth();
+      }
     },
     onError: (error: any) => {
       console.error('❌ Error assigning group:', error);
@@ -270,24 +274,23 @@ export default function UsersPage() {
 
   const removeGroupMutation = useMutation({
     mutationFn: async (data: { userId: string; groupId: number }) => {
-      console.log('🗑️ Removing group:', data);
       const response = await apiRequest(
         `/api/users/${data.userId}/groups/${data.groupId}`, 
         "DELETE"
       );
-      console.log('✅ Group removal response:', response);
       return response;
     },
-    onSuccess: () => {
-      console.log('✅ Group removed successfully');
+    onSuccess: (_response, variables) => {
       toast({
         title: "Succès",
         description: "Utilisateur retiré du groupe avec succès",
       });
-      // Invalidation complète du cache
+      // Seule la liste des utilisateurs change : la liste des magasins
+      // (['/api/groups']) ne dépend pas des affectations
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-      
-      queryClient.invalidateQueries({ queryKey: ['/api/groups'] });
+      if (variables.userId === user?.id) {
+        refreshAuth();
+      }
     },
     onError: (error: any) => {
       console.error('❌ Error removing group:', error);

@@ -18,7 +18,6 @@ import {
     Receipt
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useAuthUnified } from "@/hooks/useAuthUnified";
 
 interface NavItem {
     path: string;
@@ -44,7 +43,6 @@ const moreItems: NavItem[] = [
 
 export default function MobileBottomNav() {
     const [location] = useLocation();
-    const { user } = useAuthUnified();
     const [moreOpen, setMoreOpen] = useState(false);
 
     const isActive = (path: string) => {

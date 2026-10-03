@@ -54,10 +54,10 @@ export default function ValidateDeliveryModal({
         title: "Succès",
         description: "Livraison validée avec succès",
       });
-      // Invalider tous les caches liés aux livraisons
-      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-      // Invalider tous les caches BL/Rapprochement avec toutes les variations de clés
-      queryClient.invalidateQueries({ 
+      // Invalider tous les caches liés aux livraisons et les caches BL/Rapprochement
+      // avec toutes les variations de clés, en un seul appel (un second appel sur
+      // ['/api/deliveries'] relançait le chargement des listes affichées)
+      queryClient.invalidateQueries({
         predicate: (query) => 
           query.queryKey[0] === '/api/deliveries/bl' || 
           query.queryKey[0] === '/api/deliveries'

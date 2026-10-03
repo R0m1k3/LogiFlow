@@ -38,10 +38,14 @@ export default defineConfig({
         // elles ne changent qu'aux montées de version et restent donc en
         // cache navigateur entre deux déploiements, au lieu de faire
         // retélécharger 1,7 Mo à chaque mise en production.
+        // recharts n'est volontairement pas listé ici : un chunk manuel
+        // embarque aussi les dépendances partagées (clsx...) importées par
+        // l'application, ce qui le faisait précharger dès l'écran de
+        // connexion. Sans entrée, il n'est téléchargé qu'avec la page
+        // Statistiques (chargée à la demande).
         manualChunks: {
           "vendor-react": ["react", "react-dom", "wouter"],
           "vendor-query": ["@tanstack/react-query"],
-          "vendor-charts": ["recharts"],
           "vendor-icons": ["lucide-react"],
         },
       },

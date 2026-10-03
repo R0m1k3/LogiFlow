@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { safeFormat } from "@/lib/dateUtils";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,82 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ReconciliationComments from "@/components/ReconciliationComments";
 import ReconciliationModal from "@/components/modals/ReconciliationModal";
+
+// Tableau vide stable tant que la liste n'est pas chargée (évite de relancer
+// effets et calculs mémoïsés à chaque rendu)
+const NO_DELIVERIES: any[] = [];
+
+// Clé de la liste du rapprochement : elle commence par '/api/deliveries', donc
+// toute invalidation des livraisons (ici ou depuis une autre page) l'atteint
+const RECONCILIATION_QUERY_KEY = ['/api/deliveries', 'reconciliation'] as const;
+
+// Filtrage des livraisons par recherche uniquement
+function filterDeliveriesBySearch(deliveries: any[], searchTerm: string) {
+  if (!searchTerm) return deliveries;
+
+  const searchLower = searchTerm.toLowerCase();
+  return deliveries.filter((delivery: any) => {
+    return (
+      delivery.supplier?.name?.toLowerCase().includes(searchLower) ||
+      delivery.blNumber?.toLowerCase().includes(searchLower) ||
+      delivery.invoiceReference?.toLowerCase().includes(searchLower) ||
+      delivery.group?.name?.toLowerCase().includes(searchLower)
+    );
+  });
+}
+
+// Progression affichée dans le modal d'attente (60 s max). Le compteur vit dans
+// ce composant pour ne pas re-rendre toute la page chaque seconde ; il repart de
+// zéro à chaque ouverture du modal et s'arrête à sa fermeture.
+function WaitingProgress() {
+  const [processingSeconds, setProcessingSeconds] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setProcessingSeconds(prev => {
+        if (prev >= 60) {
+          clearInterval(interval);
+          return 60;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="text-center">
+      <div className="w-16 h-16 mx-auto mb-4 relative">
+        <div className="w-16 h-16 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-xs font-bold text-blue-600">{processingSeconds}s</span>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="font-medium text-gray-900">
+          Traitement de votre facture en cours...
+        </h3>
+        <p className="text-sm text-gray-600">
+          Le workflow peut prendre jusqu'à 1 minute.
+          <br />
+          Veuillez patienter.
+        </p>
+      </div>
+
+      <div className="mt-4 bg-gray-100 rounded-full h-2 w-full">
+        <div
+          className="bg-blue-600 h-2 rounded-full transition-all duration-1000 ease-out"
+          style={{ width: `${Math.min((processingSeconds / 60) * 100, 100)}%` }}
+        ></div>
+      </div>
+
+      <div className="mt-2 text-xs text-gray-500">
+        {processingSeconds < 60 ? `${60 - processingSeconds}s restantes (max)` : 'Finalisation...'}
+      </div>
+    </div>
+  );
+}
 
 export default function BLReconciliation() {
   const { user } = useAuthUnified();
@@ -59,10 +135,8 @@ export default function BLReconciliation() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
-  // État pour le modal d'attente du webhook
+  // État pour le modal d'attente du webhook (compteur dans WaitingProgress)
   const [showWaitingModal, setShowWaitingModal] = useState(false);
-  const [processingSeconds, setProcessingSeconds] = useState(0);
-  const [processingTimeout, setProcessingTimeout] = useState<NodeJS.Timeout | null>(null);
   
   // État pour le système de vérification de facture
   const [verificationResults, setVerificationResults] = useState<Record<number, any>>({});
@@ -73,11 +147,6 @@ export default function BLReconciliation() {
   // État pour le modal de commentaire
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [selectedDeliveryForComment, setSelectedDeliveryForComment] = useState<any>(null);
-
-  // Récupérer les fournisseurs pour la logique automatique
-  const { data: suppliers = [] } = useQuery<any[]>({
-    queryKey: ['/api/suppliers'],
-  });
 
   // Historique des relances fournisseurs : dernier envoi affiché sur l'icône mail
   const { data: supplierMailLogs = [] } = useQuery<any[]>({
@@ -125,6 +194,15 @@ export default function BLReconciliation() {
   // Invalidation de cache différée : une seule fois quand la file est vidée
   const needsCacheInvalidationRef = useRef(false);
 
+  // Après une modification de livraison : la liste du rapprochement et les
+  // autres listes de livraisons sont invalidées par préfixe (seules les requêtes
+  // affichées sont rechargées) ; l'échéancier, calculé à partir des mêmes
+  // livraisons, est seulement marqué périmé.
+  const invalidateDeliveries = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] }),
+    queryClient.invalidateQueries({ queryKey: ['/api/payment-schedule'] }),
+  ]);
+
   // Fonction de vérification de facture
   const verifyInvoiceMutation = useMutation({
     mutationFn: async ({ deliveryId, invoiceReference, blNumber, forceRefresh }: { deliveryId: number; invoiceReference?: string; blNumber?: string; forceRefresh?: boolean; silent?: boolean }) => {
@@ -147,45 +225,20 @@ export default function BLReconciliation() {
       }));
       
       // Pas de toast - affichage silencieux des coches vertes/rouges
-      
-      // Auto-remplissage si facture trouvée (référence facture OU numéro BL)
-      if (result.exists) {
-        const updateData: any = {};
 
-        // Ajouter la référence de facture SEULEMENT si trouvée via BL (pas déjà renseignée)
-        if (result.invoiceReference && result.matchType === 'bl_number') {
-          updateData.invoiceReference = result.invoiceReference;
-        }
-
-        // TOUJOURS mettre à jour le montant si disponible (peu importe le matchType)
-        if (result.invoiceAmount !== undefined && result.invoiceAmount !== null) {
-          updateData.invoiceAmount = result.invoiceAmount;
-        }
-
-        // TOUJOURS mettre à jour la date d'échéance si disponible (peu importe le matchType)
-        if (result.dueDate) {
-          updateData.dueDate = result.dueDate;
-        }
-
-        if (import.meta.env.DEV) {
-          console.log('📝 Auto-remplissage:', { deliveryId: variables.deliveryId, updateData, matchType: result.matchType });
-        }
-
-        // Ne faire l'appel que si on a des données à mettre à jour
-        if (Object.keys(updateData).length > 0) {
-          apiRequest(`/api/deliveries/${variables.deliveryId}`, "PUT", updateData)
-            .then(() => {
-              // Invalidation différée : sinon chaque auto-remplissage relance un
-              // refetch complet de la liste, qui relance l'effet, qui relance des
-              // vérifications... jusqu'à saturer le navigateur.
-              needsCacheInvalidationRef.current = true;
-            })
-            .catch((error) => {
-              console.error('❌ Erreur auto-remplissage:', error);
-            });
-        }
+      // Auto-remplissage : le serveur (verify-invoice) enregistre déjà sur la
+      // livraison la référence, les montants et l'échéance trouvés. Il suffit de
+      // recharger la liste, une seule fois quand la file est vidée : sinon
+      // chaque résultat relancerait un refetch complet, qui relancerait l'effet
+      // de vérification automatique.
+      if (result.exists && (
+        (result.invoiceReference && result.matchType === 'bl_number') ||
+        (result.invoiceAmount !== undefined && result.invoiceAmount !== null) ||
+        result.dueDate
+      )) {
+        needsCacheInvalidationRef.current = true;
       }
-      
+
       setVerifyingDeliveries(prev => {
         const newSet = new Set(prev);
         newSet.delete(variables.deliveryId);
@@ -234,16 +287,6 @@ export default function BLReconciliation() {
       const { delivery, forceRefresh, silent } = next;
       activeVerificationsRef.current += 1;
 
-      if (import.meta.env.DEV) {
-        console.log('🔍 Déclenchement vérification:', {
-          deliveryId: delivery.id,
-          invoiceReference: delivery.invoiceReference,
-          blNumber: delivery.blNumber,
-          supplier: delivery.supplier?.name,
-          enAttente: verificationQueueRef.current.length
-        });
-      }
-
       verifyInvoiceMutation
         .mutateAsync({
           deliveryId: delivery.id,
@@ -266,8 +309,7 @@ export default function BLReconciliation() {
             needsCacheInvalidationRef.current
           ) {
             needsCacheInvalidationRef.current = false;
-            queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-            queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
+            invalidateDeliveries();
           }
         });
     }
@@ -345,11 +387,14 @@ export default function BLReconciliation() {
     });
   };
 
-  // Récupérer les livraisons validées avec BL - CACHE INVALIDÉ après modifications
-  const { data: deliveriesWithBL = [], isLoading, refetch } = useQuery({
-    queryKey: ['/api/deliveries/bl', selectedStoreId],
+  // Récupérer les livraisons livrées (onglets manuel et validées). Toute
+  // modification de livraison invalide ['/api/deliveries'], donc cette liste :
+  // le cache par défaut (30 s) évite de la retélécharger à chaque visite.
+  const { data: deliveriesWithBL = NO_DELIVERIES, isLoading } = useQuery<any[]>({
+    queryKey: [...RECONCILIATION_QUERY_KEY, selectedStoreId],
     queryFn: async () => {
-      const params = new URLSearchParams({});
+      // Seules les livraisons livrées sont demandées (filtre appliqué en base)
+      const params = new URLSearchParams({ status: 'delivered' });
       if (selectedStoreId && (user?.role === 'admin' || user?.role === 'directeur')) {
         params.append('storeId', selectedStoreId.toString());
       }
@@ -364,31 +409,23 @@ export default function BLReconciliation() {
       
       const deliveries = await response.json();
       
-      // Debug désactivé en production pour éviter latence
-      if (import.meta.env.DEV && deliveries[0]) {
-        console.log('🔍 DEBUG - Première livraison:', deliveries[0]);
-      }
+      // Filtre conservé par sécurité si le serveur ignore le paramètre status
       const filtered = Array.isArray(deliveries) ? deliveries.filter((d: any) => d.status === 'delivered') : [];
       
       return filtered.sort((a: any, b: any) => new Date(b.deliveredDate || b.updatedAt).getTime() - new Date(a.deliveredDate || a.updatedAt).getTime());
     },
     enabled: !!user,
-    staleTime: 0 // Éviter la mise en cache pour toujours avoir les dernières données BL
   });
 
   // VÉRIFICATION AUTOMATIQUE AU CHARGEMENT avec système de cache
   //
-  // Cet effet ne dépend QUE des données (livraisons + fournisseurs) : y ajouter
+  // Cet effet ne dépend QUE des livraisons : y ajouter
   // verificationResults/verifyingDeliveries le relançait à chaque résultat reçu,
   // ce qui reprogrammait en boucle les mêmes vérifications.
   // Le dédoublonnage s'appuie sur autoRequestedIdsRef (ref, pas state) pour être
   // effectif immédiatement, sans attendre un re-rendu.
   useEffect(() => {
-    if (!deliveriesWithBL.length || !suppliers.length) return;
-
-    if (import.meta.env.DEV) {
-      console.log('🔄 Déclenchement vérifications automatiques...');
-    }
+    if (!deliveriesWithBL.length) return;
 
     // Résultats déduits localement (sans appel réseau) pour afficher les coches
     const cachedResults: Record<number, any> = {};
@@ -450,19 +487,19 @@ export default function BLReconciliation() {
 
       return changed ? merged : prev;
     });
-  }, [deliveriesWithBL, suppliers]);
+  }, [deliveriesWithBL]);
 
-  // Séparer les livraisons : non validées manuelles et toutes les validées
-  const manualNotValidatedDeliveries = deliveriesWithBL.filter((delivery: any) => {
-    const supplier = suppliers.find(s => s.id === delivery.supplierId);
-    const isManual = supplier?.automaticReconciliation !== true;
+  // Séparer les livraisons : non validées manuelles et toutes les validées.
+  // Le fournisseur (dont automaticReconciliation) est joint à chaque livraison.
+  const manualNotValidatedDeliveries = useMemo(() => deliveriesWithBL.filter((delivery: any) => {
+    const isManual = delivery.supplier?.automaticReconciliation !== true;
     const isNotValidated = delivery.reconciled !== true && delivery.reconciled !== 1;
     return isManual && isNotValidated;
-  });
+  }), [deliveriesWithBL]);
 
-  const allValidatedDeliveries = deliveriesWithBL.filter((delivery: any) => {
+  const allValidatedDeliveries = useMemo(() => deliveriesWithBL.filter((delivery: any) => {
     return delivery.reconciled === true || delivery.reconciled === 1;
-  });
+  }), [deliveriesWithBL]);
 
   // Fonctions de gestion
   const handleOpenModal = (delivery: any) => {
@@ -477,9 +514,13 @@ export default function BLReconciliation() {
 
   const handleSaveReconciliation = async () => {
     try {
-      // Force refetch immédiat pour mettre à jour l'affichage
-      await queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
-      await queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
+      // Mise à jour de l'affichage : seules les listes affichées sont rechargées.
+      // cancelRefetch: false réutilise le rechargement déjà lancé par la modale
+      // (après l'enregistrement) au lieu d'en relancer un second.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] }, { cancelRefetch: false }),
+        queryClient.invalidateQueries({ queryKey: ['/api/payment-schedule'] }),
+      ]);
       handleCloseModal();
     } catch (error) {
       toast({
@@ -517,25 +558,6 @@ export default function BLReconciliation() {
 
   const handleCloseWaitingModal = () => {
     setShowWaitingModal(false);
-    setProcessingSeconds(0);
-    if (processingTimeout) {
-      clearTimeout(processingTimeout);
-      setProcessingTimeout(null);
-    }
-  };
-
-  const startProcessingTimer = () => {
-    setProcessingSeconds(0);
-    const interval = setInterval(() => {
-      setProcessingSeconds(prev => {
-        if (prev >= 60) {
-          clearInterval(interval);
-          return 60;
-        }
-        return prev + 1;
-      });
-    }, 1000);
-    setProcessingTimeout(interval);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -574,7 +596,6 @@ export default function BLReconciliation() {
     setShowInvoiceModal(false);
     setShowWaitingModal(true);
     setIsUploading(true);
-    startProcessingTimer();
 
     try {
       const formData = new FormData();
@@ -609,19 +630,13 @@ export default function BLReconciliation() {
 
       // Relancer la vérification de la facture qui vient d'être traitée
       try {
-        // Invalidation des caches pour forcer le rechargement des données
-        queryClient.invalidateQueries({ queryKey: ['/api/deliveries/bl'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/deliveries'] });
-        
-        // Recharger les données
-        await refetch();
+        // Recharger les livraisons (une seule requête pour la liste affichée)
+        await invalidateDeliveries();
         
         // Attendre un peu que les données soient à jour, puis vérifier cette livraison spécifique
         setTimeout(() => {
           handleVerifyInvoice(selectedDeliveryForInvoice, true);
         }, 1000);
-        
-        console.log('🔄 Vérification automatique relancée pour la livraison traitée par webhook');
       } catch (error) {
         console.error('Erreur lors de la relance de la vérification:', error);
       }
@@ -657,29 +672,14 @@ export default function BLReconciliation() {
     
     // Et il faut qu'il y ait un magasin assigné avec un webhook
     const hasValidGroup = delivery.group && delivery.group.webhookUrl;
-    
-    // Debug uniquement en développement
-    if (import.meta.env.DEV && delivery && delivery.supplier?.name) {
-      console.log(`🔍 Debug bouton facture pour ${delivery.supplier.name}:`, {
-        isNotValidated,
-        hasNoInvoiceReference,
-        hasValidGroup,
-        shouldShow: (isNotValidated || hasNoInvoiceReference) && hasValidGroup
-      });
-    }
-    
+
     return (isNotValidated || hasNoInvoiceReference) && hasValidGroup;
   };
 
-  // Email du fournisseur : donnée jointe à la livraison, avec repli sur la liste des fournisseurs
+  // Email du fournisseur : la fiche fournisseur complète est jointe à la livraison
   const getSupplierEmail = (delivery: any): string => {
-    const fromDelivery = delivery?.supplier?.email;
-    if (fromDelivery && String(fromDelivery).trim()) {
-      return String(fromDelivery).trim();
-    }
-
-    const supplier = suppliers.find((s: any) => s.id === delivery?.supplierId);
-    return supplier?.email ? String(supplier.email).trim() : '';
+    const email = delivery?.supplier?.email;
+    return email && String(email).trim() ? String(email).trim() : '';
   };
 
   // Envoi de la demande de facture (PDF) / BL (Excel) au fournisseur.
@@ -745,7 +745,7 @@ export default function BLReconciliation() {
       });
       
       // Mise à jour optimiste du cache local pour disparition immédiate
-      queryClient.setQueryData(['/api/deliveries/bl', selectedStoreId], (oldData: any) => {
+      queryClient.setQueryData([...RECONCILIATION_QUERY_KEY, selectedStoreId], (oldData: any) => {
         if (!oldData) return oldData;
         return oldData.map((d: any) => 
           d.id === delivery.id 
@@ -754,12 +754,11 @@ export default function BLReconciliation() {
         );
       });
       
-      // Force refetch pour synchroniser avec le serveur
-      queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
-      queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
+      // Synchronisation avec le serveur (listes affichées uniquement)
+      invalidateDeliveries();
     } catch (error) {
-      // En cas d'erreur, refetch pour annuler la mise à jour optimiste
-      queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
+      // En cas d'erreur, rechargement pour resynchroniser la liste
+      queryClient.invalidateQueries({ queryKey: RECONCILIATION_QUERY_KEY });
       toast({
         title: "Erreur",
         description: "Impossible de valider le rapprochement",
@@ -793,9 +792,8 @@ export default function BLReconciliation() {
         description: "Rapprochement dévalidé avec succès",
       });
       
-      // Force refetch immédiat pour déplacer la facture dans l'onglet manuel
-      await queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
-      await queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
+      // Rechargement immédiat pour déplacer la facture dans l'onglet manuel
+      await invalidateDeliveries();
     } catch (error) {
       toast({
         title: "Erreur",
@@ -828,17 +826,16 @@ export default function BLReconciliation() {
       });
       
       // Mise à jour optimiste du cache local pour disparition immédiate
-      queryClient.setQueryData(['/api/deliveries/bl', selectedStoreId], (oldData: any) => {
+      queryClient.setQueryData([...RECONCILIATION_QUERY_KEY, selectedStoreId], (oldData: any) => {
         if (!oldData) return oldData;
         return oldData.filter((d: any) => d.id !== deliveryId);
       });
       
-      // Force refetch pour synchroniser avec le serveur
-      queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
-      queryClient.refetchQueries({ queryKey: ['/api/deliveries'] });
+      // Synchronisation avec le serveur (listes affichées uniquement)
+      invalidateDeliveries();
     } catch (error) {
-      // En cas d'erreur, refetch pour annuler la mise à jour optimiste
-      queryClient.refetchQueries({ queryKey: ['/api/deliveries/bl'] });
+      // En cas d'erreur, rechargement pour resynchroniser la liste
+      queryClient.invalidateQueries({ queryKey: RECONCILIATION_QUERY_KEY });
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la livraison",
@@ -847,23 +844,17 @@ export default function BLReconciliation() {
     }
   };
 
-  // Filtrage des livraisons par recherche uniquement
-  const filterDeliveries = (deliveries: any[]) => {
-    if (!searchTerm) return deliveries;
-    
-    const searchLower = searchTerm.toLowerCase();
-    return deliveries.filter((delivery: any) => {
-      return (
-        delivery.supplier?.name?.toLowerCase().includes(searchLower) ||
-        delivery.blNumber?.toLowerCase().includes(searchLower) ||
-        delivery.invoiceReference?.toLowerCase().includes(searchLower) ||
-        delivery.group?.name?.toLowerCase().includes(searchLower)
-      );
-    });
-  };
-
-  const filteredManualDeliveries = filterDeliveries(manualNotValidatedDeliveries);
-  const filteredValidatedDeliveries = filterDeliveries(allValidatedDeliveries);
+  // Filtrage par recherche, recalculé seulement quand la liste ou la recherche
+  // change ; la recherche différée garde la saisie fluide sur une longue liste
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const filteredManualDeliveries = useMemo(
+    () => filterDeliveriesBySearch(manualNotValidatedDeliveries, deferredSearchTerm),
+    [manualNotValidatedDeliveries, deferredSearchTerm]
+  );
+  const filteredValidatedDeliveries = useMemo(
+    () => filterDeliveriesBySearch(allValidatedDeliveries, deferredSearchTerm),
+    [allValidatedDeliveries, deferredSearchTerm]
+  );
 
   // Pagination pour les rapprochements manuels
   const {
@@ -1419,20 +1410,10 @@ export default function BLReconciliation() {
                     </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {paginatedValidatedDeliveries.map((delivery: any) => {
-                          const supplier = suppliers.find(s => s.id === delivery.supplierId);
-                          const isAutomatic = supplier?.automaticReconciliation === true;
+                          const isAutomatic = delivery.supplier?.automaticReconciliation === true;
                           const ecart = delivery.blAmount && delivery.invoiceAmount ? 
                             ((parseFloat(delivery.invoiceAmount) - parseFloat(delivery.blAmount)) / parseFloat(delivery.blAmount) * 100).toFixed(1) : 
                             null;
-                          
-                          // Log pour déboguer le problème des commentaires
-                          if (import.meta.env.DEV && delivery.reconciliationCommentsCount) {
-                            console.log('🔍 Validated delivery comments:', {
-                              deliveryId: delivery.id,
-                              commentsCount: delivery.reconciliationCommentsCount,
-                              hasComments: delivery.reconciliationCommentsCount > 0
-                            });
-                          }
                           
                           return (
                             <tr key={delivery.id} className="hover:bg-gray-50 bg-green-50">
@@ -1690,36 +1671,7 @@ export default function BLReconciliation() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-6 py-6">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 relative">
-                <div className="w-16 h-16 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-xs font-bold text-blue-600">{processingSeconds}s</span>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <h3 className="font-medium text-gray-900">
-                  Traitement de votre facture en cours...
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Le workflow peut prendre jusqu'à 1 minute.
-                  <br />
-                  Veuillez patienter.
-                </p>
-              </div>
-              
-              <div className="mt-4 bg-gray-100 rounded-full h-2 w-full">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${Math.min((processingSeconds / 60) * 100, 100)}%` }}
-                ></div>
-              </div>
-              
-              <div className="mt-2 text-xs text-gray-500">
-                {processingSeconds < 60 ? `${60 - processingSeconds}s restantes (max)` : 'Finalisation...'}
-              </div>
-            </div>
+            <WaitingProgress />
             
             {selectedDeliveryForInvoice && (
               <div className="bg-blue-50 p-3 rounded-md">

@@ -1,242 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AUTH_QUERY_KEY, fetchCurrentUser } from "@/lib/queryClient";
 
-// Hook d'authentification unifié qui s'adapte automatiquement
-// En production utilise fetch direct, en développement utilise React Query
+// Conservé dans le retour du hook pour compatibilité (utilisé pour le débogage)
+const environment = import.meta.env.DEV ? 'development' : 'production';
+
+// Hook d'authentification unique (développement et production) : l'utilisateur
+// connecté est lu une seule fois via GET /api/user puis partagé par toute
+// l'application à travers le cache React Query (clé ['/api/user']).
+// Un 401 donne user = null (non connecté), sans redirection.
 export function useAuthUnified() {
-  // Détection d'environnement plus robuste
-  const isDevelopment = typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || 
-     window.location.hostname.includes('replit.dev')) &&
-     import.meta.env.DEV === true;
+  const queryClient = useQueryClient();
 
-  // Debug logging uniquement en développement
-  if (import.meta.env.DEV) {
-    console.log('🔍 Auth Environment Debug:', {
-      hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
-      isDev: import.meta.env.DEV,
-      environment: isDevelopment ? 'development' : 'production'
-    });
-  }
-
-  // État pour la version production (fetch direct)
-  const [productionUser, setProductionUser] = useState<any>(null);
-  const [productionLoading, setProductionLoading] = useState(true);
-  const [productionError, setProductionError] = useState<any>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // Hook React Query pour le développement
-  const developmentQuery = useQuery({
-    queryKey: ["/api/user"],
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('401') || error?.message?.includes('Unauthorized')) {
-        return false;
-      }
-      return failureCount < 2;
-    },
-    refetchInterval: false,
-    refetchOnWindowFocus: false,
-    refetchOnMount: true,
-    refetchOnReconnect: false,
-    staleTime: 10 * 60 * 1000, // 10 minutes de cache pour l'auth
-    gcTime: 15 * 60 * 1000, // 15 minutes
-    enabled: isDevelopment, // Seulement en développement
+  const authQuery = useQuery<any>({
+    queryKey: AUTH_QUERY_KEY,
+    queryFn: fetchCurrentUser,
+    staleTime: Infinity,
+    retry: false,
+    // Après une erreur serveur, ne pas relancer la requête à chaque montage d'un
+    // composant (AuthPage) : sinon boucle chargement / page de connexion
+    retryOnMount: false,
   });
 
-  // Fonction pour rafraîchir l'authentification
-  const refreshAuth = () => {
-    if (import.meta.env.DEV) {
-      console.log('🔄 RefreshAuth called, isDevelopment:', isDevelopment);
-    }
-    if (!isDevelopment) {
-      if (import.meta.env.DEV) {
-        console.log('🔄 Triggering production auth refresh');
-      }
-      setRefreshTrigger(prev => {
-        const newValue = prev + 1;
-        if (import.meta.env.DEV) {
-          console.log('🔄 Production refresh trigger updated:', prev, '->', newValue);
-        }
-        return newValue;
+  // Rafraîchissement en arrière-plan : tous les composants abonnés reçoivent
+  // le nouvel utilisateur quand la réponse arrive
+  const refreshAuth = useCallback(() => {
+    return queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+  }, [queryClient]);
+
+  // Rechargement immédiat (après connexion) : attend la réponse du serveur,
+  // met à jour le cache partagé et renvoie l'utilisateur (ou null)
+  const forceAuthRefresh = useCallback(async () => {
+    try {
+      return await queryClient.fetchQuery({
+        queryKey: AUTH_QUERY_KEY,
+        queryFn: fetchCurrentUser,
+        staleTime: 0,
       });
-    } else {
-      if (import.meta.env.DEV) {
-        console.log('🔄 Development mode - using React Query refresh');
-      }
-      developmentQuery.refetch();
+    } catch (error) {
+      console.error("Erreur lors du rafraîchissement de l'authentification:", error);
+      return null;
     }
+  }, [queryClient]);
+
+  const user = authQuery.data ?? null;
+
+  return {
+    user,
+    isLoading: authQuery.isLoading,
+    isAuthenticated: !!user,
+    error: authQuery.error,
+    refreshAuth,
+    forceAuthRefresh,
+    environment
   };
-
-  // Fonction pour rafraîchir de manière synchrone (pour après login)
-  const forceAuthRefresh = async () => {
-    if (import.meta.env.DEV) {
-      console.log('🔄 ForceAuthRefresh called, isDevelopment:', isDevelopment);
-    }
-    
-    if (!isDevelopment) {
-      // En production, faire un fetch immédiat et forcer un re-render
-      try {
-        if (import.meta.env.DEV) {
-          console.log('🔄 Production force refresh - fetching user data');
-        }
-        setProductionLoading(true);
-        
-        const response = await fetch('/api/user', {
-          credentials: 'include',
-          cache: 'no-cache',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          const userData = await response.json();
-          if (import.meta.env.DEV) {
-            console.log('✅ Production force refresh success:', { username: userData?.username, id: userData?.id });
-          }
-          setProductionUser(userData);
-          setProductionError(null);
-          setProductionLoading(false);
-          
-          // Forcer un trigger de refresh pour déclencher les re-renders
-          setRefreshTrigger(prev => prev + 1);
-          
-          return userData;
-        } else {
-          if (import.meta.env.DEV) {
-            console.log('❌ Production force refresh failed:', response.status);
-          }
-          setProductionUser(null);
-          setProductionError(null);
-          setProductionLoading(false);
-          return null;
-        }
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('❌ Production force refresh error:', error);
-        }
-        setProductionError(error);
-        setProductionUser(null);
-        setProductionLoading(false);
-        return null;
-      }
-    } else {
-      // En développement, forcer un refetch avec invalidation du cache
-      if (import.meta.env.DEV) {
-        console.log('🔄 Development mode - invalidating cache and refetching');
-      }
-      const queryClient = useQueryClient();
-      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-      
-      // Attendre un court délai pour la propagation
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      const result = await developmentQuery.refetch();
-      if (import.meta.env.DEV) {
-        console.log('🔄 Development refetch result:', { 
-          success: result.isSuccess, 
-          hasData: !!result.data,
-          userId: (result.data as any)?.id 
-        });
-      }
-      return result.data;
-    }
-  };
-
-  // Authentification production (fetch direct)
-  useEffect(() => {
-    if (isDevelopment) return; // Ne pas exécuter en développement
-
-    let isMounted = true;
-    
-    const checkAuth = async () => {
-      try {
-        if (import.meta.env.DEV) {
-          console.log('🔄 Production auth check starting, refreshTrigger:', refreshTrigger);
-        }
-        setProductionLoading(true);
-        
-        const response = await fetch('/api/user', {
-          credentials: 'include',
-          cache: 'no-cache',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (import.meta.env.DEV) {
-          console.log('🔄 Production auth response:', response.status);
-        }
-        
-        if (!isMounted) return;
-        
-        if (response.ok) {
-          const userData = await response.json();
-          if (import.meta.env.DEV) {
-            console.log('✅ Production auth success:', { username: userData?.username, id: userData?.id });
-          }
-          if (isMounted) {
-            setProductionUser(userData);
-            setProductionError(null);
-          }
-        } else if (response.status === 401) {
-          if (import.meta.env.DEV) {
-            console.log('❌ Production auth 401 - user not authenticated');
-          }
-          if (isMounted) {
-            setProductionUser(null);
-            setProductionError(null);
-          }
-        } else {
-          throw new Error(`Auth failed: ${response.status}`);
-        }
-      } catch (err) {
-        if (import.meta.env.DEV) {
-          console.error('Production auth error:', err);
-        }
-        if (isMounted) {
-          setProductionError(err);
-          setProductionUser(null);
-        }
-      } finally {
-        if (isMounted) {
-          if (import.meta.env.DEV) {
-            console.log('🔄 Production auth check complete, loading set to false');
-          }
-          setProductionLoading(false);
-        }
-      }
-    };
-    
-    checkAuth();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [isDevelopment, refreshTrigger]); // Ajout du refreshTrigger
-
-  // Retourner les bonnes données selon l'environnement
-  if (isDevelopment) {
-    return {
-      user: developmentQuery.data || null,
-      isLoading: developmentQuery.isLoading,
-      isAuthenticated: !!developmentQuery.data,
-      error: developmentQuery.error,
-      refreshAuth: refreshAuth,
-      forceAuthRefresh: forceAuthRefresh,
-      environment: 'development'
-    };
-  } else {
-    return {
-      user: productionUser,
-      isLoading: productionLoading,
-      isAuthenticated: !!productionUser,
-      error: productionError,
-      refreshAuth: refreshAuth,
-      forceAuthRefresh: forceAuthRefresh,
-      environment: 'production'
-    };
-  }
 }

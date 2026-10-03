@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useStore } from "@/contexts/StoreContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +53,7 @@ interface PaymentScheduleResponse {
 export default function PaymentSchedulePage() {
   const { selectedStoreId } = useStore();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const now = new Date();
     return format(now, 'yyyy-MM');
@@ -75,7 +76,12 @@ export default function PaymentSchedulePage() {
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}: ${response.statusText}`);
       }
-      return response.json();
+      const result = await response.json();
+      // Ce calcul peut compléter en base les échéances et montants manquants des
+      // livraisons : les listes de livraisons en cache sont marquées périmées
+      // (rechargées à leur prochain affichage, pas immédiatement)
+      queryClient.invalidateQueries({ queryKey: ['/api/deliveries'], refetchType: 'none' });
+      return result;
     },
     enabled: !!selectedStoreId,
   });
@@ -251,10 +257,50 @@ export default function PaymentSchedulePage() {
     );
   }
 
+  // En-tête (titre, export, choix du mois) : conservé pendant le chargement,
+  // notamment au changement de magasin, au lieu d'un écran entièrement vide
+  const header = (
+    <div className="flex justify-between items-center">
+      <div>
+        <h1 className="text-3xl font-bold">Échéancier des Paiements</h1>
+        <p className="text-gray-600 mt-1">Gestion des échéances fournisseurs</p>
+      </div>
+      <div className="flex items-center gap-4">
+        <Button
+          onClick={handleOpenExportModal}
+          variant="outline"
+          className="gap-2"
+          disabled={filteredSchedules.length === 0}
+          data-testid="button-export-csv"
+        >
+          <FileSpreadsheet className="h-4 w-4" />
+          Exporter CSV
+        </Button>
+        <div className="w-64">
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger data-testid="select-month">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableMonths.map(month => (
+                <SelectItem key={month.value} value={month.value}>
+                  {month.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="p-6 space-y-6">
+        {header}
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
       </div>
     );
   }
@@ -292,38 +338,7 @@ export default function PaymentSchedulePage() {
   return (
     <div className="p-6 space-y-6">
       {/* En-tête */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Échéancier des Paiements</h1>
-          <p className="text-gray-600 mt-1">Gestion des échéances fournisseurs</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Button
-            onClick={handleOpenExportModal}
-            variant="outline"
-            className="gap-2"
-            disabled={filteredSchedules.length === 0}
-            data-testid="button-export-csv"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            Exporter CSV
-          </Button>
-          <div className="w-64">
-            <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger data-testid="select-month">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {availableMonths.map(month => (
-                  <SelectItem key={month.value} value={month.value}>
-                    {month.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
+      {header}
 
       {/* Statistiques du mois */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

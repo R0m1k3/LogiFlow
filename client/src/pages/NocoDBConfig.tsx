@@ -53,7 +53,7 @@ export default function NocoDBConfig() {
   const [showTokens, setShowTokens] = useState<{ [key: number]: boolean }>({});
 
   // Queries avec protection complète
-  const { data: rawConfigs, isLoading, error } = useQuery({
+  const { data: rawConfigs, isLoading } = useQuery({
     queryKey: ['/api/nocodb-config'],
     enabled: user?.role === 'admin',
   });
@@ -61,21 +61,6 @@ export default function NocoDBConfig() {
   // Protection quadruple couche pour éviter les erreurs TypeError
   const configs = rawConfigs || [];
   const safeConfigs = Array.isArray(configs) ? configs : [];
-  
-  // Log pour debug production avec plus de détails
-  console.log('🔍 NocoDBConfig Debug:', { 
-    rawConfigs, 
-    rawConfigsType: typeof rawConfigs,
-    configs,
-    configsType: typeof configs,
-    isArray: Array.isArray(configs), 
-    safeConfigs, 
-    safeConfigsType: typeof safeConfigs,
-    length: safeConfigs.length,
-    error,
-    userRole: user?.role,
-    environment: window.location.hostname
-  });
 
   // Mutations
   const createConfigMutation = useMutation({

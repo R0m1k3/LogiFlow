@@ -2,6 +2,7 @@
  * DashboardPage Mobile - Tableau de bord simplifié pour mobile
  */
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
 import MobileLayout from "./MobileLayout";
@@ -59,22 +60,6 @@ export default function MobileDashboardPage() {
     const { user } = useAuthUnified();
     const { selectedStoreId } = useStore();
 
-    // Fetch stats
-    const { data: stats, isLoading } = useQuery({
-        queryKey: ["/api/stats/dashboard", selectedStoreId],
-        queryFn: async () => {
-            const params = new URLSearchParams();
-            if (selectedStoreId) params.append('storeId', selectedStoreId.toString());
-
-            const response = await fetch(`/api/stats/dashboard?${params}`, {
-                credentials: 'include'
-            });
-            if (!response.ok) return null;
-            return response.json();
-        },
-        enabled: !!user,
-    });
-
     // Fetch pending tasks count
     const { data: tasks = [] } = useQuery({
         queryKey: ["/api/tasks", selectedStoreId],
@@ -92,13 +77,18 @@ export default function MobileDashboardPage() {
         enabled: !!user,
     });
 
+    // Date du jour : le serveur filtre sur startDate/endDate (le paramètre 'date'
+    // était ignoré et renvoyait tout l'historique)
+    const today = format(new Date(), 'yyyy-MM-dd');
+
     // Fetch today's orders
     const { data: orders = [] } = useQuery({
-        queryKey: ["/api/orders/today", selectedStoreId],
+        queryKey: ["/api/orders/today", selectedStoreId, today],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (selectedStoreId) params.append('storeId', selectedStoreId.toString());
-            params.append('date', format(new Date(), 'yyyy-MM-dd'));
+            params.append('startDate', today);
+            params.append('endDate', today);
 
             const response = await fetch(`/api/orders?${params}`, {
                 credentials: 'include'
@@ -112,11 +102,12 @@ export default function MobileDashboardPage() {
 
     // Fetch today's deliveries
     const { data: deliveries = [] } = useQuery({
-        queryKey: ["/api/deliveries/today", selectedStoreId],
+        queryKey: ["/api/deliveries/today", selectedStoreId, today],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (selectedStoreId) params.append('storeId', selectedStoreId.toString());
-            params.append('date', format(new Date(), 'yyyy-MM-dd'));
+            params.append('startDate', today);
+            params.append('endDate', today);
 
             const response = await fetch(`/api/deliveries?${params}`, {
                 credentials: 'include'
@@ -183,15 +174,16 @@ export default function MobileDashboardPage() {
                             { icon: Calendar, label: "Agenda", path: "/calendar" },
                         ].map((item) => {
                             const Icon = item.icon;
+                            // Lien wouter : navigation interne sans recharger l'application
                             return (
-                                <a
+                                <Link
                                     key={item.path}
                                     href={item.path}
                                     className="flex flex-col items-center p-3 rounded-lg bg-gray-50 hover:bg-gray-100"
                                 >
                                     <Icon className="h-6 w-6 text-gray-600 mb-1" />
                                     <span className="text-xs text-gray-600">{item.label}</span>
-                                </a>
+                                </Link>
                             );
                         })}
                     </div>

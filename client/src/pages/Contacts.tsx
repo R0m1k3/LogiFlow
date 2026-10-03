@@ -69,18 +69,14 @@ export default function Contacts() {
     queryKey: ["/api/suppliers"],
   });
 
-  const contactsQueryKey = effectiveGroupId
-    ? [`/api/contacts?groupId=${effectiveGroupId}`]
-    : ["/api/contacts"];
-
+  // Clé structurée : l'invalidation par préfixe ["/api/contacts"] des mutations
+  // ci-dessous rafraîchit aussi la liste filtrée par magasin
   const { data: contacts = [] } = useQuery<Contact[]>({
-    queryKey: contactsQueryKey,
-    queryFn: async () => {
-      const url = effectiveGroupId
-        ? `/api/contacts?groupId=${effectiveGroupId}`
-        : "/api/contacts";
-      return await apiRequest(url, "GET");
-    },
+    queryKey: ["/api/contacts", effectiveGroupId ?? null],
+    queryFn: () =>
+      apiRequest(effectiveGroupId ? `/api/contacts?groupId=${effectiveGroupId}` : "/api/contacts", "GET"),
+    // Sans magasin, un non-admin ne voit pas la liste : pas de requête
+    enabled: !!user && (isAdmin || !!effectiveGroupId),
   });
 
   const createMutation = useMutation({

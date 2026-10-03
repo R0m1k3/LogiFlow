@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,11 +52,13 @@ export default function Analytics() {
     return params.toString();
   }, [dateRange, selectedSuppliers, selectedStores, selectedStatus]);
 
-  // Récupération des données
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  // Récupération des données. Au changement de filtre (période, fournisseur,
+  // magasin, granularité), les résultats précédents restent affichés, atténués
+  // et signalés par « Mise à jour… », au lieu de remplacer toute la page par un
+  // spinner : le chargement plein écran ne concerne que le premier affichage.
+  const { data: summary, isLoading: summaryLoading, isPlaceholderData: summaryUpdating } = useQuery({
     queryKey: ['/api/analytics/summary', queryParams],
     queryFn: async () => {
-      console.log('📊 [ANALYTICS] Fetching summary with params:', queryParams);
       const response = await fetch(`/api/analytics/summary?${queryParams}`, {
         credentials: 'include'
       });
@@ -64,18 +66,16 @@ export default function Analytics() {
         console.error('❌ [ANALYTICS] Summary fetch failed:', response.status, response.statusText);
         throw new Error('Failed to fetch summary');
       }
-      const data = await response.json();
-      console.log('✅ [ANALYTICS] Summary data received:', data);
-      return data;
+      return response.json();
     },
+    placeholderData: keepPreviousData,
     refetchInterval: isRefreshing ? 30000 : false
   });
 
-  const { data: timeseries } = useQuery({
+  const { data: timeseries, isPlaceholderData: timeseriesUpdating } = useQuery({
     queryKey: ['/api/analytics/timeseries', queryParams, granularity],
     queryFn: async () => {
       const url = `/api/analytics/timeseries?${queryParams}&granularity=${granularity}`;
-      console.log('📊 [ANALYTICS] Fetching timeseries:', url);
       const response = await fetch(url, {
         credentials: 'include'
       });
@@ -83,13 +83,12 @@ export default function Analytics() {
         console.error('❌ [ANALYTICS] Timeseries fetch failed:', response.status, response.statusText);
         throw new Error('Failed to fetch timeseries');
       }
-      const data = await response.json();
-      console.log('✅ [ANALYTICS] Timeseries data received:', data?.length || 0, 'entries');
-      return data;
-    }
+      return response.json();
+    },
+    placeholderData: keepPreviousData,
   });
 
-  const { data: bySupplier } = useQuery({
+  const { data: bySupplier, isPlaceholderData: bySupplierUpdating } = useQuery({
     queryKey: ['/api/analytics/by-supplier', queryParams],
     queryFn: async () => {
       const response = await fetch(`/api/analytics/by-supplier?${queryParams}`, {
@@ -97,10 +96,11 @@ export default function Analytics() {
       });
       if (!response.ok) throw new Error('Failed to fetch by supplier');
       return response.json();
-    }
+    },
+    placeholderData: keepPreviousData,
   });
 
-  const { data: byStore } = useQuery({
+  const { data: byStore, isPlaceholderData: byStoreUpdating } = useQuery({
     queryKey: ['/api/analytics/by-store', queryParams],
     queryFn: async () => {
       const response = await fetch(`/api/analytics/by-store?${queryParams}`, {
@@ -108,8 +108,13 @@ export default function Analytics() {
       });
       if (!response.ok) throw new Error('Failed to fetch by store');
       return response.json();
-    }
+    },
+    placeholderData: keepPreviousData,
   });
+
+  const isUpdating = summaryUpdating || timeseriesUpdating || bySupplierUpdating || byStoreUpdating;
+  // Bloc dont les chiffres viennent encore des filtres précédents
+  const updatingClass = (updating: boolean) => `transition-opacity ${updating ? 'opacity-60' : ''}`;
 
   const { data: suppliers } = useQuery({
     queryKey: ['/api/suppliers'],
@@ -161,6 +166,12 @@ export default function Analytics() {
             <p className="text-gray-600 mt-1">Analysez vos performances logistiques</p>
           </div>
           <div className="flex items-center gap-2">
+            {isUpdating && (
+              <span className="flex items-center text-sm text-gray-500" role="status">
+                <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                Mise à jour…
+              </span>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -330,7 +341,7 @@ export default function Analytics() {
       </Card>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 ${updatingClass(summaryUpdating)}`}>
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">
@@ -395,7 +406,7 @@ export default function Analytics() {
       {/* Graphiques */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Évolution temporelle */}
-        <Card>
+        <Card className={updatingClass(timeseriesUpdating)}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
@@ -429,7 +440,7 @@ export default function Analytics() {
         </Card>
 
         {/* Répartition par fournisseur */}
-        <Card>
+        <Card className={updatingClass(bySupplierUpdating)}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChart className="h-5 w-5" />
@@ -471,7 +482,7 @@ export default function Analytics() {
         </Card>
 
         {/* Performance par magasin */}
-        <Card>
+        <Card className={updatingClass(byStoreUpdating)}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Store className="h-5 w-5" />
@@ -511,7 +522,7 @@ export default function Analytics() {
         </Card>
 
         {/* Top fournisseurs */}
-        <Card>
+        <Card className={updatingClass(summaryUpdating)}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { useAuthSimple } from "@/hooks/useAuthSimple";
+import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/contexts/StoreContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 
 export default function Sidebar() {
-  const { user, isLoading, error } = useAuthSimple();
+  const { user, isLoading, error } = useAuthUnified();
   const [location] = useLocation();
   const { sidebarCollapsed, setSidebarCollapsed, mobileMenuOpen, setMobileMenuOpen } = useStore();
   const isMobile = useIsMobile();
@@ -218,6 +218,8 @@ export default function Sidebar() {
 
   const isActive = (path: string) => {
     if (path === "/" && location === "/") return true;
+    // L'accueil « / » affiche le tableau de bord (même logique que le menu mobile)
+    if (path === "/dashboard" && (location === "/" || location === "/dashboard")) return true;
     if (path !== "/" && location.startsWith(path)) return true;
     return false;
   };

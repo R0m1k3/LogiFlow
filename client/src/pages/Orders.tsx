@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,9 @@ import EditOrderModal from "@/components/modals/EditOrderModal";
 import OrderDetailModal from "@/components/modals/OrderDetailModal";
 import ConfirmDeleteModal from "@/components/modals/ConfirmDeleteModal";
 import type { OrderWithRelations } from "@shared/schema";
+
+// Référence stable pendant le chargement (pour la mémoïsation du filtrage)
+const NO_ORDERS: OrderWithRelations[] = [];
 
 export default function Orders() {
   const { user } = useAuthUnified();
@@ -73,7 +76,7 @@ export default function Orders() {
   const ordersUrl = `/api/orders${selectedStoreId ? `?storeId=${selectedStoreId}` : ''}`;
   
   
-  const { data: ordersData = [], isLoading } = useQuery<OrderWithRelations[]>({
+  const { data: ordersData = NO_ORDERS, isLoading } = useQuery<OrderWithRelations[]>({
     queryKey: [ordersUrl, selectedStoreId],
     queryFn: async () => {
       const response = await fetch(ordersUrl, { credentials: 'include' });
@@ -81,64 +84,27 @@ export default function Orders() {
         throw new Error('Failed to fetch orders');
       }
       const data = await response.json();
-      console.log('📦 Orders received:', Array.isArray(data) ? data.length : 'NOT_ARRAY', 'items', data.slice(0, 2));
-      console.log('📦 Sample order data:', data[0]);
       return Array.isArray(data) ? data : [];
     },
   });
 
   // Production Bug Fix: Ensure array safety for all data operations
-  const orders = Array.isArray(ordersData) ? ordersData : [];
-  
-  console.log('📦 Orders Debug:', { 
-    isLoading, 
-    ordersCount: orders?.length, 
-    orders: orders?.slice(0, 2),
-    selectedStoreId,
-    ordersUrl 
-  });
-
-  const { data: groupsData = [] } = useQuery({
-    queryKey: ['/api/groups'],
-  });
-  
-  const groups = Array.isArray(groupsData) ? groupsData : [];
+  const orders = Array.isArray(ordersData) ? ordersData : NO_ORDERS;
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      console.log('🗑️ Deleting order:', id);
       await apiRequest(`/api/orders/${id}`, "DELETE");
     },
     onSuccess: () => {
-      console.log('✅ Order deleted successfully, invalidating cache...');
       toast({
         title: "Succès",
         description: "Commande supprimée avec succès",
       });
       
-      console.log('🗑️ Order deleted, clearing ALL cache to avoid inconsistencies:', { 
-        ordersUrl, 
-        selectedStoreId
-      });
-      
-      // Sauvegarder le selectedStoreId avant le nettoyage
-      if (selectedStoreId) {
-        localStorage.setItem('selectedStoreId', selectedStoreId.toString());
-      }
-      
-      // SOLUTION HYBRIDE : Invalidation sélective pour éviter perte storeId
-      console.log('🧹 Using selective invalidation to preserve storeId context...');
-      
-      // Invalidation ciblée sans clear() pour préserver le contexte
+      // Invalidation ciblée sans clear() pour préserver le contexte : les requêtes
+      // affichées sont rechargées tout de suite, les autres (mois du calendrier
+      // déjà visités, autres pages) seulement quand elles seront réaffichées
       queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey[0]?.toString() || '';
-          return key.includes('/api/orders') || key.includes('/api/deliveries');
-        }
-      });
-      
-      // Force refetch pour garantir synchronisation immédiate
-      queryClient.refetchQueries({
         predicate: (query) => {
           const key = query.queryKey[0]?.toString() || '';
           return key.includes('/api/orders') || key.includes('/api/deliveries');
@@ -165,16 +131,19 @@ export default function Orders() {
     },
   });
 
-  const filteredOrders = Array.isArray(orders) ? orders.filter(order => {
-    console.log('🔍 Filtering order:', order.id, { searchTerm, statusFilter });
-    const matchesSearch = order.supplier?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.group?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.notes?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  }) : [];
+  // Filtrage recalculé seulement quand la liste, la recherche ou le statut changent
+  const filteredOrders = useMemo(() => {
+    const search = searchTerm.toLowerCase();
+    return orders.filter(order => {
+      const matchesSearch = order.supplier?.name.toLowerCase().includes(search) ||
+                           order.group?.name.toLowerCase().includes(search) ||
+                           order.notes?.toLowerCase().includes(search);
+      
+      const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  }, [orders, searchTerm, statusFilter]);
 
   // Pagination
   const {

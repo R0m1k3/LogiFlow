@@ -1,15 +1,15 @@
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo, useDeferredValue } from "react";
+import { useQuery, useQueryClient, useMutation, keepPreviousData } from "@tanstack/react-query";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
 import { useToast } from "@/hooks/use-toast";
+import { useScreenSize, type ScreenBreakpoints } from "@/hooks/use-screen-size";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   ListTodo, 
@@ -42,9 +42,17 @@ type TaskWithRelations = Task & {
   isFutureTask?: boolean; // Pour les tâches futures (admin/directeur uniquement)
 };
 
+// Référence stable tant que la liste n'est pas chargée (évite de recalculer les filtres)
+const NO_TASKS: TaskWithRelations[] = [];
+
+// Seuils alignés sur le point de rupture « lg » de Tailwind (1024 px) qui séparait
+// les deux mises en page jusque-là masquées en CSS : bureau à partir de 1024 px
+const TASKS_LAYOUT_BREAKPOINTS: ScreenBreakpoints = { mobile: 768, tablet: 1023, desktop: 1280 };
+
 // Composant TaskForm inline - Version production ultra-simple
 function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -91,21 +99,11 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
         (taskData as any).createdBy = user?.username || 'admin';
       }
 
-      console.log('📤 Tasks.tsx - Sending request:', { 
-        url, 
-        method, 
-        taskData,
-        selectedStoreId,
-        finalGroupId: (taskData as any).groupId 
-      });
-      
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(taskData),
       });
-
-      console.log('📥 Response:', { status: response.status, ok: response.ok });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -117,8 +115,11 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
         title: "Succès",
         description: task ? "Tâche modifiée avec succès" : "Tâche créée avec succès",
       });
-      window.location.reload();
-      
+      // Rechargement ciblé de la liste des tâches (plus de rechargement complet de
+      // la page) : filtres, recherche et pagination sont conservés
+      await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      onClose();
+
     } catch (error) {
       console.error('Erreur:', error);
       toast({
@@ -277,35 +278,11 @@ function TaskFormInline({ task, onClose, selectedStoreId, user }: any) {
 
 export default function Tasks() {
   const { user } = useAuthUnified();
-  const { selectedStoreId, storeInitialized } = useStore();
+  const { selectedStoreId } = useStore();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Debug enablement condition for tasks query
-  const isQueryEnabled = !!user && (user.role === 'admin' || (user.role === 'directeur' || user.role === 'manager' ? !!selectedStoreId : true));
-  console.log('🔍 TASK QUERY ENABLEMENT DEBUG:', {
-    hasUser: !!user,
-    userRole: user?.role,
-    selectedStoreId,
-    isAdmin: user?.role === 'admin',
-    isDirecteurOrManager: user?.role === 'directeur' || user?.role === 'manager',
-    hasSelectedStore: !!selectedStoreId,
-    finalEnabled: isQueryEnabled,
-    storeInitialized,
-    timestamp: new Date().toISOString()
-  });
-
-  // Force refresh when selectedStoreId changes for directeur/manager
-  useEffect(() => {
-    if (user && (user.role === 'directeur' || user.role === 'manager') && selectedStoreId) {
-      console.log('🔄 FORCE REFRESH: selectedStoreId changed for directeur/manager:', {
-        userRole: user.role,
-        selectedStoreId,
-        timestamp: new Date().toISOString()
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-    }
-  }, [selectedStoreId, user, queryClient]);
+  // Une seule des deux mises en page (tablette ou bureau) est montée
+  const { isDesktop: isLargeScreen } = useScreenSize(TASKS_LAYOUT_BREAKPOINTS);
 
   // États locaux
   const [searchTerm, setSearchTerm] = useState("");
@@ -322,9 +299,15 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState<TaskWithRelations | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<TaskWithRelations | null>(null);
 
-  // Fetch tasks - attendre que l'initialisation des stores soit terminée pour les admins
-  const { data: tasks = [], isLoading, error } = useQuery({
-    queryKey: ["/api/tasks", selectedStoreId],
+  // Clé propre à cette page : le tableau de bord utilise ['/api/tasks', storeId]
+  // avec une URL différente pour les non-admins (sans storeId), sa réponse ne doit
+  // donc jamais être réutilisée ici. Le changement de magasin change la clé, ce
+  // qui suffit à recharger la liste (plus d'invalidation forcée au montage).
+  const tasksQueryKey = ["/api/tasks", { storeId: selectedStoreId }];
+
+  // Fetch tasks
+  const { data: tasks = NO_TASKS, isLoading, isPlaceholderData } = useQuery({
+    queryKey: tasksQueryKey,
     queryFn: async () => {
       try {
         const params = new URLSearchParams();
@@ -332,39 +315,17 @@ export default function Tasks() {
         if (selectedStoreId) {
           params.append('storeId', selectedStoreId.toString());
         }
-        console.log('📋 TASKS QUERY - Fetching with params:', { 
-          selectedStoreId, 
-          userRole: user?.role,
-          storeInitialized,
-          url: `/api/tasks?${params.toString()}`,
-          willFilterByStore: !!selectedStoreId,
-          enabled: !!user,
-          timestamp: new Date().toISOString(),
-          userGroups: user?.userGroups?.map((ug: any) => ug.groupId) || 'NONE'
-        });
-        
+
         const response = await fetch(`/api/tasks?${params.toString()}`, {
           credentials: 'include'
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
-        console.log('📋 TASKS QUERY - Response received:', {
-          dataType: typeof data,
-          isArray: Array.isArray(data),
-          length: data?.length,
-          firstTask: data?.[0] ? {
-            id: data[0].id,
-            title: data[0].title,
-            hasStartDate: !!data[0].startDate,
-            hasGroup: !!data[0].group
-          } : null
-        });
-        
+
         // Valider et nettoyer les données reçues
         if (!Array.isArray(data)) {
           console.error('Tasks API returned non-array data:', data);
@@ -372,38 +333,40 @@ export default function Tasks() {
         }
         
         return data.filter(task => task && typeof task === 'object' && task.id);
-        
+
       } catch (error) {
         console.error('Error fetching tasks:', error);
         throw error;
       }
     },
     enabled: !!user, // Charger les données dès que l'utilisateur est connecté
+    // Au changement de magasin, la liste précédente reste affichée (estompée et
+    // non cliquable, avec un indicateur) au lieu d'un spinner plein écran
+    placeholderData: keepPreviousData,
   });
 
-  // Fetch users for task assignment - seulement pour admin/manager/directeur
-  const { data: users = [] } = useQuery({
-    queryKey: ["/api/users"],
-    queryFn: () => fetch('/api/users', {
-      credentials: 'include'
-    }).then(res => {
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      return res.json();
-    }),
-    enabled: !!user && (user.role === 'admin' || user.role === 'manager' || user.role === 'directeur'),
-  });
-
-
-
-  const handleEditTask = (task: TaskWithRelations) => {
-    setSelectedTask(task);
-    setShowEditModal(true);
+  // Mise à jour optimiste de la liste affichée ; renvoie l'état précédent pour
+  // pouvoir le restaurer si le serveur refuse l'opération
+  const updateCachedTasks = async (update: (list: TaskWithRelations[]) => TaskWithRelations[]) => {
+    const queryKey = tasksQueryKey;
+    await queryClient.cancelQueries({ queryKey });
+    const previousTasks = queryClient.getQueryData<TaskWithRelations[]>(queryKey);
+    if (Array.isArray(previousTasks)) {
+      queryClient.setQueryData<TaskWithRelations[]>(queryKey, update(previousTasks));
+    }
+    return { queryKey, previousTasks };
   };
 
-  const handleCompleteTask = async (taskId: number) => {
-    try {
+  const restoreCachedTasks = (context?: { queryKey: unknown[]; previousTasks?: TaskWithRelations[] }) => {
+    if (context?.previousTasks) {
+      queryClient.setQueryData(context.queryKey, context.previousTasks);
+    }
+  };
+
+  // Terminer : la tâche passe tout de suite dans les tâches terminées, puis la
+  // liste est rechargée depuis le serveur
+  const completeTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
       const response = await fetch(`/api/tasks/${taskId}/complete`, {
         method: 'POST',
         headers: {
@@ -416,32 +379,39 @@ export default function Tasks() {
       if (!response.ok) {
         throw new Error('Erreur lors de la completion de la tâche');
       }
-
-      await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+    onMutate: (taskId: number) => {
+      const now = new Date();
+      return updateCachedTasks((list) => list.map((task) =>
+        task.id === taskId
+          ? { ...task, status: 'completed', completedAt: now, completedBy: user?.id ?? task.completedBy, updatedAt: now }
+          : task
+      ));
+    },
+    onSuccess: () => {
       toast({
         title: "Succès",
         description: "Tâche marquée comme terminée",
       });
-    } catch (error) {
+    },
+    onError: (error, _taskId, context) => {
+      restoreCachedTasks(context);
       console.error("Error completing task:", error);
       toast({
         title: "Erreur",
         description: "Impossible de terminer la tâche",
         variant: "destructive",
       });
-    }
-  };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+  });
 
-  const handleDeleteClick = (task: TaskWithRelations) => {
-    setTaskToDelete(task);
-    setShowDeleteModal(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!taskToDelete) return;
-
-    try {
-      const response = await fetch(`/api/tasks/${taskToDelete.id}`, {
+  // Supprimer : la tâche disparaît tout de suite de la liste et la modale se ferme
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      const response = await fetch(`/api/tasks/${taskId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -449,86 +419,117 @@ export default function Tasks() {
       if (!response.ok) {
         throw new Error('Erreur lors de la suppression');
       }
-
-      await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+    onMutate: (taskId: number) => updateCachedTasks((list) => list.filter((task) => task.id !== taskId)),
+    onSuccess: () => {
       toast({
         title: "Succès",
         description: "Tâche supprimée avec succès",
       });
-      
-      setShowDeleteModal(false);
-      setTaskToDelete(null);
-    } catch (error) {
+    },
+    onError: (error, _taskId, context) => {
+      restoreCachedTasks(context);
       console.error("Error deleting task:", error);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la tâche",
         variant: "destructive",
       });
-    }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+    },
+  });
+
+  const handleEditTask = (task: TaskWithRelations) => {
+    setSelectedTask(task);
+    setShowEditModal(true);
   };
 
-  // Filtrer et trier les tâches
-  const filteredTasks = tasks
-    .filter((task: TaskWithRelations) => {
-      // Filtre par recherche
-      if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase()) && 
-          !task.description?.toLowerCase().includes(searchTerm.toLowerCase())) {
-        return false;
-      }
+  const handleCompleteTask = (taskId: number) => {
+    completeTaskMutation.mutate(taskId);
+  };
 
-      // Filtre par statut
-      if (statusFilter !== "all" && task.status !== statusFilter) {
-        return false;
-      }
+  const handleDeleteClick = (task: TaskWithRelations) => {
+    setTaskToDelete(task);
+    setShowDeleteModal(true);
+  };
 
-      // Filtre par priorité
-      if (priorityFilter !== "all" && task.priority !== priorityFilter) {
-        return false;
-      }
+  const handleConfirmDelete = () => {
+    if (!taskToDelete) return;
 
-      // Filtre par date d'échéance
-      if (dueDateFilter !== "all" && task.dueDate) {
-        const dueDate = new Date(task.dueDate);
-        switch (dueDateFilter) {
-          case "today":
-            if (!isToday(dueDate)) return false;
-            break;
-          case "this_week":
-            if (!isThisWeek(dueDate)) return false;
-            break;
-          case "overdue":
-            if (!isPast(dueDate) || task.status === 'completed') return false;
-            break;
-          case "no_due_date":
-            if (task.dueDate) return false;
-            break;
+    deleteTaskMutation.mutate(taskToDelete.id);
+    setShowDeleteModal(false);
+    setTaskToDelete(null);
+  };
+
+  // La recherche est différée : la saisie reste fluide pendant le filtrage
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+
+  // Filtrer et trier les tâches (recalculé seulement quand la liste ou un filtre change)
+  const filteredTasks = useMemo(() => {
+    const search = deferredSearchTerm.toLowerCase();
+    return tasks
+      .filter((task: TaskWithRelations) => {
+        // Filtre par recherche
+        if (search && !task.title.toLowerCase().includes(search) &&
+            !task.description?.toLowerCase().includes(search)) {
+          return false;
         }
-      } else if (dueDateFilter === "no_due_date" && task.dueDate) {
-        return false;
-      }
 
-      return true;
-    })
-    .sort((a: TaskWithRelations, b: TaskWithRelations) => {
-      // Faire remonter les tâches non validées (pending) en premier
-      if (a.status === 'pending' && b.status === 'completed') return -1;
-      if (a.status === 'completed' && b.status === 'pending') return 1;
+        // Filtre par statut
+        if (statusFilter !== "all" && task.status !== statusFilter) {
+          return false;
+        }
+
+        // Filtre par priorité
+        if (priorityFilter !== "all" && task.priority !== priorityFilter) {
+          return false;
+        }
+
+        // Filtre par date d'échéance
+        if (dueDateFilter !== "all" && task.dueDate) {
+          const dueDate = new Date(task.dueDate);
+          switch (dueDateFilter) {
+            case "today":
+              if (!isToday(dueDate)) return false;
+              break;
+            case "this_week":
+              if (!isThisWeek(dueDate)) return false;
+              break;
+            case "overdue":
+              if (!isPast(dueDate) || task.status === 'completed') return false;
+              break;
+            case "no_due_date":
+              if (task.dueDate) return false;
+              break;
+          }
+        } else if (dueDateFilter === "no_due_date" && task.dueDate) {
+          return false;
+        }
+
+        return true;
+      })
+      .sort((a: TaskWithRelations, b: TaskWithRelations) => {
+        // Faire remonter les tâches non validées (pending) en premier
+        if (a.status === 'pending' && b.status === 'completed') return -1;
+        if (a.status === 'completed' && b.status === 'pending') return 1;
       
-      // Pour les tâches de même statut, trier par priorité (high > medium > low)
-      const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
-      const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 2;
-      const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 2;
+        // Pour les tâches de même statut, trier par priorité (high > medium > low)
+        const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+        const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] || 2;
+        const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] || 2;
       
-      if (aPriority !== bPriority) {
-        return bPriority - aPriority; // Ordre décroissant (high en premier)
-      }
+        if (aPriority !== bPriority) {
+          return bPriority - aPriority; // Ordre décroissant (high en premier)
+        }
       
-      // Enfin, trier par date de création (plus récent en premier)
-      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bDate - aDate;
-    });
+        // Enfin, trier par date de création (plus récent en premier)
+        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bDate - aDate;
+      });
+  }, [tasks, deferredSearchTerm, statusFilter, priorityFilter, dueDateFilter]);
 
   // Pagination
   const {
@@ -540,6 +541,18 @@ export default function Tasks() {
     paginatedData: paginatedTasks,
     totalItems
   } = usePagination(filteredTasks, 10);
+
+  // Sous-listes calculées une seule fois par rendu (page courante et Kanban)
+  const pagePendingTasks = paginatedTasks.filter((task: TaskWithRelations) => task.status === 'pending');
+  const pageCompletedTasks = paginatedTasks.filter((task: TaskWithRelations) => task.status === 'completed');
+  const { kanbanPendingTasks, kanbanCompletedTasks } = useMemo(() => ({
+    kanbanPendingTasks: filteredTasks.filter((task: TaskWithRelations) => task.status === 'pending'),
+    kanbanCompletedTasks: filteredTasks.filter((task: TaskWithRelations) => task.status === 'completed'),
+  }), [filteredTasks]);
+
+  // Liste du magasin précédent affichée pendant le chargement du nouveau magasin :
+  // estompée et non cliquable pour ne pas agir sur une tâche de l'ancien magasin
+  const listBusyClass = isPlaceholderData ? "opacity-60 pointer-events-none transition-opacity" : "";
 
   const getPriorityConfig = (priority: string) => {
     switch (priority) {
@@ -687,6 +700,12 @@ export default function Tasks() {
             </h2>
             <p className="text-gray-600 mt-1 text-sm sm:text-base">
               {totalItems} tâche{totalItems !== 1 ? 's' : ''} trouvée{totalItems !== 1 ? 's' : ''}
+              {isPlaceholderData && (
+                <span className="inline-flex items-center gap-1 ml-2 text-xs text-gray-500" role="status">
+                  <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary" />
+                  Mise à jour…
+                </span>
+              )}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -757,8 +776,9 @@ export default function Tasks() {
         </div>
       </div>
 
-      {/* Section filtres - Responsive */}
-      <div className={`${filtersOpen ? 'block' : 'hidden'} lg:hidden mb-4`}>
+      {/* Section filtres - Responsive (tablette uniquement) */}
+      {!isLargeScreen && (
+      <div className={`${filtersOpen ? 'block' : 'hidden'} mb-4`}>
         <Card className="mb-4 sm:mb-6">
           <CardHeader className="pb-3 sm:pb-4">
             <div className="flex items-center justify-between">
@@ -846,9 +866,11 @@ export default function Tasks() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Zone principale mobile/tablet - Contenu pleine largeur */}
-      <div className="block lg:hidden">
+      {!isLargeScreen && (
+      <div className={listBusyClass} aria-busy={isPlaceholderData}>
         <Tabs value={viewMode} onValueChange={setViewMode} className="h-full">
           <TabsContent value="list" className="mt-0">
             {/* Contenu mobile identique au desktop mais optimisé */}
@@ -865,14 +887,13 @@ export default function Tasks() {
             ) : (
               <div className="space-y-3 sm:space-y-4">
                 {/* Tâches en cours - Mobile optimisé */}
-                {paginatedTasks.filter(task => task.status === 'pending').length > 0 && (
+                {pagePendingTasks.length > 0 && (
                   <div>
                     <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 px-1">
-                      Tâches en cours ({paginatedTasks.filter(task => task.status === 'pending').length})
+                      Tâches en cours ({pagePendingTasks.length})
                     </h4>
                     <div className="space-y-2 sm:space-y-3">
-                      {paginatedTasks
-                        .filter(task => task.status === 'pending')
+                      {pagePendingTasks
                         .map((task) => {
                           const priorityConfig = getPriorityConfig(task.priority);
                           const PriorityIcon = priorityConfig.icon;
@@ -1024,14 +1045,13 @@ export default function Tasks() {
                 )}
 
                 {/* Tâches terminées - Mobile optimisé */}
-                {paginatedTasks.filter(task => task.status === 'completed').length > 0 && (
+                {pageCompletedTasks.length > 0 && (
                   <div>
                     <h4 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 mt-6 px-1">
-                      Tâches terminées ({paginatedTasks.filter(task => task.status === 'completed').length})
+                      Tâches terminées ({pageCompletedTasks.length})
                     </h4>
                     <div className="space-y-2 sm:space-y-3">
-                      {paginatedTasks
-                        .filter(task => task.status === 'completed')
+                      {pageCompletedTasks
                         .map((task) => {
                           const priorityConfig = getPriorityConfig(task.priority);
                           const PriorityIcon = priorityConfig.icon;
@@ -1088,9 +1108,11 @@ export default function Tasks() {
           </TabsContent>
         </Tabs>
       </div>
+      )}
 
       {/* Sidebar desktop uniquement */}
-      <div className="hidden lg:flex gap-6">
+      {isLargeScreen && (
+      <div className="flex gap-6">
         {/* Sidebar avec filtres desktop */}
         <div className="w-80 bg-gray-50 border-r border-gray-200 p-4 flex-shrink-0">
           <Card>
@@ -1167,7 +1189,7 @@ export default function Tasks() {
         </div>
 
         {/* Zone principale avec les tâches - Desktop */}
-        <div className="flex-1">
+        <div className={`flex-1 ${listBusyClass}`} aria-busy={isPlaceholderData}>
           {/* Contenu selon la vue sélectionnée */}
           <Tabs value={viewMode} onValueChange={setViewMode} className="h-full">
             <TabsContent value="list" className="mt-0">
@@ -1186,14 +1208,13 @@ export default function Tasks() {
             ) : (
               <div className="space-y-4">
                 {/* Tâches en cours */}
-                {paginatedTasks.filter(task => task.status === 'pending').length > 0 && (
+                {pagePendingTasks.length > 0 && (
                   <div>
                     <h4 className="text-lg font-semibold text-gray-900 mb-3">
-                      Tâches en cours ({paginatedTasks.filter(task => task.status === 'pending').length})
+                      Tâches en cours ({pagePendingTasks.length})
                     </h4>
                     <div className="space-y-3">
-                      {paginatedTasks
-                        .filter(task => task.status === 'pending')
+                      {pagePendingTasks
                         .map((task) => {
                           const priorityConfig = getPriorityConfig(task.priority);
                           const PriorityIcon = priorityConfig.icon;
@@ -1334,14 +1355,13 @@ export default function Tasks() {
                 )}
 
                 {/* Tâches terminées */}
-                {paginatedTasks.filter(task => task.status === 'completed').length > 0 && (
+                {pageCompletedTasks.length > 0 && (
                   <div>
                     <h4 className="text-lg font-semibold text-gray-900 mb-3 mt-8">
-                      Tâches terminées ({paginatedTasks.filter(task => task.status === 'completed').length})
+                      Tâches terminées ({pageCompletedTasks.length})
                     </h4>
                     <div className="space-y-3">
-                      {paginatedTasks
-                        .filter(task => task.status === 'completed')
+                      {pageCompletedTasks
                         .map((task) => {
                           const priorityConfig = getPriorityConfig(task.priority);
                           const PriorityIcon = priorityConfig.icon;
@@ -1426,10 +1446,10 @@ export default function Tasks() {
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Circle className="w-5 h-5 text-yellow-500" />
-                      En cours ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'pending').length})
+                      En cours ({kanbanPendingTasks.length})
                     </h3>
                     <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'pending').map((task: TaskWithRelations) => {
+                      {kanbanPendingTasks.map((task: TaskWithRelations) => {
                         const priorityConfig = getPriorityConfig(task.priority);
                         const PriorityIcon = priorityConfig.icon;
                         const dueDateStatus = getDueDateStatus(task.dueDate, task.status);
@@ -1506,10 +1526,10 @@ export default function Tasks() {
                   <div className="bg-green-50 rounded-lg p-4">
                     <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <CheckCircle className="w-5 h-5 text-green-500" />
-                      Terminées ({filteredTasks.filter((task: TaskWithRelations) => task.status === 'completed').length})
+                      Terminées ({kanbanCompletedTasks.length})
                     </h3>
                     <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                      {filteredTasks.filter((task: TaskWithRelations) => task.status === 'completed').map((task: TaskWithRelations) => {
+                      {kanbanCompletedTasks.map((task: TaskWithRelations) => {
                         const priorityConfig = getPriorityConfig(task.priority);
                         const PriorityIcon = priorityConfig.icon;
                         
@@ -1562,6 +1582,7 @@ export default function Tasks() {
           </Tabs>
         </div>
       </div>
+      )}
 
 {/* Modal d'édition */}
       {showEditModal && selectedTask && (

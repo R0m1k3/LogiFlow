@@ -62,13 +62,19 @@ export default function AuthPage() {
       if (response.ok) {
         toast({
           title: "Connexion réussie",
-          description: "Redirection en cours...",
+          description: "Bienvenue dans LogiFlow",
         });
         
-        // En production, recharger la page pour éviter les problèmes de synchronisation
-        setTimeout(() => {
+        // L'utilisateur est relu une fois et placé dans le cache partagé : toute
+        // l'application bascule directement sur le tableau de bord, sans attente
+        // ni rechargement complet
+        const refreshedUserData = await forceAuthRefresh();
+        if (refreshedUserData && refreshedUserData.id) {
+          setLocation("/", { replace: true });
+        } else {
+          // Session pas encore visible : rechargement complet comme auparavant
           window.location.href = "/";
-        }, 500);
+        }
       } else {
         const errorData = await response.json().catch(() => ({}));
         toast({
@@ -137,16 +143,6 @@ export default function AuthPage() {
       });
     },
   });
-
-  // Debug logging for authentication state
-  if (import.meta.env.DEV) {
-    console.log('🔍 AuthPage Debug:', {
-      isAuthenticated,
-      isLoading,
-      userId: user?.id,
-      username: user?.username
-    });
-  }
 
   useEffect(() => {
     if (defaultCredentialsCheck) {
