@@ -5421,58 +5421,55 @@ RÉSUMÉ DU SCAN
       const today = new Date().toISOString().split('T')[0];
       const previousYearDate = weatherService.getPreviousYearDate();
 
-      // Check if we already have today's data (deux lectures indépendantes)
+      // Lectures du cache indépendantes : en parallèle
       let [currentYearData, previousYearData] = await Promise.all([
         storage.getWeatherData(today, true),
         storage.getWeatherData(previousYearDate, false),
       ]);
 
-      // Les appels à l'API pour l'année en cours et l'année précédente sont
-      // indépendants : ils sont lancés en parallèle
-      await Promise.all([
-        (async () => {
-          // Fetch current year data if not in cache
-          if (!currentYearData) {
-            console.log("🌤️ [FETCH] Fetching current weather data from API");
-            const apiData = await weatherService.fetchCurrentWeather(settings);
-            if (apiData) {
-              const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, true);
-              if (weatherData) {
-                try {
-                  currentYearData = await storage.createWeatherData(weatherData);
-                  console.log("✅ [CACHE] Current year data saved to cache");
-                } catch (error: any) {
-                  console.warn("⚠️ [CACHE] Could not save current year data (may already exist):", error.message);
-                  // Récupérer les données existantes au lieu de créer
-                  currentYearData = await storage.getWeatherData(today, true);
-                }
-              }
+      // Les appels à l'API météo restent séquentiels : lancés en parallèle,
+      // Visual Crossing peut refuser la seconde requête d'une même clé (limite
+      // de requêtes simultanées) et la comparaison avec l'an dernier disparaît.
+
+      // Fetch current year data if not in cache
+      if (!currentYearData) {
+        console.log("🌤️ [FETCH] Fetching current weather data from API");
+        const apiData = await weatherService.fetchCurrentWeather(settings);
+        if (apiData) {
+          const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, true);
+          if (weatherData) {
+            try {
+              currentYearData = await storage.createWeatherData(weatherData);
+              console.log("✅ [CACHE] Current year data saved to cache");
+            } catch (error: any) {
+              console.warn("⚠️ [CACHE] Could not save current year data (may already exist):", error.message);
+              // Récupérer les données existantes au lieu de créer
+              currentYearData = await storage.getWeatherData(today, true);
             }
           }
-        })(),
-        (async () => {
-          // Fetch previous year data if not in cache
-          if (!previousYearData) {
-            console.log("🌤️ [FETCH] Fetching previous year weather data from API");
-            const apiData = await weatherService.fetchPreviousYearWeather(settings, previousYearDate);
-            if (apiData) {
-              const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, false);
-              if (weatherData) {
-                try {
-                  previousYearData = await storage.createWeatherData(weatherData);
-                  console.log("✅ [CACHE] Previous year data saved to cache");
-                } catch (error: any) {
-                  console.warn("⚠️ [CACHE] Could not save previous year data (may already exist):", error.message);
-                  // Récupérer les données existantes au lieu de créer
-                  previousYearData = await storage.getWeatherData(previousYearDate, false);
-                }
-              }
-            } else {
-              console.warn("⚠️ [HISTORY] Could not fetch historical data - continuing with current year only");
+        }
+      }
+
+      // Fetch previous year data if not in cache
+      if (!previousYearData) {
+        console.log("🌤️ [FETCH] Fetching previous year weather data from API");
+        const apiData = await weatherService.fetchPreviousYearWeather(settings, previousYearDate);
+        if (apiData) {
+          const weatherData = weatherService.convertApiDataToWeatherData(apiData, settings.location, false);
+          if (weatherData) {
+            try {
+              previousYearData = await storage.createWeatherData(weatherData);
+              console.log("✅ [CACHE] Previous year data saved to cache");
+            } catch (error: any) {
+              console.warn("⚠️ [CACHE] Could not save previous year data (may already exist):", error.message);
+              // Récupérer les données existantes au lieu de créer
+              previousYearData = await storage.getWeatherData(previousYearDate, false);
             }
           }
-        })(),
-      ]);
+        } else {
+          console.warn("⚠️ [HISTORY] Could not fetch historical data - continuing with current year only");
+        }
+      }
 
       // Repli : si l'API historique a échoué (quota épuisé, panne, plan sans
       // accès à l'historique), reprendre la ligne en cache la plus proche de

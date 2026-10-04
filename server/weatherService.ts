@@ -27,7 +27,8 @@ export class WeatherService {
       
       const response = await fetch(url);
       if (!response.ok) {
-        console.error(`Weather API error: ${response.status} ${response.statusText}`);
+        const reason = (await response.text().catch(() => '')).slice(0, 300);
+        console.error(`Weather API error: ${response.status} ${response.statusText} ${reason}`);
         return null;
       }
 
@@ -51,7 +52,9 @@ export class WeatherService {
       
       const response = await fetch(url);
       if (!response.ok) {
-        console.error(`🌤️ [ERROR] Weather API error for previous year: ${response.status} ${response.statusText}`);
+        // Visual Crossing explique le refus dans le corps (quota, plan, clé...)
+        const reason = (await response.text().catch(() => '')).slice(0, 300);
+        console.error(`🌤️ [ERROR] Weather API error for previous year: ${response.status} ${response.statusText} ${reason}`);
         
         // Pour les données historiques, certains comptes peuvent ne pas avoir accès
         if (response.status === 401) {
