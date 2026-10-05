@@ -30,6 +30,14 @@ if (isProduction && dbUrl && (dbUrl.includes('logiflow-db') || dbUrl.includes('l
 
   db = drizzle({ client: pool, schema });
 
+  // Une connexion inactive coupée par Postgres (redémarrage ou redéploiement de
+  // la base, coupure réseau) fait émettre 'error' au pool. Sans écouteur, Node
+  // arrête tout le serveur ; le pool écarte déjà la connexion fautive et en
+  // ouvre une neuve à la requête suivante, il suffit donc de journaliser.
+  pool.on('error', (err: any) => {
+    console.error('❌ PostgreSQL idle connection error (connexion écartée):', err?.code || '', err?.message);
+  });
+
   // Test connection
   try {
     await pool.connect().then((client: any) => {
