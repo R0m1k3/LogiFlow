@@ -5443,8 +5443,9 @@ RÉSUMÉ DU SCAN
               console.log("✅ [CACHE] Current year data saved to cache");
             } catch (error: any) {
               console.warn("⚠️ [CACHE] Could not save current year data (may already exist):", error.message);
-              // Récupérer les données existantes au lieu de créer
-              currentYearData = await storage.getWeatherData(today, true);
+              // Récupérer les données existantes au lieu de créer ; à défaut,
+              // afficher quand même la réponse de l'API
+              currentYearData = (await storage.getWeatherData(today, true)) ?? (weatherData as any);
             }
           }
         }
@@ -5462,9 +5463,12 @@ RÉSUMÉ DU SCAN
               console.log("✅ [CACHE] Previous year data saved to cache");
             } catch (error: any) {
               console.warn("⚠️ [CACHE] Could not save previous year data (may already exist):", error.message);
-              // Récupérer les données existantes au lieu de créer
-              previousYearData = await storage.getWeatherData(previousYearDate, false);
+              // Récupérer les données existantes au lieu de créer ; à défaut,
+              // afficher quand même la réponse de l'API plutôt que de la perdre
+              previousYearData = (await storage.getWeatherData(previousYearDate, false)) ?? (weatherData as any);
             }
+          } else {
+            console.warn(`⚠️ [HISTORY] Empty historical response for ${previousYearDate}`);
           }
         } else {
           console.warn("⚠️ [HISTORY] Could not fetch historical data - continuing with current year only");
