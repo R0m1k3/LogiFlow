@@ -5481,6 +5481,19 @@ RÉSUMÉ DU SCAN
         }
       }
 
+      // Second repli : la météo relevée l'an dernier, au jour le jour, quand ces
+      // dates étaient « aujourd'hui » (lignes is_current_year = true datées de
+      // l'année précédente). Elle reste disponible même si l'API refuse
+      // durablement l'historique (plan, quota).
+      if (!previousYearData) {
+        previousYearData = await storage.getNearestWeatherData(previousYearDate, true, 7);
+        if (previousYearData) {
+          console.log(`🌤️ [FALLBACK] Using weather recorded last year (${previousYearData.date}) for target ${previousYearDate}`);
+        } else {
+          console.warn(`⚠️ [FALLBACK] No previous-year weather available around ${previousYearDate}`);
+        }
+      }
+
       // Toujours retourner une réponse même si seule l'année actuelle est disponible
       const response = {
         currentYear: currentYearData ? {
