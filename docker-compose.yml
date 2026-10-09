@@ -17,6 +17,8 @@ services:
       POSTGRES_PASSWORD: LogiFlow2025!
       POSTGRES_DB: logiflow_db
       BACKUP_DIR: /app/backups
+      # Clé(s) de l'API externe de rapprochement, lues depuis le .env de l'hôte (vide = API désactivée)
+      EXTERNAL_API_KEYS: ${EXTERNAL_API_KEYS:-}
     ports:
       - "3000:3000"
     networks:

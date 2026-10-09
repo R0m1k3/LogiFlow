@@ -50,6 +50,7 @@ export function setupCsrfProtection(app: Express) {
     const csrfExemptPaths = [
       '/api/health',
       '/api/webhook', // External webhook callbacks
+      '/api/ext/', // API externe : authentifiée par clé d'API, sans cookie de session
     ];
 
     if (csrfExemptPaths.some(path => req.path.startsWith(path))) {
