@@ -2556,6 +2556,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.validateDelivery(id, blData);
 
+      // AUTO-VALIDATION RAPPROCHEMENT : fournisseur en mode automatique → rapprochement validé directement
+      try {
+        // Fournisseur déjà joint à la livraison
+        const supplier = delivery.supplier;
+        if (supplier?.automaticReconciliation) {
+          await storage.updateDelivery(id, {
+            reconciled: true,
+            validatedAt: new Date()
+          });
+          console.log(`✅ Auto-reconciliation: Delivery #${id} automatically validated for supplier ${supplier.name}`);
+        }
+      } catch (error) {
+        console.error(`❌ Auto-reconciliation failed for delivery #${id}:`, error);
+      }
+
       // MISE À JOUR DU CACHE : Marquer le cache comme permanent pour cette livraison validée
       try {
         if (delivery.invoiceReference && delivery.invoiceReference.trim()) {

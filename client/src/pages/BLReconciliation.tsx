@@ -497,8 +497,11 @@ export default function BLReconciliation() {
     return isManual && isNotValidated;
   }), [deliveriesWithBL]);
 
+  // Fournisseurs en rapprochement automatique : toujours considérés validés,
+  // même si reconciled n'a pas été posé (livraisons antérieures au passage en mode auto)
   const allValidatedDeliveries = useMemo(() => deliveriesWithBL.filter((delivery: any) => {
-    return delivery.reconciled === true || delivery.reconciled === 1;
+    const isAutomatic = delivery.supplier?.automaticReconciliation === true;
+    return isAutomatic || delivery.reconciled === true || delivery.reconciled === 1;
   }), [deliveriesWithBL]);
 
   // Fonctions de gestion
