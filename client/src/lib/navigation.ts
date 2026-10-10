@@ -96,6 +96,19 @@ export function getNavSections(role?: string): NavSection[] {
     .filter((section) => section.items.length > 0);
 }
 
+// Barre du bas sur téléphone : les 4 premières entrées autorisées de cette liste,
+// le reste est dans « Menu »
+const MOBILE_SHORTCUT_PATHS = ["/", "/deliveries", "/tasks", "/dlc", "/customer-orders"];
+const MOBILE_SHORTCUT_COUNT = 4;
+
+export function getMobileShortcuts(role?: string): NavItem[] {
+  const allowed = getNavSections(role).flatMap((section) => section.items);
+  return MOBILE_SHORTCUT_PATHS
+    .map((path) => allowed.find((item) => item.path === path))
+    .filter((item): item is NavItem => Boolean(item))
+    .slice(0, MOBILE_SHORTCUT_COUNT);
+}
+
 // « / » et « /dashboard » activent tous deux Accueil ; les autres entrées
 // restent actives sur leurs sous-adresses
 export function isNavItemActive(itemPath: string, location: string): boolean {
