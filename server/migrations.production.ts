@@ -378,6 +378,22 @@ export async function runProductionMigrations() {
     `);
     console.log('✅ MIGRATION: supplier_mail_logs table is present');
 
+    // Clés de l'API externe de rapprochement, gérées depuis Paramètres
+    console.log('🔄 MIGRATION: Ensuring external_api_keys table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS external_api_keys (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        key_prefix VARCHAR(16) NOT NULL,
+        key_hash VARCHAR(64) NOT NULL UNIQUE,
+        created_by VARCHAR,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_used_at TIMESTAMP,
+        revoked_at TIMESTAMP
+      );
+    `);
+    console.log('✅ MIGRATION: external_api_keys table is present');
+
     // Chiffrement au repos des secrets encore stockés en clair
     // (mots de passe SMTP des magasins, jetons API NocoDB). Idempotent :
     // les valeurs déjà au format enc:v1: sont ignorées.

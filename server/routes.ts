@@ -5,7 +5,7 @@ import { setupLocalAuth, requireAuth } from "./localAuth";
 import { requireModulePermission, requireAdmin, requirePermission } from "./permissions";
 import { stripSmtpPassword } from "./sanitize";
 import { normalizeDateString } from "./dateUtils";
-import { registerExternalApi } from "./externalApi";
+import { registerExternalApi, registerExternalApiKeyAdminRoutes } from "./externalApi";
 
 // Corps de requête sans les champs secrets : pour les logs uniquement
 function redactBody(body: any): any {
@@ -125,6 +125,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   // Auth middleware
   await setupAuth(app);
+
+  // Clés de l'API externe (Paramètres > API externe), admin uniquement
+  registerExternalApiKeyAdminRoutes(app, [isAuthenticated, requireAdmin]);
 
   // Routes pour configuration webhook BAP
   app.get('/api/webhook-bap-config', isAuthenticated, async (req: any, res) => {

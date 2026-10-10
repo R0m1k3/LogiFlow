@@ -438,6 +438,18 @@ CREATE TABLE IF NOT EXISTS "supplier_mail_logs" (
 CREATE INDEX IF NOT EXISTS idx_supplier_mail_logs_delivery ON supplier_mail_logs(delivery_id);
 CREATE INDEX IF NOT EXISTS idx_supplier_mail_logs_group ON supplier_mail_logs(group_id);
 
+-- Clés de l'API externe de rapprochement (empreinte SHA-256, jamais la clé en clair)
+CREATE TABLE IF NOT EXISTS "external_api_keys" (
+  "id" serial PRIMARY KEY NOT NULL,
+  "name" varchar(100) NOT NULL,
+  "key_prefix" varchar(16) NOT NULL,
+  "key_hash" varchar(64) NOT NULL UNIQUE,
+  "created_by" varchar,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
+  "last_used_at" timestamp,
+  "revoked_at" timestamp
+);
+
 -- ============================================================================
 -- FOREIGN KEY CONSTRAINTS
 -- ============================================================================

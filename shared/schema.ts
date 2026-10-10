@@ -1023,6 +1023,21 @@ export const insertWebhookBapConfigSchema = createInsertSchema(webhookBapConfig)
 export type WebhookBapConfig = typeof webhookBapConfig.$inferSelect;
 export type InsertWebhookBapConfig = z.infer<typeof insertWebhookBapConfigSchema>;
 
+// Clés de l'API externe de rapprochement (docs/API-RAPPROCHEMENT.md), créées
+// depuis Paramètres. Seule l'empreinte SHA-256 de la clé est stockée.
+export const externalApiKeys = pgTable("external_api_keys", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  keyPrefix: varchar("key_prefix", { length: 16 }).notNull(), // début de la clé, pour la reconnaître
+  keyHash: varchar("key_hash", { length: 64 }).notNull().unique(),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+});
+
+export type ExternalApiKey = typeof externalApiKeys.$inferSelect;
+
 // Supplier mail logs
 export const insertSupplierMailLogSchema = createInsertSchema(supplierMailLogs).omit({
   id: true,
