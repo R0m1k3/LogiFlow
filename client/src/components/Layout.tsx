@@ -12,6 +12,7 @@ import Sidebar from "./Sidebar";
 import ErrorBoundary from "./ErrorBoundary";
 import WeatherWidget from "./WeatherWidget";
 import DateWidget from "./DateWidget";
+import { getNavItemForPath } from "@/lib/navigation";
 import type { Group } from "@shared/schema";
 
 
@@ -62,6 +63,12 @@ export default function Layout({ children }: LayoutProps) {
   });
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Titre de l'onglet du navigateur tiré du menu : « Livraisons — LogiFlow »
+  useEffect(() => {
+    const navItem = getNavItemForPath(location);
+    document.title = navItem ? `${navItem.label} — LogiFlow` : "LogiFlow";
+  }, [location]);
 
   const { data: stores = EMPTY_STORES } = useQuery<Group[]>({
     queryKey: ['/api/groups'],

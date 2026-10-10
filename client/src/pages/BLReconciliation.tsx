@@ -12,13 +12,14 @@ import { useStore } from "@/contexts/StoreContext";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { usePermissions } from "@shared/permissions";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload, CheckCircle, XCircle, Clock, MessageSquare, Mail } from "lucide-react";
+import { Search, Edit, FileText, Settings, Eye, AlertTriangle, X, Check, Trash2, Ban, Filter, Upload, CheckCircle, XCircle, Clock, MessageSquare, Mail, FileUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import ReconciliationComments from "@/components/ReconciliationComments";
 import ReconciliationModal from "@/components/modals/ReconciliationModal";
+import BapUploadModal from "@/components/modals/BapUploadModal";
 
 // Tableau vide stable tant que la liste n'est pas chargée (évite de relancer
 // effets et calculs mémoïsés à chaque rendu)
@@ -128,6 +129,7 @@ export default function BLReconciliation() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDelivery, setSelectedDelivery] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showBapModal, setShowBapModal] = useState(false);
   
   // État pour le modal d'envoi de facture
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -917,23 +919,41 @@ export default function BLReconciliation() {
               <Search className="w-4 h-4 mr-1" />
               Vérifier toutes les factures
             </Button>
+            {user?.role === 'admin' && (
+              <Button
+                onClick={() => setShowBapModal(true)}
+                variant="outline"
+                size="sm"
+                className="text-xs sm:text-sm"
+              >
+                <FileUp className="w-4 h-4 mr-1" />
+                Envoyer un BAP
+              </Button>
+            )}
           </div>
         </div>
 
         {/* Onglets */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="manual" className="flex items-center space-x-2">
-              <Edit className="w-4 h-4" />
-              <span>Rapprochement Manuel</span>
-              <Badge variant="secondary" className="ml-2">
+            {/* Libellés courts sur téléphone : les libellés complets débordaient */}
+            <TabsTrigger value="manual" className="flex items-center gap-1.5 sm:gap-2 min-w-0 px-2">
+              <Edit className="hidden sm:block w-4 h-4 shrink-0" />
+              <span className="truncate">
+                <span className="sm:hidden">À rapprocher</span>
+                <span className="hidden sm:inline">Rapprochement Manuel</span>
+              </span>
+              <Badge variant="secondary" className="shrink-0">
                 {manualNotValidatedDeliveries.length}
               </Badge>
             </TabsTrigger>
-            <TabsTrigger value="validated" className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4" />
-              <span>Livraisons Validées</span>
-              <Badge variant="secondary" className="ml-2">
+            <TabsTrigger value="validated" className="flex items-center gap-1.5 sm:gap-2 min-w-0 px-2">
+              <CheckCircle className="hidden sm:block w-4 h-4 shrink-0" />
+              <span className="truncate">
+                <span className="sm:hidden">Validées</span>
+                <span className="hidden sm:inline">Livraisons Validées</span>
+              </span>
+              <Badge variant="secondary" className="shrink-0">
                 {allValidatedDeliveries.length}
               </Badge>
             </TabsTrigger>
@@ -1738,6 +1758,10 @@ export default function BLReconciliation() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {user?.role === 'admin' && (
+        <BapUploadModal open={showBapModal} onOpenChange={setShowBapModal} />
+      )}
     </div>
   );
 }

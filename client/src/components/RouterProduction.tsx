@@ -1,4 +1,4 @@
-import { lazy, useEffect } from "react";
+import { lazy, Suspense, useEffect, type ComponentType } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useScreenSize } from "@/hooks/use-screen-size";
@@ -10,6 +10,7 @@ import Layout from "@/components/Layout";
 // Mobile : coque et page d'accueil chargées immédiatement
 import MobileApp from "@/pages/mobile/MobileApp";
 import MobileDashboardPage from "@/pages/mobile/DashboardPage";
+import MobileLayout from "@/pages/mobile/MobileLayout";
 
 // Les autres pages sont chargées à la demande (un fichier JS par page) : l'écran
 // de connexion et le tableau de bord n'attendent plus le code de toutes les pages
@@ -43,6 +44,36 @@ const MobileCustomerOrdersPage = lazy(() => import("@/pages/mobile/CustomerOrder
 const MobileDlcPage = lazy(() => import("@/pages/mobile/DlcPage"));
 const MobileSavPage = lazy(() => import("@/pages/mobile/SavPage"));
 const MobileAvoirsPage = lazy(() => import("@/pages/mobile/AvoirsPage"));
+
+// Pages sans version mobile : affichées dans le cadre téléphone (en-tête, barre
+// du bas et menu) pour ne jamais laisser une page sans navigation
+function withMobileFrame(Page: ComponentType) {
+  return function MobileFramedPage() {
+    return (
+      <MobileLayout>
+        <div className="p-3">
+          <Suspense fallback={
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          }>
+            <Page />
+          </Suspense>
+        </div>
+      </MobileLayout>
+    );
+  };
+}
+
+const MobileFramedContacts = withMobileFrame(Contacts);
+const MobileFramedSuppliers = withMobileFrame(Suppliers);
+const MobileFramedGroups = withMobileFrame(Groups);
+const MobileFramedUsers = withMobileFrame(Users);
+const MobileFramedBLReconciliation = withMobileFrame(BLReconciliation);
+const MobileFramedUtilities = withMobileFrame(Utilities);
+const MobileFramedAnalytics = withMobileFrame(Analytics);
+const MobileFramedPaymentSchedule = withMobileFrame(PaymentSchedulePage);
+const MobileFramedNotFound = withMobileFrame(NotFound);
 
 // Helper component to handle redirection
 const RedirectToAuth = () => {
@@ -92,20 +123,20 @@ function RouterProduction() {
           <Route path="/deliveries" component={MobileDeliveriesPage} />
           <Route path="/tasks" component={MobileTasksPage} />
 
-          {/* Pages sans version mobile - utiliser version desktop pour l'instant */}
-          <Route path="/contacts" component={Contacts} />
-          <Route path="/suppliers" component={Suppliers} />
-          <Route path="/groups" component={Groups} />
-          <Route path="/users" component={Users} />
-          <Route path="/bl-reconciliation" component={BLReconciliation} />
+          {/* Pages sans version mobile : version PC dans le cadre téléphone */}
+          <Route path="/contacts" component={MobileFramedContacts} />
+          <Route path="/suppliers" component={MobileFramedSuppliers} />
+          <Route path="/groups" component={MobileFramedGroups} />
+          <Route path="/users" component={MobileFramedUsers} />
+          <Route path="/bl-reconciliation" component={MobileFramedBLReconciliation} />
           <Route path="/publicities" component={MobilePublicitiesPage} />
           <Route path="/customer-orders" component={MobileCustomerOrdersPage} />
           <Route path="/dlc" component={MobileDlcPage} />
-          <Route path="/utilities" component={Utilities} />
+          <Route path="/utilities" component={MobileFramedUtilities} />
           <Route path="/sav" component={MobileSavPage} />
           <Route path="/avoirs" component={MobileAvoirsPage} />
-          <Route path="/analytics" component={Analytics} />
-          <Route path="/payment-schedule" component={PaymentSchedulePage} />
+          <Route path="/analytics" component={MobileFramedAnalytics} />
+          <Route path="/payment-schedule" component={MobileFramedPaymentSchedule} />
 
           {/* Redirection /auth vers dashboard (navigation interne, sans rechargement) */}
           <Route path="/auth">
@@ -113,7 +144,7 @@ function RouterProduction() {
           </Route>
 
           <Route path="/" component={MobileDashboardPage} />
-          <Route component={NotFound} />
+          <Route component={MobileFramedNotFound} />
         </Switch>
       </MobileApp>
     );

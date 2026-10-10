@@ -1,15 +1,18 @@
 /**
- * MobileLayout - Layout dédié pour l'application mobile
- * Affiche le magasin sélectionné de manière visible et une navigation bottom
+ * MobileLayout - Cadre de l'application sur téléphone
+ * En-tête (titre de la page + magasin), contenu défilant, barre du bas et
+ * menu complet, tous tirés de la même configuration que le menu PC
  * Note: Le StoreProvider est fourni par MobileApp au niveau supérieur
  */
-import { ReactNode, useState } from "react";
-import { Menu, Store, ChevronDown, LogOut } from "lucide-react";
+import { ReactNode, useEffect, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { Boxes, ChevronDown, LogOut } from "lucide-react";
 import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getNavItemForPath, getNavSections, getRoleLabel, isNavItemActive } from "@/lib/navigation";
 import MobileBottomNav from "./MobileBottomNav";
 import type { Group } from "@shared/schema";
 
@@ -20,10 +23,16 @@ interface MobileLayoutProps {
 
 export default function MobileLayout({ children, title }: MobileLayoutProps) {
     const { user } = useAuthUnified();
+    const [location] = useLocation();
     const { selectedStoreId, setSelectedStoreId, stores } = useStore();
     const [menuOpen, setMenuOpen] = useState(false);
 
-    // Get selected store name
+    // Titre de l'onglet du navigateur tiré du menu, comme sur PC
+    useEffect(() => {
+        const navItem = getNavItemForPath(location);
+        document.title = navItem ? `${navItem.label} — LogiFlow` : "LogiFlow";
+    }, [location]);
+
     const selectedStore = stores?.find((s: Group) => s.id === selectedStoreId);
     const storeName = selectedStore?.name || "Tous les magasins";
 
@@ -47,6 +56,11 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
         setSelectedStoreId(newStoreId);
     };
 
+    const sections = getNavSections(user?.role);
+    const displayName = user && (user.firstName || user.lastName
+        ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+        : user.username);
+
     return (
         <div
             className="bg-gray-50 flex flex-col"
@@ -62,46 +76,38 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                 bottom: 0
             }}
         >
-            {/* Header fixe */}
-            <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-                <div className="flex items-center justify-between h-14 px-3">
-                    {/* Menu hamburger */}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setMenuOpen(true)}
-                        className="h-10 w-10 p-0"
-                    >
-                        <Menu className="h-5 w-5" />
-                    </Button>
-
-                    {/* Logo */}
-                    <div className="flex items-center gap-1">
-                        <Store className="h-5 w-5 text-blue-600" />
+            {/* En-tête : logo + magasin actif (le titre est porté par chaque page) */}
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+                <div className="flex items-center justify-between gap-3 h-14 px-4">
+                    <Link href="/" className="flex items-center gap-2 shrink-0">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600">
+                            <Boxes className="h-4 w-4 text-white" aria-hidden="true" />
+                        </span>
                         <span className="font-semibold text-gray-900">LogiFlow</span>
-                    </div>
+                    </Link>
 
-                    {/* Magasin sélectionné - bien visible */}
-                    <div
-                        className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-lg cursor-pointer"
+                    <button
+                        type="button"
+                        className="flex items-center gap-1 bg-blue-50 px-2.5 py-1.5 rounded-lg min-w-0 shrink"
                         onClick={() => setMenuOpen(true)}
+                        aria-label={`Magasin : ${storeName}. Ouvrir le menu`}
                     >
-                        <span className="text-xs font-medium text-blue-700 truncate max-w-[80px]">
+                        <span className="text-sm font-medium text-blue-700 truncate max-w-[140px]">
                             {storeName}
                         </span>
-                        <ChevronDown className="h-3 w-3 text-blue-600" />
-                    </div>
+                        <ChevronDown className="h-4 w-4 text-blue-600 shrink-0" aria-hidden="true" />
+                    </button>
                 </div>
 
                 {/* Titre de page optionnel */}
                 {title && (
-                    <div className="px-3 pb-2">
+                    <div className="px-4 pb-2">
                         <h1 className="text-lg font-bold text-gray-900">{title}</h1>
                     </div>
                 )}
             </header>
 
-            {/* Contenu principal - scrollable avec espace pour navbar */}
+            {/* Contenu principal - défilant, avec la place de la barre du bas */}
             <main
                 className="flex-1 overflow-x-hidden"
                 style={{
@@ -113,35 +119,50 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                 {children}
             </main>
 
-            {/* Navigation bottom */}
-            <MobileBottomNav />
+            <MobileBottomNav menuOpen={menuOpen} onOpenMenu={() => setMenuOpen(true)} />
 
-            {/* Menu latéral (Sheet) */}
+            {/* Menu complet : tous les modules autorisés, magasin, profil */}
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-                <SheetContent side="left" className="w-[280px] p-0">
-                    <SheetHeader className="p-4 border-b">
-                        <SheetTitle className="flex items-center gap-2">
-                            <Store className="h-5 w-5 text-blue-600" />
-                            LogiFlow
-                        </SheetTitle>
+                <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-xl p-0">
+                    <SheetHeader className="px-4 pt-4 pb-2 text-left">
+                        <SheetTitle>Menu</SheetTitle>
                     </SheetHeader>
 
-                    <div className="p-4 space-y-6">
-                        {/* Utilisateur */}
-                        {user && (
-                            <div className="bg-gray-50 rounded-lg p-3">
-                                <p className="font-medium text-gray-900">
-                                    {user.firstName} {user.lastName}
-                                </p>
-                                <p className="text-sm text-gray-500 capitalize">{user.role}</p>
-                            </div>
-                        )}
+                    <nav className="px-4 space-y-4" aria-label="Menu principal">
+                        {sections.map((section) => (
+                            <div key={section.title ?? 'accueil'}>
+                                {section.title && (
+                                    <h2 className="mb-2 text-xs font-semibold text-gray-500">{section.title}</h2>
+                                )}
+                                <div className="grid grid-cols-3 gap-2">
+                                    {section.items.map((item) => {
+                                        const Icon = item.icon;
+                                        const active = isNavItemActive(item.path, location);
 
-                        {/* Sélecteur de magasin */}
+                                        return (
+                                            <Link
+                                                key={item.path}
+                                                href={item.path}
+                                                onClick={() => setMenuOpen(false)}
+                                                aria-current={active ? "page" : undefined}
+                                                className={`flex flex-col items-center justify-center gap-1.5 rounded-xl p-2 min-h-[76px] text-center text-xs font-medium leading-tight ${active
+                                                    ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+                                                    : 'bg-gray-100 text-gray-800 active:bg-gray-200'
+                                                    }`}
+                                            >
+                                                <Icon className={`h-6 w-6 ${active ? 'text-blue-700' : 'text-gray-600'}`} aria-hidden="true" />
+                                                <span>{item.label}</span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </nav>
+
+                    <div className="mt-4 border-t border-gray-200 p-4 space-y-4" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">
-                                Magasin
-                            </label>
+                            <label className="text-sm font-medium text-gray-700">Magasin</label>
                             <Select
                                 value={selectedStoreId?.toString() || (user?.role === 'admin' ? "all" : "")}
                                 onValueChange={handleStoreChange}
@@ -163,7 +184,7 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                                             <div className="flex items-center gap-2">
                                                 <div
                                                     className="w-3 h-3 rounded-full"
-                                                    style={{ backgroundColor: store.color || '#gray' }}
+                                                    style={{ backgroundColor: store.color || '#9ca3af' }}
                                                 />
                                                 {store.name}
                                             </div>
@@ -173,15 +194,22 @@ export default function MobileLayout({ children, title }: MobileLayoutProps) {
                             </Select>
                         </div>
 
-                        {/* Déconnexion */}
-                        <Button
-                            variant="outline"
-                            className="w-full h-12 text-red-600 border-red-200 hover:bg-red-50"
-                            onClick={handleLogout}
-                        >
-                            <LogOut className="h-4 w-4 mr-2" />
-                            Déconnexion
-                        </Button>
+                        {user && (
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="font-medium text-gray-900 truncate">{displayName}</p>
+                                    <p className="text-sm text-gray-600">{getRoleLabel(user.role)}</p>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    className="h-11 shrink-0 text-red-600 border-red-200 hover:bg-red-50"
+                                    onClick={handleLogout}
+                                >
+                                    <LogOut className="h-4 w-4 mr-2" />
+                                    Déconnexion
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </SheetContent>
             </Sheet>
