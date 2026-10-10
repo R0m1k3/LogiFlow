@@ -936,17 +936,24 @@ export default function BLReconciliation() {
         {/* Onglets */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="manual" className="flex items-center space-x-2">
-              <Edit className="w-4 h-4" />
-              <span>Rapprochement Manuel</span>
-              <Badge variant="secondary" className="ml-2">
+            {/* Libellés courts sur téléphone : les libellés complets débordaient */}
+            <TabsTrigger value="manual" className="flex items-center gap-1.5 sm:gap-2 min-w-0 px-2">
+              <Edit className="hidden sm:block w-4 h-4 shrink-0" />
+              <span className="truncate">
+                <span className="sm:hidden">À rapprocher</span>
+                <span className="hidden sm:inline">Rapprochement Manuel</span>
+              </span>
+              <Badge variant="secondary" className="shrink-0">
                 {manualNotValidatedDeliveries.length}
               </Badge>
             </TabsTrigger>
-            <TabsTrigger value="validated" className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4" />
-              <span>Livraisons Validées</span>
-              <Badge variant="secondary" className="ml-2">
+            <TabsTrigger value="validated" className="flex items-center gap-1.5 sm:gap-2 min-w-0 px-2">
+              <CheckCircle className="hidden sm:block w-4 h-4 shrink-0" />
+              <span className="truncate">
+                <span className="sm:hidden">Validées</span>
+                <span className="hidden sm:inline">Livraisons Validées</span>
+              </span>
+              <Badge variant="secondary" className="shrink-0">
                 {allValidatedDeliveries.length}
               </Badge>
             </TabsTrigger>
