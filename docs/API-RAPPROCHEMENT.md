@@ -8,8 +8,15 @@ Code : `server/externalApi.ts`. Préfixe : `/api/ext/v1`.
 
 ## Activation et authentification
 
-Définir une ou plusieurs clés (séparées par des virgules) dans l'environnement,
-puis redémarrer :
+**Depuis LogiFlow (recommandé)** : *Paramètres > API externe* (admin). On y
+crée une clé par outil (nommée, ex. « n8n comptabilité »), affichée une seule
+fois à sa création, avec sa date de dernière utilisation ; une clé se révoque
+d'un clic, sans redémarrage. Seule l'empreinte SHA-256 de la clé est stockée
+(table `external_api_keys`). L'onglet s'ouvre directement par
+`/utilities?tab=api`.
+
+**Par l'environnement (optionnel)** : des clés peuvent aussi être définies,
+séparées par des virgules, puis le serveur redémarré :
 
 ```
 EXTERNAL_API_KEYS=3f9c…a1,7b20…e4
@@ -21,7 +28,8 @@ Générer une clé :
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Variable vide ou absente : l'API répond `503` (désactivée).
+Aucune clé active (ni dans Paramètres, ni dans l'environnement) : l'API répond
+`503` (désactivée).
 
 Chaque requête envoie la clé dans l'un de ces en-têtes :
 

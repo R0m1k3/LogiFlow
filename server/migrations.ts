@@ -106,6 +106,21 @@ WHERE NOT EXISTS (SELECT 1 FROM webhook_bap_config);`
           CREATE INDEX IF NOT EXISTS idx_supplier_mail_logs_delivery ON supplier_mail_logs(delivery_id);
           CREATE INDEX IF NOT EXISTS idx_supplier_mail_logs_group ON supplier_mail_logs(group_id);
         `
+      },
+      {
+        filename: '20261010000000_create_external_api_keys.sql',
+        content: `
+          CREATE TABLE IF NOT EXISTS external_api_keys (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            key_prefix VARCHAR(16) NOT NULL,
+            key_hash VARCHAR(64) NOT NULL UNIQUE,
+            created_by VARCHAR,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_used_at TIMESTAMP,
+            revoked_at TIMESTAMP
+          );
+        `
       }
     ];
     

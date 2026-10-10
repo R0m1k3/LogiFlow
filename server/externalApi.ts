@@ -6,8 +6,10 @@
 // compris déjà validée, pour les fournisseurs en rapprochement automatique).
 //
 // Authentification par clé d'API, indépendante des sessions du webUI :
-//   - variable d'environnement EXTERNAL_API_KEYS (une ou plusieurs clés
-//     séparées par des virgules) ; vide => API désactivée ;
+//   - clés créées par un admin dans Paramètres > API externe (server/externalApiKeys.ts) ;
+//   - et/ou variable d'environnement EXTERNAL_API_KEYS (une ou plusieurs clés
+//     séparées par des virgules) ;
+//   - aucune clé active => API désactivée ;
 //   - clé transmise dans l'en-tête "X-API-Key" ou "Authorization: Bearer <clé>".
 //
 // Documentation : docs/API-RAPPROCHEMENT.md
@@ -18,6 +20,14 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { normalizeDateString } from "./dateUtils";
 import { invoiceVerificationService } from "./invoiceVerification";
+import {
+  countActiveApiKeys,
+  countEnvApiKeys,
+  createApiKey,
+  listApiKeys,
+  revokeApiKey,
+  verifyStoredApiKey,
+} from "./externalApiKeys";
 
 export const EXTERNAL_API_PREFIX = "/api/ext/v1";
 
@@ -50,22 +60,27 @@ function extractKey(req: Request): string | null {
   return null;
 }
 
-function requireApiKey(req: Request, res: Response, next: NextFunction) {
-  const keys = configuredKeyDigests();
-  if (keys.length === 0) {
-    return res.status(503).json({ error: "API externe désactivée (EXTERNAL_API_KEYS non défini)" });
-  }
+async function requireApiKey(req: Request, res: Response, next: NextFunction) {
+  try {
+    const provided = extractKey(req);
+    if (provided) {
+      // Clés de l'environnement : comparaison à temps constant sur les empreintes
+      const providedDigest = digest(provided);
+      if (configuredKeyDigests().some((k) => timingSafeEqual(k, providedDigest))) return next();
+      // Clés créées dans Paramètres (recherche par empreinte)
+      if (await verifyStoredApiKey(provided)) return next();
+    }
 
-  const provided = extractKey(req);
-  // Comparaison à temps constant sur les empreintes (longueur fixe)
-  const providedDigest = provided ? digest(provided) : null;
-  const valid = providedDigest !== null && keys.some((k) => timingSafeEqual(k, providedDigest));
+    if (countEnvApiKeys() === 0 && (await countActiveApiKeys()) === 0) {
+      return res.status(503).json({ error: "API externe désactivée : aucune clé d'API active (Paramètres > API externe)" });
+    }
 
-  if (!valid) {
     console.warn(`🚨 [EXT-API] Clé d'API invalide ou absente : ${req.method} ${req.path} depuis ${req.ip}`);
     return res.status(401).json({ error: "Clé d'API invalide ou absente" });
+  } catch (error) {
+    console.error("❌ [EXT-API] vérification de la clé:", error);
+    return res.status(500).json({ error: "Erreur lors de la vérification de la clé d'API" });
   }
-  next();
 }
 
 // Montant : nombre, ou chaîne au format "1234.56", "1234,56" ou "1 234,56"
@@ -349,5 +364,52 @@ export function registerExternalApi(app: Express) {
   // Toute autre route sous le préfixe : 404 JSON plutôt que la page du webUI
   app.use(base, (_req, res) => {
     res.status(404).json({ error: "Route inconnue" });
+  });
+}
+
+// Gestion des clés depuis Paramètres > API externe : session webUI, admin
+// uniquement. À enregistrer après la mise en place de l'authentification.
+export function registerExternalApiKeyAdminRoutes(app: Express, requireSessionAdmin: Array<(req: any, res: any, next: any) => void>) {
+  const createKeySchema = z.object({ name: z.string().trim().min(1, "Nom requis").max(100) });
+
+  app.get("/api/external-api/keys", ...requireSessionAdmin, async (_req, res) => {
+    try {
+      res.json({
+        basePath: EXTERNAL_API_PREFIX,
+        envKeyCount: countEnvApiKeys(),
+        keys: await listApiKeys(),
+      });
+    } catch (error) {
+      console.error("❌ [EXT-API] list keys:", error);
+      res.status(500).json({ error: "Erreur lors de la lecture des clés d'API" });
+    }
+  });
+
+  app.post("/api/external-api/keys", ...requireSessionAdmin, async (req: any, res) => {
+    const parsed = createKeySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Nom invalide" });
+    }
+    try {
+      const created = await createApiKey(parsed.data.name, req.user?.id ?? null);
+      console.log(`🔑 [EXT-API] Clé « ${parsed.data.name} » créée par ${req.user?.username ?? "?"}`);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("❌ [EXT-API] create key:", error);
+      res.status(500).json({ error: "Erreur lors de la création de la clé d'API" });
+    }
+  });
+
+  app.delete("/api/external-api/keys/:id", ...requireSessionAdmin, async (req: any, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Identifiant invalide" });
+    try {
+      if (!(await revokeApiKey(id))) return res.status(404).json({ error: "Clé introuvable ou déjà révoquée" });
+      console.log(`🔑 [EXT-API] Clé #${id} révoquée par ${req.user?.username ?? "?"}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("❌ [EXT-API] revoke key:", error);
+      res.status(500).json({ error: "Erreur lors de la révocation de la clé d'API" });
+    }
   });
 }
