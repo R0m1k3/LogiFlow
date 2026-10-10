@@ -2,7 +2,8 @@
 //
 // Permet à un outil tiers (comptabilité, n8n, script...) de lire les magasins,
 // les fournisseurs et les livraisons livrées (numéros de BL), puis d'écrire la
-// référence et le montant de la facture sur une livraison.
+// référence, les montants et l'échéance de la facture sur une livraison (y
+// compris déjà validée, pour les fournisseurs en rapprochement automatique).
 //
 // Authentification par clé d'API, indépendante des sessions du webUI :
 //   - variable d'environnement EXTERNAL_API_KEYS (une ou plusieurs clés
@@ -127,6 +128,7 @@ function toApiDelivery(d: any) {
     supplierId: d.supplierId,
     supplierName: d.supplier?.name ?? null,
     supplierCode: d.supplier?.codefou ?? null,
+    automaticReconciliation: !!d.supplier?.automaticReconciliation,
     status: d.status,
     scheduledDate: toIsoDate(d.scheduledDate),
     deliveredDate: toIsoDateTime(d.deliveredDate),
@@ -304,8 +306,11 @@ export function registerExternalApi(app: Express) {
 
       const touchesInvoice = INVOICE_FIELDS.some((f) => body[f] !== undefined);
       // Une livraison rapprochée est figée, comme dans le webUI : il faut la
-      // dévalider (reconciled: false) pour modifier sa facture.
-      if (delivery.reconciled && touchesInvoice && body.reconciled !== false) {
+      // dévalider (reconciled: false) pour modifier sa facture. Exception : les
+      // fournisseurs en rapprochement automatique, validés d'office dès la
+      // saisie du BL, dont la facture arrive après et se complète sans dévalider.
+      const isAutomatic = !!delivery.supplier?.automaticReconciliation;
+      if (delivery.reconciled && !isAutomatic && touchesInvoice && body.reconciled !== false) {
         return res.status(409).json({
           error: "Livraison déjà rapprochée : envoyer reconciled: false pour la dévalider avant de modifier la facture",
         });
