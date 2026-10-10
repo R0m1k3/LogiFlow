@@ -82,6 +82,7 @@ Paramètre mal formé : `400` avec la liste des paramètres fautifs.
       "supplierId": 4,
       "supplierName": "Lactalis",
       "supplierCode": "LAC01",
+      "automaticReconciliation": false,
       "status": "delivered",
       "scheduledDate": "2026-10-08",
       "deliveredDate": "2026-10-08T07:42:00.000Z",
@@ -131,6 +132,10 @@ Règles :
 - livraison non livrée : `409` ;
 - livraison déjà rapprochée : sa facture est figée (`409`). Envoyer
   `"reconciled": false` dans la même requête pour la dévalider et la modifier ;
+- exception, fournisseur en **rapprochement automatique**
+  (`automaticReconciliation: true`) : la livraison est validée d'office dès la
+  saisie du BL, sa facture (référence, montants, échéance) se complète ensuite
+  directement, sans la dévalider ; elle reste validée ;
 - corps invalide : `400` avec le détail par champ.
 
 ## Exemple : rapprocher une facture reçue
@@ -139,3 +144,17 @@ Règles :
 2. `GET /deliveries?supplierId=4&blNumber=BL-4567` → récupérer l'`id` de la livraison.
 3. `PATCH /deliveries/812` avec `invoiceReference` et `invoiceAmount`
    (ajouter `"reconciled": true` pour valider directement).
+
+## Exemple : compléter la facture d'un fournisseur automatique
+
+Les livraisons d'un fournisseur en rapprochement automatique sont déjà
+validées (`reconciled: true`) ; la facture s'y ajoute sans autre champ :
+
+```bash
+curl -X PATCH https://logiflow.example/api/ext/v1/deliveries/815 \
+  -H "X-API-Key: $LOGIFLOW_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"invoiceReference":"FAC-2026-0057","invoiceAmount":"842,10","invoiceAmountTTC":"1010,52","dueDate":"2026-11-30"}'
+```
+
+Pour les retrouver : `GET /deliveries?supplierId=<id auto>&hasInvoice=false`.
