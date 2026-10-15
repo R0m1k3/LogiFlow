@@ -1,15 +1,12 @@
-// Diagnostic du schéma : GET /api/debug/log-schema et GET /api/debug/download-schema
-// (server/routes.ts), réservés à l'administrateur et à la production.
-//
-// Laissées à Node (décision R3) : POST /api/admin/execute-sql (SQL arbitraire,
-// audit SQL-01), POST /api/admin/emergency-migration et POST
-// /api/emergency-admin-reset (server/index.production.ts) ; elles ne sont pas
-// enregistrées ici.
+// Administration : diagnostic du schéma (GET /api/debug/log-schema et
+// /api/debug/download-schema, réservés à l'administrateur et à la production),
+// exécution de SQL (sql.rs) et adresses de secours (emergency.rs : migration
+// d'urgence, réinitialisation du compte admin).
 
 use axum::extract::State;
 use axum::http::{HeaderValue, StatusCode, header};
 use axum::response::IntoResponse;
-use axum::{Json, Router, routing::get};
+use axum::{Json, Router, routing::get, routing::post};
 use serde_json::json;
 
 use crate::AppState;
@@ -18,10 +15,22 @@ use crate::error::{ApiResult, AppError};
 use crate::http::express_etag;
 use crate::js;
 
+mod emergency;
+mod sql;
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/debug/log-schema", get(log_schema))
         .route("/api/debug/download-schema", get(download_schema))
+        .route("/api/admin/execute-sql", post(sql::execute_sql))
+        .route(
+            "/api/admin/emergency-migration",
+            post(emergency::emergency_migration),
+        )
+        .route(
+            "/api/emergency-admin-reset",
+            post(emergency::emergency_admin_reset),
+        )
 }
 
 const RULE: &str = "===============================================";

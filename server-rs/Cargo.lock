@@ -1177,6 +1177,7 @@ dependencies = [
  "bytes",
  "chrono",
  "form_urlencoded",
+ "futures-util",
  "hmac",
  "http-body-util",
  "hyper",

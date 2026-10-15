@@ -5,15 +5,16 @@
 // remplacé par smtpPasswordSet, à la même place. Il est chiffré à l'écriture
 // (crate::crypto, comme storage.createGroup / updateGroup).
 //
-// POST /api/groups/:id/test-smtp reste servi par Node pour l'instant (le service
-// SMTP est porté à part).
+// POST /api/groups/:id/test-smtp vérifie la configuration SMTP du magasin
+// (connexion et authentification, sans envoi) : services::mail.
 //
 // Comme Node aujourd'hui : un manager peut créer, modifier et supprimer
 // n'importe quel magasin, pas seulement le sien.
 
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::{Json, Router, routing::get, routing::put};
+use axum::{Json, Router, routing::get, routing::post, routing::put};
 use serde_json::{Map, Value, json};
 
 use crate::AppState;
@@ -29,6 +30,7 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/groups", get(list).post(create))
         .route("/api/groups/{id}", put(update).delete(remove))
+        .route("/api/groups/{id}/test-smtp", post(test_smtp))
 }
 
 /// insertGroupSchema (shared/schema.ts) : le formulaire envoie "" pour les
@@ -188,6 +190,40 @@ async fn remove(State(state): State<AppState>, user: CurrentUser, Path(id): Path
         .await
         .or_500(FAILED)?;
     Ok(Json(json!({ "message": "Group deleted successfully" })).into_response())
+}
+
+/// Test de la configuration SMTP d'un magasin, sans envoi : { success, message },
+/// toute erreur (base comprise) en 400 avec son message
+async fn test_smtp(State(state): State<AppState>, user: CurrentUser, Path(id): Path<String>) -> ApiResult {
+    can_write(&user)?;
+    let failure = |message: &str| {
+        let message = if message.is_empty() {
+            "Impossible de joindre le serveur SMTP"
+        } else {
+            message
+        };
+        AppError::with_body(
+            StatusCode::BAD_REQUEST,
+            json!({ "success": false, "message": message }),
+        )
+    };
+    // parseInt(id) envoyé en texte : un identifiant illisible fait échouer la requête
+    let id = crate::js::parse_int(&id).map_or_else(|| "NaN".to_string(), crate::js::number_to_string);
+    let group = crate::services::nocodb::group_by_text_id(&state.db, Some(&id))
+        .await
+        .map_err(|message| failure(&message))?
+        .ok_or_else(|| AppError::not_found("Magasin introuvable"))?;
+    let missing = crate::services::mail::missing_smtp_fields(&group);
+    if !missing.is_empty() {
+        return Err(failure(&format!(
+            "Configuration incomplète : {}",
+            missing.join(", ")
+        )));
+    }
+    crate::services::mail::verify_smtp_config(&group, &state.config.encryption_key)
+        .await
+        .map_err(|message| failure(&message))?;
+    Ok(Json(json!({ "success": true, "message": "Connexion au serveur SMTP réussie" })).into_response())
 }
 
 #[cfg(test)]

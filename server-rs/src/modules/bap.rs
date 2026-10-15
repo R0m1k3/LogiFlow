@@ -123,11 +123,13 @@ async fn save_config(
 }
 
 // ---------- Appels sortants, au comportement de node-fetch ----------
+// Partagés avec les avoirs et l'envoi de facture du rapprochement, qui appellent
+// aussi les webhooks avec node-fetch dans Node.
 
 /// Échec d'un appel : `aborted` pour un délai dépassé (AbortError)
-struct FetchError {
-    aborted: bool,
-    message: String,
+pub(crate) struct FetchError {
+    pub(crate) aborted: bool,
+    pub(crate) message: String,
 }
 
 impl FetchError {
@@ -176,6 +178,26 @@ async fn post_json(
     body: &Value,
     timeout: Duration,
 ) -> Result<(StatusCode, String), FetchError> {
+    node_fetch_post(
+        raw_url,
+        |request| {
+            request
+                .header("Content-Type", "application/json")
+                .body(body.to_string())
+        },
+        Some(timeout),
+    )
+    .await
+}
+
+/// fetch(url, { method: 'POST', … }) de node-fetch : `prepare` ajoute le corps et
+/// ses en-têtes ; sans délai maximal si `timeout` est None (fetch sans signal).
+/// Rend le statut et le corps de la réponse, ou l'erreur que node-fetch lèverait.
+pub(crate) async fn node_fetch_post(
+    raw_url: &str,
+    prepare: impl FnOnce(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
+    timeout: Option<Duration>,
+) -> Result<(StatusCode, String), FetchError> {
     let url = reqwest::Url::parse(raw_url).map_err(|_| FetchError::new("Invalid URL".to_string()))?;
     if !matches!(url.scheme(), "http" | "https") {
         return Err(FetchError::new(format!(
@@ -183,13 +205,11 @@ async fn post_json(
             url.scheme()
         )));
     }
-    let response = CLIENT
-        .post(url.clone())
-        .header("Content-Type", "application/json")
-        .body(body.to_string())
-        .timeout(timeout)
-        .send()
-        .await;
+    let mut request = prepare(CLIENT.post(url.clone()));
+    if let Some(timeout) = timeout {
+        request = request.timeout(timeout);
+    }
+    let response = request.send().await;
     let response = match response {
         Ok(response) => response,
         Err(error) if error.is_timeout() => {

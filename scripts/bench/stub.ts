@@ -29,6 +29,9 @@ function invoiceRows() {
     { Id: 3, RefFacture: "FAC-2002", NumBL: "BL-1002", MontantHT: 310, MontantTTC: 372, Fournisseur: "Bonduelle", Echeance: isoDate(30) },
     { Id: 4, RefFacture: "FAC-2006", NumBL: "BL-1006", MontantHT: 450.25, MontantTTC: 540.3, Fournisseur: "Jardin & Co", Echeance: isoDate(-5) },
     { Id: 5, RefFacture: "AV-3001", NumBL: null, MontantHT: -45.9, MontantTTC: -55.08, Fournisseur: "Lactalis", Echeance: null },
+    // Échéances saisies à la française (JJ/MM/AAAA) ou à l'américaine (MM/JJ/AAAA)
+    { Id: 6, RefFacture: "FAC-2007", NumBL: "BL-1007", MontantHT: 99.9, MontantTTC: 119.88, Fournisseur: "Bonduelle", Echeance: "25/12/2030" },
+    { Id: 7, RefFacture: "FAC-2008", NumBL: "BL-1008", MontantHT: 12.34, MontantTTC: 14.81, Fournisseur: "Brico Pro", Echeance: "12/24/2030" },
   ];
 }
 

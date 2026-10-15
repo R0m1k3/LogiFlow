@@ -108,9 +108,9 @@ export const writes: WriteScenario[] = [
     tables: ["sessions"],
   },
   {
-    // Toute adresse encore servie par Node lit la session ouverte par la connexion
+    // Session ouverte par la connexion, lue par l'adresse de test SMTP
     module: "session",
-    name: "session acceptée par une adresse de Node (test SMTP)",
+    name: "session acceptée par le test SMTP d'un magasin",
     steps: [{ method: "POST", path: "/api/groups/1/test-smtp" }],
     tables: [],
   },
@@ -211,6 +211,19 @@ export const writes: WriteScenario[] = [
     tables: ["groups"],
     // Chiffré avec un vecteur aléatoire
     ignore: ["smtp_password"],
+  },
+  {
+    module: "groups",
+    name: "tester le SMTP : configuration incomplète, serveur injoignable, magasin introuvable",
+    steps: [
+      { method: "POST", path: "/api/groups/2/test-smtp" },
+      { method: "POST", path: "/api/groups/999/test-smtp" },
+      { method: "POST", path: "/api/groups/abc/test-smtp" },
+      // Port fermé : connexion refusée (modification réservée à l'admin et au manager)
+      { method: "PUT", path: "/api/groups/2", body: { smtpHost: "127.0.0.1", smtpPort: 1, smtpSenderEmail: "metz@banc.test" } },
+      { method: "POST", path: "/api/groups/2/test-smtp" },
+    ],
+    tables: [],
   },
   {
     module: "groups",
