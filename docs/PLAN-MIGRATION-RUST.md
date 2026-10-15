@@ -1,8 +1,42 @@
 # Plan de migration du serveur LogiFlow vers Rust
 
-*État au 15 octobre 2026. Plan à valider : rien n'est commencé.*
+*Plan rédigé le 15 octobre 2026. **Migration faite** : voir [Où en est la migration](#où-en-est-la-migration) ; la suite du document est le plan d'origine, gardé tel quel.*
 
-**Sommaire** : [Résumé](#résumé) · [Ce qui change, ce qui ne change pas](#ce-qui-change-ce-qui-ne-change-pas) · [Le serveur actuel](#le-serveur-actuel) · [Architecture cible](#architecture-cible) · [Stratégie : une adresse à la fois](#stratégie--une-adresse-à-la-fois) · [Feuille de route](#feuille-de-route) · [Compatibilité : les pièges](#compatibilité--les-pièges) · [Ce qu'on ne reporte pas](#ce-quon-ne-reporte-pas) · [Vérification](#vérification) · [Articulation avec le plan du webUI](#articulation-avec-le-plan-du-webui) · [Risques](#risques) · [Décisions à prendre](#décisions-à-prendre)
+**Sommaire** : [Où en est la migration](#où-en-est-la-migration) · [Résumé](#résumé) · [Ce qui change, ce qui ne change pas](#ce-qui-change-ce-qui-ne-change-pas) · [Le serveur actuel](#le-serveur-actuel) · [Architecture cible](#architecture-cible) · [Stratégie : une adresse à la fois](#stratégie--une-adresse-à-la-fois) · [Feuille de route](#feuille-de-route) · [Compatibilité : les pièges](#compatibilité--les-pièges) · [Ce qu'on ne reporte pas](#ce-quon-ne-reporte-pas) · [Vérification](#vérification) · [Articulation avec le plan du webUI](#articulation-avec-le-plan-du-webui) · [Risques](#risques) · [Décisions à prendre](#décisions-à-prendre)
+
+## Où en est la migration
+
+**Le serveur Node a quitté le dépôt.** Le serveur Rust (`server-rs/`) est le seul serveur : il sert les 148 adresses de l'API et l'interface, applique les migrations au démarrage et lance les tâches de fond (sauvegarde automatique, purge des caches, compte `admin` par défaut). L'image Docker ne contient plus Node : un binaire statique, l'interface construite et `pg_dump`. Node ne sert plus qu'à construire l'interface (Vite) et à faire tourner le banc.
+
+**Vérification.** Le banc rejoue 2 025 requêtes (148 adresses, 5 comptes, sans session, clé d'API ; lectures et scénarios d'écriture avec l'état des tables et les appels aux services simulés) sur le serveur Node de référence — le dernier commit qui le contient, `REFERENCE_NODE_COMMIT` — et sur Rust seul : **0 écart**, hors les deux écarts déclarés ci-dessous. Il tourne dans la CI (`.github/workflows/rust.yml`), avec `cargo fmt`, `clippy -D warnings` et les tests unitaires.
+
+**Écarts voulus** (déclarés au banc) :
+
+| Code | Changement |
+|---|---|
+| USERS-02 | L'empreinte du mot de passe n'est plus renvoyée après création ou modification d'un compte. |
+| RAPPRO-21 | L'envoi de facture n'appelle plus une adresse de webhook quelconque : seulement celle d'un magasin ou du webhook BAP actif (400 sinon). |
+
+Tout le reste, défauts compris, est reproduit à l'identique et signalé dans le code par l'identifiant de l'audit : c'est le point de départ des corrections, une par une, chacune déclarée au banc.
+
+**Ce qui a différé du plan** :
+
+- **Ordre** : sur demande, le serveur Node a été retiré dès la fin du portage, sans les deux semaines de production avec Node en secours prévues au Lot 5. La première mise en production du serveur Rust seul est donc la bascule : garder l'image précédente sous la main pour revenir en arrière (même base, mêmes sessions, aucune migration de données).
+- **Requêtes SQL** vérifiées à l'exécution (`sqlx::query_as`) et non à la compilation : les vérifier à la compilation demande une base au moment du build. Le banc couvre ce que la compilation aurait vérifié.
+- **Schéma** : `shared/schema.ts` reste la source ; `server-rs/src/schema.rs` en est **généré** (`npm run gen:rust-schema`), l'inverse de ce que prévoyait le Lot 5. L'interface garde ses types et ses schémas zod sans changement.
+- **Migrations** : celles du démarrage de Node, reprises telles quelles dans `src/startup.rs` (idempotentes), plutôt qu'une table `_sqlx_migrations`.
+- **Sessions** : table `sessions` (celle de `shared/schema.ts`), cookie `connect.sid` inchangé : les sessions ouvertes avant la bascule restent valides.
+
+**Décisions** :
+
+| | Statut |
+|---|---|
+| R1 | Prise : le serveur seul, l'interface React reste. |
+| R2 | Sans objet : le portage s'est fait d'un bloc, sans gel prolongé. |
+| R3 | Rien n'a été retiré : toutes les adresses, y compris l'exécution de SQL et la réinitialisation d'urgence, sont portées à l'identique. La liste [Ce qu'on ne reporte pas](#ce-quon-ne-reporte-pas) reste à trancher, adresse par adresse. |
+| R4 | **Ouverte.** Le cookie est `SameSite=Lax` ; le contrôle de l'en-tête `Origin` n'est pas fait. |
+| R5 | **Ouverte.** « Aujourd'hui » et la sauvegarde de 2 h restent en UTC, comme Node. |
+| R6 | **Ouverte.** Le code Rust doit avoir un mainteneur et un relecteur désignés. |
 
 ## Résumé
 

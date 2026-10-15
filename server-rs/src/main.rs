@@ -1,10 +1,6 @@
-// Socle partagé utilisé au fil des lots : pas d'avertissement « jamais utilisé »
-// avant la fin du portage (docs/PLAN-MIGRATION-RUST.md).
-#![allow(dead_code)]
-
-// Serveur LogiFlow en Rust. Placé devant le serveur Node, il sert l'interface et
-// les adresses déjà portées (router.rs) ; toutes les autres partent vers Node
-// (proxy.rs). Plan : docs/PLAN-MIGRATION-RUST.md.
+// Serveur LogiFlow : l'API (router.rs), l'interface construite par Vite
+// (static_files.rs), les migrations de démarrage et les tâches de fond.
+// Il a remplacé le serveur Node (docs/PLAN-MIGRATION-RUST.md).
 
 mod access;
 mod auth;
@@ -19,7 +15,6 @@ mod js;
 mod json;
 mod modules;
 mod projections;
-mod proxy;
 mod request;
 mod router;
 mod schema;
@@ -41,7 +36,6 @@ use crate::config::Config;
 pub struct AppState {
     pub config: Arc<Config>,
     pub db: sqlx::PgPool,
-    pub proxy: proxy::ProxyClient,
 }
 
 #[tokio::main]
@@ -71,10 +65,9 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState {
         config: Arc::new(config),
         db,
-        proxy: proxy::client(),
     };
     let port = state.config.port;
-    tracing::info!(port, upstream = %state.config.node_upstream, "LogiFlow (Rust) démarre");
+    tracing::info!(port, "LogiFlow démarre");
 
     jobs::spawn(state.clone());
     let app = router::build(state);

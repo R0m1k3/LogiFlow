@@ -1,16 +1,16 @@
-# Porter un module Node vers Rust
+# Modifier le serveur Rust sans changer son comportement
 
-Guide pour réécrire un groupe d'adresses de `server/routes.ts` dans `server-rs/`, selon `docs/PLAN-MIGRATION-RUST.md`. Une adresse est portée quand le banc (`scripts/bench/`) ne montre **aucun écart** avec Node, pour les 5 comptes, en lecture comme en écriture.
+Guide écrit pour le portage des adresses de l'ancien serveur Node (`server/routes.ts`) vers `server-rs/` (`docs/PLAN-MIGRATION-RUST.md`). Le portage est terminé et `server/` a quitté le dépôt ; son code reste lisible dans la copie de référence du banc (`.bench-reference/server/`, construite par `scripts/bench/reference-node.sh`). Les règles valent toujours : une adresse est fidèle quand le banc (`scripts/bench/`) ne montre **aucun écart** avec le Node de référence, pour les 5 comptes, en lecture comme en écriture ; tout changement voulu y est déclaré comme écart.
 
 ## La règle : le même comportement que Node, bug compris
 
 - Même code HTTP, même corps JSON (valeurs, champs `null`, ordre des listes), mêmes messages d'erreur, même ordre des contrôles (droits, puis validation, puis base).
-- Les défauts connus de Node (cloisonnement par magasin incomplet, contrôles de rôle manquants…) sont **reproduits** et signalés par un commentaire qui cite l'identifiant de l'audit s'il existe (ex. `CONT-02`). Ils seront corrigés ensuite, dans Rust, comme écarts déclarés au banc.
+- Les défauts connus de Node (cloisonnement par magasin incomplet, contrôles de rôle manquants…) ont été **reproduits** et signalés par un commentaire qui cite l'identifiant de l'audit s'il existe (ex. `CONT-02`). Les corriger, c'est déclarer l'écart au banc (`deviation`) dans le même commit.
 - Ne rien « améliorer » en route : une différence voulue doit être décidée et inscrite au banc.
 
-## Lire le code Node
+## Lire le code Node de référence
 
-Pour chaque adresse :
+Dans `.bench-reference/`, pour chaque adresse :
 
 1. le gestionnaire dans `server/routes.ts` (ou `server/externalApi.ts`, `server/localAuth.ts`) : contrôles, paramètres lus (`req.query`, `req.params`, `req.body`), schéma zod, messages, codes ;
 2. la méthode de `server/storage.ts` (`DatabaseStorage`, lignes 387 à 3509 ; ignorer `MemStorage`) : requête, jointures, tri, projections (`groupSummaryColumns`…) ;
@@ -43,29 +43,29 @@ Points d'attention :
 - **Dates** (`date`) : `NaiveDate`, `"2026-10-15"`. **Horodatages** : `NaiveDateTime` sérialisé par `json::ts`.
 - **Requêtes SQL** : `sqlx::query_as` à l'exécution, avec des paramètres liés (`$1`), jamais de valeur collée dans le texte SQL. Pour une jointure, une structure locale `#[derive(FromRow)]` ou des tuples, puis la forme JSON de Node.
 - **Paramètres envoyés en texte** : `db::insert` / `update_by_id` envoient chaque valeur en texte converti par PostgreSQL (`$1::date`), comme node-pg. Pour une requête écrite à la main, lier des types Rust (`i32`, `String`, `NaiveDate`…).
-- **Ce qu'on ne porte pas** (décision R3 du plan) : laisser l'adresse à Node, ne pas l'enregistrer dans Rust, et le dire dans le compte rendu.
-- **Fichiers partagés** : ne pas modifier `router.rs`, `modules/mod.rs`, `services/mod.rs`, `scripts/bench/cases/index.ts` (le module et son fichier de cas y sont déjà déclarés). Un outil manquant au socle (`db.rs`, `zod.rs`, `js.rs`…) : l'écrire dans le fichier du module ; s'il sert à plusieurs modules, l'ajout au socle doit être purement additif et signalé dans le compte rendu.
+- **Socle** (`db.rs`, `zod.rs`, `js.rs`…) : un ajout doit être purement additif ; changer un outil existant touche tous les modules, donc tout le banc.
+- **Nouvelle adresse** : la déclarer dans le module (`.route(…)`) ; `build.rs` l'ajoute aux motifs d'Express (casse, « / » final) et elle passe par `router.rs` sans autre changement.
 
 ## Le banc
 
-Une base et des ports par copie de travail (`BENCH_ID`, `BENCH_PORT_BASE`), le serveur Node construit du dépôt principal (`BENCH_NODE_DIR`) :
+Une base et des ports par copie de travail (`BENCH_ID`, `BENCH_PORT_BASE`), le Node de référence construit une fois (`BENCH_NODE_DIR`, par défaut `.bench-reference`) :
 
 ```bash
-export BENCH_ID=lot3 BENCH_PORT_BASE=3600 BENCH_NODE_DIR=/home/user/LogiFlow
+scripts/bench/reference-node.sh             # une fois, puis à chaque changement de REFERENCE_NODE_COMMIT
+export BENCH_ID=essai BENCH_PORT_BASE=3600
 scripts/bench/setup.sh                       # base modèle (après tout changement de seeds/)
 cargo build --manifest-path server-rs/Cargo.toml
 RUST_BIN=server-rs/target/debug/logiflow npx tsx scripts/bench/compare.ts --only dlc,tasks
 npx tsx scripts/bench/compare.ts --mode node --only dlc,tasks   # les cas sont-ils stables ?
 ```
 
-1. **D'abord les cas, contre Node** : dans le fichier de cas du lot (`scripts/bench/cases/`), des lectures avec les paramètres que l'interface envoie (chercher les appels dans `client/src`), et un scénario d'écriture par adresse qui modifie quelque chose (création, modification, suppression, actions), avec des corps valides et invalides, sur des lignes du magasin de l'utilisateur et d'un autre magasin. Les 5 comptes passent par défaut ; `--mode node` doit donner 0 écart.
+1. **Les cas** : dans le fichier de cas du module (`scripts/bench/cases/`), des lectures avec les paramètres que l'interface envoie (chercher les appels dans `client/src`), et un scénario d'écriture par adresse qui modifie quelque chose, avec des corps valides et invalides, sur des lignes du magasin de l'utilisateur et d'un autre magasin. `--mode node` doit donner 0 écart.
 2. **Données** : si la base du banc ne permet pas d'exercer un cas, ajouter des lignes dans `scripts/bench/seeds/<lot>.ts` (voir `seeds/README.md`), puis relancer `setup.sh`.
-3. **Puis Rust** : 0 écart sur les modules du lot. Vérifier dans `droite-node.log` (dossier des journaux du banc) que Node n'a plus reçu ces adresses.
+3. **Rust** : 0 écart, hors écarts déclarés.
 4. Les services externes (NocoDB, webhooks, SMTP) sont simulés par `stub.ts` ; les appels reçus font partie de la comparaison.
 
 ## Avant de rendre la main
 
-- `cargo fmt`, `cargo clippy --all-targets` sans nouvel avertissement, `cargo test` ;
-- banc : 0 écart sur les modules du lot, et toujours 0 sur `socle,auth,contacts,suppliers` ;
-- un commit par module ou par lot, message en français (`feat(rust) : …`), qui donne le résultat du banc ;
-- compte rendu : adresses portées, adresses laissées à Node et pourquoi, défauts reproduits, ajouts au socle.
+- `cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test` ;
+- banc complet : 0 écart, hors écarts déclarés ;
+- un commit par changement, message en français, qui donne le résultat du banc.

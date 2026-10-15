@@ -7,10 +7,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import pg from "pg";
 import { scryptSync, createHash } from "crypto";
-import { encryptSecret } from "../../server/crypto";
+import { encryptSecret } from "./legacy";
 import { BENCH_ACCOUNTS, BENCH_API_KEY, STUB_URL, STUB_SMTP_PORT } from "./config";
 
-// Même format que server/localAuth.ts : empreinte_hex.sel_hex, le sel hexadécimal
+// Même format que l'ancien server/localAuth.ts : empreinte_hex.sel_hex, le sel hexadécimal
 // servant tel quel de texte. Sel fixe pour un banc reproductible.
 function hashPassword(password: string, salt: string): string {
   return `${scryptSync(password, salt, 64).toString("hex")}.${salt}`;

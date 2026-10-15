@@ -11,7 +11,7 @@
 //
 // Comme Node, qui les enregistre avant son middleware /api, les réponses sous
 // /api/ext/v1 n'ont pas d'en-tête Cache-Control (voir http.rs). Les variantes
-// d'adresse qu'Express accepte aussi (casse, barre finale) sont relayées à Node.
+// d'adresse qu'Express accepte aussi (casse, barre finale) passent par express_routes.rs.
 
 use axum::extract::{FromRequest, Path, RawQuery, Request, State};
 use axum::http::{HeaderMap, StatusCode};

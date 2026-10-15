@@ -1,6 +1,6 @@
-// Table des adresses servies par Rust. Toute adresse absente d'ici part vers
-// Node (static_files::fallback → proxy::forward) : faire revenir une adresse à
-// Node, c'est retirer sa ligne.
+// Table des adresses de l'API. Une adresse absente d'ici : interface
+// (static_files::fallback), variante qu'Express aurait servie (casse, « / » final,
+// express_routes.rs) ou page 404 d'Express.
 
 use axum::Router;
 use axum::extract::DefaultBodyLimit;
@@ -11,7 +11,7 @@ use tower_http::compression::predicate::{DefaultPredicate, Predicate, SizeAbove}
 use tower_http::trace::TraceLayer;
 
 use crate::modules::*;
-use crate::{AppState, express_routes, http, proxy, static_files};
+use crate::{AppState, express_routes, http, static_files};
 
 // Même limite qu'express.json({ limit: '10mb' })
 const BODY_LIMIT: usize = 10 * 1024 * 1024;
@@ -50,8 +50,8 @@ pub fn build(state: AppState) -> Router {
         .merge(backups::routes())
         .merge(utilities::routes())
         .merge(admin::routes())
-        // Méthode non portée sur une adresse portée : Node la sert encore
-        .method_not_allowed_fallback(proxy::forward)
+        // Méthode sans route sur une adresse connue : 404 d'Express
+        .method_not_allowed_fallback(static_files::not_found)
         .route_layer(middleware::from_fn(http::api_response_headers));
 
     // Pour rejouer une adresse qu'Express aurait servie (casse, « / » final)
@@ -61,8 +61,7 @@ pub fn build(state: AppState) -> Router {
         .merge(api)
         .fallback(static_files::fallback)
         .layer(DefaultBodyLimit::max(BODY_LIMIT))
-        // Comme compression() d'Express : gzip au-delà de 1 Ko ; les réponses déjà
-        // compressées par Node passent telles quelles
+        // Comme compression() d'Express : gzip au-delà de 1 Ko
         .layer(
             CompressionLayer::new()
                 .gzip(true)

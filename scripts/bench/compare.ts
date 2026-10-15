@@ -2,19 +2,19 @@
 // statuts, corps JSON, en-têtes utiles, état de la base et appels aux services
 // externes (docs/PLAN-MIGRATION-RUST.md, « Vérification »).
 //
-//   npx tsx scripts/bench/compare.ts                  Node seul contre Rust devant Node
+//   npx tsx scripts/bench/compare.ts                  Node de référence contre Rust
 //   npx tsx scripts/bench/compare.ts --mode node      Node contre Node (le banc est-il stable ?)
 //   npx tsx scripts/bench/compare.ts --only dlc,tasks  seulement ces modules
 //
-// Prérequis : PostgreSQL local, base modèle bench_seed (voir README.md), interface et
-// serveur Node construits (dist/), binaire Rust construit (server-rs/target/release).
+// Prérequis : PostgreSQL local, base modèle bench_seed (voir README.md), serveur Node
+// de référence construit (reference-node.sh), binaire Rust construit (server-rs/target/release).
 import { spawn, execFileSync, type ChildProcess } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import pg from "pg";
 import { fileURLToPath } from "url";
-import { BENCH_ACCOUNTS, BENCH_API_KEY, BENCH_ENV, DB_PREFIX, LEFT_PORT, RIGHT_PORT, STUB_URL, TEMPLATE_DB, UPSTREAM_OFFSET } from "./config";
+import { BENCH_ACCOUNTS, BENCH_API_KEY, BENCH_ENV, DB_PREFIX, LEFT_PORT, RIGHT_PORT, STUB_URL, TEMPLATE_DB } from "./config";
 import { startStub } from "./stub";
 import { READS, WRITES } from "./cases";
 import { ALL_ACCOUNTS, LOGGED_ACCOUNTS, type AccountKey, type Deviation, type ReadCase, type Step, type WriteScenario } from "./types";
@@ -26,8 +26,8 @@ const SEED_BACKUPS_DIR = path.join(ROOT, "scripts/bench/seeds/sauvegardes");
 const PG_ADMIN_URL = process.env.BENCH_PG_URL || "postgres://logiflow_admin:bench@localhost:5432";
 // Chemin relatif : depuis cette copie de travail (les serveurs sont lancés depuis BENCH_NODE_DIR)
 const RUST_BIN = path.resolve(ROOT, process.env.RUST_BIN || "server-rs/target/release/logiflow");
-// Dossier qui contient le serveur Node construit (dist/) : par défaut ce dépôt
-const NODE_DIR = process.env.BENCH_NODE_DIR || ROOT;
+// Serveur Node de référence construit par reference-node.sh (dist/ et node_modules/)
+const NODE_DIR = process.env.BENCH_NODE_DIR || path.join(ROOT, ".bench-reference");
 const WORK_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "logiflow-banc-"));
 
 const args = process.argv.slice(2);
@@ -113,11 +113,16 @@ async function waitHealthy(url: string, label: string) {
   throw new Error(`${label} ne répond pas, voir ${WORK_DIR}/${label}.log`);
 }
 
+// Dossier de sauvegardes propre à chaque serveur, avec les fichiers des données du banc
+function backupDir(port: number): string {
+  const dir = path.join(WORK_DIR, `sauvegardes-${port}`);
+  fs.mkdirSync(dir, { recursive: true });
+  if (fs.existsSync(SEED_BACKUPS_DIR)) fs.cpSync(SEED_BACKUPS_DIR, dir, { recursive: true });
+  return dir;
+}
+
 function nodeEnv(port: number, database: string): Record<string, string> {
-  const backupDir = path.join(WORK_DIR, `sauvegardes-${port}`);
-  fs.mkdirSync(backupDir, { recursive: true });
-  if (fs.existsSync(SEED_BACKUPS_DIR)) fs.cpSync(SEED_BACKUPS_DIR, backupDir, { recursive: true });
-  return { ...BENCH_ENV, NODE_ENV: "production", PORT: String(port), DATABASE_URL: dbUrl(database), BACKUP_DIR: backupDir };
+  return { ...BENCH_ENV, NODE_ENV: "production", PORT: String(port), DATABASE_URL: dbUrl(database), BACKUP_DIR: backupDir(port) };
 }
 
 async function startTarget(name: string, kind: "node" | "rust", port: number): Promise<Target> {
@@ -128,17 +133,12 @@ async function startTarget(name: string, kind: "node" | "rust", port: number): P
   if (kind === "node") {
     processes.push(startProcess(`${name}-node`, "node", ["dist/index.js"], nodeEnv(port, dbName)));
   } else {
-    // Node derrière, sur un port interne ; Rust devant
-    const upstreamPort = port + UPSTREAM_OFFSET;
-    processes.push(startProcess(`${name}-node`, "node", ["dist/index.js"], nodeEnv(upstreamPort, dbName)));
-    await waitHealthy(`http://127.0.0.1:${upstreamPort}`, `${name}-node`);
     processes.push(startProcess(`${name}-rust`, RUST_BIN, [], {
       ...BENCH_ENV,
       PORT: String(port),
       DATABASE_URL: dbUrl(dbName),
-      NODE_UPSTREAM: `http://127.0.0.1:${upstreamPort}`,
       STATIC_DIR: path.join(NODE_DIR, "dist/public"),
-      BACKUP_DIR: path.join(WORK_DIR, `sauvegardes-${upstreamPort}`),
+      BACKUP_DIR: backupDir(port),
       RUST_LOG: "warn",
     }));
   }
@@ -366,7 +366,7 @@ function differences(a: unknown, b: unknown, where = ""): string[] {
 }
 
 async function main() {
-  console.log(`Banc : ${mode === "node" ? "Node contre Node" : "Node contre Rust devant Node"}${only ? ` (modules : ${only.join(", ")})` : ""}`);
+  console.log(`Banc : ${mode === "node" ? "Node contre Node" : "Node de référence contre Rust"}${only ? ` (modules : ${only.join(", ")})` : ""}`);
   console.log(`Journaux : ${WORK_DIR}`);
   const stopStub = await startStub();
   const targets: Target[] = [];

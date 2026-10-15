@@ -1,9 +1,7 @@
 version: '3.8'
 
-# Migration vers Rust (docs/PLAN-MIGRATION-RUST.md) : logiflow est le serveur Rust,
-# seul exposé (port 3000, nginx inchangé). Il sert l'interface et les adresses déjà
-# portées, et relaie les autres au serveur Node (logiflow-node, port 3001 interne),
-# qui garde les migrations de démarrage et les tâches de fond.
+# logiflow : serveur Rust (server-rs/), qui sert l'API et l'interface, applique
+# les migrations au démarrage et lance les tâches de fond (sauvegardes, purge).
 
 x-logiflow-env: &logiflow-env
   NODE_ENV: production
@@ -24,18 +22,16 @@ services:
       dockerfile: Dockerfile
       target: production
     restart: unless-stopped
-    command: ["/app/bin/logiflow"]
     environment:
       <<: *logiflow-env
       PORT: 3000
-      NODE_UPSTREAM: http://logiflow-node:3001
       RUST_LOG: info
     ports:
       - "3000:3000"
     networks:
       - nginx_default
     depends_on:
-      logiflow-node:
+      logiflow-db:
         condition: service_healthy
     volumes:
       - backup_data:/app/backups
@@ -46,20 +42,7 @@ services:
       retries: 3
       start_period: 10s
 
-  logiflow-node:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
-    restart: unless-stopped
-    environment:
-      <<: *logiflow-env
-      PORT: 3001
-    # Pas de ports publiés : joignable seulement par le serveur Rust
-    networks:
-      - nginx_default
-    depends_on:
-      logiflow-db:
+  logiflow-db:
         condition: service_healthy
     volumes:
       - ./migrations:/app/migrations

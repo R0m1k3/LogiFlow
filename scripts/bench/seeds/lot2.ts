@@ -10,7 +10,7 @@
 //   par le serveur Node : /api/weather/current ne sollicite jamais Visual
 //   Crossing pendant le banc (fenêtre de 9 jours, au cas où le banc tourne
 //   quelques jours après setup.sh).
-import { weatherService } from "../../../server/weatherService";
+import { previousYearDate } from "../legacy";
 
 type Query = (text: string, values?: unknown[]) => Promise<unknown>;
 
@@ -65,26 +65,16 @@ export async function seed(q: Query) {
   ];
   const rows: unknown[][] = [];
   const previousDates = new Set<string>();
-  const log = console.log;
-  const timezone = process.env.TZ;
-  console.log = () => {}; // getPreviousYearDate journalise chaque calcul
-  process.env.TZ = "UTC"; // comme le serveur du banc (BENCH_ENV)
-  try {
-    for (let offset = -1; offset <= 7; offset++) {
-      const day = isoDay(offset);
-      const [icon, label] = conditions[(offset + 1) % conditions.length];
-      rows.push([day, "Nancy, France", (14.3 + offset).toFixed(1), (6 + offset / 2).toString(), icon, label, true]);
-      const previous = weatherService.getPreviousYearDate(new Date(`${day}T12:00:00Z`));
-      if (!previousDates.has(previous)) {
-        previousDates.add(previous);
-        const [oldIcon, oldLabel] = conditions[(offset + 3) % conditions.length];
-        rows.push([previous, "Nancy, France", (12 + offset).toString(), (3.5 - offset).toFixed(2), oldIcon, oldLabel, false]);
-      }
+  for (let offset = -1; offset <= 7; offset++) {
+    const day = isoDay(offset);
+    const [icon, label] = conditions[(offset + 1) % conditions.length];
+    rows.push([day, "Nancy, France", (14.3 + offset).toFixed(1), (6 + offset / 2).toString(), icon, label, true]);
+    const previous = previousYearDate(new Date(`${day}T12:00:00Z`));
+    if (!previousDates.has(previous)) {
+      previousDates.add(previous);
+      const [oldIcon, oldLabel] = conditions[(offset + 3) % conditions.length];
+      rows.push([previous, "Nancy, France", (12 + offset).toString(), (3.5 - offset).toFixed(2), oldIcon, oldLabel, false]);
     }
-  } finally {
-    console.log = log;
-    if (timezone === undefined) delete process.env.TZ;
-    else process.env.TZ = timezone;
   }
   let id = 200;
   for (const row of rows) {

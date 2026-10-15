@@ -7,8 +7,6 @@ use std::path::PathBuf;
 pub struct Config {
     pub port: u16,
     pub database_url: String,
-    /// Serveur Node qui sert les adresses pas encore portées
-    pub node_upstream: String,
     /// Interface construite par Vite (dist/public)
     pub static_dir: PathBuf,
     pub session_secret: String,
@@ -41,10 +39,6 @@ impl Config {
         Ok(Self {
             port: env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(3000),
             database_url: env::var("DATABASE_URL").map_err(|_| anyhow::anyhow!("DATABASE_URL manquant"))?,
-            node_upstream: env::var("NODE_UPSTREAM")
-                .unwrap_or_else(|_| "http://127.0.0.1:3001".into())
-                .trim_end_matches('/')
-                .to_string(),
             static_dir: env::var("STATIC_DIR")
                 .map(PathBuf::from)
                 .unwrap_or_else(|_| PathBuf::from("dist/public")),

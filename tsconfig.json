@@ -1,8 +1,7 @@
 {
   "include": [
     "client/src/**/*",
-    "shared/**/*",
-    "server/**/*"
+    "shared/**/*"
   ],
   "exclude": [
     "node_modules",
@@ -33,7 +32,6 @@
     "types": [
       "node",
       "vite/client",
-      "express",
       "react",
       "react-dom"
     ],

@@ -1,7 +1,7 @@
 name: Serveur Rust
 
-# Contrôles du serveur Rust et banc de comparaison avec Node
-# (docs/PLAN-MIGRATION-RUST.md, scripts/bench/README.md)
+# Contrôles du serveur Rust, contrôle de type et construction de l'interface, et
+# banc de comparaison avec le serveur Node de référence (scripts/bench/README.md)
 
 on:
   push:
@@ -30,6 +30,21 @@ jobs:
       - name: Tests
         run: cargo test --locked
 
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Dépendances
+        run: npm ci
+      - name: Contrôle de type
+        run: npm run check
+      - name: Construction de l'interface
+        run: npx vite build
+
   bench:
     runs-on: ubuntu-latest
     services:
@@ -50,6 +65,9 @@ jobs:
       BENCH_PG_URL: postgres://logiflow_admin:bench@localhost:5432
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Le serveur Node de référence est construit depuis un commit passé
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -60,11 +78,11 @@ jobs:
           workspaces: server-rs
       - name: Dépendances
         run: npm ci
-      - name: Interface et serveur Node (comme l'image Docker)
-        run: scripts/bench/build-node.sh
+      - name: Serveur Node de référence (REFERENCE_NODE_COMMIT)
+        run: scripts/bench/reference-node.sh
       - name: Serveur Rust
         run: cargo build --release --locked --manifest-path server-rs/Cargo.toml
       - name: Base modèle du banc
         run: scripts/bench/setup.sh
-      - name: Banc Node contre Rust
+      - name: Banc Node de référence contre Rust
         run: npx tsx scripts/bench/compare.ts

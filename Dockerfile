@@ -1,72 +1,17 @@
-# Multi-stage build for optimized production image
-FROM node:20-alpine AS build
+# Image de production : interface construite par Vite + serveur Rust (server-rs/).
+# Node ne sert qu'à construire l'interface ; il n'est pas dans l'image finale.
 
-# Set working directory
+# Interface (dist/public)
+FROM node:20-alpine AS client-build
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install all dependencies (including dev dependencies needed for build)
 RUN npm ci && npm cache clean --force
-
-# Copy source code (excluding .env to avoid conflicts)
-COPY package*.json ./
-COPY tsconfig.json ./
-COPY drizzle.config.ts ./
-COPY vite.config.ts ./
-COPY tailwind.config.ts ./
-COPY postcss.config.js ./
-COPY components.json ./
+COPY tsconfig.json vite.config.ts tailwind.config.ts postcss.config.js components.json ./
 COPY client/ client/
-COPY server/ server/
 COPY shared/ shared/
+RUN NODE_ENV=production npx vite build && test -f dist/public/index.html
 
-# Vérifier la structure
-RUN ls -la server/
-
-# Build the application
-# Build frontend first
-RUN NODE_ENV=production npx vite build
-
-# Vérifier que les fichiers sont construits
-RUN echo "=== BUILD VERIFICATION ===" && \
-    ls -la dist/ && \
-    echo "Frontend files in dist/public:" && \
-    ls -la dist/public/ && \
-    echo "index.html exists:" && \
-    ls -la dist/public/index.html
-
-# Build backend avec tous les modules externes
-RUN npx esbuild server/index.production.ts \
-    --platform=node \
-    --bundle \
-    --format=esm \
-    --outfile=dist/index.js \
-    --external:vite \
-    --external:@vitejs/* \
-    --external:@replit/* \
-    --external:tsx \
-    --external:openid-client \
-    --external:@neondatabase/serverless \
-    --external:ws \
-    --external:drizzle-orm \
-    --external:pg \
-    --external:express \
-    --external:connect-pg-simple \
-    --external:passport \
-    --external:passport-local \
-    --external:express-session \
-    --external:zod \
-    --external:express-rate-limit \
-    --external:memoizee \
-    --external:nanoid \
-    --external:date-fns \
-    --external:nodemailer \
-    --external:compression
-
-# Serveur Rust placé devant Node (docs/PLAN-MIGRATION-RUST.md) : binaire
-# statique (musl) pour l'image Alpine
+# Serveur : binaire statique (musl) pour l'image Alpine
 FROM rust:1.97-alpine AS rust-build
 RUN apk add --no-cache musl-dev
 WORKDIR /build
@@ -75,68 +20,30 @@ COPY server-rs/Cargo.toml server-rs/Cargo.lock ./server-rs/
 RUN mkdir -p server-rs/src && echo "fn main() {}" > server-rs/src/main.rs && \
     cargo build --release --locked --manifest-path server-rs/Cargo.toml && \
     rm -rf server-rs/src
+COPY server-rs/build.rs ./server-rs/build.rs
 COPY server-rs/src ./server-rs/src
 COPY shared/permissions.json ./shared/permissions.json
 RUN touch server-rs/src/main.rs && \
     cargo build --release --locked --manifest-path server-rs/Cargo.toml
 
-# Production stage
-FROM node:20-alpine AS production
-
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
-
-# Set working directory
+FROM alpine:3.20 AS production
+# pg_dump/psql pour les sauvegardes, wget pour la sonde de santé
+RUN apk add --no-cache postgresql-client wget tzdata ca-certificates && \
+    addgroup -g 1001 -S logiflow && adduser -S logiflow -u 1001 -G logiflow
 WORKDIR /app
-
-# Install production dependencies only
-COPY --from=build /app/package*.json ./
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy built application from build stage
-COPY --from=build --chown=nextjs:nodejs /app/dist ./dist
-COPY --from=build --chown=nextjs:nodejs /app/shared ./shared
-
-# Serveur Rust : lancé par le service logiflow de docker-compose.yml, devant le
-# serveur Node (service logiflow-node)
 COPY --from=rust-build /build/server-rs/target/release/logiflow /app/bin/logiflow
-ENV STATIC_DIR=/app/dist/public
+COPY --from=client-build /app/dist/public /app/dist/public
+COPY migrations/ /app/migrations/
+RUN mkdir -p /app/backups && chown -R logiflow:logiflow /app/backups
+USER logiflow
 
-# Copy migration scripts and files
-COPY --chown=nextjs:nodejs scripts/ ./scripts/
-COPY --chown=nextjs:nodejs migrations/ ./migrations/
-COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
-
-# Create symlink for public files to be accessible from dist
-RUN ln -sf /app/dist/public /app/dist/public
-
-# Create uploads and backups directories with proper permissions
-RUN mkdir -p /app/uploads /app/backups && chown -R nextjs:nodejs /app/uploads /app/backups
-
-# Switch to non-root user
-USER nextjs
-
-# Expose port
+ENV PORT=3000 \
+    STATIC_DIR=/app/dist/public \
+    BACKUP_DIR=/app/backups \
+    NODE_ENV=production
 EXPOSE 3000
-ENV PORT=3000
-# Fixé ici car db.ts lit NODE_ENV dès l'import, avant le forçage de index.production.ts
-ENV NODE_ENV=production
 
-# Install wget for health check and postgresql-client for pg_dump
-USER root
-RUN apk add --no-cache wget postgresql-client
-USER nextjs
-
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-# Make scripts executable
-RUN chmod +x /app/scripts/auto-migrate-production.sh && \
-    chmod +x /app/scripts/docker-entrypoint.sh && \
-    ls -la /app/scripts/ && \
-    test -f /app/scripts/docker-entrypoint.sh || echo "ERREUR: docker-entrypoint.sh manquant"
-
-# Apply DLC migration directly and start application
-CMD ["sh", "-c", "echo 'Applying DLC migration...'; if [ -n \"$DATABASE_URL\" ]; then psql \"$DATABASE_URL\" -c 'ALTER TABLE dlc_products ADD COLUMN IF NOT EXISTS stock_epuise boolean DEFAULT false NOT NULL, ADD COLUMN IF NOT EXISTS stock_epuise_by varchar(255), ADD COLUMN IF NOT EXISTS stock_epuise_at timestamp; CREATE INDEX IF NOT EXISTS idx_dlc_products_stock_epuise ON dlc_products(stock_epuise);' || echo 'Migration already applied or failed'; fi; node dist/index.js"]
+CMD ["/app/bin/logiflow"]

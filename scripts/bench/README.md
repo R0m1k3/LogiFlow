@@ -1,6 +1,6 @@
 # Banc de comparaison Node / Rust
 
-Rejoue les mêmes requêtes sur deux serveurs et compare, requête par requête : code HTTP, corps (valeurs et ordre des listes), en-têtes utiles (`Content-Type`, `Cache-Control`, `Location`, `Content-Disposition`, attributs des cookies), état des tables après les écritures, et appels faits aux services externes. C'est ce qui décide qu'une adresse peut passer en Rust (`docs/PLAN-MIGRATION-RUST.md`, « Vérification »).
+Le serveur Node a quitté le dépôt ; il reste la référence du comportement attendu. Le banc rejoue les mêmes requêtes sur le serveur Node de référence (construit depuis le commit `REFERENCE_NODE_COMMIT`) et sur le serveur Rust et compare, requête par requête : code HTTP, corps (valeurs et ordre des listes), en-têtes utiles (`Content-Type`, `Cache-Control`, `Location`, `Content-Disposition`, attributs des cookies), état des tables après les écritures, et appels faits aux services externes. Tout changement du serveur Rust qui ne doit pas changer son comportement passe par lui ; un changement voulu y est déclaré comme écart (`deviation`).
 
 ## Préparer
 
@@ -9,16 +9,19 @@ Rejoue les mêmes requêtes sur deux serveurs et compare, requête par requête 
    sudo -u postgres psql -c "CREATE ROLE logiflow_admin LOGIN SUPERUSER PASSWORD 'bench'"
    ```
    Autre adresse : variable `BENCH_PG_URL` (par défaut `postgres://logiflow_admin:bench@localhost:5432`).
-2. Construire l'interface et le serveur Node comme le `Dockerfile` (`npx vite build`, puis la commande `esbuild` du Dockerfile), et le serveur Rust (`cargo build --release` dans `server-rs/`).
-3. Créer la base modèle `bench_seed` : `scripts/bench/setup.sh`. Elle contient le schéma de production (`schema.sh`), les index créés au démarrage de Node et les données de `seed.ts` : 3 magasins, 5 comptes, quelques lignes par table, datées par rapport au jour du passage.
+2. Construire le serveur Node de référence : `scripts/bench/reference-node.sh`. Il en fait une copie de travail à part (`.bench-reference/`, ignorée par git) au commit `REFERENCE_NODE_COMMIT`, avec son interface ; à refaire seulement quand ce commit change. Autre dossier : variable `BENCH_NODE_DIR`.
+3. Construire le serveur Rust : `cargo build --release --manifest-path server-rs/Cargo.toml` (autre binaire : `RUST_BIN`).
+4. Créer la base modèle `bench_seed` : `scripts/bench/setup.sh`. Elle contient le schéma de production (`schema.sh`), les index créés au premier démarrage du Node de référence et les données de `seed.ts` : 3 magasins, 5 comptes, quelques lignes par table, datées par rapport au jour du passage.
 
 ## Lancer
 
 ```bash
-npx tsx scripts/bench/compare.ts                  # Node seul contre Rust devant Node
+npx tsx scripts/bench/compare.ts                  # Node de référence contre Rust
 npx tsx scripts/bench/compare.ts --only dlc,tasks # seulement ces modules
 npx tsx scripts/bench/compare.ts --mode node      # Node contre Node : le banc est-il stable ?
 ```
+
+Les deux serveurs servent la même interface (celle de la référence). Plusieurs bancs en parallèle : `BENCH_ID` (bases distinctes) et `BENCH_PORT_BASE` (ports distincts).
 
 Le résultat liste les écarts, puis un tableau par module. Les réponses complètes et les écarts sont écrits dans le dossier de journaux affiché au début (`gauche.json`, `droite.json`, `ecarts.json`), avec les journaux des serveurs.
 

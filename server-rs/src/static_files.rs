@@ -13,13 +13,13 @@ use axum::http::{HeaderMap, HeaderValue, Method, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use chrono::{DateTime, Utc};
 
-use crate::{AppState, express_routes, proxy};
+use crate::{AppState, express_routes};
 
 const ASSETS_CACHE: &str = "public, max-age=31536000, immutable";
 const DEFAULT_CACHE: &str = "public, max-age=0";
 const NO_CACHE: &str = "no-cache";
 
-/// Tout ce que le routeur ne sert pas : interface, ou relais vers Node
+/// Tout ce que le routeur ne sert pas : interface, variante d'une route, ou 404
 pub async fn fallback(state: State<AppState>, request: Request) -> Response {
     let path = request.uri().path().to_string();
     if path.starts_with("/api/") || path == "/api" || !matches!(*request.method(), Method::GET | Method::HEAD)
@@ -29,7 +29,7 @@ pub async fn fallback(state: State<AppState>, request: Request) -> Response {
             Ok(response) => return response,
             Err(request) => request,
         };
-        return proxy::forward(state, request).await;
+        return not_found(request).await;
     }
     serve(
         &state.config.static_dir,
@@ -62,6 +62,16 @@ async fn serve(root: &Path, path: &str, method: &Method, headers: &HeaderMap) ->
     send_file(&root.join("index.html"), method, headers, |_| NO_CACHE)
         .await
         .unwrap_or_else(|| (StatusCode::INTERNAL_SERVER_ERROR, "Error loading application").into_response())
+}
+
+/// Aucune route : 404 d'Express, avec l'adresse demandée avant toute réécriture
+pub async fn not_found(request: Request) -> Response {
+    let path = request
+        .extensions()
+        .get::<express_routes::OriginalPath>()
+        .map(|original| original.0.clone())
+        .unwrap_or_else(|| request.uri().path().to_string());
+    express_not_found(request.method(), &path)
 }
 
 /// Réponse 404 d'Express (finalhandler) pour une adresse qu'aucune route ne sert :

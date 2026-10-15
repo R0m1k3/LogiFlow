@@ -25,6 +25,10 @@ static MATCHER: LazyLock<matchit::Router<&'static str>> = LazyLock::new(|| {
     matcher
 });
 
+/// Adresse demandée, avant sa réécriture en adresse canonique
+#[derive(Clone)]
+pub struct OriginalPath(pub String);
+
 /// Routeur de l'API, pour rejouer une requête sur l'adresse canonique
 static API: OnceLock<Router> = OnceLock::new();
 
@@ -86,6 +90,8 @@ pub async fn redispatch(mut request: Request) -> Result<Response, Request> {
     let Ok(uri) = path_and_query.parse::<Uri>() else {
         return Err(request);
     };
+    let original = request.uri().path().to_string();
+    request.extensions_mut().insert(OriginalPath(original));
     *request.uri_mut() = uri;
     Ok(api
         .clone()

@@ -21,7 +21,7 @@ The platform is built with a clear separation of concerns, utilizing a modern fu
 
 **Technical Implementations & Design Patterns:**
 - **Frontend:** React.js for interactive user interfaces, with React Query for data fetching and state management.
-- **Backend:** Node.js Express (ESM) provides a robust API layer. Data validation is performed using Zod schemas.
+- **Backend:** Rust server (axum, tokio, sqlx) in `server-rs/` serves the API and the built UI, runs startup migrations and background jobs. Validation keeps the Zod rules and messages of `shared/schema.ts`, from which `server-rs/src/schema.rs` is generated.
 - **Database:** PostgreSQL as the primary data store, with Drizzle ORM facilitating interaction and database migrations ensuring schema consistency.
 - **Authentication:** Secure role-based access control (RBAC) for granular permissions.
 - **Multi-tenancy:** Supports multi-tenant operations with group and permission management, ensuring data isolation between stores/groups.

@@ -85,14 +85,6 @@ impl Verification {
         }
     }
 
-    /// Référence de facture trouvée, en texte (String(valeur)) si elle est « vraie »
-    pub fn invoice_reference_text(&self) -> Option<String> {
-        self.invoice_reference
-            .get()
-            .filter(|value| truthy(value))
-            .map(js::to_js_string)
-    }
-
     /// normalizeDateString(result.dueDate) : échéance AAAA-MM-JJ, si c'est une chaîne reconnue
     pub fn normalized_due_date(&self) -> Option<String> {
         self.due_date

@@ -19,14 +19,6 @@ pub fn has_permission(role: &str, module: &str, action: &str) -> bool {
         .is_some_and(|actions| actions.iter().any(|a| a == action))
 }
 
-/// hasModuleAccess(role, module)
-pub fn has_module_access(role: &str, module: &str) -> bool {
-    PERMISSIONS
-        .get(module)
-        .and_then(|roles| roles.get(&role.to_lowercase()))
-        .is_some_and(|actions| !actions.is_empty())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -37,7 +29,7 @@ mod tests {
         assert!(!has_permission("manager", "deliveries", "delete"));
         assert!(has_permission("Admin", "avoir", "delete"));
         assert!(!has_permission("employee", "orders", "view"));
-        assert!(!has_module_access("employee", "avoir"));
+        assert!(!has_permission("employee", "avoir", "view"));
         assert!(!has_permission("admin", "inconnu", "view"));
     }
 }

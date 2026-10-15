@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prépare la base modèle du banc (bench_seed) : schéma de production, index créés
-# par le premier démarrage de Node, puis données du banc (seed.ts).
-# Prérequis : PostgreSQL local, serveur Node construit (dist/index.js).
+# par le premier démarrage du Node de référence, puis données du banc (seed.ts).
+# Prérequis : PostgreSQL local, serveur Node de référence construit (reference-node.sh).
 # Usage : scripts/bench/setup.sh [postgres://utilisateur:motdepasse@hôte:port]
 set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -11,12 +11,12 @@ suffix="${BENCH_ID:+_$BENCH_ID}"
 template="${BENCH_TEMPLATE_DB:-bench_seed$suffix}"
 schema_db="logiflow_schema$suffix"
 port=$(( ${BENCH_PORT_BASE:-3200} + 92 ))
-node_dir="${BENCH_NODE_DIR:-$root}"
+node_dir="${BENCH_NODE_DIR:-$root/.bench-reference}"
 
 psql -q "$pg/postgres" -c "DROP DATABASE IF EXISTS $schema_db WITH (FORCE)" -c "CREATE DATABASE $schema_db"
 "$root/scripts/bench/schema.sh" "$pg/$schema_db" 2>&1 | grep -v NOTICE || true
 
-# Premier démarrage de Node : migrations de server/migrations.production.ts
+# Premier démarrage du Node de référence : migrations de son server/migrations.production.ts
 # exec : $! est bien le processus Node, pas un sous-shell
 (cd "$node_dir" && exec env NODE_ENV=production PORT=$port DATABASE_URL="$pg/$schema_db" SESSION_SECRET=setup \
   node dist/index.js > /dev/null 2>&1) &

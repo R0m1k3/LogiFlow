@@ -11,6 +11,9 @@ const INT32_MIN: f64 = -2_147_483_648.0;
 const INT32_MAX: f64 = 2_147_483_647.0;
 const SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
 
+// Toute l'API de zod utilisée par shared/schema.ts n'est pas encore appelée par
+// un module : elle reste disponible (et testée) pour les schémas à venir.
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub enum Kind {
     String,
@@ -34,6 +37,7 @@ pub enum Kind {
     Null,
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug)]
 enum Check {
     MinLen(usize),
@@ -56,6 +60,7 @@ pub struct Field {
     default: Option<Value>,
 }
 
+#[allow(dead_code)]
 impl Field {
     pub fn new(name: &str, kind: Kind) -> Self {
         Self {
@@ -166,6 +171,7 @@ pub struct Object {
 /// Corps validé : seuls les champs du schéma, avec leurs valeurs converties
 pub type Parsed = Map<String, Value>;
 
+#[allow(dead_code)]
 impl Object {
     pub fn new(fields: Vec<Field>) -> Self {
         Self { fields }

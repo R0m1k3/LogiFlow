@@ -33,8 +33,6 @@ export const TEMPLATE_DB = process.env.BENCH_TEMPLATE_DB || `bench_seed${SUFFIX}
 export const DB_PREFIX = `bench${SUFFIX}`;
 export const LEFT_PORT = PORT_BASE + 1;
 export const RIGHT_PORT = PORT_BASE + 3;
-// Node derrière Rust : port du serveur Rust + 100
-export const UPSTREAM_OFFSET = 100;
 
 // Services externes simulés (NocoDB, webhooks, SMTP) : voir stub.ts.
 // Les magasins de seed.ts pointent vers ces ports.
