@@ -6,6 +6,14 @@ export type AccountKey = "admin" | "directeur" | "manager" | "employe" | "sans-m
 export const ALL_ACCOUNTS: AccountKey[] = ["admin", "directeur", "manager", "employe", "sans-magasin", "anonyme"];
 export const LOGGED_ACCOUNTS: AccountKey[] = ["admin", "directeur", "manager", "employe", "sans-magasin"];
 
+// Écart voulu entre Node et Rust (faille fermée…), décidé et inscrit au banc :
+// ces champs sont retirés des deux côtés avant la comparaison, et le banc
+// rappelle la raison à la fin de son rapport
+export interface Deviation {
+  fields: string[];
+  reason: string;
+}
+
 // Lecture : rejouée sur la même base pour chaque compte
 export interface ReadCase {
   module: string;
@@ -13,6 +21,7 @@ export interface ReadCase {
   accounts?: AccountKey[]; // par défaut ALL_ACCOUNTS
   // Champs ignorés dans la comparaison (valeurs propres à chaque passage)
   ignore?: string[];
+  deviation?: Deviation;
 }
 
 // Les chemins et corps acceptent des gabarits :
@@ -36,4 +45,5 @@ export interface WriteScenario {
   steps: Step[];
   tables: string[];
   ignore?: string[];
+  deviation?: Deviation;
 }

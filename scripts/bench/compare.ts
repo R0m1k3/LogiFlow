@@ -17,11 +17,15 @@ import { fileURLToPath } from "url";
 import { BENCH_ACCOUNTS, BENCH_API_KEY, BENCH_ENV, DB_PREFIX, LEFT_PORT, RIGHT_PORT, STUB_URL, TEMPLATE_DB, UPSTREAM_OFFSET } from "./config";
 import { startStub } from "./stub";
 import { READS, WRITES } from "./cases";
-import { ALL_ACCOUNTS, LOGGED_ACCOUNTS, type AccountKey, type ReadCase, type Step, type WriteScenario } from "./types";
+import { ALL_ACCOUNTS, LOGGED_ACCOUNTS, type AccountKey, type Deviation, type ReadCase, type Step, type WriteScenario } from "./types";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+// Fichiers des sauvegardes déclarées par les seeds (database_backups), copiés
+// dans le dossier de sauvegardes de chaque serveur
+const SEED_BACKUPS_DIR = path.join(ROOT, "scripts/bench/seeds/sauvegardes");
 const PG_ADMIN_URL = process.env.BENCH_PG_URL || "postgres://logiflow_admin:bench@localhost:5432";
-const RUST_BIN = process.env.RUST_BIN || path.join(ROOT, "server-rs/target/release/logiflow");
+// Chemin relatif : depuis cette copie de travail (les serveurs sont lancés depuis BENCH_NODE_DIR)
+const RUST_BIN = path.resolve(ROOT, process.env.RUST_BIN || "server-rs/target/release/logiflow");
 // Dossier qui contient le serveur Node construit (dist/) : par défaut ce dépôt
 const NODE_DIR = process.env.BENCH_NODE_DIR || ROOT;
 const WORK_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "logiflow-banc-"));
@@ -112,6 +116,7 @@ async function waitHealthy(url: string, label: string) {
 function nodeEnv(port: number, database: string): Record<string, string> {
   const backupDir = path.join(WORK_DIR, `sauvegardes-${port}`);
   fs.mkdirSync(backupDir, { recursive: true });
+  if (fs.existsSync(SEED_BACKUPS_DIR)) fs.cpSync(SEED_BACKUPS_DIR, backupDir, { recursive: true });
   return { ...BENCH_ENV, NODE_ENV: "production", PORT: String(port), DATABASE_URL: dbUrl(database), BACKUP_DIR: backupDir };
 }
 
@@ -253,18 +258,19 @@ async function snapshotTables(database: string, tables: string[]) {
 
 const ISO_DATETIME = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g;
 
-function normalize(value: unknown, window: [number, number], ignore: string[] = []): unknown {
-  if (value instanceof Date) return normalize(value.toISOString(), window, ignore);
+// drop : champs d'un écart voulu, retirés des deux côtés
+function normalize(value: unknown, window: [number, number], ignore: string[] = [], drop: string[] = []): unknown {
+  if (value instanceof Date) return normalize(value.toISOString(), window, ignore, drop);
   if (typeof value === "string") {
     return value.replace(ISO_DATETIME, (match) => {
       const time = Date.parse(match);
       return time >= window[0] && time <= window[1] ? "<maintenant>" : match;
     });
   }
-  if (Array.isArray(value)) return value.map((item) => normalize(item, window, ignore));
+  if (Array.isArray(value)) return value.map((item) => normalize(item, window, ignore, drop));
   if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value).map(([key, item]) =>
-      [key, ignore.includes(key) ? "<ignoré>" : normalize(item, window, ignore)]));
+    return Object.fromEntries(Object.entries(value).filter(([key]) => !drop.includes(key)).map(([key, item]) =>
+      [key, ignore.includes(key) ? "<ignoré>" : normalize(item, window, ignore, drop)]));
   }
   return value;
 }
@@ -297,7 +303,7 @@ async function runTarget(target: Target): Promise<Entry[]> {
       entries.push({
         key: `${readCase.module} | GET ${readCase.path} | ${account}`,
         module: readCase.module,
-        data: { reponse: recorded, appels: calls, ignore: readCase.ignore },
+        data: { reponse: recorded, appels: calls, ignore: readCase.ignore, deviation: readCase.deviation },
       });
     }
   }
@@ -323,6 +329,7 @@ async function runTarget(target: Target): Promise<Entry[]> {
           tables: await snapshotTables(target.dbName, scenario.tables),
           appels: await stubCalls(),
           ignore: scenario.ignore,
+          deviation: scenario.deviation,
         },
       });
     }
@@ -330,8 +337,8 @@ async function runTarget(target: Target): Promise<Entry[]> {
 
   const endedAt = Date.now() + 60_000;
   return entries.map((entry) => {
-    const { ignore, ...data } = entry.data as { ignore?: string[] };
-    return { ...entry, data: normalize(data, [startedAt, endedAt], ignore) };
+    const { ignore, deviation, ...data } = entry.data as { ignore?: string[]; deviation?: Deviation };
+    return { ...entry, data: normalize(data, [startedAt, endedAt], ignore, deviation?.fields) };
   });
 }
 
@@ -397,6 +404,15 @@ async function main() {
     console.log("\nModule                 cas  écarts");
     for (const [module, stats] of [...byModule].sort()) {
       console.log(`${module.padEnd(22)} ${String(stats.total).padStart(4)}  ${stats.ko}`);
+    }
+    const deviations = new Set(
+      [...READS, ...WRITES]
+        .filter((c) => c.deviation && (!only || only.includes(c.module)))
+        .map((c) => `${c.module} : ${c.deviation!.fields.join(", ")} — ${c.deviation!.reason}`),
+    );
+    if (deviations.size) {
+      console.log("\nÉcarts voulus (champs retirés de la comparaison) :");
+      for (const line of deviations) console.log(`  ${line}`);
     }
     const total = leftEntries.length;
     console.log(`\n${total} cas comparés, ${report.length} en écart.`);

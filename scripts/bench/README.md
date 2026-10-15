@@ -30,6 +30,7 @@ Une liste par module dans `cases/` (lectures et scénarios d'écriture, voir `ty
 - **Écriture** : base remise à zéro avant chaque compte ; les tables listées sont comparées à la fin.
 - **Gabarits** : `{{today}}`, `{{today+3}}`, `{{year-1}}`, `{{month}}` ; `{{0.id}}` reprend l'`id` de la réponse de l'étape 0.
 - Les horodatages proches du passage sont remplacés par `<maintenant>` ; `ignore` masque d'autres champs propres à chaque passage.
+- **Écart voulu** (faille fermée, décision du plan) : `deviation: { fields, reason }` retire ces champs des deux côtés avant la comparaison ; le banc rappelle la raison en fin de rapport.
 
 ## Comptes et services simulés
 
