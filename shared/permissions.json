@@ -1,0 +1,207 @@
+{
+  "dashboard": {
+    "admin": [
+      "view"
+    ],
+    "directeur": [
+      "view"
+    ],
+    "manager": [
+      "view"
+    ],
+    "employee": [
+      "view"
+    ]
+  },
+  "calendar": {
+    "admin": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "directeur": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "manager": [
+      "view",
+      "create",
+      "edit"
+    ],
+    "employee": [
+      "view"
+    ]
+  },
+  "orders": {
+    "admin": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "directeur": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "manager": [
+      "view",
+      "create",
+      "edit"
+    ],
+    "employee": []
+  },
+  "deliveries": {
+    "admin": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "validate"
+    ],
+    "directeur": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "validate"
+    ],
+    "manager": [
+      "view",
+      "create",
+      "edit",
+      "validate"
+    ],
+    "employee": []
+  },
+  "reconciliation": {
+    "admin": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "validate"
+    ],
+    "directeur": [
+      "view",
+      "create",
+      "edit",
+      "validate"
+    ],
+    "manager": [],
+    "employee": []
+  },
+  "publicity": {
+    "admin": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "directeur": [
+      "view"
+    ],
+    "manager": [
+      "view"
+    ],
+    "employee": [
+      "view"
+    ]
+  },
+  "customer-orders": {
+    "admin": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "directeur": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "manager": [
+      "view",
+      "create",
+      "edit"
+    ],
+    "employee": [
+      "view",
+      "create"
+    ]
+  },
+  "dlc": {
+    "admin": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "directeur": [
+      "view",
+      "create",
+      "edit",
+      "delete"
+    ],
+    "manager": [
+      "view",
+      "create",
+      "edit"
+    ],
+    "employee": [
+      "view",
+      "create"
+    ]
+  },
+  "tasks": {
+    "admin": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "validate"
+    ],
+    "directeur": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "validate"
+    ],
+    "manager": [
+      "view",
+      "create",
+      "edit",
+      "validate"
+    ],
+    "employee": [
+      "view"
+    ]
+  },
+  "avoir": {
+    "admin": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "validate"
+    ],
+    "directeur": [
+      "view",
+      "create",
+      "edit",
+      "delete",
+      "validate"
+    ],
+    "manager": [
+      "view",
+      "create"
+    ],
+    "employee": []
+  }
+}

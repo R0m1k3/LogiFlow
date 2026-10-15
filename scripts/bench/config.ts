@@ -23,10 +23,24 @@ export const BENCH_ACCOUNTS: BenchAccount[] = [
 // Clé de l'API externe enregistrée par seed.ts (empreinte seulement)
 export const BENCH_API_KEY = "lf_banc_cle_de_test_0123456789";
 
-// Services externes simulés (NocoDB, webhooks, SMTP) : voir stub.ts
-export const STUB_PORT = 3199;
+// Plusieurs bancs peuvent tourner en parallèle (un par copie de travail) :
+// BENCH_ID sépare les bases, BENCH_PORT_BASE les ports.
+export const BENCH_ID = process.env.BENCH_ID || "";
+const SUFFIX = BENCH_ID ? `_${BENCH_ID}` : "";
+const PORT_BASE = Number(process.env.BENCH_PORT_BASE || 3200);
+
+export const TEMPLATE_DB = process.env.BENCH_TEMPLATE_DB || `bench_seed${SUFFIX}`;
+export const DB_PREFIX = `bench${SUFFIX}`;
+export const LEFT_PORT = PORT_BASE + 1;
+export const RIGHT_PORT = PORT_BASE + 3;
+// Node derrière Rust : port du serveur Rust + 100
+export const UPSTREAM_OFFSET = 100;
+
+// Services externes simulés (NocoDB, webhooks, SMTP) : voir stub.ts.
+// Les magasins de seed.ts pointent vers ces ports.
+export const STUB_PORT = PORT_BASE + 90;
 export const STUB_URL = `http://127.0.0.1:${STUB_PORT}`;
-export const STUB_SMTP_PORT = 3198;
+export const STUB_SMTP_PORT = PORT_BASE + 91;
 
 // Environnement commun aux deux serveurs
 export const BENCH_ENV = {

@@ -2,6 +2,9 @@
 // lignes dans chaque table, datées par rapport au jour du passage pour que les
 // alertes (DLC, retards, échéances) aient toujours quelque chose à montrer.
 // Usage : DATABASE_URL=… SESSION_SECRET=… npx tsx scripts/bench/seed.ts
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import pg from "pg";
 import { scryptSync, createHash } from "crypto";
 import { encryptSecret } from "../../server/crypto";
@@ -184,6 +187,13 @@ async function main() {
            (1, 'Outil de rapprochement', $1, $2, 'admin_local', CURRENT_DATE - 30 + time '08:00', NULL, NULL),
            (2, 'Ancienne clé', 'lf_oldkey', $3, 'admin_local', CURRENT_DATE - 90 + time '08:00', NULL, CURRENT_DATE - 60 + time '08:00')`,
     [BENCH_API_KEY.slice(0, 10), createHash("sha256").update(BENCH_API_KEY).digest("hex"), createHash("sha256").update("lf_cle_revoquee").digest("hex")]);
+
+  // Données complémentaires de chaque lot (seeds/*.ts, voir seeds/README.md)
+  const seedsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "seeds");
+  for (const file of fs.readdirSync(seedsDir).filter((f) => f.endsWith(".ts")).sort()) {
+    const extra = await import(path.join(seedsDir, file));
+    await extra.seed(q);
+  }
 
   // Les séquences reprennent après les identifiants fixés ci-dessus
   const { rows } = await q(`SELECT table_name, column_name FROM information_schema.columns

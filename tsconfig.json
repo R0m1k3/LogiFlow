@@ -27,6 +27,7 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
+    "resolveJsonModule": true,
     "downlevelIteration": true,
     "baseUrl": ".",
     "types": [

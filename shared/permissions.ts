@@ -1,5 +1,6 @@
 // Système de permissions hardcodé par module
 // Remplace l'ancien système flexible basé sur la base de données
+import PERMISSIONS_DATA from "./permissions.json";
 
 export type Permission = 'view' | 'create' | 'edit' | 'delete' | 'validate';
 export type Role = 'admin' | 'directeur' | 'manager' | 'employee';
@@ -15,88 +16,19 @@ export type Module =
   | 'tasks'
   | 'avoir';
 
-// Définition des permissions par module et par rôle
-const PERMISSIONS: Record<Module, Record<Role, Permission[]>> = {
-  // Tableau de bord - tous les rôles peuvent le voir
-  dashboard: {
-    admin: ['view'],
-    directeur: ['view'],
-    manager: ['view'],
-    employee: ['view']
-  },
-
-  // Calendrier - Admin/Directeur tout, Manager tout sauf delete, Employé view
-  calendar: {
-    admin: ['view', 'create', 'edit', 'delete'],
-    directeur: ['view', 'create', 'edit', 'delete'],
-    manager: ['view', 'create', 'edit'],
-    employee: ['view']
-  },
-
-  // Commandes - Admin/Directeur tout, Manager tout sauf delete, Employé aucun accès  
-  orders: {
-    admin: ['view', 'create', 'edit', 'delete'],
-    directeur: ['view', 'create', 'edit', 'delete'],
-    manager: ['view', 'create', 'edit'],
-    employee: []
-  },
-
-  // Livraisons - Admin/Directeur tout + validate, Manager tout sauf delete + validate, Employé aucun accès
-  deliveries: {
-    admin: ['view', 'create', 'edit', 'delete', 'validate'],
-    directeur: ['view', 'create', 'edit', 'delete', 'validate'],
-    manager: ['view', 'create', 'edit', 'validate'],
-    employee: []
-  },
-
-  // Rapprochement - Admin tout y compris validate, Directeur tout sauf delete, Manager/Employé rien
-  reconciliation: {
-    admin: ['view', 'create', 'edit', 'delete', 'validate'],
-    directeur: ['view', 'create', 'edit', 'validate'],
-    manager: [],
-    employee: []
-  },
-
-  // Publicité - Admin tout, autres view seulement
-  publicity: {
-    admin: ['view', 'create', 'edit', 'delete'],
-    directeur: ['view'],
-    manager: ['view'],
-    employee: ['view']
-  },
-
-  // Commandes client - Admin/Directeur tout, Manager tout sauf delete, Employé view + create
-  'customer-orders': {
-    admin: ['view', 'create', 'edit', 'delete'],
-    directeur: ['view', 'create', 'edit', 'delete'],
-    manager: ['view', 'create', 'edit'],
-    employee: ['view', 'create']
-  },
-
-  // DLC - Admin/Directeur tout, Manager tout sauf delete, Employé create + view
-  dlc: {
-    admin: ['view', 'create', 'edit', 'delete'],
-    directeur: ['view', 'create', 'edit', 'delete'],
-    manager: ['view', 'create', 'edit'],
-    employee: ['view', 'create']
-  },
-
-  // Tâches - Admin/Directeur tout, Manager view + create + edit + validate, Employé view seulement
-  tasks: {
-    admin: ['view', 'create', 'edit', 'delete', 'validate'],
-    directeur: ['view', 'create', 'edit', 'delete', 'validate'],
-    manager: ['view', 'create', 'edit', 'validate'],
-    employee: ['view']
-  },
-
-  // Avoirs - Admin/Directeur tout, Manager create + view seulement, Employé pas d'accès
-  avoir: {
-    admin: ['view', 'create', 'edit', 'delete', 'validate'],
-    directeur: ['view', 'create', 'edit', 'delete', 'validate'],
-    manager: ['view', 'create'],
-    employee: []
-  }
-};
+// Matrice rôle × module dans permissions.json, lue aussi par le serveur Rust
+// (server-rs/src/access.rs). Résumé :
+// - dashboard : tous les rôles voient
+// - calendar : admin/directeur tout, manager tout sauf supprimer, employé voit
+// - orders : admin/directeur tout, manager tout sauf supprimer, employé aucun accès
+// - deliveries : admin/directeur tout + valider, manager tout sauf supprimer + valider, employé aucun accès
+// - reconciliation : admin tout, directeur tout sauf supprimer, manager/employé rien
+// - publicity : admin tout, autres voient
+// - customer-orders : admin/directeur tout, manager tout sauf supprimer, employé voit + crée
+// - dlc : admin/directeur tout, manager tout sauf supprimer, employé voit + crée
+// - tasks : admin/directeur tout, manager voit + crée + modifie + valide, employé voit
+// - avoir : admin/directeur tout, manager crée + voit, employé aucun accès
+const PERMISSIONS = PERMISSIONS_DATA as Record<Module, Record<Role, Permission[]>>;
 
 // Hook pour vérifier les permissions
 export function usePermissions(userRole?: string) {

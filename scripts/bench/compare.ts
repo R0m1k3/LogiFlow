@@ -14,15 +14,16 @@ import os from "os";
 import path from "path";
 import pg from "pg";
 import { fileURLToPath } from "url";
-import { BENCH_ACCOUNTS, BENCH_API_KEY, BENCH_ENV, STUB_URL } from "./config";
+import { BENCH_ACCOUNTS, BENCH_API_KEY, BENCH_ENV, DB_PREFIX, LEFT_PORT, RIGHT_PORT, STUB_URL, TEMPLATE_DB, UPSTREAM_OFFSET } from "./config";
 import { startStub } from "./stub";
 import { READS, WRITES } from "./cases";
 import { ALL_ACCOUNTS, LOGGED_ACCOUNTS, type AccountKey, type ReadCase, type Step, type WriteScenario } from "./types";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const PG_ADMIN_URL = process.env.BENCH_PG_URL || "postgres://logiflow_admin:bench@localhost:5432";
-const TEMPLATE_DB = process.env.BENCH_TEMPLATE_DB || "bench_seed";
 const RUST_BIN = process.env.RUST_BIN || path.join(ROOT, "server-rs/target/release/logiflow");
+// Dossier qui contient le serveur Node construit (dist/) : par défaut ce dépôt
+const NODE_DIR = process.env.BENCH_NODE_DIR || ROOT;
 const WORK_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "logiflow-banc-"));
 
 const args = process.argv.slice(2);
@@ -90,7 +91,7 @@ function psql(database: string, sql: string) {
 
 function startProcess(label: string, command: string, commandArgs: string[], env: Record<string, string>): ChildProcess {
   const log = fs.openSync(path.join(WORK_DIR, `${label}.log`), "a");
-  const child = spawn(command, commandArgs, { cwd: ROOT, env: { ...process.env, ...env }, stdio: ["ignore", log, log] });
+  const child = spawn(command, commandArgs, { cwd: NODE_DIR, env: { ...process.env, ...env }, stdio: ["ignore", log, log] });
   child.on("exit", (code) => {
     if (code !== null && code !== 0) console.error(`  ${label} s'est arrêté (code ${code}), voir ${WORK_DIR}/${label}.log`);
   });
@@ -115,7 +116,7 @@ function nodeEnv(port: number, database: string): Record<string, string> {
 }
 
 async function startTarget(name: string, kind: "node" | "rust", port: number): Promise<Target> {
-  const dbName = `bench_${name}`;
+  const dbName = `${DB_PREFIX}_${name}`;
   psql("postgres", `DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
   psql("postgres", `CREATE DATABASE ${dbName} TEMPLATE ${TEMPLATE_DB}`);
   const processes: ChildProcess[] = [];
@@ -123,7 +124,7 @@ async function startTarget(name: string, kind: "node" | "rust", port: number): P
     processes.push(startProcess(`${name}-node`, "node", ["dist/index.js"], nodeEnv(port, dbName)));
   } else {
     // Node derrière, sur un port interne ; Rust devant
-    const upstreamPort = port + 100;
+    const upstreamPort = port + UPSTREAM_OFFSET;
     processes.push(startProcess(`${name}-node`, "node", ["dist/index.js"], nodeEnv(upstreamPort, dbName)));
     await waitHealthy(`http://127.0.0.1:${upstreamPort}`, `${name}-node`);
     processes.push(startProcess(`${name}-rust`, RUST_BIN, [], {
@@ -131,7 +132,7 @@ async function startTarget(name: string, kind: "node" | "rust", port: number): P
       PORT: String(port),
       DATABASE_URL: dbUrl(dbName),
       NODE_UPSTREAM: `http://127.0.0.1:${upstreamPort}`,
-      STATIC_DIR: path.join(ROOT, "dist/public"),
+      STATIC_DIR: path.join(NODE_DIR, "dist/public"),
       BACKUP_DIR: path.join(WORK_DIR, `sauvegardes-${upstreamPort}`),
       RUST_LOG: "warn",
     }));
@@ -363,9 +364,9 @@ async function main() {
   const stopStub = await startStub();
   const targets: Target[] = [];
   try {
-    const left = await startTarget("gauche", "node", 3201);
+    const left = await startTarget("gauche", "node", LEFT_PORT);
     targets.push(left);
-    const right = await startTarget("droite", mode === "node" ? "node" : "rust", 3203);
+    const right = await startTarget("droite", mode === "node" ? "node" : "rust", RIGHT_PORT);
     targets.push(right);
 
     const leftEntries = await runTarget(left);

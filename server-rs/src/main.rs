@@ -1,13 +1,29 @@
+// Socle partagé utilisé au fil des lots : pas d'avertissement « jamais utilisé »
+// avant la fin du portage (docs/PLAN-MIGRATION-RUST.md).
+#![allow(dead_code)]
+
 // Serveur LogiFlow en Rust. Placé devant le serveur Node, il sert l'interface et
 // les adresses déjà portées (router.rs) ; toutes les autres partent vers Node
 // (proxy.rs). Plan : docs/PLAN-MIGRATION-RUST.md.
 
+mod access;
+mod auth;
 mod config;
+mod crypto;
+mod db;
+mod error;
 mod http;
+mod js;
+mod json;
 mod modules;
+mod projections;
 mod proxy;
+mod request;
 mod router;
+mod schema;
+mod services;
 mod static_files;
+mod zod;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
