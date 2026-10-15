@@ -115,6 +115,9 @@ const SCHEMA_STATEMENTS: &[(&str, &str)] = &[
 
 /// Applique les migrations de schéma, puis chiffre les secrets encore en clair
 pub async fn run_migrations(db: &PgPool, encryption_key: &str) {
+    if let Err(error) = set_aside_legacy_sessions_table(db).await {
+        tracing::error!(%error, "vérification de la table sessions en échec");
+    }
     for (label, statement) in SCHEMA_STATEMENTS {
         if let Err(error) = sqlx::query(statement).execute(db).await {
             tracing::error!(%error, "migration « {label} » en échec");
@@ -126,6 +129,40 @@ pub async fn run_migrations(db: &PgPool, encryption_key: &str) {
         Err(error) => tracing::error!(%error, "chiffrement des secrets en clair en échec"),
     }
     tracing::info!("migrations de démarrage terminées");
+}
+
+/// Une base peut porter une table « sessions » d'une autre forme, jamais utilisée
+/// (l'ancien serveur gardait les sessions en mémoire) : CREATE TABLE IF NOT EXISTS
+/// la laisserait en place et toute connexion échouerait (« column "sid" does not
+/// exist »). Elle est renommée, sans rien supprimer, et la bonne table est créée
+/// ensuite par SCHEMA_STATEMENTS. Les sessions ne sont que des connexions ouvertes.
+async fn set_aside_legacy_sessions_table(db: &PgPool) -> Result<(), sqlx::Error> {
+    let (exists, expected_columns): (bool, i64) = sqlx::query_as(
+        "SELECT to_regclass('sessions') IS NOT NULL,
+                (SELECT count(*) FROM information_schema.columns
+                  WHERE table_schema = current_schema() AND table_name = 'sessions'
+                    AND column_name IN ('sid', 'sess', 'expire'))",
+    )
+    .fetch_one(db)
+    .await?;
+    if !exists || expected_columns == 3 {
+        return Ok(());
+    }
+    let suffix = chrono::Utc::now().format("%Y%m%d%H%M%S");
+    let legacy = format!("sessions_ancienne_{suffix}");
+    let mut transaction = db.begin().await?;
+    sqlx::query(&format!("ALTER TABLE sessions RENAME TO {legacy}"))
+        .execute(&mut *transaction)
+        .await?;
+    // Un index de ce nom sur l'ancienne table empêcherait de le créer sur la nouvelle
+    sqlx::query(&format!(
+        "ALTER INDEX IF EXISTS \"IDX_session_expire\" RENAME TO \"IDX_session_expire_ancienne_{suffix}\""
+    ))
+    .execute(&mut *transaction)
+    .await?;
+    transaction.commit().await?;
+    tracing::warn!(table = %legacy, "table sessions d'une autre forme mise de côté");
+    Ok(())
 }
 
 /// Mots de passe SMTP des magasins et jetons NocoDB encore en clair → enc:v1
