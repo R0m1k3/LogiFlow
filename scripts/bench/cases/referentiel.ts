@@ -8,6 +8,9 @@ export const reads: ReadCase[] = [
   { module: "suppliers", path: "/api/suppliers?dlc=true" },
   { module: "groups", path: "/api/groups" },
   { module: "users", path: "/api/users" },
+  // Express ignore la casse et une « / » finale
+  { module: "contacts", path: "/api/Contacts?groupId=1" },
+  { module: "suppliers", path: "/api/suppliers/" },
 ];
 
 export const writes: WriteScenario[] = [

@@ -13,7 +13,7 @@ use axum::http::{HeaderMap, HeaderValue, Method, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use chrono::{DateTime, Utc};
 
-use crate::{AppState, proxy};
+use crate::{AppState, express_routes, proxy};
 
 const ASSETS_CACHE: &str = "public, max-age=31536000, immutable";
 const DEFAULT_CACHE: &str = "public, max-age=0";
@@ -24,6 +24,11 @@ pub async fn fallback(state: State<AppState>, request: Request) -> Response {
     let path = request.uri().path().to_string();
     if path.starts_with("/api/") || path == "/api" || !matches!(*request.method(), Method::GET | Method::HEAD)
     {
+        // Adresse servie par Express malgré la casse ou une « / » finale
+        let request = match express_routes::redispatch(request).await {
+            Ok(response) => return response,
+            Err(request) => request,
+        };
         return proxy::forward(state, request).await;
     }
     serve(

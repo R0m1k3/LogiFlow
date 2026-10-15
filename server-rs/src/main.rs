@@ -12,6 +12,7 @@ mod config;
 mod crypto;
 mod db;
 mod error;
+mod express_routes;
 mod http;
 mod jobs;
 mod js;

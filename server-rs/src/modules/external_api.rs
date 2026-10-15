@@ -14,7 +14,7 @@
 // d'adresse qu'Express accepte aussi (casse, barre finale) sont relayées à Node.
 
 use axum::extract::{FromRequest, Path, RawQuery, Request, State};
-use axum::http::{HeaderMap, Method, StatusCode};
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{any, delete, get};
 use axum::{Json, Router};
@@ -380,27 +380,14 @@ async fn require_api_key(state: &AppState, headers: &HeaderMap) -> Result<(), Ap
     ))
 }
 
-/// Adresse qu'Express sert sans tenir compte de la casse ni d'une barre finale
-/// (routes non strictes) : variante d'une route de l'API externe
-fn express_variant(method: &Method, path: &str) -> bool {
-    let Some(rest) = path.get(EXTERNAL_API_PREFIX.len()..) else {
-        return false;
-    };
-    let rest = rest.to_lowercase();
-    let rest = rest.strip_suffix('/').unwrap_or(&rest);
-    let reads = matches!(*method, Method::GET | Method::HEAD);
-    match rest.strip_prefix("/deliveries/") {
-        Some(id) => !id.is_empty() && !id.contains('/') && (reads || *method == Method::PATCH),
-        None => reads && matches!(rest, "/stores" | "/suppliers" | "/deliveries"),
-    }
-}
-
 /// Toute autre adresse sous le préfixe : clé d'API, puis 404 JSON. Le corps est
 /// lu d'abord, comme express.json() (JSON illisible : 400)
 async fn ext_unknown(State(state): State<AppState>, request: Request) -> Response {
-    if express_variant(request.method(), request.uri().path()) {
-        return crate::proxy::forward(State(state), request).await;
-    }
+    // Variante d'une route existante (casse, « / » final) : servie comme Express
+    let request = match crate::express_routes::redispatch(request).await {
+        Ok(response) => return response,
+        Err(request) => request,
+    };
     let headers = request.headers().clone();
     if let Err(error) = JsonBody::from_request(request, &state).await {
         return error.into_response();
@@ -1194,19 +1181,6 @@ mod tests {
     #[test]
     fn routes_sans_conflit() {
         let _ = Router::<AppState>::new().merge(routes());
-    }
-
-    #[test]
-    fn variantes_d_adresse_d_express() {
-        assert!(express_variant(&Method::GET, "/api/ext/v1/stores/"));
-        assert!(express_variant(&Method::HEAD, "/api/ext/v1/SUPPLIERS"));
-        assert!(express_variant(&Method::GET, "/api/ext/v1/deliveries/"));
-        assert!(express_variant(&Method::PATCH, "/api/ext/v1/Deliveries/5/"));
-        assert!(!express_variant(&Method::POST, "/api/ext/v1/stores/"));
-        assert!(!express_variant(&Method::PUT, "/api/ext/v1/deliveries/5/"));
-        assert!(!express_variant(&Method::GET, "/api/ext/v1/deliveries//"));
-        assert!(!express_variant(&Method::GET, "/api/ext/v1/deliveries/5/x"));
-        assert!(!express_variant(&Method::GET, "/api/ext/v1/"));
     }
 
     #[test]
