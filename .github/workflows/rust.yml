@@ -44,6 +44,8 @@ jobs:
         run: npm run check
       - name: Construction de l'interface
         run: npx vite build
+      - name: Fichier docker-compose valide
+        run: docker compose -f docker-compose.yml config -q
 
   bench:
     runs-on: ubuntu-latest
