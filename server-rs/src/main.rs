@@ -13,6 +13,7 @@ mod crypto;
 mod db;
 mod error;
 mod http;
+mod jobs;
 mod js;
 mod json;
 mod modules;
@@ -47,7 +48,9 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         // Pas de couleurs dans les journaux Docker
         .with_ansi(std::io::IsTerminal::is_terminal(&std::io::stdout()))
-        .with_env_filter(EnvFilter::try_from_env("RUST_LOG").unwrap_or_else(|_| EnvFilter::new("info")))
+        .with_env_filter(
+            EnvFilter::try_from_env("RUST_LOG").unwrap_or_else(|_| EnvFilter::new("info,sqlx=warn")),
+        )
         .init();
 
     let config = Config::from_env()?;
@@ -58,6 +61,12 @@ async fn main() -> anyhow::Result<()> {
         .idle_timeout(Duration::from_secs(30))
         .connect_lazy(&config.database_url)?;
 
+    // Comme Node : migrations avant d'accepter des requêtes, puis compte admin,
+    // index en arrière-plan et tâches de fond
+    startup::run_migrations(&db, &config.encryption_key).await;
+    jobs::ensure_default_admin(&db).await;
+    startup::spawn_performance_indexes(db.clone());
+
     let state = AppState {
         config: Arc::new(config),
         db,
@@ -66,6 +75,7 @@ async fn main() -> anyhow::Result<()> {
     let port = state.config.port;
     tracing::info!(port, upstream = %state.config.node_upstream, "LogiFlow (Rust) démarre");
 
+    jobs::spawn(state.clone());
     let app = router::build(state);
     let listener = tokio::net::TcpListener::bind(SocketAddr::from(([0, 0, 0, 0], port))).await?;
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())

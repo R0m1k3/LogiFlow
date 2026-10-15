@@ -154,7 +154,11 @@ async fn create(State(state): State<AppState>, user: CurrentUser) -> ApiResult {
 
 /// backupService.createBackup : ligne « creating », pg_dump, puis taille et
 /// nombre de tables, et ménage des anciennes sauvegardes
-async fn create_backup(state: &AppState, kind: &str, created_by: &str) -> anyhow::Result<DatabaseBackupsRow> {
+pub(crate) async fn create_backup(
+    state: &AppState,
+    kind: &str,
+    created_by: &str,
+) -> anyhow::Result<DatabaseBackupsRow> {
     let now = Utc::now();
     let id = nanoid();
     let filename = backup_filename(kind, &now);

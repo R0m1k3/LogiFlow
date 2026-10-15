@@ -85,7 +85,7 @@ fn admin_only(user: &CurrentUser) -> Result<(), AppError> {
 }
 
 /// storage.getWeatherSettings : première ligne, sans tri
-async fn weather_settings(db: &PgPool) -> Result<Option<WeatherSettingsRow>, sqlx::Error> {
+pub(crate) async fn weather_settings(db: &PgPool) -> Result<Option<WeatherSettingsRow>, sqlx::Error> {
     sqlx::query_as(&WeatherSettingsRow::select("LIMIT 1"))
         .persistent(false)
         .fetch_optional(db)
@@ -210,7 +210,7 @@ async fn fetch_timeline(url: &str) -> Option<Value> {
 }
 
 /// testApiConnection : { success, message }
-async fn test_api_connection(api_key: &str, location: &str) -> (bool, String) {
+pub(crate) async fn test_api_connection(api_key: &str, location: &str) -> (bool, String) {
     const UNREACHABLE: &str = "Erreur de connexion à l'API météo";
     let url = timeline_url(location, None, api_key, false);
     let response = match CLIENT.get(url).send().await {

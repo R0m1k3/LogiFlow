@@ -59,6 +59,60 @@ async fn serve(root: &Path, path: &str, method: &Method, headers: &HeaderMap) ->
         .unwrap_or_else(|| (StatusCode::INTERNAL_SERVER_ERROR, "Error loading application").into_response())
 }
 
+/// Réponse 404 d'Express (finalhandler) pour une adresse qu'aucune route ne sert :
+/// « Cannot GET /chemin », sans la chaîne de requête, chemin encodé puis échappé
+pub fn express_not_found(method: &Method, path: &str) -> Response {
+    let resource = escape_html(&encode_url(path));
+    let body = format!(
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Error</title>\n</head>\n<body>\n<pre>Cannot {method} {resource}</pre>\n</body>\n</html>\n"
+    );
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "content-security-policy",
+        HeaderValue::from_static("default-src 'none'"),
+    );
+    headers.insert("x-content-type-options", HeaderValue::from_static("nosniff"));
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("text/html; charset=utf-8"),
+    );
+    if path.starts_with("/api") {
+        headers.insert(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("private, no-cache"),
+        );
+    }
+    (StatusCode::NOT_FOUND, headers, body).into_response()
+}
+
+/// Paquet encodeurl : encode ce qui n'est pas permis dans une adresse, sans
+/// réencoder les séquences %XX déjà présentes
+fn encode_url(path: &str) -> String {
+    let bytes = path.as_bytes();
+    let mut out = String::with_capacity(path.len());
+    for (i, &byte) in bytes.iter().enumerate() {
+        let allowed = byte.is_ascii_alphanumeric() || b"!#$&'()*+,-./:;=?@[]_~".contains(&byte);
+        let escape = byte == b'%'
+            && bytes.get(i + 1).is_some_and(u8::is_ascii_hexdigit)
+            && bytes.get(i + 2).is_some_and(u8::is_ascii_hexdigit);
+        if allowed || escape {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
+}
+
+/// Paquet escape-html
+fn escape_html(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
 /// Chemin relatif sûr : décodé, sans « .. », sans fichier caché (comme express.static)
 fn safe_relative(path: &str) -> Option<PathBuf> {
     let decoded = percent_decode(path)?;
@@ -205,6 +259,13 @@ mod tests {
             safe_relative("/assets/app.js"),
             Some(PathBuf::from("assets/app.js"))
         );
+    }
+
+    #[test]
+    fn page_404_d_express() {
+        assert_eq!(encode_url("/api/x y<é>"), "/api/x%20y%3C%C3%A9%3E");
+        assert_eq!(escape_html("/a&'b"), "/a&amp;&#39;b");
+        assert_eq!(encode_url("/déjà%20là"), "/d%C3%A9j%C3%A0%20l%C3%A0");
     }
 
     #[test]
