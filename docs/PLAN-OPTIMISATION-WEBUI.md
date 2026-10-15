@@ -415,6 +415,7 @@ Légende : **Gérer** = voir, créer, modifier, supprimer · **Voir** = consulta
 | Module | Admin | Directeur | Manager | Employé | Incohérences actuelles corrigées |
 |---|---|---|---|---|---|
 | Accueil | ✓ | ✓ | ✓ | ✓ | — |
+| Calendrier | Gérer | Gérer | Créer, modifier | Voir | case cliquable même sans droit (CAL-08) |
 | Tâches | Gérer | Gérer | Créer, modifier, terminer | Voir + terminer (D6) | « Supprimer » proposé aux managers sur PC, « Terminer » à tous sur mobile, serveur sans contrôle de rôle (TASKS-13, TASKS-26) |
 | DLC | Gérer | Gérer | Créer, modifier, retirer | Voir, ajouter + retirer du rayon (D7) | « Valider » proposé puis refusé en silence sur mobile (DLC-13) |
 | Commandes clients | Gérer | Gérer | Créer, modifier | Voir, créer + « client prévenu », « retirée » (D8) | serveur ne vérifie pas le rôle en modification (CMDCLI-07, CMDCLI-10) |
@@ -424,7 +425,6 @@ Légende : **Gérer** = voir, créer, modifier, supprimer · **Voir** = consulta
 | Rapprochement BL / factures | Gérer | Gérer sauf supprimer | **D3** — proposé : — | — | message de la page « managers », menu sans manager, serveur sans manager (RAPPRO-17) |
 | Avoirs | Gérer | Gérer | Voir, créer | **D2** — proposé : — | visible pour tous sur mobile, masqué sur PC (SHELL-11, AVOIRS-04) |
 | Échéancier | Voir | Voir | — | — | inaccessible sur mobile (SHELL-10) |
-| Calendrier | Gérer | Gérer | Créer, modifier | Voir | case cliquable même sans droit (CAL-08) |
 | Publicités | Gérer | Voir | Voir | Voir | « + » mobile sans action, visible pour tous (PUB-11) |
 | Contacts | Gérer | Gérer | Gérer | Voir | employé bloqué sans magasin (CONT-04), absent du mobile (CONT-09) |
 | Statistiques | Voir | Voir | Voir | **D4** — proposé : — | API ouverte à tous, sans filtre par magasin pour un bloc (ANA-05) |
