@@ -309,7 +309,7 @@ pub async fn verify_invoice_reference(
 }
 
 /// Clé d'objet JavaScript « indice de tableau » : rangée avant les autres, par ordre croissant
-fn array_index(key: &str) -> Option<u32> {
+pub fn array_index(key: &str) -> Option<u32> {
     let index: u32 = key.parse().ok()?;
     (index != u32::MAX && index.to_string() == key).then_some(index)
 }

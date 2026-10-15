@@ -151,6 +151,20 @@ pub fn node_pg_value(value: &Value) -> Value {
 /// db.insert(table).values(data).returning() : les champs absents prennent la
 /// valeur par défaut de la colonne
 pub async fn insert<T: Table>(db: &PgPool, data: &Parsed) -> Result<T, sqlx::Error> {
+    insert_with::<T>(db, data, false).await
+}
+
+/// Comme `insert`, mais les valeurs sont converties avant le calcul des valeurs
+/// par défaut, comme node-pg dont PostgreSQL lit les paramètres dès leur
+/// réception : une valeur refusée (date, nombre illisible) ne consomme pas de
+/// numéro de la séquence de l'identifiant, et la ligne créée ensuite a le même
+/// identifiant que sous Node. Une erreur d'exécution (clé étrangère) en consomme
+/// un, comme sous Node.
+pub async fn insert_values_first<T: Table>(db: &PgPool, data: &Parsed) -> Result<T, sqlx::Error> {
+    insert_with::<T>(db, data, true).await
+}
+
+async fn insert_with<T: Table>(db: &PgPool, data: &Parsed, values_first: bool) -> Result<T, sqlx::Error> {
     let mut columns = Vec::new();
     let mut placeholders = Vec::new();
     let mut arguments = PgArguments::default();
@@ -163,6 +177,22 @@ pub async fn insert<T: Table>(db: &PgPool, data: &Parsed) -> Result<T, sqlx::Err
     }
     let sql = if columns.is_empty() {
         format!("INSERT INTO {} DEFAULT VALUES RETURNING {}", T::TABLE, T::COLUMNS)
+    } else if values_first {
+        // CTE matérialisée : ses conversions s'exécutent avant la projection de
+        // l'insertion, où nextval() est appelé
+        let converted: Vec<String> = placeholders
+            .iter()
+            .zip(&columns)
+            .map(|(placeholder, column)| format!("{placeholder} AS {column}"))
+            .collect();
+        format!(
+            "WITH converted AS MATERIALIZED (SELECT {}) INSERT INTO {} ({}) SELECT {} FROM converted RETURNING {}",
+            converted.join(", "),
+            T::TABLE,
+            columns.join(", "),
+            columns.join(", "),
+            T::COLUMNS
+        )
     } else {
         format!(
             "INSERT INTO {} ({}) VALUES ({}) RETURNING {}",
