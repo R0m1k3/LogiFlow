@@ -6,7 +6,7 @@ import { pool } from './db.js';
 // Union de migrations/20260814_add_performance_indexes.sql, des index d'init.sql
 // et des index composites issus de l'audit base de données (DB-14, DB-15, DB-34,
 // DB-35, TASKS-29, SAV-27). Tables et colonnes conformes à shared/schema.ts.
-// Volontairement absents : IDX_session_expire (table sessions inutilisée),
+// Volontairement absents : IDX_session_expire (créé avec la table sessions),
 // pg_trgm, et l'index unique de user_groups (dédoublonnage préalable requis).
 type PerformanceIndex = { name: string; table: string; columns: string; where?: string };
 
@@ -393,6 +393,18 @@ export async function runProductionMigrations() {
       );
     `);
     console.log('✅ MIGRATION: external_api_keys table is present');
+
+    // Sessions de connexion (server/localAuth.ts), lues aussi par le serveur Rust
+    console.log('🔄 MIGRATION: Ensuring sessions table...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        sid VARCHAR PRIMARY KEY,
+        sess JSONB NOT NULL,
+        expire TIMESTAMP NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON sessions (expire);
+    `);
+    console.log('✅ MIGRATION: sessions table is present');
 
     // Chiffrement au repos des secrets encore stockés en clair
     // (mots de passe SMTP des magasins, jetons API NocoDB). Idempotent :

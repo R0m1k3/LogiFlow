@@ -1,0 +1,30 @@
+[package]
+name = "logiflow"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Serveur LogiFlow en Rust, placé devant le serveur Node (docs/PLAN-MIGRATION-RUST.md)"
+publish = false
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8", features = ["macros"] }
+base64 = "0.22"
+bytes = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }
+http-body-util = "0.1"
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "http1", "tokio"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.10"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "macros", "chrono", "rust_decimal", "json"] }
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["compression-gzip", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[profile.release]
+codegen-units = 4

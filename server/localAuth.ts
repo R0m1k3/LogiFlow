@@ -8,6 +8,7 @@ import { storage } from "./storage";
 import { User as SelectUser, type UserWithGroups } from "@shared/schema";
 import connectPg from "connect-pg-simple";
 import { backupService } from "./backupService";
+import { pool } from "./db";
 
 declare global {
   namespace Express {
@@ -93,16 +94,25 @@ export function setupLocalAuth(app: Express) {
   // Create admin user on startup
   createDefaultAdminUser();
   
-  console.log('🔧 Using memory session store for development');
+  // Sessions dans PostgreSQL (table sessions de shared/schema.ts, garantie par
+  // migrations.production.ts) : elles survivent aux redéploiements (AUTH-06) et
+  // le serveur Rust placé devant Node les lit (docs/PLAN-MIGRATION-RUST.md).
+  // Sans base, sessions en mémoire.
+  const PgStore = connectPg(session);
+  const store = pool
+    ? new PgStore({ pool, tableName: 'sessions' })
+    : undefined;
+  console.log(store ? '🔧 Sessions stored in PostgreSQL' : '🔧 Using memory session store (no database)');
 
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'fallback-secret-key',
+    store,
     resave: false,
     saveUninitialized: false,
-    // Using default memory store (no database needed)
     cookie: {
       httpOnly: true,
       secure: false, // Keep false for development
+      sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   };
