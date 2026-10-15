@@ -56,6 +56,74 @@ pub async fn find_by_id<T: Table>(db: &PgPool, id: i32) -> Result<Option<T>, sql
         .await
 }
 
+/// Lignes dont l'identifiant figure dans `ids` : seconde moitié d'une jointure
+/// (leftJoin de Drizzle), relue par identifiant pour garder les structures de schema.rs
+pub async fn find_by_ids<T: Table>(db: &PgPool, ids: &[i32]) -> Result<Vec<T>, sqlx::Error> {
+    sqlx::query_as::<_, T>(&T::select("WHERE id = ANY($1)"))
+        .bind(ids)
+        .fetch_all(db)
+        .await
+}
+
+/// Colonnes de la table préfixées par `alias` (requête avec jointures, où « id »
+/// serait ambigu)
+pub fn columns_of<T: Table>(alias: &str) -> String {
+    T::COLUMNS
+        .split(", ")
+        .map(|column| format!("{alias}.{column}"))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Objet de la requête passé tel quel à Drizzle, sans schéma zod
+/// (db.insert(t).values({ ...req.body }), db.update(t).set({ ...req.body })) :
+/// - les clés qui ne sont pas des colonnes sont ignorées ;
+/// - une colonne timestamp attend un Date (mapToDriverValue appelle toISOString) :
+///   toute valeur JSON autre que null lève une TypeError avant la requête, rendue ici
+///   en Err avec le message de JavaScript ;
+/// - jsonb : JSON.stringify ; autres colonnes : valeur préparée par node-pg.
+pub fn drizzle_values<T: Table>(data: &serde_json::Map<String, Value>) -> Result<Parsed, String> {
+    let mut parsed = Parsed::new();
+    for col in T::FIELDS {
+        let Some(value) = data.get(col.key) else {
+            continue;
+        };
+        let prepared = match (col.sql_type, value) {
+            (_, Value::Null) => Value::Null,
+            ("timestamp", _) => return Err("value.toISOString is not a function".into()),
+            ("jsonb", other) => Value::String(other.to_string()),
+            (_, other) => node_pg_value(other),
+        };
+        parsed.insert(col.key.to_string(), prepared);
+    }
+    Ok(parsed)
+}
+
+/// prepareValue de node-pg pour une valeur JSON : un tableau devient un littéral de
+/// tableau PostgreSQL ({"a","b"}), le reste part tel quel (pg_text)
+pub fn node_pg_value(value: &Value) -> Value {
+    match value {
+        Value::Array(items) => Value::String(pg_array_literal(items)),
+        other => other.clone(),
+    }
+}
+
+/// arrayString de node-pg
+fn pg_array_literal(items: &[Value]) -> String {
+    let elements: Vec<String> = items
+        .iter()
+        .map(|item| match item {
+            Value::Null => "NULL".to_string(),
+            Value::Array(nested) => pg_array_literal(nested),
+            other => {
+                let text = pg_text(other).unwrap_or_default();
+                format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\""))
+            }
+        })
+        .collect();
+    format!("{{{}}}", elements.join(","))
+}
+
 /// db.insert(table).values(data).returning() : les champs absents prennent la
 /// valeur par défaut de la colonne
 pub async fn insert<T: Table>(db: &PgPool, data: &Parsed) -> Result<T, sqlx::Error> {
@@ -129,4 +197,39 @@ pub async fn update_by_id<T: Table>(
 pub async fn delete_by_id<T: Table>(db: &PgPool, id: i32) -> Result<u64, sqlx::Error> {
     let sql = format!("DELETE FROM {} WHERE id = $1", T::TABLE);
     Ok(sqlx::query(&sql).bind(id).execute(db).await?.rows_affected())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::schema::CustomerOrdersRow;
+    use serde_json::json;
+
+    fn object(value: Value) -> serde_json::Map<String, Value> {
+        value.as_object().cloned().unwrap()
+    }
+
+    #[test]
+    fn corps_brut_comme_drizzle() {
+        let parsed = drizzle_values::<CustomerOrdersRow>(&object(json!({
+            "inconnu": 1, "notes": ["a", "b\"c", null], "quantity": "2", "notifiedAt": null, "groupId": 1
+        })))
+        .unwrap();
+        assert_eq!(
+            Value::Object(parsed),
+            json!({ "quantity": "2", "notifiedAt": null, "notes": r#"{"a","b\"c",NULL}"#, "groupId": 1 })
+        );
+    }
+
+    #[test]
+    fn horodatage_en_texte_refuse() {
+        let error =
+            drizzle_values::<CustomerOrdersRow>(&object(json!({ "createdAt": "2026-10-15" }))).unwrap_err();
+        assert_eq!(error, "value.toISOString is not a function");
+    }
+
+    #[test]
+    fn colonnes_prefixees() {
+        assert!(columns_of::<CustomerOrdersRow>("co").starts_with("co.\"id\", co.\"order_taker\""));
+    }
 }

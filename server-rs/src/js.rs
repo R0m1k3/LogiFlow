@@ -97,6 +97,18 @@ fn string_to_number(text: &str) -> f64 {
     unsigned.parse::<f64>().map(|n| sign * n).unwrap_or(f64::NAN)
 }
 
+/// Valeur « vraie » en JavaScript (`if (x)`, `x || défaut`, `Boolean(x)`) :
+/// fausse pour null, false, 0, NaN et la chaîne vide
+pub fn truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(flag) => *flag,
+        Value::Number(number) => number.as_f64().is_some_and(|n| n != 0.0 && !n.is_nan()),
+        Value::String(text) => !text.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
+    }
+}
+
 /// parseInt(texte, 10) : chiffres de tête, None si aucun (NaN)
 pub fn parse_int(text: &str) -> Option<f64> {
     let trimmed = text.trim_start();
@@ -220,6 +232,16 @@ mod tests {
         assert!(to_number(&json!({})).is_nan());
         assert_eq!(to_number(&json!("-3.5")), -3.5);
         assert_eq!(to_number(&json!(".5")), 0.5);
+    }
+
+    #[test]
+    fn verite_comme_javascript() {
+        for falsy in [json!(null), json!(false), json!(0), json!(0.0), json!("")] {
+            assert!(!truthy(&falsy), "{falsy}");
+        }
+        for truthy_value in [json!(true), json!(-1), json!("0"), json!([]), json!({})] {
+            assert!(truthy(&truthy_value), "{truthy_value}");
+        }
     }
 
     #[test]
