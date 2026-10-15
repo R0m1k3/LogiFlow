@@ -35,7 +35,7 @@ export interface NavItem {
 }
 
 export interface NavSection {
-  // Pas de titre pour l'entrée Accueil, affichée en tête
+  // Pas de titre pour les entrées Accueil et Calendrier, affichées en tête
   title?: string;
   items: NavItem[];
 }
@@ -44,6 +44,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       { path: "/", label: "Accueil", icon: House, roles: ALL_ROLES },
+      { path: "/calendar", label: "Calendrier", icon: CalendarDays, roles: ALL_ROLES },
     ],
   },
   {
@@ -68,7 +69,6 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: "Planning et infos",
     items: [
-      { path: "/calendar", label: "Calendrier", icon: CalendarDays, roles: ALL_ROLES },
       { path: "/publicities", label: "Publicités", icon: Megaphone, roles: ALL_ROLES },
       { path: "/contacts", label: "Contacts", icon: BookUser, roles: ALL_ROLES },
       { path: "/analytics", label: "Statistiques", icon: ChartLine, roles: ["admin", "directeur", "manager"] },
