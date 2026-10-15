@@ -14,7 +14,9 @@ const PASSWORD_HASH = {
 };
 
 // Session d'une connexion : identifiant et échéance propres à chaque passage
-const SESSION_IGNORE = ["sid", "expire", "expires"];
+// originalMaxAge : express-session le recalcule à la milliseconde près quand il
+// réenregistre une session (86399999 ou 86400000 selon l'instant)
+const SESSION_IGNORE = ["sid", "expire", "expires", "originalMaxAge"];
 
 const BROWSER_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 
