@@ -8,7 +8,7 @@
 
 **Le serveur Node a quitté le dépôt.** Le serveur Rust (`server-rs/`) est le seul serveur : il sert les 148 adresses de l'API et l'interface, applique les migrations au démarrage et lance les tâches de fond (sauvegarde automatique, purge des caches, compte `admin` par défaut). L'image Docker ne contient plus Node : un binaire statique, l'interface construite et `pg_dump`. Node ne sert plus qu'à construire l'interface (Vite) et à faire tourner le banc.
 
-**Vérification.** Le banc rejoue 2 025 requêtes (148 adresses, 5 comptes, sans session, clé d'API ; lectures et scénarios d'écriture avec l'état des tables et les appels aux services simulés) sur le serveur Node de référence — le dernier commit qui le contient, `REFERENCE_NODE_COMMIT` — et sur Rust seul : **0 écart**, hors les deux écarts déclarés ci-dessous. Il tourne dans la CI (`.github/workflows/rust.yml`), avec `cargo fmt`, `clippy -D warnings` et les tests unitaires.
+**Vérification.** Le banc rejoue 2 025 requêtes (148 adresses, 5 comptes, sans session, clé d'API ; lectures et scénarios d'écriture avec l'état des tables et les appels aux services simulés) sur le serveur Node de référence — le dernier commit qui le contient, `REFERENCE_NODE_COMMIT` — et sur Rust seul : **0 écart**, hors les écarts déclarés ci-dessous. Il tourne dans la CI (`.github/workflows/rust.yml`), avec `cargo fmt`, `clippy -D warnings` et les tests unitaires.
 
 **Écarts voulus** (déclarés au banc) :
 
@@ -16,6 +16,8 @@
 |---|---|
 | USERS-02 | L'empreinte du mot de passe n'est plus renvoyée après création ou modification d'un compte. |
 | RAPPRO-21 | L'envoi de facture n'appelle plus une adresse de webhook quelconque : seulement celle d'un magasin ou du webhook BAP actif (400 sinon). |
+| R4 | Requête d'écriture venue d'un autre site refusée (403). |
+| R5 | « Aujourd'hui » à l'heure de Paris : différent de Node seulement entre minuit et 1 h (2 h l'été), heure de Paris ; le banc le signale quand il tourne dans cette fenêtre. |
 
 Tout le reste, défauts compris, est reproduit à l'identique et signalé dans le code par l'identifiant de l'audit : c'est le point de départ des corrections, une par une, chacune déclarée au banc.
 
@@ -34,9 +36,9 @@ Tout le reste, défauts compris, est reproduit à l'identique et signalé dans l
 | R1 | Prise : le serveur seul, l'interface React reste. |
 | R2 | Sans objet : le portage s'est fait d'un bloc, sans gel prolongé. |
 | R3 | Rien n'a été retiré : toutes les adresses, y compris l'exécution de SQL et la réinitialisation d'urgence, sont portées à l'identique. La liste [Ce qu'on ne reporte pas](#ce-quon-ne-reporte-pas) reste à trancher, adresse par adresse. |
-| R4 | **Ouverte.** Le cookie est `SameSite=Lax` ; le contrôle de l'en-tête `Origin` n'est pas fait. |
-| R5 | **Ouverte.** « Aujourd'hui » et la sauvegarde de 2 h restent en UTC, comme Node. |
-| R6 | **Ouverte.** Le code Rust doit avoir un mainteneur et un relecteur désignés. |
+| R4 | **Faite.** Cookie `SameSite=Lax`, et toute requête `/api` qui n'est pas une lecture est refusée (403) si le navigateur indique qu'elle vient d'un autre site : `Sec-Fetch-Site`, à défaut `Origin` comparé à l'hôte de la requête (`Host` ou `X-Forwarded-Host`). Sans en-tête (n8n, curl) elle passe ; `/api/ext/` (clé d'API) n'est pas concerné ; `ALLOWED_ORIGINS` ajoute des origines. Code : `server-rs/src/origin.rs`. |
+| R5 | **Faite.** « Aujourd'hui » se calcule à Paris (`server-rs/src/clock.rs`) : produits DLC expirés ou proches, tâches à venir, météo du jour et de l'an dernier, année et mois par défaut des statistiques, numéro de ticket SAV, nom de l'export CSV, libellé des sauvegardes, et sauvegarde automatique à partir de 2 h, heure de Paris. Les instants enregistrés restent en UTC. |
+| R6 | **Faite.** Mainteneur et relecteur : @R0m1k3, propriétaire du dépôt (`.github/CODEOWNERS` : `server-rs/`, banc, schéma, droits, Docker, CI). Toute modification passe par une PR avec la CI verte (mise en forme, clippy, tests, banc). À activer dans les réglages GitHub : protection de `main` avec relecture des CODEOWNERS et vérifications obligatoires. Un second relecteur connaissant Rust reste souhaitable. |
 
 ## Résumé
 

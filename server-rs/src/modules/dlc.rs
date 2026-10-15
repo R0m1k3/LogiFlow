@@ -15,7 +15,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{Json, Router, routing::get, routing::post, routing::put};
-use chrono::{Days, NaiveDate, Utc};
+use chrono::{Days, NaiveDate};
 use serde_json::{Value, json};
 use sqlx::{Postgres, QueryBuilder};
 
@@ -48,7 +48,7 @@ const GROUP_DENIED: &str = "Access denied to this group's DLC products";
 
 /// Jour courant et J+15 (dates UTC, heure du serveur Node)
 fn today_and_alert() -> (NaiveDate, NaiveDate) {
-    let today = Utc::now().date_naive();
+    let today = crate::clock::today();
     (today, today + Days::new(15))
 }
 

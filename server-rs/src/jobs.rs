@@ -147,7 +147,8 @@ async fn check_automatic_backup(state: &AppState, last_done: &mut Option<String>
     if matches!(enabled, Some((Some(false),))) {
         return Ok(());
     }
-    let now = Utc::now();
+    // Une fois par jour, à partir de 2 h à Paris (décision R5)
+    let now = crate::clock::now();
     let today = now.format("%Y-%m-%d").to_string();
     if now.hour() < 2 || last_done.as_deref() == Some(today.as_str()) {
         return Ok(());
@@ -159,7 +160,7 @@ async fn check_automatic_backup(state: &AppState, last_done: &mut Option<String>
     .await?;
     let last_backup_day = last_backup
         .and_then(|(created,)| created)
-        .map(|c| c.format("%Y-%m-%d").to_string());
+        .map(|created| crate::clock::paris_date(created).format("%Y-%m-%d").to_string());
     if last_backup_day.as_deref() == Some(today.as_str()) {
         return Ok(());
     }

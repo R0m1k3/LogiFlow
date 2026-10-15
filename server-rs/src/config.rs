@@ -16,6 +16,9 @@ pub struct Config {
     /// Dossier des sauvegardes pg_dump, comme server/backupService.ts : BACKUP_DIR
     /// (à défaut /app/backups) en production, ./backups sinon
     pub backup_dir: PathBuf,
+    /// Origines autorisées en plus de l'hôte du serveur pour les requêtes
+    /// d'écriture (ALLOWED_ORIGINS, séparées par des virgules), voir origin.rs
+    pub allowed_origins: Vec<String>,
 }
 
 impl Config {
@@ -46,6 +49,12 @@ impl Config {
             encryption_key,
             environment,
             backup_dir,
+            allowed_origins: env::var("ALLOWED_ORIGINS")
+                .unwrap_or_default()
+                .split(',')
+                .map(|origin| origin.trim().trim_end_matches('/').to_ascii_lowercase())
+                .filter(|origin| !origin.is_empty())
+                .collect(),
         })
     }
 }

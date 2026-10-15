@@ -11,7 +11,7 @@ use tower_http::compression::predicate::{DefaultPredicate, Predicate, SizeAbove}
 use tower_http::trace::TraceLayer;
 
 use crate::modules::*;
-use crate::{AppState, express_routes, http, static_files};
+use crate::{AppState, express_routes, http, origin, static_files};
 
 // Même limite qu'express.json({ limit: '10mb' })
 const BODY_LIMIT: usize = 10 * 1024 * 1024;
@@ -60,6 +60,8 @@ pub fn build(state: AppState) -> Router {
     Router::new()
         .merge(api)
         .fallback(static_files::fallback)
+        // Requêtes d'écriture venues d'un autre site refusées (décision R4)
+        .layer(middleware::from_fn_with_state(state.clone(), origin::check))
         .layer(DefaultBodyLimit::max(BODY_LIMIT))
         // Comme compression() d'Express : gzip au-delà de 1 Ko
         .layer(

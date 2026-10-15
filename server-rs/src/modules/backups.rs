@@ -169,10 +169,13 @@ pub(crate) async fn create_backup(
     let mut row = Parsed::new();
     row.insert("id".into(), Value::String(id.clone()));
     row.insert("filename".into(), Value::String(filename.clone()));
-    // toLocaleDateString('fr-FR') : JJ/MM/AAAA (serveur en UTC)
+    // toLocaleDateString('fr-FR') : JJ/MM/AAAA, date de Paris (décision R5)
     row.insert(
         "description".into(),
-        Value::String(format!("{label} backup du {}", now.format("%d/%m/%Y"))),
+        Value::String(format!(
+            "{label} backup du {}",
+            now.with_timezone(&chrono_tz::Europe::Paris).format("%d/%m/%Y")
+        )),
     );
     row.insert("size".into(), json!(0));
     row.insert("createdBy".into(), Value::String(created_by.to_string()));

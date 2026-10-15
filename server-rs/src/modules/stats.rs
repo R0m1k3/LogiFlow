@@ -10,7 +10,7 @@
 use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::{Json, Router, routing::get};
-use chrono::{Datelike, Utc};
+use chrono::Datelike;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::PgPool;
@@ -296,11 +296,11 @@ async fn period_stats(
     })
 }
 
-/// year ? parseInt(year) : année en cours (heure du serveur, UTC)
+/// year ? parseInt(year) : année en cours à Paris (décision R5)
 fn year_param(query: &JsQuery) -> f64 {
     match query.truthy("year") {
         Some(year) => js::parse_int(year).unwrap_or(f64::NAN),
-        None => f64::from(Utc::now().year()),
+        None => f64::from(crate::clock::today().year()),
     }
 }
 
@@ -308,7 +308,7 @@ async fn monthly(State(state): State<AppState>, user: CurrentUser, query: JsQuer
     let year = year_param(&query);
     let month = match query.truthy("month") {
         Some(month) => js::parse_int(month).unwrap_or(f64::NAN),
-        None => f64::from(Utc::now().month()),
+        None => f64::from(crate::clock::today().month()),
     };
     let group_ids = monthly_group_ids(&user, query.truthy("storeId"));
     let stats = period_stats(&state.db, month_range(year, month), group_ids.as_ref(), false)

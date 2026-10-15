@@ -15,7 +15,7 @@ use std::time::Duration;
 use axum::extract::{Path, State};
 use axum::response::IntoResponse;
 use axum::{Json, Router, routing::get, routing::post, routing::put};
-use chrono::{Datelike, Duration as Days, NaiveDate, Utc};
+use chrono::{Datelike, Duration as Days, NaiveDate};
 use serde_json::{Map, Value, json};
 use sqlx::postgres::PgArguments;
 use sqlx::{Arguments, PgPool};
@@ -383,7 +383,7 @@ fn weather_icon(icon: Option<&Value>) -> Option<Value> {
 }
 
 /// getPreviousYearDate : même jour de la semaine, même semaine du mois, l'an
-/// dernier (heure locale du serveur = UTC)
+/// dernier (calculé sur la date du jour à Paris)
 fn previous_year_date(date: NaiveDate) -> NaiveDate {
     let (year, month) = (date.year() - 1, date.month());
     let weekday = date.weekday().num_days_from_sunday() as i64;
@@ -596,7 +596,7 @@ async fn current(State(state): State<AppState>, _user: CurrentUser) -> ApiResult
         .filter(|settings| settings.is_active)
         .ok_or_else(|| AppError::not_found("Weather service not configured or disabled"))?;
 
-    let today = Utc::now().date_naive();
+    let today = crate::clock::today();
     let today_text = today.format("%Y-%m-%d").to_string();
     let previous_text = previous_year_date(today).format("%Y-%m-%d").to_string();
     // Lectures du cache en parallèle (Promise.all)

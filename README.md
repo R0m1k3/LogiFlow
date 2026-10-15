@@ -179,6 +179,7 @@ SESSION_SECRET=…            # signe le cookie de session
 ENCRYPTION_KEY=…            # chiffre les secrets en base (repli : SESSION_SECRET)
 STATIC_DIR=dist/public      # interface construite par Vite
 BACKUP_DIR=/app/backups
+ALLOWED_ORIGINS=            # autres origines acceptées pour les écritures (facultatif)
 RUST_LOG=info
 ```
 

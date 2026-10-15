@@ -34,12 +34,10 @@ pub fn routes() -> Router<AppState> {
         .route("/api/tasks/{id}/complete", post(complete))
 }
 
-/// Minuit (UTC, heure du serveur Node) du jour courant : today.setHours(0, 0, 0, 0)
+/// Minuit du jour courant à Paris (décision R5), comparé aux dates de début
+/// enregistrées à minuit : today.setHours(0, 0, 0, 0)
 fn today_midnight() -> NaiveDateTime {
-    Utc::now()
-        .date_naive()
-        .and_hms_opt(0, 0, 0)
-        .expect("minuit existe")
+    crate::clock::today().and_hms_opt(0, 0, 0).expect("minuit existe")
 }
 
 async fn list(State(state): State<AppState>, user: CurrentUser, query: JsQuery) -> ApiResult {

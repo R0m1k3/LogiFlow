@@ -31,4 +31,36 @@ export const writes: WriteScenario[] = [
     ],
     tables: ["users"],
   },
+  // ---------- Requêtes d'écriture d'un autre site (décision R4) ----------
+  {
+    module: "socle",
+    name: "écriture d'un autre site refusée",
+    accounts: ["manager"],
+    steps: [
+      {
+        method: "POST",
+        path: "/api/logout",
+        headers: { origin: "https://site-tiers.example", "sec-fetch-site": "cross-site" },
+      },
+      { method: "POST", path: "/api/logout", headers: { origin: "null" } },
+      // La session est toujours ouverte côté Rust
+      { method: "GET", path: "/api/user" },
+    ],
+    tables: [],
+    deviation: {
+      fields: ["status", "headers", "body"],
+      reason:
+        "R4 : une requête /api qui n'est pas une lecture est refusée (403) quand le navigateur indique qu'elle vient d'un autre site (Sec-Fetch-Site, sinon Origin)",
+    },
+  },
+  {
+    module: "socle",
+    name: "écriture du même site acceptée",
+    accounts: ["manager"],
+    steps: [
+      { method: "POST", path: "/api/logout", headers: { "sec-fetch-site": "same-origin" } },
+      { method: "GET", path: "/api/user" },
+    ],
+    tables: [],
+  },
 ];

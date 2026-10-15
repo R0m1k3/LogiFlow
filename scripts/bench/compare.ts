@@ -366,6 +366,13 @@ function differences(a: unknown, b: unknown, where = ""): string[] {
 }
 
 async function main() {
+  // Décision R5 : Rust compte « aujourd'hui » à Paris, Node en UTC. Les deux
+  // dates diffèrent en fin de soirée (après 22 h ou 23 h UTC) : les écarts de
+  // date relevés alors sont attendus.
+  const parisDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Paris" }).format(new Date());
+  if (mode !== "node" && parisDay !== isoDay(0)) {
+    console.log(`Attention : il est déjà le ${parisDay} à Paris (${isoDay(0)} en UTC) ; écarts de date attendus (décision R5). Relancer après minuit UTC.`);
+  }
   console.log(`Banc : ${mode === "node" ? "Node contre Node" : "Node de référence contre Rust"}${only ? ` (modules : ${only.join(", ")})` : ""}`);
   console.log(`Journaux : ${WORK_DIR}`);
   const stopStub = await startStub();

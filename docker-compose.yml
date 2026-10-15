@@ -14,6 +14,8 @@ x-logiflow-env: &logiflow-env
   BACKUP_DIR: /app/backups
   # Clé(s) de l'API externe de rapprochement, lues depuis le .env de l'hôte (vide = API désactivée)
   EXTERNAL_API_KEYS: ${EXTERNAL_API_KEYS:-}
+  # Origines acceptées en plus de l'adresse du site pour les écritures (décision R4)
+  ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
 
 services:
   logiflow:

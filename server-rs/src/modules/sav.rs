@@ -19,7 +19,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{Json, Router, routing::get, routing::post};
-use chrono::{Datelike, Utc};
+use chrono::{Datelike, NaiveDate};
 use serde_json::{Value, json};
 use sqlx::{Postgres, QueryBuilder};
 
@@ -264,17 +264,18 @@ async fn create(State(state): State<AppState>, user: CurrentUser, JsonBody(body)
         return Err(AppError::forbidden("Access denied to the specified group"));
     }
 
-    // createSavTicket : tickets créés cette année (heure UTC du serveur Node)
-    let year = Utc::now().year();
-    let count: i64 = sqlx::query_scalar(
-        "SELECT count(*) FROM sav_tickets
-          WHERE created_at >= make_date($1::int, 1, 1) AND created_at < make_date($2::int, 1, 1)",
-    )
-    .bind(year)
-    .bind(year + 1)
-    .fetch_one(&state.db)
-    .await
-    .or_500(FAILED)?;
+    // createSavTicket : tickets créés cette année, année de Paris (décision R5) ;
+    // created_at est en UTC, d'où les bornes converties
+    let year = crate::clock::today().year();
+    let year_start =
+        |year: i32| crate::clock::start_of_day_utc(NaiveDate::from_ymd_opt(year, 1, 1).expect("1er janvier"));
+    let count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM sav_tickets WHERE created_at >= $1 AND created_at < $2")
+            .bind(year_start(year))
+            .bind(year_start(year + 1))
+            .fetch_one(&state.db)
+            .await
+            .or_500(FAILED)?;
     ticket.insert("ticketNumber".into(), json!(ticket_number(year, count)));
     let created: SavTicketsRow = db::insert(&state.db, &ticket).await.or_500(FAILED)?;
     Ok((StatusCode::CREATED, Json(created)).into_response())

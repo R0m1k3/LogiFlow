@@ -610,7 +610,10 @@ async fn export(State(state): State<AppState>, user: CurrentUser, query: JsQuery
     const FAILED: &str = "Failed to export analytics";
     let kind = query.truthy("type").unwrap_or("summary");
     let filters = Filters::read(&query).restrict_to(&user);
-    let filename = format!("analytics_{kind}_{}.csv", Utc::now().format("%Y-%m-%d"));
+    let filename = format!(
+        "analytics_{kind}_{}.csv",
+        crate::clock::today().format("%Y-%m-%d")
+    );
     let rows = match kind {
         "timeseries" => timeseries_rows(&state.db, &filters, "day").await,
         "suppliers" => supplier_rows(&state.db, &filters).await,

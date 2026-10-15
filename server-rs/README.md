@@ -20,6 +20,7 @@ Puis ouvrir http://localhost:3000. Pour travailler sur l'interface : `npm run de
 | `ENCRYPTION_KEY` | clé des secrets chiffrés en base (à défaut `SESSION_SECRET`) | — |
 | `BACKUP_DIR` | dossier des sauvegardes (`pg_dump` doit être installé) | `backups` |
 | `NODE_ENV` | renvoyé par `/api/health` | `production` |
+| `ALLOWED_ORIGINS` | origines acceptées en plus de l'hôte du serveur pour les requêtes d'écriture (`https://a.fr,https://b.fr`), voir `src/origin.rs` | — |
 | `RUST_LOG` | niveau des journaux (`info`, `debug`…) | `info` |
 
 Ne pas changer `SESSION_SECRET` ni `ENCRYPTION_KEY` d'une installation existante : les sessions ouvertes et les secrets déjà chiffrés (mot de passe SMTP, jeton NocoDB) deviendraient illisibles.
@@ -39,3 +40,11 @@ Puis le banc de comparaison avec le serveur Node de référence (`scripts/bench/
 - Socle : session et utilisateur (`auth.rs`), droits (`access.rs`, matrice de `shared/permissions.json`), validation au format zod (`zod.rs`), accès aux tables (`db.rs`), formats JSON de Node (`json.rs`, `js.rs`), secrets chiffrés (`crypto.rs`), erreurs (`error.rs`).
 - `src/schema.rs` est **généré** depuis `shared/schema.ts` : après un changement de schéma, `DATABASE_URL=… npm run gen:rust-schema`, et la migration correspondante dans `src/startup.rs`.
 - Ajouter ou modifier une adresse : `PORTAGE.md` (règles et outils du socle).
+
+## Maintenance (décision R6)
+
+- Mainteneur et relecteur : @R0m1k3 (`.github/CODEOWNERS`). Toute modification passe par une PR dont la CI est verte : `cargo fmt`, `clippy -D warnings`, tests, contrôle de type de l'interface et banc.
+- Dans les réglages GitHub du dépôt, protéger `main` : relecture des CODEOWNERS et vérifications « Serveur Rust » obligatoires.
+- Dépendances : `cargo update` puis banc complet, une fois par mois ; Rust stable, image `rust:1.97-alpine` montée en même temps.
+- Heure : « aujourd'hui » se calcule à Paris (`src/clock.rs`, décision R5) ; ne jamais utiliser `Utc::now().date_naive()` pour une date du jour.
+- Écritures d'un autre site refusées (`src/origin.rs`, décision R4) : un nouveau service qui appelle l'API depuis un navigateur sur une autre adresse se déclare dans `ALLOWED_ORIGINS`.
