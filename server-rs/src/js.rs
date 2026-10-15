@@ -112,6 +112,132 @@ pub fn parse_int(text: &str) -> Option<f64> {
     digits.parse::<f64>().ok().map(|n| sign * n)
 }
 
+/// Blancs retirés par String.prototype.trim() (WhiteSpace et LineTerminator) :
+/// U+FEFF en fait partie, U+0085 non, à l'inverse de str::trim
+fn is_js_whitespace(c: char) -> bool {
+    matches!(
+        c,
+        '\t' | '\n' | '\u{0B}' | '\u{0C}' | '\r' | ' ' | '\u{A0}' | '\u{1680}' | '\u{2000}'
+            ..='\u{200A}' | '\u{2028}' | '\u{2029}' | '\u{202F}' | '\u{205F}' | '\u{3000}' | '\u{FEFF}'
+    )
+}
+
+/// texte.trim()
+pub fn trim(text: &str) -> &str {
+    text.trim_matches(is_js_whitespace)
+}
+
+/// String(valeur) : texte tel quel, nombre sans « .0 », tableau joint par « , »,
+/// objet « [object Object] » (gabarits `${…}`, clés d'objet)
+pub fn to_js_string(value: &Value) -> String {
+    match value {
+        Value::Null => "null".into(),
+        Value::Bool(flag) => flag.to_string(),
+        Value::Number(number) => match number.as_f64() {
+            Some(float) => number_to_string(float),
+            None => number.to_string(),
+        },
+        Value::String(text) => text.clone(),
+        Value::Array(items) => items
+            .iter()
+            .map(|item| match item {
+                Value::Null => String::new(),
+                other => to_js_string(other),
+            })
+            .collect::<Vec<_>>()
+            .join(","),
+        Value::Object(_) => "[object Object]".into(),
+    }
+}
+
+/// parseFloat(texte) : plus long préfixe décimal après les blancs de tête, NaN sinon
+pub fn parse_float(text: &str) -> f64 {
+    let text = text.trim_start_matches(is_js_whitespace);
+    let (sign, unsigned) = match text.as_bytes().first() {
+        Some(b'-') => (-1.0, &text[1..]),
+        Some(b'+') => (1.0, &text[1..]),
+        _ => (1.0, text),
+    };
+    if unsigned.starts_with("Infinity") {
+        return sign * f64::INFINITY;
+    }
+    let bytes = unsigned.as_bytes();
+    let mut end = 0;
+    let mut digits = 0;
+    while end < bytes.len() && bytes[end].is_ascii_digit() {
+        end += 1;
+        digits += 1;
+    }
+    if end < bytes.len() && bytes[end] == b'.' {
+        let mut fraction_end = end + 1;
+        while fraction_end < bytes.len() && bytes[fraction_end].is_ascii_digit() {
+            fraction_end += 1;
+            digits += 1;
+        }
+        end = fraction_end;
+    }
+    if digits == 0 {
+        return f64::NAN;
+    }
+    // Exposant seulement s'il a au moins un chiffre (« 1e » vaut 1)
+    if end < bytes.len() && matches!(bytes[end], b'e' | b'E') {
+        let mut exponent_end = end + 1;
+        if exponent_end < bytes.len() && matches!(bytes[exponent_end], b'+' | b'-') {
+            exponent_end += 1;
+        }
+        let start = exponent_end;
+        while exponent_end < bytes.len() && bytes[exponent_end].is_ascii_digit() {
+            exponent_end += 1;
+        }
+        if exponent_end > start {
+            end = exponent_end;
+        }
+    }
+    unsigned[..end]
+        .parse::<f64>()
+        .map(|n| sign * n)
+        .unwrap_or(f64::NAN)
+}
+
+/// encodeURIComponent(texte) : tout sauf A-Z a-z 0-9 - _ . ! ~ * ' ( ) en %XX (UTF-8)
+pub fn encode_uri_component(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for byte in text.bytes() {
+        if byte.is_ascii_alphanumeric() || b"-_.!~*'()".contains(&byte) {
+            out.push(byte as char);
+        } else {
+            out.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    out
+}
+
+/// Buffer.from(texte, 'base64') : alphabets standard et « url » acceptés, autres
+/// caractères ignorés, lecture arrêtée au premier « = »
+pub fn buffer_from_base64(text: &str) -> Vec<u8> {
+    let mut out = Vec::with_capacity(text.len() * 3 / 4);
+    let (mut bits, mut count) = (0u32, 0u32);
+    for c in text.chars() {
+        let value = match c {
+            'A'..='Z' => c as u32 - 'A' as u32,
+            'a'..='z' => c as u32 - 'a' as u32 + 26,
+            '0'..='9' => c as u32 - '0' as u32 + 52,
+            '+' | '-' => 62,
+            '/' | '_' => 63,
+            '=' => break,
+            _ => continue,
+        };
+        bits = (bits << 6) | value;
+        count += 6;
+        if count >= 8 {
+            count -= 8;
+            out.push((bits >> count) as u8);
+            bits &= (1 << count) - 1;
+        }
+    }
+    out
+}
+
 /// Nombre JSON tel que JSON.stringify l'écrirait (entier sans « .0 »)
 pub fn number_value(number: f64) -> Value {
     if number.fract() == 0.0 && number.abs() <= 9_007_199_254_740_991.0 {
@@ -246,6 +372,57 @@ mod tests {
         );
         assert_eq!(iso(&new_date(&json!(null)).unwrap()), "1970-01-01T00:00:00.000Z");
         assert!(new_date(&json!("pas une date")).is_none());
+    }
+
+    #[test]
+    fn parse_float_comme_javascript() {
+        // Valeurs relevées avec parseFloat() dans Node 22
+        assert_eq!(parse_float("1250.5"), 1250.5);
+        assert_eq!(parse_float("  12.5abc"), 12.5);
+        assert_eq!(parse_float("1 234,56"), 1.0);
+        assert!(parse_float("abc").is_nan());
+        assert!(parse_float("").is_nan());
+        assert_eq!(parse_float(".5"), 0.5);
+        assert_eq!(parse_float("-Infinity x"), f64::NEG_INFINITY);
+        assert_eq!(parse_float("1e3"), 1000.0);
+        assert_eq!(parse_float("0x10"), 0.0);
+        assert_eq!(parse_float("1e"), 1.0);
+        assert_eq!(parse_float("+3."), 3.0);
+        assert_eq!(parse_float("1.2.3"), 1.2);
+        assert_eq!(parse_float("\u{a0} 7"), 7.0);
+    }
+
+    #[test]
+    fn chaines_comme_javascript() {
+        assert_eq!(trim(" \u{a0}\u{feff}x\u{85}"), "x\u{85}");
+        assert_eq!(to_js_string(&json!(1.0)), "1");
+        assert_eq!(to_js_string(&json!([1, null, "a"])), "1,,a");
+        assert_eq!(to_js_string(&json!({})), "[object Object]");
+        assert_eq!(
+            encode_uri_component("FAC 2001/é?&=#+()!*'~-_."),
+            "FAC%202001%2F%C3%A9%3F%26%3D%23%2B()!*'~-_."
+        );
+    }
+
+    #[test]
+    fn base64_comme_buffer_from() {
+        // Buffer.from(texte, 'base64').toString('hex') dans Node 22
+        let hex = |text: &str| {
+            buffer_from_base64(text)
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>()
+        };
+        assert_eq!(hex("ab!cd"), "69b71d");
+        assert_eq!(hex("QU JD"), "414243");
+        assert_eq!(hex("Q=UJD"), "");
+        assert_eq!(hex("QUJ=D"), "4142");
+        assert_eq!(hex("QU-_"), "414fbf");
+        assert_eq!(hex("QUJDRA==x"), "41424344");
+        assert_eq!(hex("Q\u{e9}UJD"), "414243");
+        assert_eq!(buffer_from_base64("JVBE Ri0x\nLjQ=").len(), 8);
+        assert_eq!(buffer_from_base64("a").len(), 0);
+        assert_eq!(buffer_from_base64("AA=A").len(), 1);
     }
 
     #[test]

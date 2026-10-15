@@ -72,6 +72,133 @@ function describeBody(contentType: string | undefined, raw: Buffer): unknown {
   return raw.toString("utf8");
 }
 
+// ---------- Courriels reçus : décodés pour comparer le contenu, pas l'encodage ----------
+// nodemailer et lettre n'encodent pas de la même façon (quoted-printable ou base64,
+// mots encodés RFC 2047, guillemets des noms) : on compare le texte décodé.
+
+// Octets d'un texte où =XX désigne un octet (quoted-printable, mots encodés « Q »)
+function decodeEscapes(text: string): Buffer {
+  const bytes: number[] = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "=" && /^[0-9A-Fa-f]{2}$/.test(text.slice(i + 1, i + 3))) {
+      bytes.push(parseInt(text.slice(i + 1, i + 3), 16));
+      i += 2;
+    } else {
+      bytes.push(...Buffer.from(text[i], "utf8"));
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+// =?utf-8?Q?…?= et =?utf-8?B?…?= ; blancs entre deux mots encodés ignorés
+function decodeWords(value: string): string {
+  return value
+    .replace(/(=\?[^?]+\?[bBqQ]\?[^?]*\?=)\s+(?==\?[^?]+\?[bBqQ]\?[^?]*\?=)/g, "$1")
+    .replace(/=\?([^?]+)\?([bBqQ])\?([^?]*)\?=/g, (_, _charset: string, encoding: string, text: string) =>
+      encoding.toUpperCase() === "B"
+        ? Buffer.from(text, "base64").toString("utf8")
+        : decodeEscapes(text.replace(/_/g, " ")).toString("utf8"));
+}
+
+// En-têtes dépliés, noms en minuscules (premier exemplaire de chaque)
+function parseHeaders(head: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const lines = head.split("\n");
+  const unfolded: string[] = [];
+  for (const line of lines) {
+    if (/^[ \t]/.test(line) && unfolded.length) unfolded[unfolded.length - 1] += line;
+    else unfolded.push(line);
+  }
+  for (const line of unfolded) {
+    const index = line.indexOf(":");
+    if (index <= 0) continue;
+    const name = line.slice(0, index).trim().toLowerCase();
+    if (!(name in headers)) headers[name] = line.slice(index + 1).trim();
+  }
+  return headers;
+}
+
+// « Nom <adresse> » sans guillemets ni encodage, séparés par « , »
+function normalizeAddresses(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  return decodeWords(value)
+    .split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)
+    .map((part) => {
+      const match = part.trim().match(/^(.*)<([^>]*)>$/);
+      if (!match) return part.trim();
+      const name = match[1].trim().replace(/^"(.*)"$/, "$1");
+      return name ? `${name} <${match[2].trim()}>` : match[2].trim();
+    })
+    .join(", ");
+}
+
+// Type et paramètres d'un en-tête Content-Type ou Content-Disposition
+function parseParams(value: string | undefined): { value: string; params: Record<string, string> } {
+  const [main, ...rest] = (value ?? "").split(";");
+  const params: Record<string, string> = {};
+  for (const part of rest) {
+    const index = part.indexOf("=");
+    if (index < 0) continue;
+    params[part.slice(0, index).trim().toLowerCase()] = part.slice(index + 1).trim().replace(/^"(.*)"$/, "$1");
+  }
+  return { value: main.trim().toLowerCase(), params };
+}
+
+function decodeTransfer(body: string, encoding: string | undefined): Buffer {
+  switch ((encoding ?? "7bit").toLowerCase()) {
+    case "base64":
+      return Buffer.from(body.replace(/\s/g, ""), "base64");
+    case "quoted-printable":
+      return decodeEscapes(body.replace(/=\n/g, ""));
+    default:
+      return Buffer.from(body, "utf8");
+  }
+}
+
+// Parties terminales du message, dans l'ordre, avec le chemin de leurs conteneurs
+function describeParts(head: Record<string, string>, body: string, path: string[]): unknown[] {
+  const type = parseParams(head["content-type"] ?? "text/plain");
+  if (type.value.startsWith("multipart/")) {
+    const boundary = type.params.boundary;
+    const sections = body.split(`--${boundary}`);
+    const parts: unknown[] = [];
+    // sections[0] : préambule ; la dernière commence par « -- » (fin)
+    for (const section of sections.slice(1)) {
+      if (section.startsWith("--")) break;
+      const content = section.replace(/^[^\n]*\n/, "").replace(/\n$/, "");
+      const index = content.indexOf("\n\n");
+      const partHead = parseHeaders(index < 0 ? content : content.slice(0, index));
+      const partBody = index < 0 ? "" : content.slice(index + 2);
+      parts.push(...describeParts(partHead, partBody, [...path, type.value]));
+    }
+    return parts;
+  }
+  const decoded = decodeTransfer(body, head["content-transfer-encoding"]);
+  const disposition = parseParams(head["content-disposition"]);
+  const part: Record<string, unknown> = { chemin: path.join(" > "), type: type.value };
+  if (type.params.charset) part.charset = type.params.charset.toLowerCase();
+  if (head["content-id"]) part.cid = head["content-id"];
+  if (disposition.value) part.disposition = disposition.value;
+  const filename = disposition.params.filename ?? type.params.name;
+  if (filename) part.fichier = decodeWords(filename);
+  if (type.value.startsWith("text/")) part.contenu = decoded.toString("utf8").replace(/\r\n/g, "\n");
+  else part.taille = decoded.length;
+  return [part];
+}
+
+function describeMail(message: string): Record<string, unknown> {
+  const index = message.indexOf("\n\n");
+  const headers = parseHeaders(index < 0 ? message : message.slice(0, index));
+  const body = index < 0 ? "" : message.slice(index + 2).replace(/\n$/, "");
+  return {
+    sujet: headers.subject === undefined ? undefined : decodeWords(headers.subject),
+    de: normalizeAddresses(headers.from),
+    a: normalizeAddresses(headers.to),
+    repondreA: normalizeAddresses(headers["reply-to"]),
+    parties: describeParts(headers, body, []),
+  };
+}
+
 export function startStub(): Promise<() => Promise<void>> {
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || "/", `http://127.0.0.1:${STUB_PORT}`);
@@ -123,11 +250,12 @@ export function startStub(): Promise<() => Promise<void>> {
         if (inData) {
           if (line === ".") {
             inData = false;
-            const subject = message.match(/^Subject: (.*)$/m)?.[1];
-            calls.push({ service: "smtp", body: { destinataires: recipients.slice(), sujet: subject } });
+            // Sujet, adresses et parties décodés (voir describeMail)
+            calls.push({ service: "smtp", body: { destinataires: recipients.slice(), ...describeMail(message) } });
             socket.write("250 2.0.0 message accepté\r\n");
           } else {
-            message += `${line}\n`;
+            // Point doublé en début de ligne (RFC 5321, 4.5.2)
+            message += `${line.startsWith("..") ? line.slice(1) : line}\n`;
           }
           continue;
         }
