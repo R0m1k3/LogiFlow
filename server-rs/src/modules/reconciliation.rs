@@ -1,9 +1,7 @@
 // Rapprochement BL / factures (server/routes.ts) : commentaires de rapprochement,
 // courriel de demande de documents au fournisseur et son historique, vérification
-// d'une facture dans NocoDB, diagnostic et marquage du cache des factures.
-//
-// Laissée à Node (décision R3, audit RAPPRO-21) : POST /api/reconciliation/send-invoice,
-// qui envoie le fichier reçu à une adresse de webhook fournie par le navigateur.
+// d'une facture dans NocoDB, diagnostic et marquage du cache des factures, envoi
+// d'une facture au webhook du magasin (send_invoice.rs, écart voulu RAPPRO-21).
 //
 // Défauts de Node reproduits :
 // - un commentaire modifié peut changer de livraison, de magasin ou d'auteur
@@ -39,6 +37,8 @@ use crate::services::mail::{self, MailDelivery, MailLog};
 use crate::services::nocodb::{self, truthy};
 use crate::zod::{Field, Object};
 
+mod send_invoice;
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
@@ -63,6 +63,10 @@ pub fn routes() -> Router<AppState> {
         .route("/api/cache/diagnosis", get(cache_diagnosis))
         .route("/api/cache/update-reconciled", post(cache_update_reconciled))
         .route("/api/cache/mark-reconciled", post(cache_mark_reconciled))
+        .route(
+            "/api/reconciliation/send-invoice",
+            post(send_invoice::send_invoice),
+        )
 }
 
 const COMMENT_TYPES: &[&str] = &["info", "warning", "error", "success"];

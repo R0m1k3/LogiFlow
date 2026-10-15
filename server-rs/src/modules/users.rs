@@ -281,7 +281,11 @@ async fn create(State(state): State<AppState>, user: CurrentUser, JsonBody(body)
 }
 
 /// storage.updateUser : UPDATE … SET …, updatedAt WHERE id (texte) RETURNING
-async fn update_user(db: &PgPool, id: &str, data: &Parsed) -> Result<Option<UsersRow>, sqlx::Error> {
+pub(crate) async fn update_user(
+    db: &PgPool,
+    id: &str,
+    data: &Parsed,
+) -> Result<Option<UsersRow>, sqlx::Error> {
     let mut sets = Vec::new();
     let mut arguments = PgArguments::default();
     for col in UsersRow::FIELDS {
