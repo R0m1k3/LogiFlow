@@ -15,6 +15,9 @@ pub struct Config {
     /// Clé de chiffrement des secrets (à défaut SESSION_SECRET), comme server/crypto.ts
     pub encryption_key: String,
     pub environment: String,
+    /// Dossier des sauvegardes pg_dump, comme server/backupService.ts : BACKUP_DIR
+    /// (à défaut /app/backups) en production, ./backups sinon
+    pub backup_dir: PathBuf,
 }
 
 impl Config {
@@ -25,6 +28,16 @@ impl Config {
             .filter(|key| !key.is_empty())
             .or_else(|| env::var("SESSION_SECRET").ok().filter(|key| !key.is_empty()))
             .unwrap_or_else(|| "logiflow-fallback-secret-key".into());
+        let environment = env::var("NODE_ENV").unwrap_or_else(|_| "production".into());
+        let backup_dir = if environment == "production" {
+            env::var("BACKUP_DIR")
+                .ok()
+                .filter(|dir| !dir.is_empty())
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("/app/backups"))
+        } else {
+            env::current_dir().unwrap_or_default().join("backups")
+        };
         Ok(Self {
             port: env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(3000),
             database_url: env::var("DATABASE_URL").map_err(|_| anyhow::anyhow!("DATABASE_URL manquant"))?,
@@ -37,7 +50,8 @@ impl Config {
                 .unwrap_or_else(|_| PathBuf::from("dist/public")),
             session_secret,
             encryption_key,
-            environment: env::var("NODE_ENV").unwrap_or_else(|_| "production".into()),
+            environment,
+            backup_dir,
         })
     }
 }
