@@ -22,7 +22,7 @@ pub struct AvoirsRow {
     pub group_id: i32,
     #[serde(rename = "invoiceReference")]
     pub invoice_reference: Option<String>,
-    #[serde(rename = "amount")]
+    #[serde(rename = "amount", serialize_with = "crate::json::numeric_opt::<2, _>")]
     pub amount: Option<Decimal>,
     #[serde(rename = "comment")]
     pub comment: Option<String>,
@@ -279,7 +279,7 @@ pub struct CustomerOrdersRow {
     pub supplier_id: i32,
     #[serde(rename = "status")]
     pub status: String,
-    #[serde(rename = "deposit")]
+    #[serde(rename = "deposit", serialize_with = "crate::json::numeric_opt::<2, _>")]
     pub deposit: Option<Decimal>,
     #[serde(rename = "isPromotionalPrice")]
     pub is_promotional_price: Option<bool>,
@@ -637,13 +637,16 @@ pub struct DeliveriesRow {
     pub notes: Option<String>,
     #[serde(rename = "blNumber")]
     pub bl_number: Option<String>,
-    #[serde(rename = "blAmount")]
+    #[serde(rename = "blAmount", serialize_with = "crate::json::numeric_opt::<2, _>")]
     pub bl_amount: Option<Decimal>,
     #[serde(rename = "invoiceReference")]
     pub invoice_reference: Option<String>,
-    #[serde(rename = "invoiceAmount")]
+    #[serde(rename = "invoiceAmount", serialize_with = "crate::json::numeric_opt::<2, _>")]
     pub invoice_amount: Option<Decimal>,
-    #[serde(rename = "invoiceAmountTTC")]
+    #[serde(
+        rename = "invoiceAmountTTC",
+        serialize_with = "crate::json::numeric_opt::<2, _>"
+    )]
     pub invoice_amount_ttc: Option<Decimal>,
     #[serde(rename = "dueDate", serialize_with = "crate::json::ts_opt")]
     pub due_date: Option<NaiveDateTime>,
@@ -1374,9 +1377,12 @@ pub struct InvoiceVerificationCacheRow {
     pub invoice_reference: String,
     #[serde(rename = "supplierName")]
     pub supplier_name: Option<String>,
-    #[serde(rename = "invoiceAmount")]
+    #[serde(rename = "invoiceAmount", serialize_with = "crate::json::numeric_opt::<2, _>")]
     pub invoice_amount: Option<Decimal>,
-    #[serde(rename = "invoiceAmountTTC")]
+    #[serde(
+        rename = "invoiceAmountTTC",
+        serialize_with = "crate::json::numeric_opt::<2, _>"
+    )]
     pub invoice_amount_ttc: Option<Decimal>,
     #[serde(rename = "dueDate", serialize_with = "crate::json::ts_opt")]
     pub due_date: Option<NaiveDateTime>,

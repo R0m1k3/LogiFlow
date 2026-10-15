@@ -29,6 +29,7 @@ interface ColumnInfo {
   notNull: boolean;
   hasDefault: boolean;
   length?: number;
+  scale?: number;
 }
 
 // Type SQL vers lequel le texte d'un paramètre est converti (comme node-pg, qui
@@ -145,6 +146,7 @@ async function main() {
       notNull: column.notNull,
       hasDefault: column.hasDefault,
       length: column.length,
+      scale: column.scale,
     }));
     tables.set(config.name, columns);
   }
@@ -178,6 +180,11 @@ async function main() {
       if (field !== column.name) attributes.push(`#[sqlx(rename = "${column.name}")]`);
       const serde = [`rename = "${column.jsKey}"`];
       if (base === "NaiveDateTime") serde.push(`serialize_with = "${nullable ? "crate::json::ts_opt" : "crate::json::ts"}"`);
+      if (base === "Decimal") {
+        // Échelle de la colonne : PostgreSQL rend "0.00", sqlx lit 0
+        if (typeof column.scale !== "number") throw new Error(`Échelle inconnue : ${table}.${column.name}`);
+        serde.push(`serialize_with = "${nullable ? "crate::json::numeric_opt" : "crate::json::numeric"}::<${column.scale}, _>"`);
+      }
       attributes.push(`#[serde(${serde.join(", ")})]`);
       for (const attribute of attributes) out.push(`    ${attribute}`);
       out.push(`    pub ${field}: ${type},`);

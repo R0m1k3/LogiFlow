@@ -2,9 +2,11 @@
 // jamais le logo ni la configuration SMTP d'un magasin, jamais l'empreinte d'un
 // mot de passe.
 
+use std::collections::HashMap;
+
 use chrono::NaiveDateTime;
 use serde::Serialize;
-use sqlx::FromRow;
+use sqlx::{FromRow, PgPool};
 
 /// groupSummaryColumns : { id, name, color }
 #[derive(Debug, Clone, Serialize, FromRow)]
@@ -18,6 +20,18 @@ impl GroupSummary {
     /// Colonnes à sélectionner, préfixées par l'alias de la table groups
     pub fn columns(alias: &str) -> String {
         format!("{alias}.id, {alias}.name, {alias}.color")
+    }
+
+    /// Résumés des magasins `ids`, par identifiant (seconde moitié d'un leftJoin(groups))
+    pub async fn by_ids(db: &PgPool, ids: &[i32]) -> Result<HashMap<i32, Self>, sqlx::Error> {
+        let rows: Vec<Self> = sqlx::query_as(&format!(
+            "SELECT {} FROM groups g WHERE g.id = ANY($1)",
+            Self::columns("g")
+        ))
+        .bind(ids)
+        .fetch_all(db)
+        .await?;
+        Ok(rows.into_iter().map(|group| (group.id, group)).collect())
     }
 }
 
@@ -58,6 +72,18 @@ pub struct UserSummary {
 impl UserSummary {
     pub fn columns(alias: &str) -> String {
         format!("{alias}.id, {alias}.first_name, {alias}.last_name, {alias}.username, {alias}.email")
+    }
+
+    /// Résumés des utilisateurs `ids`, par identifiant (seconde moitié d'un leftJoin(users))
+    pub async fn by_ids(db: &PgPool, ids: &[String]) -> Result<HashMap<String, Self>, sqlx::Error> {
+        let rows: Vec<Self> = sqlx::query_as(&format!(
+            "SELECT {} FROM users u WHERE u.id = ANY($1)",
+            Self::columns("u")
+        ))
+        .bind(ids)
+        .fetch_all(db)
+        .await?;
+        Ok(rows.into_iter().map(|user| (user.id.clone(), user)).collect())
     }
 }
 
