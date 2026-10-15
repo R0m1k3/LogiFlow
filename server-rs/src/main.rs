@@ -22,6 +22,7 @@ mod request;
 mod router;
 mod schema;
 mod services;
+mod startup;
 mod static_files;
 mod zod;
 
@@ -44,6 +45,8 @@ pub struct AppState {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
+        // Pas de couleurs dans les journaux Docker
+        .with_ansi(std::io::IsTerminal::is_terminal(&std::io::stdout()))
         .with_env_filter(EnvFilter::try_from_env("RUST_LOG").unwrap_or_else(|_| EnvFilter::new("info")))
         .init();
 

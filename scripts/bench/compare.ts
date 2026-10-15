@@ -21,7 +21,8 @@ import { ALL_ACCOUNTS, LOGGED_ACCOUNTS, type AccountKey, type ReadCase, type Ste
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const PG_ADMIN_URL = process.env.BENCH_PG_URL || "postgres://logiflow_admin:bench@localhost:5432";
-const RUST_BIN = process.env.RUST_BIN || path.join(ROOT, "server-rs/target/release/logiflow");
+// Chemin absolu : les serveurs sont lancés depuis BENCH_NODE_DIR
+const RUST_BIN = path.resolve(process.env.RUST_BIN || path.join(ROOT, "server-rs/target/release/logiflow"));
 // Dossier qui contient le serveur Node construit (dist/) : par défaut ce dépôt
 const NODE_DIR = process.env.BENCH_NODE_DIR || ROOT;
 const WORK_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "logiflow-banc-"));
