@@ -25,6 +25,13 @@ pub enum Kind {
     Enum(&'static [&'static str]),
     /// N'importe quelle valeur JSON (colonnes jsonb, z.any())
     Json,
+    /// z.union([…]) : options essayées dans l'ordre (leurs noms et leurs
+    /// .optional() / .nullable() ne servent pas : z.null() s'écrit Field::null)
+    Union(Vec<Field>),
+    /// z.literal(valeur)
+    Literal(Value),
+    /// z.null()
+    Null,
 }
 
 #[derive(Clone, Debug)]
@@ -35,6 +42,8 @@ enum Check {
     Min(f64, bool),
     Max(f64, bool),
     Int,
+    /// .min(n, "message") d'une chaîne
+    MinLenMessage(usize, String),
 }
 
 #[derive(Clone, Debug)]
@@ -79,6 +88,15 @@ impl Field {
     pub fn json(name: &str) -> Self {
         Self::new(name, Kind::Json)
     }
+    pub fn union(name: &str, options: Vec<Field>) -> Self {
+        Self::new(name, Kind::Union(options))
+    }
+    pub fn literal(name: &str, value: Value) -> Self {
+        Self::new(name, Kind::Literal(value))
+    }
+    pub fn null(name: &str) -> Self {
+        Self::new(name, Kind::Null)
+    }
     pub fn enumeration(name: &str, values: &'static [&'static str]) -> Self {
         Self::new(name, Kind::Enum(values))
     }
@@ -93,6 +111,12 @@ impl Field {
 
     pub fn min_len(mut self, length: usize) -> Self {
         self.checks.push(Check::MinLen(length));
+        self
+    }
+    /// .min(n, "message") : message choisi au lieu de celui de zod
+    pub fn min_len_message(mut self, length: usize, message: &str) -> Self {
+        self.checks
+            .push(Check::MinLenMessage(length, message.to_string()));
         self
     }
     pub fn max_len(mut self, length: usize) -> Self {
@@ -271,6 +295,23 @@ fn check_value(field: &Field, value: &Value, path: &[Value]) -> Result<Value, Ve
             _ => return Err(vec![invalid_type(&join_values(options), value, path)]),
         },
         Kind::Json => value.clone(),
+        Kind::Union(options) => return check_union(options, value, path),
+        Kind::Literal(expected) => {
+            if value != expected {
+                return Err(vec![json!({
+                    "received": value,
+                    "code": "invalid_literal",
+                    "expected": expected,
+                    "path": path,
+                    "message": format!("Invalid literal value, expected {expected}"),
+                })]);
+            }
+            value.clone()
+        }
+        Kind::Null => match value {
+            Value::Null => Value::Null,
+            _ => return Err(vec![invalid_type("null", value, path)]),
+        },
     };
 
     let mut issues = Vec::new();
@@ -346,6 +387,12 @@ fn check_value(field: &Field, value: &Value, path: &[Value]) -> Result<Value, Ve
                     }));
                 }
             }
+            (Check::MinLenMessage(min, message), Value::String(text)) if js::length(text) < *min => {
+                issues.push(json!({
+                    "code": "too_small", "minimum": min, "type": "string", "inclusive": true, "exact": false,
+                    "message": message, "path": path,
+                }));
+            }
             _ => {}
         }
     }
@@ -364,6 +411,57 @@ fn expected_name(kind: &Kind) -> String {
         Kind::Date | Kind::CoerceDate => "date".into(),
         Kind::Enum(options) => join_values(options),
         Kind::Json => "unknown".into(),
+        // Champ union ou littéral obligatoire et absent : aucun schéma porté n'en
+        // a (zod rendrait invalid_union / invalid_literal)
+        Kind::Union(_) => "union".into(),
+        Kind::Literal(value) => value.to_string(),
+        Kind::Null => "null".into(),
+    }
+}
+
+/// ZodUnion : la valeur de la première option valide ; sinon les erreurs de la
+/// première option du bon type dont un contrôle échoue (résultat « dirty » de
+/// zod) ; sinon invalid_union avec les erreurs de chaque option (ZodError
+/// sérialisée : { issues, name })
+fn check_union(options: &[Field], value: &Value, path: &[Value]) -> Result<Value, Vec<Value>> {
+    let mut dirty: Option<Vec<Value>> = None;
+    let mut union_errors = Vec::new();
+    for option in options {
+        match check_value(option, value, path) {
+            Ok(parsed) => return Ok(parsed),
+            Err(issues) => {
+                if dirty.is_none() && type_matches(&option.kind, value) {
+                    dirty = Some(issues.clone());
+                }
+                union_errors.push(json!({ "issues": issues, "name": "ZodError" }));
+            }
+        }
+    }
+    if let Some(issues) = dirty {
+        return Err(issues);
+    }
+    Err(vec![json!({
+        "code": "invalid_union",
+        "unionErrors": union_errors,
+        "path": path,
+        "message": "Invalid input",
+    })])
+}
+
+/// La valeur a-t-elle le type de l'option (seuls ses contrôles peuvent alors échouer) ?
+fn type_matches(kind: &Kind, value: &Value) -> bool {
+    match kind {
+        Kind::String => value.is_string(),
+        Kind::Number => value.is_number(),
+        Kind::CoerceNumber => !js::to_number(value).is_nan(),
+        Kind::Boolean => value.is_boolean(),
+        Kind::Date => false,
+        Kind::CoerceDate => js::new_date(value).is_some(),
+        Kind::Enum(options) => value.as_str().is_some_and(|text| options.contains(&text)),
+        Kind::Json => true,
+        Kind::Union(options) => options.iter().any(|option| type_matches(&option.kind, value)),
+        Kind::Literal(expected) => value == expected,
+        Kind::Null => value.is_null(),
     }
 }
 
@@ -514,6 +612,67 @@ mod tests {
         assert!(!is_email("paul@lactalis"));
         assert!(!is_email(".paul@x.fr"));
         assert!(!is_email("pa..ul@x.fr"));
+    }
+
+    // z.union([z.string().email(), z.literal(""), z.null()]).optional()
+    fn email_union() -> Object {
+        Object::new(vec![
+            Field::union(
+                "email",
+                vec![
+                    Field::string("").email(),
+                    Field::literal("", json!("")),
+                    Field::null(""),
+                ],
+            )
+            .optional(),
+        ])
+    }
+
+    #[test]
+    fn union_premiere_option_valide() {
+        for value in [json!("a@b.fr"), json!(""), json!(null)] {
+            let parsed = email_union().parse(&json!({ "email": value })).unwrap();
+            assert_eq!(parsed["email"], value);
+        }
+        assert!(email_union().parse(&json!({})).unwrap().is_empty());
+    }
+
+    #[test]
+    fn union_option_du_bon_type_en_erreur() {
+        // Le courriel invalide est une chaîne : seule l'erreur de format remonte
+        let issues = email_union()
+            .parse(&json!({ "email": "pas-un-courriel" }))
+            .unwrap_err();
+        assert_eq!(
+            issues,
+            vec![
+                json!({ "validation": "email", "code": "invalid_string", "message": "Invalid email", "path": ["email"] })
+            ]
+        );
+    }
+
+    #[test]
+    fn union_sans_option_possible() {
+        // Valeur rendue par Node (POST /api/users, { "email": 5 })
+        let issues = email_union().parse(&json!({ "email": 5 })).unwrap_err();
+        let node: Value = serde_json::from_str(
+            r#"[{"code":"invalid_union","unionErrors":[{"issues":[{"code":"invalid_type","expected":"string","received":"number","path":["email"],"message":"Expected string, received number"}],"name":"ZodError"},{"issues":[{"received":5,"code":"invalid_literal","expected":"","path":["email"],"message":"Invalid literal value, expected \"\""}],"name":"ZodError"},{"issues":[{"code":"invalid_type","expected":"null","received":"number","path":["email"],"message":"Expected null, received number"}],"name":"ZodError"}],"path":["email"],"message":"Invalid input"}]"#,
+        )
+        .unwrap();
+        assert_eq!(serde_json::to_string(&issues).unwrap(), node.to_string());
+    }
+
+    #[test]
+    fn longueur_minimale_avec_message() {
+        let schema = Object::new(vec![
+            Field::string("username").min_len_message(1, "L'identifiant est obligatoire"),
+        ]);
+        let issues = schema.parse(&json!({ "username": "" })).unwrap_err();
+        assert_eq!(
+            serde_json::to_string(&issues).unwrap(),
+            r#"[{"code":"too_small","minimum":1,"type":"string","inclusive":true,"exact":false,"message":"L'identifiant est obligatoire","path":["username"]}]"#
+        );
     }
 
     #[test]

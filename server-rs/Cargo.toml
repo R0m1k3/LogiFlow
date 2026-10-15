@@ -38,3 +38,17 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [profile.release]
 codegen-units = 4
+
+# Connexion (scrypt, N = 16384) : sans optimisation, une vérification de mot de
+# passe prend plusieurs secondes en mode debug (banc, développement)
+[profile.dev.package.scrypt]
+opt-level = 3
+
+[profile.dev.package.salsa20]
+opt-level = 3
+
+[profile.dev.package.pbkdf2]
+opt-level = 3
+
+[profile.dev.package.sha2]
+opt-level = 3
