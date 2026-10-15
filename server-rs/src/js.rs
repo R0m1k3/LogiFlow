@@ -130,6 +130,127 @@ pub fn number_to_string(number: f64) -> String {
     }
 }
 
+/// String(nombre) complet (Number.prototype.toString) : -0 → « 0 », notation
+/// exponentielle au-delà de 1e21 et en deçà de 1e-6, NaN et Infinity
+pub fn number_string(number: f64) -> String {
+    if number.is_nan() {
+        return "NaN".into();
+    }
+    if number.is_infinite() {
+        return if number > 0.0 { "Infinity" } else { "-Infinity" }.into();
+    }
+    if number == 0.0 {
+        return "0".into();
+    }
+    // Chiffres significatifs les plus courts et exposant, comme JavaScript
+    let scientific = format!("{:e}", number.abs());
+    let (mantissa, exponent) = scientific.split_once('e').unwrap_or((&scientific, "0"));
+    let digits: String = mantissa.chars().filter(char::is_ascii_digit).collect();
+    let k = digits.len() as i32;
+    let n = exponent.parse::<i32>().unwrap_or(0) + 1;
+    let body = if k <= n && n <= 21 {
+        format!("{digits}{}", "0".repeat((n - k) as usize))
+    } else if 0 < n && n <= 21 {
+        format!("{}.{}", &digits[..n as usize], &digits[n as usize..])
+    } else if -6 < n && n <= 0 {
+        format!("0.{}{digits}", "0".repeat((-n) as usize))
+    } else {
+        let sign = if n > 0 { '+' } else { '-' };
+        let (first, rest) = digits.split_at(1);
+        let fraction = if rest.is_empty() {
+            String::new()
+        } else {
+            format!(".{rest}")
+        };
+        format!("{first}{fraction}e{sign}{}", (n - 1).abs())
+    };
+    if number < 0.0 { format!("-{body}") } else { body }
+}
+
+/// String(valeur) d'une valeur JSON (gabarits `${…}`, Array.prototype.join)
+pub fn string_of(value: &Value) -> String {
+    match value {
+        Value::Null => "null".into(),
+        Value::Bool(flag) => flag.to_string(),
+        Value::Number(number) => number_string(number.as_f64().unwrap_or(f64::NAN)),
+        Value::String(text) => text.clone(),
+        // [a, null, b].join(',') : null vide
+        Value::Array(items) => items
+            .iter()
+            .map(|item| {
+                if item.is_null() {
+                    String::new()
+                } else {
+                    string_of(item)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(","),
+        Value::Object(_) => "[object Object]".into(),
+    }
+}
+
+/// Valeur « vraie » au sens de JavaScript (if (valeur), valeur || défaut)
+pub fn truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(flag) => *flag,
+        Value::Number(number) => number.as_f64().is_some_and(|n| n != 0.0 && !n.is_nan()),
+        Value::String(text) => !text.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
+    }
+}
+
+/// parseFloat(texte) : plus long préfixe décimal après les espaces de tête, NaN sinon
+pub fn parse_float(text: &str) -> f64 {
+    let trimmed = text.trim_start_matches(|c: char| c.is_whitespace() || c == '\u{feff}');
+    let bytes = trimmed.as_bytes();
+    let mut end = 0;
+    if matches!(bytes.first(), Some(b'+' | b'-')) {
+        end = 1;
+    }
+    if trimmed[end..].starts_with("Infinity") {
+        return if trimmed.starts_with('-') {
+            f64::NEG_INFINITY
+        } else {
+            f64::INFINITY
+        };
+    }
+    let digits_start = end;
+    while end < bytes.len() && bytes[end].is_ascii_digit() {
+        end += 1;
+    }
+    let mut digits = end - digits_start;
+    if end < bytes.len() && bytes[end] == b'.' {
+        let fraction_start = end + 1;
+        let mut fraction_end = fraction_start;
+        while fraction_end < bytes.len() && bytes[fraction_end].is_ascii_digit() {
+            fraction_end += 1;
+        }
+        digits += fraction_end - fraction_start;
+        if digits > 0 {
+            end = fraction_end;
+        }
+    }
+    if digits == 0 {
+        return f64::NAN;
+    }
+    if end < bytes.len() && matches!(bytes[end], b'e' | b'E') {
+        let mut exponent_end = end + 1;
+        if matches!(bytes.get(exponent_end), Some(b'+' | b'-')) {
+            exponent_end += 1;
+        }
+        let exponent_digits = exponent_end;
+        while exponent_end < bytes.len() && bytes[exponent_end].is_ascii_digit() {
+            exponent_end += 1;
+        }
+        if exponent_end > exponent_digits {
+            end = exponent_end;
+        }
+    }
+    trimmed[..end].parse::<f64>().unwrap_or(f64::NAN)
+}
+
 /// Longueur d'une chaîne en JavaScript (unités UTF-16)
 pub fn length(text: &str) -> usize {
     text.encode_utf16().count()
@@ -246,6 +367,54 @@ mod tests {
         );
         assert_eq!(iso(&new_date(&json!(null)).unwrap()), "1970-01-01T00:00:00.000Z");
         assert!(new_date(&json!("pas une date")).is_none());
+    }
+
+    #[test]
+    fn string_de_nombres_comme_javascript() {
+        // Valeurs de String(n) dans Node
+        for (number, expected) in [
+            (0.0, "0"),
+            (-0.0, "0"),
+            (2026.0, "2026"),
+            (-3.0, "-3"),
+            (18.3, "18.3"),
+            (0.1 + 0.2, "0.30000000000000004"),
+            (1.2291666666666667, "1.2291666666666667"),
+            (123456789012345680000.0, "123456789012345680000"),
+            (1e21, "1e+21"),
+            (1.5e300, "1.5e+300"),
+            (0.000001, "0.000001"),
+            (1e-7, "1e-7"),
+            (-2.5e-8, "-2.5e-8"),
+            (f64::NAN, "NaN"),
+            (f64::NEG_INFINITY, "-Infinity"),
+        ] {
+            assert_eq!(number_string(number), expected, "{number}");
+        }
+    }
+
+    #[test]
+    fn string_et_verite_des_valeurs_json() {
+        assert_eq!(string_of(&json!([1, null, "a", [2, 3]])), "1,,a,2,3");
+        assert_eq!(string_of(&json!({ "a": 1 })), "[object Object]");
+        assert_eq!(string_of(&json!(null)), "null");
+        assert_eq!(string_of(&json!(48.5)), "48.5");
+        assert!(!truthy(&json!(0)) && !truthy(&json!("")) && !truthy(&json!(null)));
+        assert!(truthy(&json!("0")) && truthy(&json!([])) && truthy(&json!({})));
+    }
+
+    #[test]
+    fn parse_float_comme_javascript() {
+        assert_eq!(parse_float("18.3"), 18.3);
+        assert_eq!(parse_float("  -2.50abc"), -2.5);
+        assert_eq!(parse_float(".5"), 0.5);
+        assert_eq!(parse_float("5."), 5.0);
+        assert_eq!(parse_float("1e3x"), 1000.0);
+        assert_eq!(parse_float("1e"), 1.0);
+        assert_eq!(parse_float("-Infinityx"), f64::NEG_INFINITY);
+        assert!(parse_float("abc").is_nan());
+        assert!(parse_float(".").is_nan());
+        assert!(parse_float("").is_nan());
     }
 
     #[test]
