@@ -65,6 +65,21 @@ RUN npx esbuild server/index.production.ts \
     --external:nodemailer \
     --external:compression
 
+# Serveur Rust placé devant Node (docs/PLAN-MIGRATION-RUST.md) : binaire
+# statique (musl) pour l'image Alpine
+FROM rust:1.97-alpine AS rust-build
+RUN apk add --no-cache musl-dev
+WORKDIR /build
+# Dépendances d'abord : couche en cache tant que Cargo.lock ne change pas
+COPY server-rs/Cargo.toml server-rs/Cargo.lock ./server-rs/
+RUN mkdir -p server-rs/src && echo "fn main() {}" > server-rs/src/main.rs && \
+    cargo build --release --locked --manifest-path server-rs/Cargo.toml && \
+    rm -rf server-rs/src
+COPY server-rs/src ./server-rs/src
+COPY shared/permissions.json ./shared/permissions.json
+RUN touch server-rs/src/main.rs && \
+    cargo build --release --locked --manifest-path server-rs/Cargo.toml
+
 # Production stage
 FROM node:20-alpine AS production
 
@@ -82,6 +97,11 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built application from build stage
 COPY --from=build --chown=nextjs:nodejs /app/dist ./dist
 COPY --from=build --chown=nextjs:nodejs /app/shared ./shared
+
+# Serveur Rust : lancé par le service logiflow de docker-compose.yml, devant le
+# serveur Node (service logiflow-node)
+COPY --from=rust-build /build/server-rs/target/release/logiflow /app/bin/logiflow
+ENV STATIC_DIR=/app/dist/public
 
 # Copy migration scripts and files
 COPY --chown=nextjs:nodejs scripts/ ./scripts/

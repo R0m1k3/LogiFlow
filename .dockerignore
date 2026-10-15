@@ -94,3 +94,5 @@ ssl/
 # Backup files
 *.bak
 *.backup
+# Compilation Rust locale (le binaire est construit dans l'image)
+server-rs/target/

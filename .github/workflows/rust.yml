@@ -1,0 +1,70 @@
+name: Serveur Rust
+
+# Contrôles du serveur Rust et banc de comparaison avec Node
+# (docs/PLAN-MIGRATION-RUST.md, scripts/bench/README.md)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server-rs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server-rs
+      - name: Mise en forme
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Tests
+        run: cargo test --locked
+
+  bench:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: logiflow_admin
+          POSTGRES_PASSWORD: bench
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U logiflow_admin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      BENCH_PG_URL: postgres://logiflow_admin:bench@localhost:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server-rs
+      - name: Dépendances
+        run: npm ci
+      - name: Interface et serveur Node (comme l'image Docker)
+        run: scripts/bench/build-node.sh
+      - name: Serveur Rust
+        run: cargo build --release --locked --manifest-path server-rs/Cargo.toml
+      - name: Base modèle du banc
+        run: scripts/bench/setup.sh
+      - name: Banc Node contre Rust
+        run: npx tsx scripts/bench/compare.ts
