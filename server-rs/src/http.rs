@@ -1,5 +1,6 @@
 // En-têtes des réponses de l'API servies par Rust, identiques à celles d'Express :
-// - Cache-Control: private, no-cache (server/routes.ts, middleware /api) ;
+// - Cache-Control: private, no-cache (server/routes.ts, middleware /api), sauf
+//   sous /api/ext/v1 (API externe, enregistrée avant ce middleware) ;
 // - JSON en « application/json; charset=utf-8 » ;
 // - ETag faible calculé sur le corps (paquet etag d'Express) et 304 si le
 //   navigateur a déjà la même réponse.
@@ -18,13 +19,16 @@ const ETAG_MAX_BODY: usize = 50 * 1024 * 1024;
 pub async fn api_response_headers(request: Request, next: Next) -> Response {
     let method = request.method().clone();
     let request_headers = request.headers().clone();
+    let external_api = is_external_api(request.uri().path());
     let response = next.run(request).await;
     let (mut parts, body) = response.into_parts();
 
-    parts
-        .headers
-        .entry(header::CACHE_CONTROL)
-        .or_insert(HeaderValue::from_static("private, no-cache"));
+    if !external_api {
+        parts
+            .headers
+            .entry(header::CACHE_CONTROL)
+            .or_insert(HeaderValue::from_static("private, no-cache"));
+    }
     if parts
         .headers
         .get(header::CONTENT_TYPE)
@@ -62,6 +66,14 @@ pub async fn api_response_headers(request: Request, next: Next) -> Response {
         return Response::from_parts(parts, Body::empty());
     }
     Response::from_parts(parts, Body::from(bytes))
+}
+
+/// Adresse de l'API externe (/api/ext/v1…) : Node l'enregistre avant son
+/// middleware /api, ses réponses n'ont donc pas de Cache-Control
+fn is_external_api(path: &str) -> bool {
+    let prefix = crate::modules::external_api::EXTERNAL_API_PREFIX;
+    path.strip_prefix(prefix)
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with('/'))
 }
 
 /// W/"<taille en hexadécimal>-<SHA-1 base64, 27 caractères>", comme etag(body, { weak: true })
