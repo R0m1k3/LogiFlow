@@ -1,0 +1,10 @@
+# Décision R6 (docs/PLAN-MIGRATION-RUST.md) : le serveur Rust, le banc qui le
+# vérifie et les fichiers dont il dépend sont relus par leur mainteneur.
+/server-rs/                 @R0m1k3
+/scripts/bench/             @R0m1k3
+/scripts/gen-rust-schema.ts @R0m1k3
+/shared/schema.ts           @R0m1k3
+/shared/permissions.json    @R0m1k3
+/Dockerfile                 @R0m1k3
+/docker-compose.yml         @R0m1k3
+/.github/workflows/         @R0m1k3

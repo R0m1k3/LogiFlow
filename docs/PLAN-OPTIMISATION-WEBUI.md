@@ -380,17 +380,17 @@ Aujourd'hui : 19 entrées en 5 sections pour un admin, dont une section d'une se
 | Section | Ordre | Libellé exact | Icône (lucide) | Adresse | Libellé actuel PC / mobile |
 |---|---|---|---|---|---|
 | *(en tête, sans titre)* | 1 | Accueil | `Home` | `/` | Tableau de bord / Accueil |
-| **Au quotidien** | 2 | Tâches | `ListTodo` | `/tasks` | Tâches (icône `CheckSquare` sur mobile) |
-| | 3 | DLC | `CalendarClock` | `/dlc` | Gestion DLC / DLC |
-| | 4 | Commandes clients | `ShoppingCart` | `/customer-orders` | Commandes Client / Cmd Client |
-| | 5 | SAV | `Wrench` | `/sav` | SAV |
-| **Fournisseurs** | 6 | Commandes fournisseurs | `Package` | `/orders` | Commandes |
-| | 7 | Livraisons | `Truck` | `/deliveries` | Livraisons |
-| | 8 | Rapprochement BL / factures | `FileCheck` | `/bl-reconciliation` | Rapprochement (absent du mobile) |
-| | 9 | Avoirs | `Receipt` | `/avoirs` | Avoirs |
-| | 10 | Échéancier | `CreditCard` | `/payment-schedule` | Échéance (absent du mobile) |
-| **Planning et infos** | 11 | Calendrier | `CalendarDays` | `/calendar` | Calendrier (« Agenda » sur l'accueil mobile, DASH-31) |
-| | 12 | Publicités | `Megaphone` | `/publicities` | Publicités |
+| | 2 | Calendrier | `CalendarDays` | `/calendar` | Calendrier (« Agenda » sur l'accueil mobile, DASH-31) |
+| **Au quotidien** | 3 | Tâches | `ListTodo` | `/tasks` | Tâches (icône `CheckSquare` sur mobile) |
+| | 4 | DLC | `CalendarClock` | `/dlc` | Gestion DLC / DLC |
+| | 5 | Commandes clients | `ShoppingCart` | `/customer-orders` | Commandes Client / Cmd Client |
+| | 6 | SAV | `Wrench` | `/sav` | SAV |
+| **Fournisseurs** | 7 | Commandes fournisseurs | `Package` | `/orders` | Commandes |
+| | 8 | Livraisons | `Truck` | `/deliveries` | Livraisons |
+| | 9 | Rapprochement BL / factures | `FileCheck` | `/bl-reconciliation` | Rapprochement (absent du mobile) |
+| | 10 | Avoirs | `Receipt` | `/avoirs` | Avoirs |
+| | 11 | Échéancier | `CreditCard` | `/payment-schedule` | Échéance (absent du mobile) |
+| **Planning et infos** | 12 | Publicités | `Megaphone` | `/publicities` | Publicités |
 | | 13 | Contacts | `BookUser` | `/contacts` | Contacts (absent du mobile, CONT-09) |
 | | 14 | Statistiques | `LineChart` | `/analytics` | Statistiques (icône `BarChart3` en double ; titre de page « Tableau de bord Analytics », ANA-15) |
 | **Administration** | 15 | Utilisateurs | `UserCog` | `/users` | Utilisateurs |
@@ -400,6 +400,7 @@ Aujourd'hui : 19 entrées en 5 sections pour un admin, dont une section d'une se
 
 Règles associées :
 
+- **Accueil et Calendrier en tête du menu**, les deux pages consultées le plus souvent, avant les sections (décision du 15 octobre 2026).
 - **Chaque icône n'apparaît qu'une fois dans le menu.** `Store` sert aujourd'hui de logo dans l'en-tête du menu (Sidebar.tsx:400) : le logo passe à une autre icône (ex. `Boxes`) ou à une image, pour que `Store` désigne uniquement « Magasins ». (SHELL-12)
 - **Titres de section** en casse normale, 12 px semi-gras, sans majuscules forcées (aujourd'hui `text-[11px] uppercase tracking-widest`, SHELL-22).
 - **Les adresses ne changent pas** (liens existants, favoris). `/` et `/dashboard` activent tous deux « Accueil » (SHELL-13).
@@ -414,6 +415,7 @@ Légende : **Gérer** = voir, créer, modifier, supprimer · **Voir** = consulta
 | Module | Admin | Directeur | Manager | Employé | Incohérences actuelles corrigées |
 |---|---|---|---|---|---|
 | Accueil | ✓ | ✓ | ✓ | ✓ | — |
+| Calendrier | Gérer | Gérer | Créer, modifier | Voir | case cliquable même sans droit (CAL-08) |
 | Tâches | Gérer | Gérer | Créer, modifier, terminer | Voir + terminer (D6) | « Supprimer » proposé aux managers sur PC, « Terminer » à tous sur mobile, serveur sans contrôle de rôle (TASKS-13, TASKS-26) |
 | DLC | Gérer | Gérer | Créer, modifier, retirer | Voir, ajouter + retirer du rayon (D7) | « Valider » proposé puis refusé en silence sur mobile (DLC-13) |
 | Commandes clients | Gérer | Gérer | Créer, modifier | Voir, créer + « client prévenu », « retirée » (D8) | serveur ne vérifie pas le rôle en modification (CMDCLI-07, CMDCLI-10) |
@@ -423,7 +425,6 @@ Légende : **Gérer** = voir, créer, modifier, supprimer · **Voir** = consulta
 | Rapprochement BL / factures | Gérer | Gérer sauf supprimer | **D3** — proposé : — | — | message de la page « managers », menu sans manager, serveur sans manager (RAPPRO-17) |
 | Avoirs | Gérer | Gérer | Voir, créer | **D2** — proposé : — | visible pour tous sur mobile, masqué sur PC (SHELL-11, AVOIRS-04) |
 | Échéancier | Voir | Voir | — | — | inaccessible sur mobile (SHELL-10) |
-| Calendrier | Gérer | Gérer | Créer, modifier | Voir | case cliquable même sans droit (CAL-08) |
 | Publicités | Gérer | Voir | Voir | Voir | « + » mobile sans action, visible pour tous (PUB-11) |
 | Contacts | Gérer | Gérer | Gérer | Voir | employé bloqué sans magasin (CONT-04), absent du mobile (CONT-09) |
 | Statistiques | Voir | Voir | Voir | **D4** — proposé : — | API ouverte à tous, sans filtre par magasin pour un bloc (ANA-05) |

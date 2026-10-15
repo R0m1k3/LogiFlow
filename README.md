@@ -44,8 +44,8 @@ Une plateforme d'entreprise moderne pour la gestion logistique, le suivi des liv
 ## 🚀 Installation et Configuration
 
 ### Prérequis
-- Node.js 18+ 
-- PostgreSQL 13+
+- Rust stable (serveur) et Node.js 20+ (construction de l'interface uniquement)
+- PostgreSQL 13+ et `pg_dump` (sauvegardes)
 - Clé API Visual Crossing (gratuite sur [visualcrossing.com](https://www.visualcrossing.com/))
 
 ### Installation
@@ -61,12 +61,17 @@ npm install
 cp .env.example .env
 # Éditer .env avec vos paramètres de base de données
 
-# Initialiser la base de données
-npm run db:push
+# Démarrer le serveur (API, migrations au démarrage) sur le port 3000
+npm run dev:server
 
-# Démarrer l'application
+# Dans un autre terminal : l'interface avec rechargement à chaud (Vite),
+# qui relaie /api vers le serveur
 npm run dev
 ```
+
+En production : `npm run build` (interface dans `dist/public`, binaire dans
+`server-rs/target/release/logiflow`) puis `npm start`, ou l'image Docker
+(`docker compose up -d`).
 
 ### Configuration de l'API Météo
 1. Créez un compte gratuit sur [Visual Crossing](https://www.visualcrossing.com/)
@@ -122,11 +127,9 @@ npm run dev
 - **Wouter** : Routage léger et performant
 
 ### Backend
-- **Node.js** : Runtime JavaScript haute performance
-- **Express** : Framework web minimaliste
-- **TypeScript** : Développement sécurisé côté serveur
-- **Drizzle ORM** : ORM moderne et type-safe
-- **Zod** : Validation de schémas robuste
+- **Rust** (axum, tokio, sqlx) : serveur unique, binaire statique (voir `server-rs/README.md`)
+- **Schéma** : `shared/schema.ts` (Drizzle) reste la source, d'où est généré `server-rs/src/schema.rs`
+- **Zod** : validation côté interface ; mêmes règles et mêmes messages côté serveur
 
 ### Base de Données
 - **PostgreSQL** : Base de données relationnelle performante
@@ -146,13 +149,16 @@ npm run dev
 │   │   ├── pages/         # Pages de l'application
 │   │   ├── lib/           # Utilitaires et configuration
 │   │   └── hooks/         # Hooks React personnalisés
-├── server/                # Backend Express
-│   ├── routes.ts          # Définition des routes API
-│   ├── storage.ts         # Interface de stockage
-│   ├── weatherService.ts  # Service météorologique
-│   └── index.ts          # Point d'entrée du serveur
+├── server-rs/             # Serveur Rust (API, interface, migrations, tâches de fond)
+│   └── src/
+│       ├── router.rs      # Table des adresses de l'API
+│       ├── modules/       # Une famille de routes par fichier
+│       ├── startup.rs     # Migrations au démarrage
+│       └── jobs.rs        # Sauvegardes automatiques, purge des caches
 ├── shared/                # Code partagé
-│   └── schema.ts         # Schémas de base de données
+│   ├── schema.ts         # Schémas de base de données (source de schema.rs)
+│   └── permissions.json  # Matrice des droits (interface et serveur)
+├── scripts/bench/         # Banc de comparaison avec l'ancien serveur Node
 ├── migrations/           # Migrations de base de données
 └── backups/             # Dossier des sauvegardes
 ```
@@ -168,8 +174,13 @@ DATABASE_URL=postgresql://user:password@localhost:5432/dbname
 VISUAL_CROSSING_API_KEY=votre_clé_api_ici
 
 # Application
-NODE_ENV=production
 PORT=3000
+SESSION_SECRET=…            # signe le cookie de session
+ENCRYPTION_KEY=…            # chiffre les secrets en base (repli : SESSION_SECRET)
+STATIC_DIR=dist/public      # interface construite par Vite
+BACKUP_DIR=/app/backups
+ALLOWED_ORIGINS=            # autres origines acceptées pour les écritures (facultatif)
+RUST_LOG=info
 ```
 
 ### Personnalisation

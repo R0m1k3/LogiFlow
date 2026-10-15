@@ -1,7 +1,6 @@
 node_modules
 dist
 .DS_Store
-server/public
 vite.config.ts.*
 *.tar.gz
 
@@ -13,3 +12,6 @@ cookie*.txt
 # Artefacts de debug locaux
 *.log
 scratch/
+
+# Serveur Node de référence du banc (scripts/bench/reference-node.sh)
+.bench-reference/

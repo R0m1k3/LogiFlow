@@ -52,6 +52,10 @@ export default defineConfig({
     },
   },
   server: {
+    // En développement, l'API est servie par le serveur Rust (npm run dev:server)
+    proxy: {
+      "/api": "http://localhost:3000",
+    },
     fs: {
       strict: true,
       deny: ["**/.*"],

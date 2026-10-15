@@ -1,5 +1,22 @@
 version: '3.8'
 
+# logiflow : serveur Rust (server-rs/), qui sert l'API et l'interface, applique
+# les migrations au démarrage et lance les tâches de fond (sauvegardes, purge).
+
+x-logiflow-env: &logiflow-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://logiflow_admin:LogiFlow2025!@logiflow-db:5432/logiflow_db
+  SESSION_SECRET: LogiFlow_Super_Secret_Session_Key_2025_Production
+  USE_LOCAL_AUTH: "true"
+  POSTGRES_USER: logiflow_admin
+  POSTGRES_PASSWORD: LogiFlow2025!
+  POSTGRES_DB: logiflow_db
+  BACKUP_DIR: /app/backups
+  # Clé(s) de l'API externe de rapprochement, lues depuis le .env de l'hôte (vide = API désactivée)
+  EXTERNAL_API_KEYS: ${EXTERNAL_API_KEYS:-}
+  # Origines acceptées en plus de l'adresse du site pour les écritures (décision R4)
+  ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+
 services:
   logiflow:
     build:
@@ -8,17 +25,9 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://logiflow_admin:LogiFlow2025!@logiflow-db:5432/logiflow_db
-      SESSION_SECRET: LogiFlow_Super_Secret_Session_Key_2025_Production
+      <<: *logiflow-env
       PORT: 3000
-      USE_LOCAL_AUTH: "true"
-      POSTGRES_USER: logiflow_admin
-      POSTGRES_PASSWORD: LogiFlow2025!
-      POSTGRES_DB: logiflow_db
-      BACKUP_DIR: /app/backups
-      # Clé(s) de l'API externe de rapprochement, lues depuis le .env de l'hôte (vide = API désactivée)
-      EXTERNAL_API_KEYS: ${EXTERNAL_API_KEYS:-}
+      RUST_LOG: info
     ports:
       - "3000:3000"
     networks:
@@ -27,10 +36,21 @@ services:
       logiflow-db:
         condition: service_healthy
     volumes:
-      - ./migrations:/app/migrations
       - backup_data:/app/backups
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  logiflow-db:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/app/migrations
+      - backup_data:/app/backups
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

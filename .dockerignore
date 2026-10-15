@@ -94,3 +94,10 @@ ssl/
 # Backup files
 *.bak
 *.backup
+# Compilation Rust locale (le binaire est construit dans l'image)
+server-rs/target/
+
+# Serveur Node de référence du banc (scripts/bench/reference-node.sh)
+.bench-reference/
+# Interface construite en local : reconstruite dans l'image
+dist/
