@@ -833,7 +833,7 @@ pub struct DlcProductsRow {
     #[serde(rename = "id")]
     pub id: i32,
     #[serde(rename = "name")]
-    pub name: String,
+    pub name: Option<String>,
     #[serde(rename = "productName")]
     pub product_name: Option<String>,
     #[serde(rename = "gencode")]
