@@ -178,6 +178,11 @@ async function main() {
       const attributes: string[] = [];
       const field = RUST_KEYWORDS.has(column.name) ? `${column.name}_` : column.name;
       if (field !== column.name) attributes.push(`#[sqlx(rename = "${column.name}")]`);
+      // timestamp dans shared/schema.ts, mais parfois timestamptz en production
+      // (tables créées hors des migrations du dépôt) : lu dans les deux cas
+      if (base === "NaiveDateTime") {
+        attributes.push(`#[sqlx(try_from = "${nullable ? "crate::db::AnyTimestampOpt" : "crate::db::AnyTimestamp"}")]`);
+      }
       const serde = [`rename = "${column.jsKey}"`];
       if (base === "NaiveDateTime") serde.push(`serialize_with = "${nullable ? "crate::json::ts_opt" : "crate::json::ts"}"`);
       if (base === "Decimal") {

@@ -34,14 +34,18 @@ pub struct AvoirsRow {
     pub webhook_sent: Option<bool>,
     #[serde(rename = "nocodbVerified")]
     pub nocodb_verified: Option<bool>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "nocodbVerifiedAt", serialize_with = "crate::json::ts_opt")]
     pub nocodb_verified_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "processedAt", serialize_with = "crate::json::ts_opt")]
     pub processed_at: Option<NaiveDateTime>,
     #[serde(rename = "createdBy")]
     pub created_by: String,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -173,8 +177,10 @@ pub struct ContactsRow {
     pub email: Option<String>,
     #[serde(rename = "notes")]
     pub notes: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -285,6 +291,7 @@ pub struct CustomerOrdersRow {
     pub is_promotional_price: Option<bool>,
     #[serde(rename = "customerNotified")]
     pub customer_notified: Option<bool>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "notifiedAt", serialize_with = "crate::json::ts_opt")]
     pub notified_at: Option<NaiveDateTime>,
     #[serde(rename = "notifiedComment")]
@@ -295,8 +302,10 @@ pub struct CustomerOrdersRow {
     pub group_id: i32,
     #[serde(rename = "createdBy")]
     pub created_by: String,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -458,6 +467,7 @@ pub struct DashboardMessagesRow {
     pub store_id: Option<i32>,
     #[serde(rename = "createdBy")]
     pub created_by: String,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
 }
@@ -531,6 +541,7 @@ pub struct DatabaseBackupsRow {
     pub description: Option<String>,
     #[serde(rename = "size")]
     pub size: Option<i64>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
     #[serde(rename = "createdBy")]
@@ -625,6 +636,7 @@ pub struct DeliveriesRow {
     pub group_id: i32,
     #[serde(rename = "scheduledDate")]
     pub scheduled_date: NaiveDate,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "deliveredDate", serialize_with = "crate::json::ts_opt")]
     pub delivered_date: Option<NaiveDateTime>,
     #[serde(rename = "quantity")]
@@ -648,22 +660,27 @@ pub struct DeliveriesRow {
         serialize_with = "crate::json::numeric_opt::<2, _>"
     )]
     pub invoice_amount_ttc: Option<Decimal>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "dueDate", serialize_with = "crate::json::ts_opt")]
     pub due_date: Option<NaiveDateTime>,
     #[serde(rename = "reconciled")]
     pub reconciled: Option<bool>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "validatedAt", serialize_with = "crate::json::ts_opt")]
     pub validated_at: Option<NaiveDateTime>,
     #[serde(rename = "controlValidated")]
     pub control_validated: Option<bool>,
     #[serde(rename = "controlValidatedBy")]
     pub control_validated_by: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "controlValidatedAt", serialize_with = "crate::json::ts_opt")]
     pub control_validated_at: Option<NaiveDateTime>,
     #[serde(rename = "createdBy")]
     pub created_by: String,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -860,8 +877,10 @@ pub struct DlcProductsRow {
     pub stock_epuise: Option<bool>,
     #[serde(rename = "stockEpuiseBy")]
     pub stock_epuise_by: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "stockEpuiseAt", serialize_with = "crate::json::ts_opt")]
     pub stock_epuise_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "processedAt", serialize_with = "crate::json::ts_opt")]
     pub processed_at: Option<NaiveDateTime>,
     #[serde(rename = "processedBy")]
@@ -874,10 +893,13 @@ pub struct DlcProductsRow {
     pub created_by: String,
     #[serde(rename = "validatedBy")]
     pub validated_by: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "validatedAt", serialize_with = "crate::json::ts_opt")]
     pub validated_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -1060,10 +1082,13 @@ pub struct ExternalApiKeysRow {
     pub key_hash: String,
     #[serde(rename = "createdBy")]
     pub created_by: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "lastUsedAt", serialize_with = "crate::json::ts_opt")]
     pub last_used_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "revokedAt", serialize_with = "crate::json::ts_opt")]
     pub revoked_at: Option<NaiveDateTime>,
 }
@@ -1182,8 +1207,10 @@ pub struct GroupsRow {
     pub smtp_sender_email: Option<String>,
     #[serde(rename = "smtpSenderName")]
     pub smtp_sender_name: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -1384,6 +1411,7 @@ pub struct InvoiceVerificationCacheRow {
         serialize_with = "crate::json::numeric_opt::<2, _>"
     )]
     pub invoice_amount_ttc: Option<Decimal>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "dueDate", serialize_with = "crate::json::ts_opt")]
     pub due_date: Option<NaiveDateTime>,
     #[serde(rename = "exists")]
@@ -1398,10 +1426,13 @@ pub struct InvoiceVerificationCacheRow {
     pub api_call_time: Option<i32>,
     #[serde(rename = "isReconciled")]
     pub is_reconciled: Option<bool>,
+    #[sqlx(try_from = "crate::db::AnyTimestamp")]
     #[serde(rename = "expiresAt", serialize_with = "crate::json::ts")]
     pub expires_at: NaiveDateTime,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -1542,8 +1573,10 @@ pub struct NocodbConfigRow {
     pub is_active: Option<bool>,
     #[serde(rename = "createdBy")]
     pub created_by: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -1644,8 +1677,10 @@ pub struct OrdersRow {
     pub notes: Option<String>,
     #[serde(rename = "createdBy")]
     pub created_by: String,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -1748,8 +1783,10 @@ pub struct PublicitiesRow {
     pub year: i32,
     #[serde(rename = "createdBy")]
     pub created_by: String,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -1872,8 +1909,10 @@ pub struct ReconciliationCommentsRow {
     pub type_: String,
     #[serde(rename = "authorId")]
     pub author_id: String,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -1974,12 +2013,16 @@ pub struct SavTicketsRow {
     pub client_phone: Option<String>,
     #[serde(rename = "createdBy")]
     pub created_by: String,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "resolvedAt", serialize_with = "crate::json::ts_opt")]
     pub resolved_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "closedAt", serialize_with = "crate::json::ts_opt")]
     pub closed_at: Option<NaiveDateTime>,
 }
@@ -2123,6 +2166,7 @@ pub struct SessionsRow {
     pub sid: String,
     #[serde(rename = "sess")]
     pub sess: serde_json::Value,
+    #[sqlx(try_from = "crate::db::AnyTimestamp")]
     #[serde(rename = "expire", serialize_with = "crate::json::ts")]
     pub expire: NaiveDateTime,
 }
@@ -2187,6 +2231,7 @@ pub struct SupplierMailLogsRow {
     pub sent_by: String,
     #[serde(rename = "sentByName")]
     pub sent_by_name: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
 }
@@ -2303,8 +2348,10 @@ pub struct SuppliersRow {
     pub has_dlc: Option<bool>,
     #[serde(rename = "paymentMethod")]
     pub payment_method: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
     #[serde(rename = "automaticReconciliation")]
@@ -2409,6 +2456,7 @@ pub struct TasksRow {
     pub title: String,
     #[serde(rename = "description")]
     pub description: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "startDate", serialize_with = "crate::json::ts_opt")]
     pub start_date: Option<NaiveDateTime>,
     #[serde(rename = "dueDate")]
@@ -2423,12 +2471,15 @@ pub struct TasksRow {
     pub created_by: String,
     #[serde(rename = "groupId")]
     pub group_id: i32,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "completedAt", serialize_with = "crate::json::ts_opt")]
     pub completed_at: Option<NaiveDateTime>,
     #[serde(rename = "completedBy")]
     pub completed_by: Option<String>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -2539,6 +2590,7 @@ pub struct UserGroupsRow {
     pub user_id: String,
     #[serde(rename = "groupId")]
     pub group_id: i32,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
 }
@@ -2599,8 +2651,10 @@ pub struct UsersRow {
     pub role: String,
     #[serde(rename = "passwordChanged")]
     pub password_changed: Option<bool>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -2701,8 +2755,10 @@ pub struct UtilitiesRow {
     pub sales_analysis_url: Option<String>,
     #[serde(rename = "automaticBackupsEnabled")]
     pub automatic_backups_enabled: Option<bool>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -2775,8 +2831,10 @@ pub struct WeatherDataRow {
     pub conditions: String,
     #[serde(rename = "isCurrentYear")]
     pub is_current_year: bool,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -2867,8 +2925,10 @@ pub struct WeatherSettingsRow {
     pub location: String,
     #[serde(rename = "isActive")]
     pub is_active: bool,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -2938,8 +2998,10 @@ pub struct WebhookBapConfigRow {
     pub description: Option<String>,
     #[serde(rename = "isActive")]
     pub is_active: bool,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "createdAt", serialize_with = "crate::json::ts_opt")]
     pub created_at: Option<NaiveDateTime>,
+    #[sqlx(try_from = "crate::db::AnyTimestampOpt")]
     #[serde(rename = "updatedAt", serialize_with = "crate::json::ts_opt")]
     pub updated_at: Option<NaiveDateTime>,
 }

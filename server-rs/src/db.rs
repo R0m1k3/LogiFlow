@@ -4,9 +4,11 @@
 // Comme node-pg, chaque valeur part en texte et PostgreSQL la convertit vers le
 // type de la colonne ($1::date, $2::numeric…) : mêmes conversions, mêmes erreurs.
 
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde_json::Value;
-use sqlx::postgres::{PgArguments, PgRow};
-use sqlx::{Arguments, FromRow, PgPool};
+use sqlx::error::BoxDynError;
+use sqlx::postgres::{PgArguments, PgRow, PgTypeInfo, PgValueRef};
+use sqlx::{Arguments, Decode, FromRow, PgPool, Postgres, Type, ValueRef};
 
 use crate::zod::Parsed;
 
@@ -31,6 +33,85 @@ pub trait Table: for<'r> FromRow<'r, PgRow> + Send + Unpin {
     /// SELECT des colonnes de la table, suivi de `rest` (WHERE, ORDER BY…)
     fn select(rest: &str) -> String {
         format!("SELECT {} FROM {} {rest}", Self::COLUMNS, Self::TABLE)
+    }
+}
+
+/// Colonne `timestamp` de shared/schema.ts, lue que la base réelle la déclare
+/// `timestamp` ou `timestamptz`. Certaines tables de production ont été créées en
+/// dehors des migrations du dépôt avec `timestamptz` (weather_settings.created_at,
+/// avoirs…), et sqlx refuse de lire un `timestamptz` en NaiveDateTime.
+///
+/// Un `timestamptz` est rendu en heure UTC : la même valeur que l'API sérialise
+/// ensuite avec crate::json::ts (« …Z »). schema.rs l'utilise par
+/// `#[sqlx(try_from = "crate::db::AnyTimestamp")]` : le champ reste NaiveDateTime.
+pub struct AnyTimestamp(pub NaiveDateTime);
+
+/// AnyTimestamp d'une colonne qui peut être NULL
+pub struct AnyTimestampOpt(pub Option<NaiveDateTime>);
+
+fn is_timestamptz(ty: &PgTypeInfo) -> bool {
+    <DateTime<Utc> as Type<Postgres>>::compatible(ty)
+}
+
+fn any_timestamp_compatible(ty: &PgTypeInfo) -> bool {
+    <NaiveDateTime as Type<Postgres>>::compatible(ty) || is_timestamptz(ty)
+}
+
+fn decode_any_timestamp(value: PgValueRef<'_>) -> Result<NaiveDateTime, BoxDynError> {
+    let timestamptz = is_timestamptz(&value.type_info());
+    if timestamptz {
+        Ok(<DateTime<Utc> as Decode<'_, Postgres>>::decode(value)?.naive_utc())
+    } else {
+        <NaiveDateTime as Decode<'_, Postgres>>::decode(value)
+    }
+}
+
+impl Type<Postgres> for AnyTimestamp {
+    fn type_info() -> PgTypeInfo {
+        <NaiveDateTime as Type<Postgres>>::type_info()
+    }
+
+    fn compatible(ty: &PgTypeInfo) -> bool {
+        any_timestamp_compatible(ty)
+    }
+}
+
+impl<'r> Decode<'r, Postgres> for AnyTimestamp {
+    fn decode(value: PgValueRef<'r>) -> Result<Self, BoxDynError> {
+        decode_any_timestamp(value).map(Self)
+    }
+}
+
+impl From<AnyTimestamp> for NaiveDateTime {
+    fn from(value: AnyTimestamp) -> Self {
+        value.0
+    }
+}
+
+impl Type<Postgres> for AnyTimestampOpt {
+    fn type_info() -> PgTypeInfo {
+        <NaiveDateTime as Type<Postgres>>::type_info()
+    }
+
+    fn compatible(ty: &PgTypeInfo) -> bool {
+        any_timestamp_compatible(ty)
+    }
+}
+
+impl<'r> Decode<'r, Postgres> for AnyTimestampOpt {
+    fn decode(value: PgValueRef<'r>) -> Result<Self, BoxDynError> {
+        // Row::try_get ne vérifie pas le type d'une valeur NULL et la passe telle
+        // quelle à decode (comme pour Option<T>)
+        if value.is_null() {
+            return Ok(Self(None));
+        }
+        decode_any_timestamp(value).map(|timestamp| Self(Some(timestamp)))
+    }
+}
+
+impl From<AnyTimestampOpt> for Option<NaiveDateTime> {
+    fn from(value: AnyTimestampOpt) -> Self {
+        value.0
     }
 }
 
@@ -261,6 +342,19 @@ mod tests {
 
     fn object(value: Value) -> serde_json::Map<String, Value> {
         value.as_object().cloned().unwrap()
+    }
+
+    #[test]
+    fn horodatage_lu_en_timestamp_comme_en_timestamptz() {
+        let timestamp = <NaiveDateTime as Type<Postgres>>::type_info();
+        let timestamptz = <DateTime<Utc> as Type<Postgres>>::type_info();
+        let date = <chrono::NaiveDate as Type<Postgres>>::type_info();
+        for ty in [&timestamp, &timestamptz] {
+            assert!(<AnyTimestamp as Type<Postgres>>::compatible(ty));
+            assert!(<AnyTimestampOpt as Type<Postgres>>::compatible(ty));
+        }
+        assert!(!<AnyTimestamp as Type<Postgres>>::compatible(&date));
+        assert!(!<AnyTimestampOpt as Type<Postgres>>::compatible(&date));
     }
 
     #[test]
