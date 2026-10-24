@@ -9,6 +9,9 @@ vite.config.ts.*
 .env.local
 cookie*.txt
 
+# Sauvegardes de la base (données réelles) : jamais dans le dépôt
+/backups/
+
 # Artefacts de debug locaux
 *.log
 scratch/

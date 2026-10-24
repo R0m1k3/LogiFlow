@@ -71,12 +71,45 @@ npm run dev
 
 En production : `npm run build` (interface dans `dist/public`, binaire dans
 `server-rs/target/release/logiflow`) puis `npm start`, ou l'image Docker
-(`docker compose up -d`).
+(`docker compose up -d`, après avoir créé le fichier `.env`, voir ci-dessous).
+
+### Sécurité / variables obligatoires
+
+Aucun secret n'est versionné : `docker compose` refuse de démarrer sans un
+fichier `.env` (non versionné, à créer depuis `.env.example`) qui définit :
+
+| Variable | Rôle |
+|---|---|
+| `POSTGRES_PASSWORD` | mot de passe de la base (sans `@ : / ? #`, par exemple `openssl rand -hex 24`) |
+| `SESSION_SECRET` | signature du cookie de session (`openssl rand -hex 32`) ; le serveur refuse de démarrer s'il est vide, trop court ou égal à une ancienne valeur publiée |
+| `ENCRYPTION_KEY` | chiffrement des secrets en base (SMTP, NocoDB), distinct de `SESSION_SECRET` (`openssl rand -hex 32`). Absente : repli sur `SESSION_SECRET` avec un avertissement |
+| `ENCRYPTION_KEY_PREVIOUS` | facultative : anciennes clés (séparées par des virgules) dont les secrets sont rechiffrés avec `ENCRYPTION_KEY` au démarrage |
+| `ADMIN_PASSWORD` | facultative : mot de passe initial du compte `admin` sur une base vide ; sinon mot de passe aléatoire affiché une fois dans les journaux |
+
+La base PostgreSQL n'est plus publiée sur l'hôte (port 5434 retiré) : seul le
+service `logiflow` y accède par le réseau Docker.
+
+**Mise à jour d'une installation existante :**
+1. Créer `.env` avec `POSTGRES_PASSWORD` égal au mot de passe actuel de la base
+   (l'ancienne valeur du `docker-compose.yml`), puis le changer : `ALTER USER
+   logiflow_admin PASSWORD '…';` dans le conteneur, et reporter la nouvelle
+   valeur dans `.env`.
+2. Définir un nouveau `SESSION_SECRET` et une nouvelle `ENCRYPTION_KEY` : les
+   secrets chiffrés avec l'ancienne valeur publiée sont rechiffrés
+   automatiquement au démarrage ; les sessions ouvertes sont fermées (nouvelle
+   connexion nécessaire).
+3. Le compte `admin` qui n'a jamais changé son mot de passe doit le faire à la
+   connexion suivante : le serveur refuse toute autre requête avant.
+4. Renseigner l'adresse du webhook BAP dans **Paramètres → Configuration BAP**
+   (plus aucune adresse par défaut dans le code).
+
+Les échecs de connexion sont limités (10 par adresse IP et identifiant, 50 par
+adresse IP, sur 15 minutes).
 
 ### Configuration de l'API Météo
 1. Créez un compte gratuit sur [Visual Crossing](https://www.visualcrossing.com/)
 2. Obtenez votre clé API
-3. Connectez-vous avec `admin`/`admin`
+3. Connectez-vous avec le compte `admin`
 4. Allez dans **Utilitaires** → **Paramètres Météo**
 5. Entrez votre clé API et votre localisation
 6. Testez la connexion et sauvegardez
@@ -84,8 +117,8 @@ En production : `npm run build` (interface dans `dist/public`, binaire dans
 ## 📱 Utilisation
 
 ### Première Connexion
-- **Identifiants par défaut** : `admin` / `admin`
-- **Changement obligatoire** : Modifiez le mot de passe lors de la première connexion
+- **Compte initial** : `admin`, avec le mot de passe de `ADMIN_PASSWORD` ou celui affiché une fois dans les journaux du serveur au premier démarrage
+- **Changement obligatoire** : le mot de passe initial doit être changé à la première connexion
 - **Configuration météo** : Configurez l'API météo dans les utilitaires
 
 ### Navigation Principale
@@ -175,8 +208,9 @@ VISUAL_CROSSING_API_KEY=votre_clé_api_ici
 
 # Application
 PORT=3000
-SESSION_SECRET=…            # signe le cookie de session
+SESSION_SECRET=…            # signe le cookie de session (obligatoire)
 ENCRYPTION_KEY=…            # chiffre les secrets en base (repli : SESSION_SECRET)
+ADMIN_PASSWORD=…            # mot de passe initial du compte admin (facultatif)
 STATIC_DIR=dist/public      # interface construite par Vite
 BACKUP_DIR=/app/backups
 ALLOWED_ORIGINS=            # autres origines acceptées pour les écritures (facultatif)

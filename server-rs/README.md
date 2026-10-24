@@ -1,6 +1,6 @@
 # Serveur LogiFlow (Rust)
 
-Serveur unique de l'application : il sert l'API (`src/router.rs`) et l'interface construite par Vite (`dist/public`), applique les migrations au démarrage (`src/startup.rs`) et lance les tâches de fond (`src/jobs.rs` : sauvegarde automatique quotidienne, purge des caches, compte `admin` par défaut sur une base vide). Il a remplacé le serveur Node/Express, dont il reprend le comportement à l'identique (`docs/PLAN-MIGRATION-RUST.md`) : mêmes réponses, même cookie de session (`connect.sid`, table `sessions`), mêmes secrets chiffrés.
+Serveur unique de l'application : il sert l'API (`src/router.rs`) et l'interface construite par Vite (`dist/public`), applique les migrations au démarrage (`src/startup.rs`) et lance les tâches de fond (`src/jobs.rs` : sauvegarde automatique quotidienne, purge des caches, compte `admin` initial sur une base vide). Il a remplacé le serveur Node/Express, dont il reprend le comportement à l'identique (`docs/PLAN-MIGRATION-RUST.md`) : mêmes réponses, même cookie de session (`connect.sid`, table `sessions`), mêmes secrets chiffrés.
 
 ## Lancer en local
 
@@ -16,14 +16,16 @@ Puis ouvrir http://localhost:3000. Pour travailler sur l'interface : `npm run de
 | `PORT` | port d'écoute | `3000` |
 | `DATABASE_URL` | base PostgreSQL | obligatoire |
 | `STATIC_DIR` | interface construite par Vite | `dist/public` |
-| `SESSION_SECRET` | signature du cookie de session | `fallback-secret-key` |
-| `ENCRYPTION_KEY` | clé des secrets chiffrés en base (à défaut `SESSION_SECRET`) | — |
+| `SESSION_SECRET` | signature du cookie de session (16 caractères au minimum) | obligatoire |
+| `ENCRYPTION_KEY` | clé des secrets chiffrés en base (à défaut `SESSION_SECRET`, avec avertissement) | — |
+| `ENCRYPTION_KEY_PREVIOUS` | anciennes clés, séparées par des virgules : secrets rechiffrés avec `ENCRYPTION_KEY` au démarrage | — |
+| `ADMIN_PASSWORD` | mot de passe initial du compte `admin` sur une base vide | aléatoire, dans les journaux |
 | `BACKUP_DIR` | dossier des sauvegardes (`pg_dump` doit être installé) | `backups` |
 | `NODE_ENV` | renvoyé par `/api/health` | `production` |
 | `ALLOWED_ORIGINS` | origines acceptées en plus de l'hôte du serveur pour les requêtes d'écriture (`https://a.fr,https://b.fr`), voir `src/origin.rs` | — |
 | `RUST_LOG` | niveau des journaux (`info`, `debug`…) | `info` |
 
-Ne pas changer `SESSION_SECRET` ni `ENCRYPTION_KEY` d'une installation existante : les sessions ouvertes et les secrets déjà chiffrés (mot de passe SMTP, jeton NocoDB) deviendraient illisibles.
+Changer `SESSION_SECRET` ferme les sessions ouvertes. Changer `ENCRYPTION_KEY` : mettre l'ancienne clé dans `ENCRYPTION_KEY_PREVIOUS` (l'ancien `SESSION_SECRET` et les valeurs autrefois publiées dans le dépôt sont essayés d'office), les secrets chiffrés (mot de passe SMTP, jeton NocoDB) sont rechiffrés au démarrage.
 
 ## Vérifier
 

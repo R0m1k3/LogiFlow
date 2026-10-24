@@ -3,14 +3,21 @@ version: '3.8'
 # logiflow : serveur Rust (server-rs/), qui sert l'API et l'interface, applique
 # les migrations au démarrage et lance les tâches de fond (sauvegardes, purge).
 
+# Secrets lus dans le fichier .env (non versionné) à côté de ce fichier : voir
+# .env.example et la section « Sécurité / variables obligatoires » du README.
 x-logiflow-env: &logiflow-env
   NODE_ENV: production
-  DATABASE_URL: postgresql://logiflow_admin:LogiFlow2025!@logiflow-db:5432/logiflow_db
-  SESSION_SECRET: LogiFlow_Super_Secret_Session_Key_2025_Production
+  DATABASE_URL: postgresql://${POSTGRES_USER:-logiflow_admin}:${POSTGRES_PASSWORD:?Définissez POSTGRES_PASSWORD dans .env}@logiflow-db:5432/${POSTGRES_DB:-logiflow_db}
+  SESSION_SECRET: ${SESSION_SECRET:?Définissez SESSION_SECRET dans .env}
+  # Clé de chiffrement des secrets en base, distincte de SESSION_SECRET
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+  ENCRYPTION_KEY_PREVIOUS: ${ENCRYPTION_KEY_PREVIOUS:-}
+  # Mot de passe initial du compte admin (base vide uniquement ; sinon aléatoire, dans les journaux)
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
   USE_LOCAL_AUTH: "true"
-  POSTGRES_USER: logiflow_admin
-  POSTGRES_PASSWORD: LogiFlow2025!
-  POSTGRES_DB: logiflow_db
+  POSTGRES_USER: ${POSTGRES_USER:-logiflow_admin}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définissez POSTGRES_PASSWORD dans .env}
+  POSTGRES_DB: ${POSTGRES_DB:-logiflow_db}
   BACKUP_DIR: /app/backups
   # Clé(s) de l'API externe de rapprochement, lues depuis le .env de l'hôte (vide = API désactivée)
   EXTERNAL_API_KEYS: ${EXTERNAL_API_KEYS:-}
@@ -48,11 +55,11 @@ services:
     image: postgres:15-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: logiflow_db
-      POSTGRES_USER: logiflow_admin
-      POSTGRES_PASSWORD: LogiFlow2025!
-    ports:
-      - "5434:5432"
+      POSTGRES_DB: ${POSTGRES_DB:-logiflow_db}
+      POSTGRES_USER: ${POSTGRES_USER:-logiflow_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définissez POSTGRES_PASSWORD dans .env}
+    # Base non publiée sur l'hôte : seul le service logiflow y accède par le
+    # réseau Docker. Pour un accès local ponctuel : "127.0.0.1:5434:5432"
     networks:
       - nginx_default
     volumes:

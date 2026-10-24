@@ -61,6 +61,7 @@ async fn main() -> anyhow::Result<()> {
     // Comme Node : migrations avant d'accepter des requêtes, puis compte admin,
     // index en arrière-plan et tâches de fond
     startup::run_migrations(&db, &config.encryption_key).await;
+    startup::reencrypt_with_current_key(&db, &config.encryption_key, &config.previous_encryption_keys).await;
     jobs::ensure_default_admin(&db).await;
     startup::spawn_performance_indexes(db.clone());
 

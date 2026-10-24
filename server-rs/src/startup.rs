@@ -529,3 +529,56 @@ async fn ensure_performance_indexes(db: &PgPool) -> Result<(), sqlx::Error> {
     );
     Ok(())
 }
+
+/// Secrets chiffrés avec une ancienne clé (ENCRYPTION_KEY_PREVIOUS, SESSION_SECRET
+/// ou une valeur autrefois publiée dans le dépôt) : déchiffrés puis rechiffrés
+/// avec la clé courante. Une valeur que la clé courante lit déjà n'est pas touchée.
+pub async fn reencrypt_with_current_key(db: &PgPool, key: &str, previous: &[String]) {
+    let mut count = 0;
+    let mut unreadable = 0;
+    for (table, column) in [("groups", "smtp_password"), ("nocodb_config", "api_token")] {
+        let rows: Result<Vec<(i32, String)>, sqlx::Error> = sqlx::query_as(&format!(
+            "SELECT id, {column} FROM {table} WHERE {column} LIKE 'enc:v1:%'"
+        ))
+        .fetch_all(db)
+        .await;
+        let rows = match rows {
+            Ok(rows) => rows,
+            Err(error) => {
+                tracing::error!(%error, table, "lecture des secrets à rechiffrer en échec");
+                continue;
+            }
+        };
+        for (id, sealed) in rows {
+            if crate::crypto::decrypt(&sealed, key).is_ok() {
+                continue;
+            }
+            let Some(plain) = previous
+                .iter()
+                .find_map(|old| crate::crypto::decrypt(&sealed, old).ok())
+            else {
+                unreadable += 1;
+                continue;
+            };
+            let result = sqlx::query(&format!("UPDATE {table} SET {column} = $1 WHERE id = $2"))
+                .bind(crate::crypto::encrypt(&plain, key))
+                .bind(id)
+                .execute(db)
+                .await;
+            match result {
+                Ok(_) => count += 1,
+                Err(error) => tracing::error!(%error, table, id, "rechiffrement d'un secret en échec"),
+            }
+        }
+    }
+    if count > 0 {
+        tracing::info!(count, "secrets rechiffrés avec la clé ENCRYPTION_KEY courante");
+    }
+    if unreadable > 0 {
+        tracing::warn!(
+            unreadable,
+            "secrets chiffrés illisibles avec ENCRYPTION_KEY : ajoutez l'ancienne clé dans \
+             ENCRYPTION_KEY_PREVIOUS ou ressaisissez-les"
+        );
+    }
+}
