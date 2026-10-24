@@ -4,6 +4,7 @@ import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useScreenSize } from "@/hooks/use-screen-size";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/AuthPage";
+import ChangePasswordPage from "@/pages/ChangePasswordPage";
 import Dashboard from "@/pages/Dashboard";
 import Layout from "@/components/Layout";
 
@@ -110,6 +111,11 @@ function RouterProduction() {
         <Route component={RedirectToAuth} />
       </Switch>
     );
+  }
+
+  // Mot de passe initial du compte admin à changer : le serveur refuse le reste
+  if (user.mustChangePassword) {
+    return <ChangePasswordPage />;
   }
 
   // ===== MOBILE ROUTES (avec MobileApp pour StoreProvider) =====

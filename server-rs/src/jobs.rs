@@ -25,10 +25,41 @@ pub fn spawn(state: AppState) {
     tokio::spawn(cache_purge(state.db.clone()));
 }
 
-/// Compte « admin » créé s'il n'existe pas (mot de passe « admin », à changer à la
-/// première connexion), ou mot de passe remis au bon format s'il est illisible.
-/// La valeur « admin.salt », acceptée par l'accès de développement de Node pour le
-/// mot de passe « admin », est remplacée par une vraie empreinte du même mot de passe.
+/// Mot de passe initial du compte « admin » : ADMIN_PASSWORD s'il est défini,
+/// sinon un mot de passe aléatoire écrit une seule fois dans les journaux
+fn initial_admin_password() -> (String, bool) {
+    match std::env::var("ADMIN_PASSWORD")
+        .ok()
+        .filter(|password| !password.is_empty())
+    {
+        Some(password) => (password, true),
+        None => {
+            use rand::Rng;
+            const ALPHABET: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+            let mut rng = rand::thread_rng();
+            let password = (0..20)
+                .map(|_| ALPHABET[rng.gen_range(0..ALPHABET.len())] as char)
+                .collect();
+            (password, false)
+        }
+    }
+}
+
+fn log_initial_admin_password(password: &str, from_env: bool, what: &str) {
+    if from_env {
+        tracing::warn!("{what} : mot de passe de ADMIN_PASSWORD, à changer à la première connexion");
+    } else {
+        tracing::warn!(
+            "{what} : mot de passe initial « {password} » (affiché une seule fois), \
+             à changer à la première connexion"
+        );
+    }
+}
+
+/// Compte « admin » créé s'il n'existe pas (mot de passe ADMIN_PASSWORD ou
+/// aléatoire, à changer à la première connexion), ou mot de passe réinitialisé de
+/// la même façon s'il est illisible (dont « admin.salt », l'ancien accès de
+/// développement de Node). Un compte admin existant et lisible n'est pas touché.
 pub async fn ensure_default_admin(db: &PgPool) {
     let existing: Result<Option<(String, Option<String>)>, sqlx::Error> =
         sqlx::query_as("SELECT id, password FROM users WHERE username = 'admin'")
@@ -36,7 +67,8 @@ pub async fn ensure_default_admin(db: &PgPool) {
             .await;
     let result = match existing {
         Ok(None) => {
-            let password = session_routes::hash_password("admin".into()).await;
+            let (initial, from_env) = initial_admin_password();
+            let password = session_routes::hash_password(initial.clone()).await;
             sqlx::query(
                 "INSERT INTO users (id, username, email, first_name, last_name, password, role, password_changed)
                  VALUES ('admin_local', 'admin', 'admin@logiflow.com', 'Administrateur', 'Système', $1, 'admin', false)",
@@ -44,14 +76,15 @@ pub async fn ensure_default_admin(db: &PgPool) {
             .bind(password)
             .execute(db)
             .await
-            .map(|_| tracing::info!("compte admin créé (mot de passe par défaut : admin)"))
+            .map(|_| log_initial_admin_password(&initial, from_env, "compte admin créé"))
         }
         Ok(Some((id, password))) => {
             let unreadable = password
                 .as_deref()
                 .is_none_or(|p| !p.contains('.') || p == "admin.salt");
             if unreadable {
-                let password = session_routes::hash_password("admin".into()).await;
+                let (initial, from_env) = initial_admin_password();
+                let password = session_routes::hash_password(initial.clone()).await;
                 sqlx::query(
                     "UPDATE users SET password = $1, password_changed = false, updated_at = $2 WHERE id = $3",
                 )
@@ -60,7 +93,13 @@ pub async fn ensure_default_admin(db: &PgPool) {
                 .bind(id)
                 .execute(db)
                 .await
-                .map(|_| tracing::info!("mot de passe du compte admin remis au bon format"))
+                .map(|_| {
+                    log_initial_admin_password(
+                        &initial,
+                        from_env,
+                        "mot de passe du compte admin réinitialisé",
+                    )
+                })
             } else {
                 Ok(())
             }

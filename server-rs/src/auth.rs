@@ -59,6 +59,11 @@ impl CurrentUser {
     pub fn is_admin(&self) -> bool {
         self.user.role == "admin"
     }
+    /// Compte « admin » dont le mot de passe initial n'a pas encore été changé :
+    /// seules la déconnexion, /api/user et le changement de mot de passe répondent
+    pub fn must_change_password(&self) -> bool {
+        self.user.username == "admin" && self.user.password_changed != Some(true)
+    }
     /// (user.userGroups || []).map(ug => ug.groupId)
     pub fn group_ids(&self) -> Vec<i32> {
         self.user_groups
@@ -68,14 +73,29 @@ impl CurrentUser {
     }
 }
 
-/// Utilisateur connecté obligatoire : sinon 401 « Authentification requise »
+/// Adresse accessible tant que le mot de passe initial n'est pas changé
+pub const CHANGE_PASSWORD_PATH: &str = "/api/change-password";
+
+/// Utilisateur connecté obligatoire : sinon 401 « Authentification requise ».
+/// Mot de passe initial pas encore changé : 403 partout sauf CHANGE_PASSWORD_PATH.
 impl FromRequestParts<AppState> for CurrentUser {
     type Rejection = AppError;
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
-        load_current_user(&parts.headers, state)
+        let user = load_current_user(&parts.headers, state)
             .await?
-            .ok_or_else(AppError::unauthorized)
+            .ok_or_else(AppError::unauthorized)?;
+        let path = parts.uri.path().trim_end_matches('/').to_ascii_lowercase();
+        if user.must_change_password() && path != CHANGE_PASSWORD_PATH {
+            return Err(AppError::with_body(
+                axum::http::StatusCode::FORBIDDEN,
+                serde_json::json!({
+                    "message": "Changez le mot de passe initial avant de continuer",
+                    "mustChangePassword": true,
+                }),
+            ));
+        }
+        Ok(user)
     }
 }
 

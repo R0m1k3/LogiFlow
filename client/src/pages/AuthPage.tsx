@@ -260,9 +260,9 @@ export default function AuthPage() {
               <CardContent className="pt-0">
                 <div className="text-sm text-blue-700 space-y-1">
                   <p><strong>Identifiant :</strong> admin</p>
-                  <p><strong>Mot de passe :</strong> admin</p>
+                  <p><strong>Mot de passe :</strong> celui de la variable ADMIN_PASSWORD, ou celui affiché dans les journaux du serveur au premier démarrage</p>
                   <p className="text-xs text-blue-600 mt-2">
-                    Changez le mot de passe après votre première connexion
+                    Il devra être changé dès la première connexion
                   </p>
                 </div>
               </CardContent>

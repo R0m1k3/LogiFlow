@@ -1,6 +1,9 @@
 // Connexion et session : POST /api/login, GET et POST /api/logout, GET /api/user,
 // GET /api/default-credentials-check (server/localAuth.ts : c'est lui que la
-// production exécute ; localAuth.production.ts n'est jamais chargé).
+// production exécute ; localAuth.production.ts n'est jamais chargé), et
+// POST /api/change-password (changement de son propre mot de passe, obligatoire
+// pour le compte admin tant que le mot de passe initial n'est pas changé).
+// Les échecs de connexion sont limités par adresse IP et identifiant.
 //
 // Les sessions restent celles d'express-session + connect-pg-simple, dans les
 // deux sens tant que les deux serveurs tournent : même ligne dans la table
@@ -14,8 +17,13 @@
 // chaque connexion (backupService.checkAndPerformDailyBackup) ; la vérification
 // horaire de Node continue de la faire.
 
-use axum::extract::State;
-use axum::http::{HeaderMap, HeaderValue, StatusCode, Uri, header};
+use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::{LazyLock, Mutex};
+use std::time::Instant;
+
+use axum::extract::{ConnectInfo, State};
+use axum::http::{Extensions, HeaderMap, HeaderValue, StatusCode, Uri, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -26,7 +34,7 @@ use serde_json::{Value, json};
 use subtle::ConstantTimeEq;
 
 use crate::AppState;
-use crate::auth::{self, MaybeUser, SESSION_COOKIE};
+use crate::auth::{self, CurrentUser, MaybeUser, SESSION_COOKIE};
 use crate::db::{self, Table};
 use crate::error::{ApiResult, AppError};
 use crate::js;
@@ -39,6 +47,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/logout", get(logout).post(logout))
         .route("/api/user", get(current_user))
         .route("/api/default-credentials-check", get(default_credentials_check))
+        .route("/api/change-password", post(change_password))
 }
 
 const REFUSED: &str = "Identifiant ou mot de passe incorrect";
@@ -106,6 +115,95 @@ fn verify_password(supplied: &str, stored: &str) -> bool {
         return false;
     }
     expected.ct_eq(&derive(supplied, salt)).into()
+}
+
+// ---------- Limitation des échecs de connexion ----------
+
+/// Fenêtre de comptage des échecs
+const ATTEMPT_WINDOW: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+/// Échecs tolérés par adresse IP et identifiant, puis par adresse IP seule
+const MAX_FAILURES_PER_ACCOUNT: u32 = 10;
+const MAX_FAILURES_PER_IP: u32 = 50;
+const TOO_MANY_ATTEMPTS: &str = "Trop de tentatives de connexion. Réessayez dans quelques minutes.";
+
+/// Clé → (nombre d'échecs, début de la fenêtre)
+static FAILURES: LazyLock<Mutex<HashMap<String, (u32, Instant)>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// Adresse du client : celle de la connexion, ou celle transmise par un relais
+/// local (nginx) dans X-Forwarded-For (dernière entrée) ou X-Real-IP
+fn client_ip(headers: &HeaderMap, extensions: &Extensions) -> String {
+    let peer = extensions
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|ConnectInfo(address)| address.ip());
+    let behind_proxy = peer.is_none_or(|ip| match ip {
+        IpAddr::V4(v4) => v4.is_loopback() || v4.is_private(),
+        IpAddr::V6(v6) => {
+            v6.is_loopback()
+                || (v6.segments()[0] & 0xfe00) == 0xfc00
+                || v6
+                    .to_ipv4_mapped()
+                    .is_some_and(|v4| v4.is_loopback() || v4.is_private())
+        }
+    });
+    let forwarded = || {
+        headers
+            .get("x-forwarded-for")
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.rsplit(',').next())
+            .or_else(|| headers.get("x-real-ip").and_then(|value| value.to_str().ok()))
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+    };
+    match (behind_proxy, peer) {
+        (true, peer) => forwarded().or_else(|| peer.map(|ip| ip.to_string())),
+        (false, peer) => peer.map(|ip| ip.to_string()),
+    }
+    .unwrap_or_else(|| "inconnue".into())
+}
+
+fn attempt_keys(ip: &str, username: &str) -> [(String, u32); 2] {
+    [
+        (
+            format!("{ip}|{}", username.to_lowercase()),
+            MAX_FAILURES_PER_ACCOUNT,
+        ),
+        (format!("{ip}|*"), MAX_FAILURES_PER_IP),
+    ]
+}
+
+fn too_many_failures(keys: &[(String, u32)]) -> bool {
+    let failures = FAILURES.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    keys.iter().any(|(key, max)| {
+        failures
+            .get(key)
+            .is_some_and(|(count, since)| since.elapsed() < ATTEMPT_WINDOW && count >= max)
+    })
+}
+
+fn record_failure(keys: &[(String, u32)]) {
+    let mut failures = FAILURES.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    if failures.len() > 10_000 {
+        failures.retain(|_, (_, since)| since.elapsed() < ATTEMPT_WINDOW);
+    }
+    for (key, _) in keys {
+        let entry = failures.entry(key.clone()).or_insert((0, Instant::now()));
+        if entry.1.elapsed() >= ATTEMPT_WINDOW {
+            *entry = (0, Instant::now());
+        }
+        entry.0 += 1;
+    }
+}
+
+fn clear_failures(key: &str) {
+    FAILURES
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(key);
+}
+
+fn too_many_attempts() -> AppError {
+    AppError::new(StatusCode::TOO_MANY_REQUESTS, TOO_MANY_ATTEMPTS)
 }
 
 // ---------- Session d'express-session ----------
@@ -235,6 +333,7 @@ fn query_value(query: Option<&str>, field: &str) -> Option<String> {
 async fn login(
     State(state): State<AppState>,
     headers: HeaderMap,
+    extensions: Extensions,
     uri: Uri,
     JsonBody(body): JsonBody,
 ) -> ApiResult {
@@ -244,6 +343,14 @@ async fn login(
     ) else {
         return Err(AppError::bad_request("Missing credentials"));
     };
+    let attempt_keys = attempt_keys(
+        &client_ip(&headers, &extensions),
+        username.as_str().unwrap_or_default(),
+    );
+    if too_many_failures(&attempt_keys) {
+        tracing::warn!(key = attempt_keys[0].0, "connexion refusée : trop d'échecs");
+        return Err(too_many_attempts());
+    }
 
     // storage.getUserByUsername : un nombre ou un booléen part en texte (node-pg)
     let user: Option<UsersRow> = sqlx::query_as(&UsersRow::select("WHERE username = $1"))
@@ -255,6 +362,7 @@ async fn login(
         let stored = user.password.clone().filter(|password| !password.is_empty())?;
         Some((user, stored))
     }) else {
+        record_failure(&attempt_keys);
         return Err(AppError::bad_request(REFUSED));
     };
     // Un mot de passe qui n'est pas du texte fait échouer crypto.scrypt : refusé
@@ -265,8 +373,10 @@ async fn login(
         _ => false,
     };
     if !valid {
+        record_failure(&attempt_keys);
         return Err(AppError::bad_request(REFUSED));
     }
+    clear_failures(&attempt_keys[0].0);
 
     // req.login : passport régénère la session (l'ancienne est détruite), puis
     // express-session l'enregistre et envoie le cookie
@@ -292,6 +402,7 @@ async fn login(
         "lastName": user.last_name,
         "role": user.role,
         "passwordChanged": user.password_changed,
+        "mustChangePassword": user.username == "admin" && user.password_changed != Some(true),
     }))
     .into_response();
     if let Ok(cookie) = HeaderValue::from_str(&session_cookie(&sid, &state.config.session_secret, &expires)) {
@@ -508,9 +619,67 @@ async fn current_user(MaybeUser(user): MaybeUser) -> ApiResult {
         "lastName": user.last_name,
         "role": user.role,
         "passwordChanged": user.password_changed,
+        "mustChangePassword": current.must_change_password(),
         "userGroups": current.user_groups,
     }))
     .into_response())
+}
+
+// ---------- Changement de son mot de passe ----------
+
+const MIN_PASSWORD_LENGTH: usize = 8;
+
+/// Mot de passe actuel vérifié (échecs limités comme la connexion), nouveau
+/// mot de passe d'au moins 8 caractères et différent de l'actuel
+async fn change_password(
+    State(state): State<AppState>,
+    current: CurrentUser,
+    JsonBody(body): JsonBody,
+) -> ApiResult {
+    let field = |name: &str| body.get(name).and_then(Value::as_str).map(str::to_string);
+    let (Some(current_password), Some(new_password)) = (field("currentPassword"), field("newPassword"))
+    else {
+        return Err(AppError::bad_request(
+            "Mot de passe actuel et nouveau mot de passe requis",
+        ));
+    };
+    if new_password.chars().count() < MIN_PASSWORD_LENGTH {
+        return Err(AppError::bad_request(
+            "Le nouveau mot de passe doit contenir au moins 8 caractères",
+        ));
+    }
+    if new_password == current_password {
+        return Err(AppError::bad_request(
+            "Le nouveau mot de passe doit être différent de l'actuel",
+        ));
+    }
+    let attempt_keys = [(
+        format!("change-password|{}", current.id()),
+        MAX_FAILURES_PER_ACCOUNT,
+    )];
+    if too_many_failures(&attempt_keys) {
+        return Err(too_many_attempts());
+    }
+    let stored = current.user.password.clone().unwrap_or_default();
+    let valid = tokio::task::spawn_blocking(move || verify_password(&current_password, &stored))
+        .await
+        .unwrap_or(false);
+    if !valid {
+        record_failure(&attempt_keys);
+        return Err(AppError::bad_request("Mot de passe actuel incorrect"));
+    }
+    clear_failures(&attempt_keys[0].0);
+    let mut data = crate::zod::Parsed::new();
+    data.insert(
+        "password".into(),
+        Value::String(hash_password(new_password).await),
+    );
+    data.insert("passwordChanged".into(), Value::Bool(true));
+    crate::modules::users::update_user(&state.db, current.id(), &data)
+        .await
+        .map_err(server_error)?;
+    tracing::info!(user = current.id(), "mot de passe changé");
+    Ok(Json(json!({ "success": true })).into_response())
 }
 
 /// Identifiants par défaut à afficher : compte « admin » dont le mot de passe n'a
@@ -535,6 +704,35 @@ async fn default_credentials_check(State(state): State<AppState>) -> Response {
 mod tests {
     use super::*;
     use chrono::TimeZone;
+
+    #[test]
+    fn echecs_de_connexion_limites_puis_effaces() {
+        let keys = attempt_keys("203.0.113.9", "Test-Limite");
+        for _ in 0..MAX_FAILURES_PER_ACCOUNT {
+            assert!(!too_many_failures(&keys));
+            record_failure(&keys);
+        }
+        assert!(too_many_failures(&keys));
+        // Une connexion réussie efface le compteur du compte
+        clear_failures(&keys[0].0);
+        assert!(!too_many_failures(&keys));
+    }
+
+    #[test]
+    fn adresse_du_client_derriere_un_relais_local() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "x-forwarded-for",
+            HeaderValue::from_static("198.51.100.1, 203.0.113.7"),
+        );
+        let mut extensions = Extensions::new();
+        extensions.insert(ConnectInfo(SocketAddr::from(([172, 18, 0, 2], 4000))));
+        assert_eq!(client_ip(&headers, &extensions), "203.0.113.7");
+        // Connexion directe : l'en-tête n'est pas cru
+        let mut extensions = Extensions::new();
+        extensions.insert(ConnectInfo(SocketAddr::from(([198, 51, 100, 50], 4000))));
+        assert_eq!(client_ip(&headers, &extensions), "198.51.100.50");
+    }
 
     // Produit par hashPassword de server/localAuth.ts (Node 20)
     const NODE_HASH: &str = "b72e456b13b111145d2092d3d54bb640795e2635232a2d87227c38456ee4adca56d349fb141f212c51954c8f86b39975aabb3067ca8527bc8197e808f76fadd7.a6e8e83d32cdaaf698eca9e18fb65909";
