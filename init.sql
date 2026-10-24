@@ -573,14 +573,8 @@ COMMENT ON TABLE "utilities" IS 'General application configuration and utilities
 -- DEFAULT DATA
 -- ============================================================================
 
--- Insert default webhook BAP configuration
-INSERT INTO "webhook_bap_config" ("name", "webhook_url", "description", "is_active")
-VALUES (
-  'Configuration BAP',
-  'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d',
-  'Configuration par défaut pour l''envoi des fichiers BAP vers n8n',
-  true
-) ON CONFLICT DO NOTHING;
+-- Webhook BAP : aucune adresse par défaut, à renseigner dans
+-- Paramètres > Configuration BAP (table webhook_bap_config)
 
 -- ============================================================================
 -- END OF SCHEMA

@@ -12,14 +12,7 @@ CREATE TABLE IF NOT EXISTS webhook_bap_config (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Configuration par défaut webhook BAP
-INSERT INTO webhook_bap_config (name, webhook_url, description, is_active)
-VALUES (
-  'Configuration BAP',
-  'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d',
-  'Configuration par défaut pour l''envoi des fichiers BAP vers n8n',
-  true
-) ON CONFLICT DO NOTHING;
+-- Aucune adresse par défaut : à renseigner dans Paramètres > Configuration BAP
 
 -- Commentaire sur la table
 COMMENT ON TABLE webhook_bap_config IS 'Configuration pour webhook BAP n8n';

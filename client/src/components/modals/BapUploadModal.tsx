@@ -6,9 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, FileUp, Send } from "lucide-react";
 
-// URL utilisée quand aucun webhook BAP n'est configuré dans les paramètres
-const DEFAULT_BAP_WEBHOOK_URL = "https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d";
-
 interface BapUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -94,11 +91,16 @@ export default function BapUploadModal({ open, onOpenChange }: BapUploadModalPro
         webhookUrl = config?.webhookUrl;
       }
     } catch (error) {
-      console.warn('Impossible de récupérer la config webhook, utilisation URL par défaut');
+      console.warn('Impossible de récupérer la config webhook');
     }
 
     if (!webhookUrl) {
-      webhookUrl = DEFAULT_BAP_WEBHOOK_URL;
+      toast({
+        title: "Webhook BAP non configuré",
+        description: "Renseignez l'adresse du webhook dans Paramètres > Configuration BAP",
+        variant: "destructive",
+      });
+      return;
     }
 
     // Fermer la fenêtre de sélection et ouvrir celle d'attente

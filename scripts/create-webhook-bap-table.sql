@@ -11,14 +11,7 @@ CREATE TABLE IF NOT EXISTS webhook_bap_config (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insérer une configuration par défaut
-INSERT INTO webhook_bap_config (name, webhook_url, description, is_active)
-VALUES (
-  'Configuration BAP',
-  'https://workflow.ffnancy.fr/webhook/a3d03176-b72f-412d-8fb9-f920b9fbab4d',
-  'Configuration par défaut pour l''envoi des fichiers BAP',
-  true
-) ON CONFLICT DO NOTHING;
+-- Aucune adresse par défaut : à renseigner dans Paramètres > Configuration BAP
 
 -- Commande pour exécuter ce script :
 -- psql -U username -d database_name -f scripts/create-webhook-bap-table.sql
