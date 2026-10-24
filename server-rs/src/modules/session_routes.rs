@@ -402,7 +402,6 @@ async fn login(
         "lastName": user.last_name,
         "role": user.role,
         "passwordChanged": user.password_changed,
-        "mustChangePassword": user.username == "admin" && user.password_changed != Some(true),
     }))
     .into_response();
     if let Ok(cookie) = HeaderValue::from_str(&session_cookie(&sid, &state.config.session_secret, &expires)) {
@@ -619,7 +618,6 @@ async fn current_user(MaybeUser(user): MaybeUser) -> ApiResult {
         "lastName": user.last_name,
         "role": user.role,
         "passwordChanged": user.password_changed,
-        "mustChangePassword": current.must_change_password(),
         "userGroups": current.user_groups,
     }))
     .into_response())

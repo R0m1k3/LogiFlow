@@ -45,6 +45,10 @@ jobs:
       - name: Construction de l'interface
         run: npx vite build
       - name: Fichier docker-compose valide
+        # Secrets factices : le vrai fichier .env n'est pas versionné
+        env:
+          POSTGRES_PASSWORD: ci
+          SESSION_SECRET: ci
         run: docker compose -f docker-compose.yml config -q
 
   bench:

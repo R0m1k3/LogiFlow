@@ -114,7 +114,8 @@ function RouterProduction() {
   }
 
   // Mot de passe initial du compte admin à changer : le serveur refuse le reste
-  if (user.mustChangePassword) {
+  // (même règle que CurrentUser::must_change_password, server-rs/src/auth.rs)
+  if (user.username === "admin" && user.passwordChanged !== true) {
     return <ChangePasswordPage />;
   }
 
