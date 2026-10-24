@@ -24,6 +24,7 @@ import { useAuthUnified } from "@/hooks/useAuthUnified";
 import { useStore } from "@/contexts/StoreContext";
 import { apiRequest } from "@/lib/queryClient";
 import type { DlcProductWithRelations, InsertDlcProduct } from "@shared/schema";
+import { escapeHtml } from "@/lib/escapeHtml";
 
 const dlcFormSchema = z.object({
   productName: z.string().min(1, "Le nom du produit est obligatoire"),
@@ -552,11 +553,11 @@ export default function DlcPage() {
                 const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                 return `
                   <tr>
-                    <td>${product.productName}</td>
-                    <td>${product.gencode || '-'}</td>
+                    <td>${escapeHtml(product.productName)}</td>
+                    <td>${escapeHtml(product.gencode || '-')}</td>
                     <td>${product.dlcDate ? format(new Date(product.dlcDate), "dd/MM/yyyy") : 'N/A'}</td>
-                    <td>${product.dateType.toUpperCase()}</td>
-                    <td>${product.supplier?.name || 'N/A'}</td>
+                    <td>${escapeHtml(String(product.dateType ?? '').toUpperCase())}</td>
+                    <td>${escapeHtml(product.supplier?.name || 'N/A')}</td>
                     <td>${diffDays}</td>
                   </tr>
                 `;
@@ -611,11 +612,11 @@ export default function DlcPage() {
                 const diffDays = Math.ceil((today.getTime() - expiry.getTime()) / (1000 * 60 * 60 * 24));
                 return `
                   <tr>
-                    <td>${product.productName}</td>
-                    <td>${product.gencode || '-'}</td>
+                    <td>${escapeHtml(product.productName)}</td>
+                    <td>${escapeHtml(product.gencode || '-')}</td>
                     <td>${product.dlcDate ? format(new Date(product.dlcDate), "dd/MM/yyyy") : 'N/A'}</td>
-                    <td>${product.dateType.toUpperCase()}</td>
-                    <td>${product.supplier?.name || 'N/A'}</td>
+                    <td>${escapeHtml(String(product.dateType ?? '').toUpperCase())}</td>
+                    <td>${escapeHtml(product.supplier?.name || 'N/A')}</td>
                     <td>${diffDays}</td>
                   </tr>
                 `;

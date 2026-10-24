@@ -42,6 +42,7 @@ import { ConfirmationModal } from "@/components/ConfirmationModal";
 import ClientCallsModal from "@/components/modals/ClientCallsModal";
 import { useStore } from "@/contexts/StoreContext";
 import { usePermissions } from "@shared/permissions";
+import { escapeHtml } from "@/lib/escapeHtml";
 
 // Référence stable tant que la liste n'est pas chargée (évite de recalculer
 // filtre et tri à chaque rendu)
@@ -400,7 +401,7 @@ export default function CustomerOrders() {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Commande #${order.id}</title>
+            <title>Commande #${escapeHtml(order.id)}</title>
             <style>
               body { 
                 font-family: Arial, sans-serif; 
@@ -553,8 +554,8 @@ export default function CustomerOrders() {
           <body>
             <div class="container">
               <div class="header">
-                <div class="title">Commande #${order.id}</div>
-                <div class="status-badge">${order.status}</div>
+                <div class="title">Commande #${escapeHtml(order.id)}</div>
+                <div class="status-badge">${escapeHtml(order.status)}</div>
               </div>
               <div class="creation-date">Créée le ${safeFormat(order.createdAt, 'dd MMMM yyyy')} à ${safeFormat(order.createdAt, 'HH:mm')}</div>
               
@@ -569,11 +570,11 @@ export default function CustomerOrders() {
                 <div class="section-content">
                   <div class="field-row">
                     <span class="field-label">Nom:</span>
-                    <span class="field-value">${order.customerName}</span>
+                    <span class="field-value">${escapeHtml(order.customerName)}</span>
                   </div>
                   <div class="field-row">
                     <span class="field-label">📞 Téléphone:</span>
-                    <span class="field-value">${order.customerPhone}</span>
+                    <span class="field-value">${escapeHtml(order.customerPhone)}</span>
                   </div>
                 </div>
               </div>
@@ -592,19 +593,19 @@ export default function CustomerOrders() {
                     <span class="field-label">Désignation:</span>
                   </div>
                   <div style="background-color: #f3f4f6; padding: 8px; border-radius: 4px; margin-bottom: 12px;">
-                    ${order.productDesignation}
+                    ${escapeHtml(order.productDesignation)}
                   </div>
                   ${order.productReference ? `
                   <div class="field-row">
                     <span class="field-label">Référence:</span>
                     <span class="field-value">
-                      <span class="reference-code">${order.productReference}</span>
+                      <span class="reference-code">${escapeHtml(order.productReference)}</span>
                     </span>
                   </div>` : ''}
                   <div class="field-row">
                     <span class="field-label">Quantité:</span>
                     <span class="field-value">
-                      <span class="quantity-badge">${order.quantity || 1}</span>
+                      <span class="quantity-badge">${escapeHtml(order.quantity || 1)}</span>
                     </span>
                   </div>
                   ${order.deposit && parseFloat(order.deposit) > 0 ? `
@@ -624,10 +625,10 @@ export default function CustomerOrders() {
                   </div>
                   <div class="barcode-section">
                     ${isImageBarcode ? 
-                      `<img src="${barcodeDisplay}" alt="Code-barres EAN13" class="barcode-image" style="max-width: 250px; height: auto; margin: 10px auto; display: block;" />` :
-                      `<div class="barcode">${barcodeDisplay}</div>`
+                      `<img src="${escapeHtml(barcodeDisplay)}" alt="Code-barres EAN13" class="barcode-image" style="max-width: 250px; height: auto; margin: 10px auto; display: block;" />` :
+                      `<div class="barcode">${escapeHtml(barcodeDisplay)}</div>`
                     }
-                    <div class="barcode-number">${order.gencode}</div>
+                    <div class="barcode-number">${escapeHtml(order.gencode)}</div>
                   </div>` : ''}
                 </div>
               </div>
@@ -643,12 +644,12 @@ export default function CustomerOrders() {
                 <div class="section-content">
                   <div class="field-row">
                     <span class="field-label">Prise par:</span>
-                    <span class="field-value">${order.orderTaker}</span>
+                    <span class="field-value">${escapeHtml(order.orderTaker)}</span>
                   </div>
                   <div class="field-row">
                     <span class="field-label">🏪 Magasin:</span>
                     <span class="field-value">
-                      <span class="store-badge">${order.group.name}</span>
+                      <span class="store-badge">${escapeHtml(order.group?.name)}</span>
                     </span>
                   </div>
                   <div class="field-row">
