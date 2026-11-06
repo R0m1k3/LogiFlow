@@ -78,14 +78,18 @@ async fn relay(url: String) -> ApiResult {
         tracing::warn!(%error, "appel ffnancy");
         error_body(StatusCode::INTERNAL_SERVER_ERROR, "Failed to reach API ffnancy")
     };
-    let response = CLIENT
-        .get(&url)
-        .header(header::ACCEPT, "*/*")
+    let mut request = CLIENT.get(&url).header(header::ACCEPT, "*/*");
+    // Clé d'API exigée par api.ffnancy.fr (en-tête X-API-Key), lue dans FFNANCY_API_KEY
+    if let Some(key) = std::env::var("FFNANCY_API_KEY").ok().filter(|key| !key.trim().is_empty()) {
+        request = request.header("X-API-Key", key.trim());
+    }
+    let response = request
         .send()
         .await
         .map_err(|error| unreachable(&error))?;
     let status = response.status();
     if !status.is_success() {
+        tracing::warn!(%status, "API ffnancy en erreur (401 = clé FFNANCY_API_KEY absente ou refusée)");
         return Err(error_body(status, "API ffnancy error"));
     }
     let text = response.text().await.map_err(|error| unreachable(&error))?;
