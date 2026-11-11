@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { AlertTriangle, Check, Copy, KeyRound, Plug, Plus, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertTriangle, Check, Copy, KeyRound, ListOrdered, Plug, Plus, Trash2 } from "lucide-react";
+
+type ApiAccess = "read" | "write";
 
 interface ApiKey {
   id: number;
@@ -17,6 +20,22 @@ interface ApiKey {
   createdAt: string | null;
   lastUsedAt: string | null;
   revokedAt: string | null;
+  access: ApiAccess;
+  storeIds: number[] | null;
+  expiresAt: string | null;
+}
+
+interface Store {
+  id: number;
+  name: string;
+}
+
+interface KeyLog {
+  id: number;
+  method: string;
+  path: string;
+  outcome: string;
+  createdAt: string | null;
 }
 
 interface ApiKeysResponse {
@@ -41,6 +60,58 @@ function errorMessage(error: unknown): string {
   } catch {
     return raw;
   }
+}
+
+// Dernier jour de validité (expiresAt = lendemain à 0 h UTC)
+function formatExpiry(value: string): string {
+  const lastDay = new Date(new Date(value).getTime() - 1);
+  return lastDay.toLocaleDateString("fr-FR", { timeZone: "UTC" });
+}
+
+function isExpired(apiKey: ApiKey): boolean {
+  return !!apiKey.expiresAt && new Date(apiKey.expiresAt).getTime() <= Date.now();
+}
+
+function storeNames(apiKey: ApiKey, stores: Store[]): string {
+  if (!apiKey.storeIds) return "Tous les magasins";
+  return apiKey.storeIds.map((id) => stores.find((store) => store.id === id)?.name ?? `Magasin ${id}`).join(", ");
+}
+
+function KeyLogDialog({ apiKey, onClose }: { apiKey: ApiKey | null; onClose: () => void }) {
+  const { data, isLoading, error } = useQuery<{ logs: KeyLog[] }>({
+    queryKey: [`/api/external-api/keys/${apiKey?.id}/logs`],
+    enabled: !!apiKey,
+  });
+  return (
+    <Dialog open={!!apiKey} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Journal de la clé « {apiKey?.name} »</DialogTitle>
+          <DialogDescription>Ses 200 derniers appels (gardés 90 jours).</DialogDescription>
+        </DialogHeader>
+        {error ? (
+          <p className="text-sm text-red-700">Impossible de charger le journal : {errorMessage(error)}</p>
+        ) : isLoading ? (
+          <p className="text-sm text-gray-600">Chargement…</p>
+        ) : !data?.logs.length ? (
+          <p className="text-sm text-gray-600">Aucun appel enregistré.</p>
+        ) : (
+          <ul className="max-h-96 overflow-y-auto divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
+            {data.logs.map((log) => (
+              <li key={log.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-1.5">
+                <span className="text-gray-500 tabular-nums">{formatDateTime(log.createdAt)}</span>
+                <code className="font-mono text-xs text-gray-900 break-all">{log.method} {log.path}</code>
+                {log.outcome !== "ok" && <span className="text-red-700">{log.outcome}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Fermer</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function CopyButton({ value, label }: { value: string; label: string }) {
@@ -69,16 +140,25 @@ export default function ExternalApiSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyAccess, setNewKeyAccess] = useState<ApiAccess>("read");
+  const [newKeyStores, setNewKeyStores] = useState<number[]>([]);
+  const [newKeyExpiry, setNewKeyExpiry] = useState("");
   const [createdKey, setCreatedKey] = useState<{ name: string; key: string } | null>(null);
   const [keyToRevoke, setKeyToRevoke] = useState<ApiKey | null>(null);
+  const [keyLogs, setKeyLogs] = useState<ApiKey | null>(null);
 
   const { data, isLoading, error } = useQuery<ApiKeysResponse>({ queryKey: QUERY_KEY });
+  const { data: stores = [] } = useQuery<Store[]>({ queryKey: ["/api/groups"] });
 
   const createMutation = useMutation({
-    mutationFn: (name: string) => apiRequest("/api/external-api/keys", "POST", { name }),
+    mutationFn: (body: { name: string; access: ApiAccess; storeIds: number[]; expiresAt: string | null }) =>
+      apiRequest("/api/external-api/keys", "POST", body),
     onSuccess: (result: { key: string; apiKey: ApiKey }) => {
       setCreatedKey({ name: result.apiKey.name, key: result.key });
       setNewKeyName("");
+      setNewKeyAccess("read");
+      setNewKeyStores([]);
+      setNewKeyExpiry("");
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (err) => toast({ title: "Création impossible", description: errorMessage(err), variant: "destructive" }),
@@ -97,13 +177,18 @@ export default function ExternalApiSettings() {
   const apiUrl = `${window.location.origin}${data?.basePath ?? "/api/ext/v1"}`;
   const activeKeys = data?.keys.filter((k) => !k.revokedAt) ?? [];
   const revokedKeys = data?.keys.filter((k) => k.revokedAt) ?? [];
-  const apiEnabled = activeKeys.length > 0 || (data?.envKeyCount ?? 0) > 0;
+  const apiEnabled = activeKeys.some((k) => !isExpired(k)) || (data?.envKeyCount ?? 0) > 0;
 
   const handleCreate = (event: React.FormEvent) => {
     event.preventDefault();
     const name = newKeyName.trim();
-    if (name) createMutation.mutate(name);
+    if (name) {
+      createMutation.mutate({ name, access: newKeyAccess, storeIds: newKeyStores, expiresAt: newKeyExpiry || null });
+    }
   };
+
+  const toggleStore = (id: number, checked: boolean) =>
+    setNewKeyStores((current) => (checked ? [...current, id] : current.filter((store) => store !== id)));
 
   return (
     <div className="h-full overflow-y-auto space-y-6">
@@ -115,8 +200,9 @@ export default function ExternalApiSettings() {
             API externe de rapprochement
           </CardTitle>
           <CardDescription>
-            Permet à un outil externe (n8n, comptabilité, script…) de lire les fournisseurs et les numéros de BL
-            des livraisons, puis d'écrire le numéro de facture, les montants et l'échéance.
+            Permet à un outil externe ou à un agent IA (n8n, comptabilité, script…) de lire les fournisseurs, les
+            commandes, le calendrier et les livraisons avec leur numéro de BL, puis d'écrire le numéro de facture,
+            les montants et l'échéance.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -147,9 +233,12 @@ export default function ExternalApiSettings() {
             <p className="font-medium text-gray-900">Principales routes</p>
             <ul className="space-y-0.5 font-mono text-xs sm:text-sm">
               <li>GET /stores — magasins</li>
-              <li>GET /suppliers — fournisseurs</li>
-              <li>GET /deliveries?supplierId=…&amp;hasInvoice=false — livraisons et n° de BL</li>
-              <li>PATCH /deliveries/:id — n° de facture, montants HT/TTC, échéance</li>
+              <li>GET /suppliers, /suppliers/:id — fournisseurs (code, e-mail, contact)</li>
+              <li>GET /calendar?from=…&amp;to=… — commandes et livraisons de la période</li>
+              <li>GET /orders, /orders/:id — commandes et leurs livraisons</li>
+              <li>GET /deliveries?status=all&amp;hasInvoice=false — livraisons et n° de BL</li>
+              <li>GET /deliveries/:id — livraison détaillée</li>
+              <li>PATCH /deliveries/:id — n° de facture, montants HT/TTC, échéance (clé « lecture + écriture »)</li>
             </ul>
             <p className="pt-1">Documentation complète : <code className="rounded bg-white px-1">docs/API-RAPPROCHEMENT.md</code></p>
           </div>
@@ -164,22 +253,64 @@ export default function ExternalApiSettings() {
             Clés d'API
           </CardTitle>
           <CardDescription>
-            Créez une clé par outil, pour pouvoir en révoquer une sans couper les autres.
-            La clé n'est affichée qu'une seule fois, à sa création.
+            Créez une clé par outil ou par agent, pour pouvoir en révoquer une sans couper les autres. Donnez-lui
+            seulement les droits et les magasins dont il a besoin. La clé n'est affichée qu'une seule fois, à sa
+            création.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-2 sm:items-end">
-            <div className="flex-1 space-y-1.5">
-              <Label htmlFor="api-key-name">Nom de la nouvelle clé</Label>
-              <Input
-                id="api-key-name"
-                value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
-                placeholder="Ex. : n8n comptabilité"
-                maxLength={100}
-              />
+          <form onSubmit={handleCreate} className="space-y-4 rounded-lg border border-gray-200 p-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5 sm:col-span-1">
+                <Label htmlFor="api-key-name">Nom de la nouvelle clé</Label>
+                <Input
+                  id="api-key-name"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  placeholder="Ex. : agent factures Frouard"
+                  maxLength={100}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="api-key-access">Droits</Label>
+                <select
+                  id="api-key-access"
+                  value={newKeyAccess}
+                  onChange={(e) => setNewKeyAccess(e.target.value as ApiAccess)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="read">Lecture seule</option>
+                  <option value="write">Lecture + écriture de la facture</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="api-key-expiry">Expire après le (facultatif)</Label>
+                <Input
+                  id="api-key-expiry"
+                  type="date"
+                  value={newKeyExpiry}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setNewKeyExpiry(e.target.value)}
+                />
+              </div>
             </div>
+            {stores.length > 0 && (
+              <fieldset className="space-y-1.5">
+                <legend className="text-sm font-medium">Magasins visibles</legend>
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                  {stores.map((store) => (
+                    <label key={store.id} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={newKeyStores.includes(store.id)}
+                        onCheckedChange={(checked) => toggleStore(store.id, checked === true)}
+                      />
+                      {store.name}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-600">Aucun coché : tous les magasins.</p>
+              </fieldset>
+            )}
             <Button type="submit" disabled={!newKeyName.trim() || createMutation.isPending}>
               <Plus className="w-4 h-4 mr-1.5" />
               {createMutation.isPending ? "Création…" : "Créer une clé"}
@@ -197,7 +328,18 @@ export default function ExternalApiSettings() {
               {activeKeys.map((apiKey) => (
                 <li key={apiKey.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3">
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900 truncate">{apiKey.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-gray-900 truncate">{apiKey.name}</p>
+                      <Badge variant="outline">{apiKey.access === "write" ? "Lecture + écriture" : "Lecture seule"}</Badge>
+                      <Badge variant="outline">{storeNames(apiKey, stores)}</Badge>
+                      {apiKey.expiresAt && (
+                        isExpired(apiKey) ? (
+                          <Badge variant="outline" className="border-red-300 text-red-800">Expirée</Badge>
+                        ) : (
+                          <Badge variant="outline">Expire après le {formatExpiry(apiKey.expiresAt)}</Badge>
+                        )
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600">
                       <code className="rounded bg-gray-100 px-1">{apiKey.keyPrefix}…</code>
                       {" · "}créée le {formatDateTime(apiKey.createdAt)}
@@ -205,15 +347,21 @@ export default function ExternalApiSettings() {
                       {apiKey.lastUsedAt ? `dernière utilisation le ${formatDateTime(apiKey.lastUsedAt)}` : "jamais utilisée"}
                     </p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="self-start sm:self-auto text-red-700 border-red-200 hover:bg-red-50"
-                    onClick={() => setKeyToRevoke(apiKey)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1.5" />
-                    Révoquer
-                  </Button>
+                  <div className="flex gap-2 self-start sm:self-auto">
+                    <Button variant="outline" size="sm" onClick={() => setKeyLogs(apiKey)}>
+                      <ListOrdered className="w-4 h-4 mr-1.5" />
+                      Journal
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-700 border-red-200 hover:bg-red-50"
+                      onClick={() => setKeyToRevoke(apiKey)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1.5" />
+                      Révoquer
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -257,13 +405,15 @@ export default function ExternalApiSettings() {
           </div>
           <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-            <p>Cette clé donne accès aux livraisons de tous les magasins. Ne la partagez pas ; en cas de doute, révoquez-la.</p>
+            <p>Ne partagez pas cette clé ; en cas de doute, révoquez-la. Ses appels sont visibles dans son journal.</p>
           </div>
           <DialogFooter>
             <Button onClick={() => setCreatedKey(null)}>J'ai copié la clé</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <KeyLogDialog apiKey={keyLogs} onClose={() => setKeyLogs(null)} />
 
       {/* Confirmation de révocation */}
       <Dialog open={!!keyToRevoke} onOpenChange={(open) => { if (!open) setKeyToRevoke(null); }}>

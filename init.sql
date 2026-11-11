@@ -447,8 +447,21 @@ CREATE TABLE IF NOT EXISTS "external_api_keys" (
   "created_by" varchar,
   "created_at" timestamp DEFAULT CURRENT_TIMESTAMP,
   "last_used_at" timestamp,
-  "revoked_at" timestamp
+  "revoked_at" timestamp,
+  "access" varchar(10) NOT NULL DEFAULT 'write',
+  "group_ids" integer[],
+  "expires_at" timestamp
 );
+
+CREATE TABLE IF NOT EXISTS "external_api_key_logs" (
+  "id" bigserial PRIMARY KEY NOT NULL,
+  "key_id" integer NOT NULL REFERENCES "external_api_keys"("id") ON DELETE CASCADE,
+  "method" varchar(10) NOT NULL,
+  "path" text NOT NULL,
+  "outcome" varchar(60) NOT NULL,
+  "created_at" timestamp DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "idx_external_api_key_logs_key" ON "external_api_key_logs" ("key_id", "created_at" DESC);
 
 -- ============================================================================
 -- FOREIGN KEY CONSTRAINTS
