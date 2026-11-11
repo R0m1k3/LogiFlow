@@ -88,6 +88,28 @@ const SCHEMA_STATEMENTS: &[(&str, &str)] = &[
          )",
     ),
     (
+        "droits des clés de l'API externe",
+        // Les clés existantes gardent tous leurs droits (write, tous les magasins)
+        "ALTER TABLE external_api_keys ADD COLUMN IF NOT EXISTS access VARCHAR(10) NOT NULL DEFAULT 'write',
+           ADD COLUMN IF NOT EXISTS group_ids INTEGER[],
+           ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
+    ),
+    (
+        "journal des appels de l'API externe",
+        "CREATE TABLE IF NOT EXISTS external_api_key_logs (
+           id BIGSERIAL PRIMARY KEY,
+           key_id INTEGER NOT NULL REFERENCES external_api_keys(id) ON DELETE CASCADE,
+           method VARCHAR(10) NOT NULL,
+           path TEXT NOT NULL,
+           outcome VARCHAR(60) NOT NULL,
+           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+         )",
+    ),
+    (
+        "index du journal de l'API externe",
+        "CREATE INDEX IF NOT EXISTS idx_external_api_key_logs_key ON external_api_key_logs(key_id, created_at DESC)",
+    ),
+    (
         "configuration du webhook BAP",
         "CREATE TABLE IF NOT EXISTS webhook_bap_config (
            id SERIAL PRIMARY KEY,
